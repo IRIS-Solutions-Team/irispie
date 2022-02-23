@@ -203,7 +203,7 @@ class Model():
 
     def _expand_num_variants(self, new_num: int) -> None:
         for i in range(self.num_variants, new_num):
-            self_.variants.append(deepcopy(self._variants[-1]))
+            self._variants.append(deepcopy(self._variants[-1]))
 
     @classmethod
     def from_lists( 
