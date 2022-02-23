@@ -6,9 +6,25 @@ from enum import Enum, auto
 from collections import namedtuple, Counter
 from abc import ABC, abstractmethod
 
-from numpy import array, log, exp, nan_to_num
-from re import Match, sub
+from numpy import array, log, exp, nan_to_num, copy
+from re import Match, sub, compile
 from copy import deepcopy
+
+
+class UndeclaredName(Exception):
+#(
+    def __init__(self, errors: list[tuple[str, str]]) -> None:
+        message = "".join([
+            f"\n*** Undeclared or mistyped name '{e[0]}' in equation {e[1]}"
+            for e in errors
+        ])
+        message = "\n" + message + "\n"
+        super().__init__(message)
+#)
+
+
+_TINX_PATTERN = compile(r",t[+-]\d+")
+_QUANTITY_NAME_PATTERN = compile(r"\b([a-zA-Z]\w*)\b({[-+\d]+})?(?!\()")
 
 
 class QuantityKind(Enum):
@@ -18,16 +34,29 @@ class QuantityKind(Enum):
     MEASUREMENT_SHOCK = auto()
     PARAMETER = auto()
 
+    @staticmethod
+    def variables() -> set[str]:
+        return {QuantityKind.TRANSITION_VARIABLE, QuantityKind.MEASUREMENT_VARIABLE}
+
+    @staticmethod
     def shocks() -> set[str]:
-        return (QuantityKind.TRANSITION_SHOCK, QuantityKind.MEASUREMENT_SHOCK)
+        return {QuantityKind.TRANSITION_SHOCK, QuantityKind.MEASUREMENT_SHOCK}
+
 
 
 class EquationKind(Enum):
     TRANSITION_EQUATION = auto()
 
 
+class EvaluatorKind(Enum):
+    STEADY = auto()
+    STACKED = auto()
+    PERIOD = auto()
+
+
 Quantity = namedtuple("Quantity", ["id", "name", "kind"])
-Equation = namedtuple("Equation", ["id", "input", "kind"])
+Equation = namedtuple("Equation", ["id", "human", "kind"])
+Incidence = namedtuple("Incidence", ["equation", "quantity", "shift"])
 
 
 def _check_unique_quantity_names(existing_names: list[str], adding_names: list[str]) -> None:
@@ -38,26 +67,26 @@ def _check_unique_quantity_names(existing_names: list[str], adding_names: list[s
 
 
 class ModelSource:
-
+#(
     def __init__(self):
-        self._quantities: list[Quantity] = []
-        self._equations: list[Equation] = []
+        self.quantities: list[Quantity] = []
+        self.equations: list[Equation] = []
 
     @property
     def name_to_id(self) -> dict[str, int]:
-        return { q.name: q.id for q in self._quantities }
+        return { q.name: q.id for q in self.quantities }
 
     @property
     def id_to_name(self) -> dict[int, str]:
-        return { q.id: q.name for q in self._quantities }
+        return { q.id: q.name for q in self.quantities }
 
     @property
     def num_quantities(self) -> int:
-        return len(self._quantities)
+        return len(self.quantities)
 
     @property
     def all_names(self) -> list[str]:
-        return [ q.name for q in self._quantities ]
+        return [ q.name for q in self.quantities ]
 
     def add_parameters(self, names: Optional[Iterable[str]]) -> None:
         self._add_quantities(names, QuantityKind.PARAMETER)
@@ -68,80 +97,137 @@ class ModelSource:
     def add_transition_shocks(self, names: Iterable[str]) -> None:
         self._add_quantities(names, QuantityKind.TRANSITION_SHOCK)
 
-    def add_transition_equations(self, inputs: Iterable[str]) -> None:
-        self._add_equations(inputs, EquationKind.TRANSITION_EQUATION)
+    def add_transition_equations(self, humans: Iterable[str]) -> None:
+        self._add_equations(humans, EquationKind.TRANSITION_EQUATION)
 
     def _add_quantities(self, names: Iterable[str], kind: QuantityKind) -> None:
         if not names: return
-        _check_unique_quantity_names([q.name for q in self._quantities], names)
-        offset = len(self._quantities)
-        self._quantities = self._quantities + [
+        _check_unique_quantity_names([q.name for q in self.quantities], names)
+        offset = len(self.quantities)
+        self.quantities = self.quantities + [
             Quantity(id=id, name=name.replace(" ", ""), kind=kind) for id, name in enumerate(names, start=offset)
         ]
 
-    def _add_equations(self, inputs: Iterable[str], kind: EquationKind) -> None:
-        offset = len(self._equations)
-        self._equations = self._equations + [ Equation(id=id, input=input.replace(" ", ""), kind=kind) for id, input in enumerate(inputs, start=offset) ]
+    def _add_equations(self, humans: Iterable[str], kind: EquationKind) -> None:
+        offset = len(self.equations)
+        self.equations = self.equations + [ Equation(id=id, human=human.replace(" ", ""), kind=kind) for id, human in enumerate(humans, start=offset) ]
 
     def _get_names_to_assign(self, name_value: dict[str, float]) -> set[str]:
-        names_shocks = [ q.name for q in self._quantities if q.kind in QuantityKind.shocks() ]
+        names_shocks = [ q.name for q in self.quantities if q.kind in QuantityKind.shocks() ]
         names_to_assign = set(name_value.keys()).intersection(self.all_names).difference(names_shocks)
         return names_to_assign
 
-    def _get_pos_quantity_kinds(self, kinds: set[QuantityKind]) -> set[int]:
-        return set( q.id for q in self._quantities if q.kind in kinds )
+    def _get_pos_quantities_by_kind(self, kinds: set[QuantityKind]) -> set[int]:
+        return set( q.id for q in self.quantities if q.kind in kinds )
+#)
 
 
-class Evaluator(ABC):
 
-    def __init__(self):
-        self._equations: Optional[list[str]] = None
+class Evaluator:
+#(
+    def __init__(self, model: Model, kind: EvaluatorKind) -> None:
+        self._kind: EvaluatorKind = kind
         self._function_string: Optional[str] = None
         self._function: Optional[Callable] = None
+        self._x: array = model.create_steady_vector()
+        self._index: list[int] = []
+        self._init: Optional[array] = None
+        self._create_function(model)
+        self._create_input(model)
+        self._names = model._model_source.all_names
 
-    @staticmethod
-    @abstractmethod
-    def _replace_name_in_input(*args):
-        pass
 
-    @staticmethod
-    @abstractmethod
-    def _create_function_string(*args):
-        pass
+    @property
+    def init(self) -> array:
+        return copy(self._init)
 
-    def _parse_equation(self, input: str, name_to_id: dict[str, int]) -> str:
-        pattern = r"\b([a-zA-Z]\w*)\b({[-+\d]+})?(?!\()"
-        input = input.replace("^", "**")
-        lhs_rhs = input.split('=')
-        input = '-(' + lhs_rhs[0] + ')+' + lhs_rhs[1] if len(lhs_rhs)==2 else input
-        return sub(pattern, lambda match: self._replace_name_in_input(match, name_to_id, input), input)
 
-    @classmethod
-    def from_model_source(cls, ms: ModelSource) -> Evaluator:
-        self = cls()
-        self._equations = [ self._parse_equation(e.input, ms.name_to_id) for e in ms._equations ]
-        self._function_string = self._create_function_string(self._equations) 
+    @property
+    def unknowns(self) -> list[str]:
+        return [ self._names[i] for i in self._index ]
+
+
+    def eval(self, current: Optional[array]=None):
+        x = copy(self._x)
+        if current is not None:
+            x[self._index, :] = current
+        return self._function(x)
+
+
+    def _create_function(self, model: Model) -> None:
+        if self._kind is EvaluatorKind.STEADY:
+            tinx_replace = ",:"
+            lambda_string = "lambda x: array([{equations_string}], dtype=float)"
+        else:
+            raise NotImplementedError
+
+        equations_string = _TINX_PATTERN.sub(tinx_replace, ",".join(model._parsed_equations))
+        self._function_string = lambda_string.format(equations_string=equations_string)
         self._function = eval(self._function_string)
-        return self
 
 
-class SteadyEvaluator(Evaluator):
+    def _create_input(self, model: Model) -> None:
+        if self._kind is EvaluatorKind.STEADY:
+            self._index = [ qty.id for qty in model._model_source.quantities if qty.kind in QuantityKind.variables() ]
+            self._init = self._x[self._index, :]
+        else:
+            raise NotImplementedError
+#)
+
+
+class EquationParser():
+#(
+
+    def __init__(self, ms: ModelSource) -> None:
+        self._equations: list[Equation] = ms.equations
+        self._name_to_id: dict[str, int] = ms.name_to_id
+
+        self._incidence_by_eqtn: list[set[Incidence]] = []
+        self.incidence = list[Incidence]
+        self.parsed_equations: list[str] = []
+        self._error_log: list[tuple(str, str)] = []
+        self._run()
+
+
+    def _run(self):
+        self.parsed_equations = [ self._parse_equation(eqn) for eqn in self._equations ]
+        if self._error_log:
+            raise UndeclaredName(self._error_log)
+        self.incidence = [ j for i in self._incidence_by_eqtn for j in i ]
+
+
+    def _parse_equation(self, eqn: Equation) -> str:
+
+        def _replace_name_in_human(match: [Match]) -> Equation:
+            name = match.group(1)
+            qty_id = self._name_to_id.get(name)
+            qty_shift = self._resolve_shift_str(match.group(2))
+            if qty_id is None:
+                self._error_log.append((name, match.string))
+            eqn_incidence.add(Incidence(eqn.id, qty_id, qty_shift))
+            return f"x[{qty_id},t{qty_shift:+g}]"
+
+        eqn_incidence = set()
+        parsed_equation = _QUANTITY_NAME_PATTERN.sub(_replace_name_in_human, eqn.human)
+        self._incidence_by_eqtn.append(eqn_incidence)
+
+        parsed_equation = parsed_equation.replace("^", "**")
+        if len(lhs_rhs := parsed_equation.split("="))==2:
+            parsed_equation = lhs_rhs[0] + "-(" + lhs_rhs[1] + ")" 
+        return parsed_equation 
+
 
     @staticmethod
-    def _replace_name_in_input(match: [Match], name_to_id: dict[str, int], input: str) -> str:
-        name = match.group(1)
-        if (id := name_to_id.get(name)) is None:
-            raise Exception(f"Unknown name {name} in equation {input}")
-        return f"x[{id}]"
+    def _resolve_shift_str(shift_str: str) -> int:
+        return int(shift_str.replace("{", "",).replace("}", "")) if shift_str is not None else 0
 
-    @staticmethod
-    def _create_function_string(equations: list[str]) -> str:
-        return f"lambda x: array([{','.join(equations)}]).T"
+
+#)
 
 
 
 class Variant():
-
+#(
     def __init__(self, num_names: int=0) -> None:
         self._values = [None]*num_names
 
@@ -156,14 +242,17 @@ class Variant():
     def from_model_source(cls, ms: ModelSource) -> Variant:
         self = cls(ms.num_quantities)
         return self
+#)
+
 
 
 class Model():
-
+#(
     def __init__(self):
         self._model_source: Optional(ModelSource) = None
         self._variants: list[Variant] = []
-        self._steady_evaluator: Optional(SteadyEvaluator) = None
+        self._steady_equations: Optional(list[str]) = None
+        self._steady_incidence: Optional(list[tuple[int, int, int]]) = None
 
     def assign(self, name_value: dict[str, float]) -> set[str]:
         names_assigned = self._model_source._get_names_to_assign(name_value)
@@ -182,17 +271,17 @@ class Model():
         return len(self._variants)
 
     @property
-    def steady_evaluator(self) -> tuple(Callable, str):
-        return self._steady_evaluator._function, self._steady_evaluator._function_string
+    def steady_evaluator(self) -> Evaluator:
+        return Evaluator(self, EvaluatorKind.STEADY)
 
-    def create_steady_vector(self, variant: int=0, missing: Optional[float]=1) -> array:
-        steady_vector = array([self._variants[variant]._values], dtype=float).T
+    def create_steady_vector(self, variant: int=0, missing: Optional[float]=None) -> array:
+        steady_vector = array([self._variants[variant]._values], dtype=float).transpose()
         if missing:
             nan_to_num(steady_vector, nan=missing, copy=False)
         return steady_vector
 
     def _assign_auto_values(self) -> None:
-        pos_shocks = self._model_source._get_pos_quantity_kinds(QuantityKind.shocks())
+        pos_shocks = self._model_source._get_pos_quantities_by_kind(QuantityKind.shocks())
         for v in self._variants:
             v._assign_auto_values(pos_shocks, 0)
 
@@ -223,8 +312,13 @@ class Model():
         self = cls()
         self._model_source = model_source
         self._variants = [ Variant.from_model_source(model_source) ]
-        self._steady_evaluator = SteadyEvaluator.from_model_source(model_source)
+
+        equation_parser = EquationParser(model_source)
+        self._parsed_equations: list[str] = equation_parser.parsed_equations
+        self._incidence: list[Incidence] = equation_parser.incidence
+
         self._assign_auto_values()
 
         return self
+#)
 
