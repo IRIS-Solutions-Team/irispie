@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 
 from numpy import array, log, exp, nan_to_num
 from re import Match, sub
+from copy import deepcopy
 
 
 class QuantityKind(Enum):
@@ -78,7 +79,7 @@ class ModelSource:
             Quantity(id=id, name=name.replace(" ", ""), kind=kind) for id, name in enumerate(names, start=offset)
         ]
 
-    def _add_equations(self, inputs: Iterable[str], kind: QuantityKind) -> None:
+    def _add_equations(self, inputs: Iterable[str], kind: EquationKind) -> None:
         offset = len(self._equations)
         self._equations = self._equations + [ Equation(id=id, input=input.replace(" ", ""), kind=kind) for id, input in enumerate(inputs, start=offset) ]
 
@@ -170,6 +171,16 @@ class Model():
         self._variants[0].assign(name_value, names_assigned, name_to_id)
         return names_assigned
 
+    def change_num_variants(self, new_num: int) -> None:
+        if new_num<self.num_variants:
+            self._shrink_num_variants(new_num)
+        elif new_num>self.num_variants:
+            self._expand_num_variants(new_num)
+
+    @property
+    def num_variants(self) -> int:
+        return len(self._variants)
+
     @property
     def steady_evaluator(self) -> tuple(Callable, str):
         return self._steady_evaluator._function, self._steady_evaluator._function_string
@@ -184,6 +195,15 @@ class Model():
         pos_shocks = self._model_source._get_pos_quantity_kinds(QuantityKind.shocks())
         for v in self._variants:
             v._assign_auto_values(pos_shocks, 0)
+
+    def _shrink_num_variants(self, new_num: int) -> None:
+        if new_num<1:
+            Exception('Number of variants must be one or more')
+        self._variants = self._variants[0:new_num]
+
+    def _expand_num_variants(self, new_num: int) -> None:
+        for i in range(self.num_variants, new_num):
+            self_.variants.append(deepcopy(self._variants[-1]))
 
     @classmethod
     def from_lists( 
