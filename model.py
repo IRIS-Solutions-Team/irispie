@@ -6,9 +6,10 @@ from enum import Enum, auto
 from collections import namedtuple, Counter
 from abc import ABC, abstractmethod
 
-from numpy import array, log, exp, nan_to_num, copy
+from numpy import array, zeros, log, exp, nan_to_num, copy
 from re import Match, sub, compile
 from copy import deepcopy
+
 
 
 class UndeclaredName(Exception):
@@ -23,11 +24,14 @@ class UndeclaredName(Exception):
 #)
 
 
+
 _TINX_PATTERN = compile(r",t[+-]\d+")
 _QUANTITY_NAME_PATTERN = compile(r"\b([a-zA-Z]\w*)\b({[-+\d]+})?(?!\()")
 
 
+
 class QuantityKind(Enum):
+#(
     TRANSITION_VARIABLE = auto()
     TRANSITION_SHOCK = auto()
     MEASUREMENT_VARIABLE = auto()
@@ -35,17 +39,27 @@ class QuantityKind(Enum):
     PARAMETER = auto()
 
     @staticmethod
-    def variables() -> set[str]:
+    def variables() -> set[QuantityKind]:
         return {QuantityKind.TRANSITION_VARIABLE, QuantityKind.MEASUREMENT_VARIABLE}
 
     @staticmethod
-    def shocks() -> set[str]:
+    def shocks() -> set[QuantityKind]:
         return {QuantityKind.TRANSITION_SHOCK, QuantityKind.MEASUREMENT_SHOCK}
+#)
 
 
 
 class EquationKind(Enum):
+#(
     TRANSITION_EQUATION = auto()
+    MEASUREMENT_EQUATION = auto()
+
+
+    @staticmethod
+    def equations() -> set[EquationKind]:
+        return {EquationKind.TRANSITION_EQUATION, EquationKind.MEASUREMENT_EQUATION}
+#)
+
 
 
 class EvaluatorKind(Enum):
@@ -54,12 +68,13 @@ class EvaluatorKind(Enum):
     PERIOD = auto()
 
 
+
 Quantity = namedtuple("Quantity", ["id", "name", "kind"])
 Equation = namedtuple("Equation", ["id", "human", "kind"])
 Incidence = namedtuple("Incidence", ["equation", "quantity", "shift"])
 
 
-def _check_unique_quantity_names(existing_names: list[str], adding_names: list[str]) -> None:
+def _check_unique_names(existing_names: list[str], adding_names: list[str]) -> None:
     name_counter = Counter(existing_names + adding_names)
     if any([c>1 for c in name_counter.values()]):
         duplicates = [n for n, c in name_counter.items() if c>1]
@@ -102,23 +117,35 @@ class ModelSource:
 
     def _add_quantities(self, names: Iterable[str], kind: QuantityKind) -> None:
         if not names: return
-        _check_unique_quantity_names([q.name for q in self.quantities], names)
+        _check_unique_names([q.name for q in self.quantities], names)
         offset = len(self.quantities)
         self.quantities = self.quantities + [
             Quantity(id=id, name=name.replace(" ", ""), kind=kind) for id, name in enumerate(names, start=offset)
         ]
 
+
     def _add_equations(self, humans: Iterable[str], kind: EquationKind) -> None:
         offset = len(self.equations)
         self.equations = self.equations + [ Equation(id=id, human=human.replace(" ", ""), kind=kind) for id, human in enumerate(humans, start=offset) ]
+
 
     def _get_names_to_assign(self, name_value: dict[str, float]) -> set[str]:
         names_shocks = [ q.name for q in self.quantities if q.kind in QuantityKind.shocks() ]
         names_to_assign = set(name_value.keys()).intersection(self.all_names).difference(names_shocks)
         return names_to_assign
 
-    def _get_pos_quantities_by_kind(self, kinds: set[QuantityKind]) -> set[int]:
-        return set( q.id for q in self.quantities if q.kind in kinds )
+
+    def get_quantity_ids_by_kind(self, kinds: set[QuantityKind]) -> list[int]:
+        return [ q.id for q in self.quantities if q.kind in kinds ]
+
+
+    def get_quantity_names_by_kind(self, kinds: set[QuantityKind]) -> list[str]:
+        return [ q.name for q in self.quantities if q.kind in kinds ]
+
+
+    def get_equation_ids_by_kind(self, kinds: set[EquationKind]) -> list[int]:
+        return [ e.id for e in self.equations if e.kind in kinds ]
+
 #)
 
 
@@ -127,14 +154,20 @@ class Evaluator:
 #(
     def __init__(self, model: Model, kind: EvaluatorKind) -> None:
         self._kind: EvaluatorKind = kind
+        self._model_source: ModelSource = model._model_source
+
+        self._equation_ids: list[int] = []
+        self._quantity_ids: list[int] = []
+        self._incidence: list[Incidence] = []
+        self._resolve_incidence(model)
+
         self._function_string: Optional[str] = None
         self._function: Optional[Callable] = None
-        self._x: array = model.create_steady_vector()
-        self._index: list[int] = []
-        self._init: Optional[array] = None
         self._create_function(model)
+
+        self._x: Optional[array] = None
+        self._init: Optional[array] = None
         self._create_input(model)
-        self._names = model._model_source.all_names
 
 
     @property
@@ -143,14 +176,39 @@ class Evaluator:
 
 
     @property
-    def unknowns(self) -> list[str]:
-        return [ self._names[i] for i in self._index ]
+    def quantities_solved(self) -> list[str]:
+        return [ self._model_source.quantities[i].name for i in self._quantity_ids ]
+
+
+    @property
+    def equations_solved(self) -> list[str]:
+        return [ self._model_source.equations[i].human for i in self._equation_ids ]
+
+
+    @property
+    def num_equations(self) -> int:
+        return len(self._equation_ids)
+
+
+    @property
+    def num_quantities(self) -> int:
+        return len(self._quantity_ids)
+
+
+    @property
+    def incidence_matrix(self, array_type: type=int) -> array:
+        row_indices = [ self._equation_ids.index(inc.equation) for inc in self._incidence ]
+        column_indices = [ self._quantity_ids.index(inc.quantity) for inc in self._incidence ]
+        print(self._incidence)
+        matrix = zeros((self.num_equations, self.num_quantities), dtype=array_type)
+        matrix[row_indices, column_indices] = 1
+        return matrix
 
 
     def eval(self, current: Optional[array]=None):
         x = copy(self._x)
         if current is not None:
-            x[self._index, :] = current
+            x[self._quantity_ids, :] = current
         return self._function(x)
 
 
@@ -160,19 +218,34 @@ class Evaluator:
             lambda_string = "lambda x: array([{equations_string}], dtype=float)"
         else:
             raise NotImplementedError
-
-        equations_string = _TINX_PATTERN.sub(tinx_replace, ",".join(model._parsed_equations))
+        select_equations = [ model._parsed_equations[id] for id in self._equation_ids ]
+        equations_string = _TINX_PATTERN.sub(tinx_replace, ",".join(select_equations))
         self._function_string = lambda_string.format(equations_string=equations_string)
         self._function = eval(self._function_string)
 
 
     def _create_input(self, model: Model) -> None:
+        self._x = model.create_steady_vector()
         if self._kind is EvaluatorKind.STEADY:
-            self._index = [ qty.id for qty in model._model_source.quantities if qty.kind in QuantityKind.variables() ]
-            self._init = self._x[self._index, :]
+            self._init = self._x[self._quantity_ids, :]
         else:
             raise NotImplementedError
+
+
+    def _resolve_incidence(self, model: Model) -> None:
+        if self._kind is EvaluatorKind.STEADY:
+            self._equation_ids = model._model_source.get_equation_ids_by_kind(EquationKind.equations())
+            self._quantity_ids = model._model_source.get_quantity_ids_by_kind(QuantityKind.variables())
+            self._incidence = [
+                Incidence(inc.equation, inc.quantity, 0)
+                for inc in model._incidence
+                if inc.equation in self._equation_ids and inc.quantity in self._quantity_ids
+            ]
+            self._incidence = list(set(self._incidence))
+        else:
+             raise NotImplementedError
 #)
+
 
 
 class EquationParser():
@@ -281,7 +354,7 @@ class Model():
         return steady_vector
 
     def _assign_auto_values(self) -> None:
-        pos_shocks = self._model_source._get_pos_quantities_by_kind(QuantityKind.shocks())
+        pos_shocks = self._model_source.get_quantity_ids_by_kind(QuantityKind.shocks())
         for v in self._variants:
             v._assign_auto_values(pos_shocks, 0)
 
