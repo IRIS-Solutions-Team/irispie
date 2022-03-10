@@ -3,8 +3,11 @@ from __future__ import annotations
 from datetime import date
 from typing import Union, Optional
 from enum import Enum
+from collections.abc import Sequence, Iterable
+
 
 class Freq(Enum):
+    #(
     INTEGER = 0
     YEARLY = 1
     HALF_YEARLY = 2
@@ -28,6 +31,7 @@ class Freq(Enum):
     @property
     def sdmx_format(self) -> str:
         return FREQ_SDMX_FORMATS[self]
+    #)
 
 
 FREQ_LETTERS = {
@@ -52,48 +56,62 @@ FREQ_SDMX_FORMATS = {
 }
 
 
-class Dater:
+class Date:
     #(
-    _freq = None
-
-    @property
-    def freq(self) -> Freq:
-        return self._freq
+    freq = None
 
     def __init__(self, serial=0):
-        self._serial = int(serial)
+        self.serial = int(serial)
 
     def __repr__(self) -> str:
         return self.__str__()
 
-    def __add__(self, other: Union[Dater, int]) -> Dater:
-        new_serial = self._serial.__add__(int(other))
-        return type(self)(new_serial)
+    def __add__(self, other: Union[int, Sequence[int]]) -> Union[Date, Sequence]:
+        if isinstance(other, Sequence):
+            return [ self.__add__(i) for i in other ]
+        else:
+            return type(self)(self.serial + int(other))
 
     __radd__ = __add__
 
-    def __sub__(self, other: Union[Dater, int]) -> Union[Dater, int]:
-        if isinstance(other, Dater):
-            return self._serial - other._serial
+    def __sub__(self, other: Union[Date, int, Sequence]) -> Union[Date, int, Sequence]:
+        if isinstance(other, Range):
+            return other.__rsub__(self)
+        elif isinstance(other, Sequence):
+            return [ self.__sub__(i) for i in other ]
+        elif isinstance(other, Date):
+            return self.serial - other.serial
         else:
-            new_serial = self._serial.__sub__(int(other))
-            return type(self)(new_serial)
+            return type(self)(self.serial - int(other))
+
+    def __rsub__(self, other: Sequence) -> Union[Date, int, Sequence]:
+        if isinstance(other, Sequence):
+            return [ i-self for i in other ]
+
+    def __rshift__(start_date: Date, end_date: Date) -> Range:
+        return Range(start_date, end_date, 1) 
+
+    def __lshift__(start_date: Date, end_date: Date) -> Range:
+        return Range(start_date, end_date, -1) 
+
+    def __index__(self):
+        return self.serial
     #)
 
 
-class IntegerDater(Dater):
+class IntegerDate(Date):
     #(
-    _freq = Freq.INTEGER
+    freq = Freq.INTEGER
 
     def __str__(self) -> str:
-        serial = self._serial
-        return self._freq.sdmx_format.format(serial=serial)
+        serial = self.serial
+        return self.freq.sdmx_format.format(serial=serial)
     #)
 
 
-class DailyDater(Dater):
+class DailyDate(Date):
     #(
-    _freq = Freq.DAILY
+    freq = Freq.DAILY
 
     @classmethod
     def serial_from_ymd(cls: type, year: int, month: int=1, day: int=1) -> int:
@@ -108,37 +126,35 @@ class DailyDater(Dater):
         temp = date.fromordinal(serial)
         return temp.year, temp.month, temp.day
 
-    @classmethod
-    def yp_from_serial(cls: type, serial: int) -> tuple(int, int):
-        boy_serial = date(date.fromordinal(serial).year, 1, 1)
-        per = serial - boy_serial + 1
-        year = date.fromordinal(serial).year
+    def yp_from_serial(self) -> tuple(int, int):
+        boy_serial = date(date.fromordinal(self.serial).year, 1, 1)
+        per = self.serial - boy_serial + 1
+        year = date.fromordinal(self.serial).year
         return year, per
 
     @property
     def year_month_day(self) -> tuple(int, int, int):
-        return self.ymd_from_serial(self._serial)
+        return self.ymd_from_serial(self.serial)
 
     @property
     def year_per(self) -> tuple(int, int):
-        return self.yp_from_serial(self._serial)
+        return self.yp_from_serial()
 
     def __str__(self) -> str:
         year, month, day = self.year_month_day
-        letter = self._freq.letter
-        return self._freq.sdmx_format.format(year=year, month=month, day=day, letter=letter)
+        letter = self.freq.letter
+        return self.freq.sdmx_format.format(year=year, month=month, day=day, letter=letter)
     #)
 
 
-class RegularDater:
+class RegularDate:
     #(
     @classmethod
     def serial_from_yp(cls: type, year: int, per: int) -> int:
-        return int(year)*int(cls._freq.value) + int(per) - 1
+        return int(year)*int(cls.freq.value) + int(per) - 1
 
-    @classmethod
-    def yp_from_serial(cls: type, serial: int) -> tuple(int, int):
-        return serial//cls._freq.value, serial%cls._freq.value+1
+    def yp_from_serial(self) -> tuple(int, int):
+        return self.serial//self.freq.value, self.serial%self.freq.value+1
 
     @classmethod
     def construct_from_yp(cls: type, year: int, per: int=1) -> type(cls):
@@ -147,42 +163,88 @@ class RegularDater:
 
     @property
     def year_period(self) -> tuple(int, int):
-        return self.yp_from_serial(self._serial)
+        return self.yp_from_serial()
 
     def __str__(self) -> str:
         year, per = self.year_period
-        letter = self._freq.letter
-        return self._freq.sdmx_format.format(year=year, per=per, letter=letter)
+        letter = self.freq.letter
+        return self.freq.sdmx_format.format(year=year, per=per, letter=letter)
     #)
 
 
-class YearlyDater(Dater, RegularDater):
+class YearlyDate(Date, RegularDate): freq: Freq = Freq.YEARLY
+class HalfYearlyDate(Date, RegularDate): freq: Freq = Freq.HALF_YEARLY
+class QuarterlyDate(Date, RegularDate): freq: Freq = Freq.QUARTERLY
+class MonthlyDate(Date, RegularDate): freq: Freq = Freq.MONTHLY
+
+
+yy = YearlyDate.construct_from_yp
+hh = HalfYearlyDate.construct_from_yp
+qq = QuarterlyDate.construct_from_yp
+mm = MonthlyDate.construct_from_yp
+
+ii = IntegerDate
+dd = DailyDate.construct_from_ymd
+
+
+class Range(Sequence):
     #(
-    _freq: Freq = Freq.YEARLY
+    def __init__(self, start_date: Date, end_date: Optional[Date]=None, step: int=1) -> None:
+        self._class = type(start_date)
+        start_serial = start_date.serial
+        end_serial = end_date.serial if end_date is not None else self.start_serial
+        end_serial += 1 if step>0 else -1
+        self.serials = range(start_serial, end_serial, step)
+
+    @property
+    def freq(self) -> Freq:
+        return self._class.freq
+
+    @property
+    def start_date(self) -> Date:
+        return self._class(self.serials[0])
+
+    @property
+    def end_date(self) -> Date:
+        return self._class(self.serials[-1] + (1 if self.serials.step>0 else -1))
+
+    @property
+    def step(self) -> int:
+        return self.serials.step
+
+    def __len__(self) -> int:
+        return len(self.serials)
+
+    def __getitem__(self, key: int) -> Union[Range, Date]:
+        if isinstance(key, slice):
+            self.serials = self.serials[key]
+            return self
+        else:
+            return self._class(self.serials[key])
+
+    def __str__(self) -> str:
+        if len(self)==0:
+            return "Empty-Range"
+        else:
+            step_string = f", {self.step}" if self.step!=1 else ""
+            return f"Range({self.start_date}, {self.end_date}{step_string})"
+
+    __repr__ = __str__
+
+    def __add__(self, offset: int) -> range:
+        return Range(self.start_date+offset, self.end_date+offset, self.step)
+
+    __radd__ = __add__
+
+    def __sub__(self, offset: Union[Date, int]) -> Union[range, Rage]:
+        if isinstance(offset, Date):
+            return range(self.start_date-offset, self.end_date-offset, self.step)
+        else:
+            return Range(self.start_date-offset, self.end_date-offset, self.step)
+
+    def __rsub__(self, other: Date) -> range:
+        if isinstance(other, Date):
+            return range(other-self.start_date, other-self.end_date, -self.step)
     #)
 
-
-class HalfYearlyDater(Dater, RegularDater):
-    #(
-    _freq: Freq = Freq.HALF_YEARLY
-    #)
-
-
-class QuarterlyDater(Dater, RegularDater):
-    #(
-    _freq: Freq = Freq.QUARTERLY
-    #)
-
-
-class MonthlyDater(Dater, RegularDater):
-    #(
-    _freq: Freq = Freq.MONTHLY
-    #)
-
-yy = YearlyDater.construct_from_yp
-hh = HalfYearlyDater.construct_from_yp
-qq = QuarterlyDater.construct_from_yp
-mm = MonthlyDater.construct_from_yp
-ii = IntegerDater
-dd = DailyDater.construct_from_ymd
 
