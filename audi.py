@@ -327,13 +327,13 @@ def diff_single(
 
     ## Input arguments
 
-    * `expression`: `list[str]`
+    * `expression`: `str`
     >
-    > Expression that will be differentiated with > respect to the list of
+    > Expression that will be differentiated with respect to the list of
     > variables given by `wrt`
     >
 
-    * `wrt`: `list[list[str]]`
+    * `wrt`: `list[str]`
     >
     > List of lists of variables with respect to which the corresponding
     > expression will be differentiated
@@ -346,7 +346,7 @@ def diff_single(
 
     ## Output arguments
 
-    * `d`: `list[ndarray]`
+    * `d`: `ndarray`
     >
     > List of arrays with the numerical derivatives; d[i][j,:] is an array
     > of derivatives of the ith-expression w.r.t. to j-th variable
@@ -424,10 +424,10 @@ def diff_multiple(
     return space.eval(data), space, name_to_id
 
 
-if __name__=="__main__":
-    expressions = ["log(a) + c{+1}*b{+1}^2 + b", "c{-1}*d + 2*d{+1}"]
-    wrts = [["a", "b{+1}", "c{-1}"], ["c{-1}", "d", "d{+1}"]]
-    input_values = {"a":5, "b":2, "c":3, "d":-4,}
-
-    diff, space, name_to_id = diff_multiple(expressions, wrts, input_values, 3, ["a"])
+# if __name__=="__main__":
+    # expressions = ["log(a) + c{+1}*b{+1}^2 + b", "c{-1}*d + 2*d{+1}"]
+    # wrts = [["a", "b{+1}", "c{-1}"], ["c{-1}", "d", "d{+1}"]]
+    # input_values = {"a":5, "b":2, "c":3, "d":-4,}
+# 
+    # diff, space, name_to_id = diff_multiple(expressions, wrts, input_values, 3, ["a"])
 
