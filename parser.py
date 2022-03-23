@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 from re import sub, compile, Match
-from incidence import Token
 from typing import Optional
+
+from .incidence import Token
 
 
 DIFF_EQUATION_ID = "[_]"

@@ -1,12 +1,13 @@
 
 from __future__ import annotations
+
 from datetime import date
 from typing import Union, Optional
-from enum import Enum
+from enum import Flag
 from collections.abc import Sequence, Iterable
 
 
-class Freq(Enum):
+class Freq(Flag):
     #(
     INTEGER = 0
     YEARLY = 1
@@ -16,13 +17,7 @@ class Freq(Enum):
     WEEKLY = 52
     DAILY = 365
 
-    def is_regular(self) -> bool:
-        return self in [
-            self.YEARLY,
-            self.HALF_YEARLY,
-            self.QUARTERLY,
-            self.MONTHLY,
-        ]
+    REGULAR = YEARLY | HALF_YEARLY | QUARTERLY | MONTHLY
 
     @property
     def letter(self) -> str:

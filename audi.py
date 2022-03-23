@@ -7,10 +7,10 @@ from re import findall, compile
 from typing import NamedTuple, Union
 from collections.abc import Sequence
 from numbers import Number
-from model import Equation, parse_equations
 
-from parser import DIFF_EQUATION_ID, parse_equation, extract_names
-from incidence import Incidence, Token, get_max_shift, get_min_shift, get_max_quantity_id
+from .parser import DIFF_EQUATION_ID, parse_equation, extract_names
+from .incidence import Incidence, Token, get_max_shift, get_min_shift, get_max_quantity_id
+from .model import Equation, parse_equations
 
 
 _VARIABLE_NAME_PATTERN = compile(r"\b[A-Za-z]\w*\b(?!\()")
@@ -248,7 +248,7 @@ class Space:
 
 
 
-def _prepare_diff(token: Token, wrt_tokens: set[Token]) -> Union[float, ndarray]:
+def _prepare_diff(token: Token, wrt_tokens: list[Token]) -> Union[float, ndarray]:
         if token in wrt_tokens:
             num_wrt = len(wrt_tokens)
             diff = zeros((num_wrt, 1), dtype=int)

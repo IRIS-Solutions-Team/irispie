@@ -11,8 +11,8 @@ from numpy import ndarray, array, zeros, log, exp, nan_to_num, copy
 from re import sub, compile
 from copy import deepcopy
 
-from parser import parse_equation
-from incidence import Incidence, Token, get_max_shift, get_min_shift
+from .parser import parse_equation
+from .incidence import Incidence, Token, get_max_shift, get_min_shift
 
 
 
