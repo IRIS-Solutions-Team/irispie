@@ -15,37 +15,42 @@ from .model import Equation, parse_equations
 
 _VARIABLE_NAME_PATTERN = compile(r"\b[A-Za-z]\w*\b(?!\()")
 
+
 InputValue = Union[Number, list[Number]]
 InputValuesDict = dict[str, InputValue]
 
 
-class InvalidInputDataColumns(Exception):
+class MultilineException(Exception):
+    #(
+    def __init__(self, messages: list[str]) -> None:
+        messages = "\n\n" + "\n".join([ "![modiphy] " + m for m in messages ]) + "\n"
+        super().__init__(messages) 
+    #)
+
+class InvalidInputDataColumns(MultilineException):
     #(
     def __init__(self, invalid: tuple[int, int], needed: tuple[int, int]) -> None:
-        message = "\n".join([
-            f"*** Incorrect size of input data for '{n}': entered {l} values, needed {needed}" 
+        messages = [
+            f"Incorrect size of input data for '{n}': entered {l} values, needed {needed}" 
             for n, l in invalid.items()
-        ])
-        super().__init__(message)
+        ]
+        super().__init__(messages)
     #)
 
 
-class InvalidInputDataArrayShape(Exception):
+class InvalidInputDataArrayShape(MultilineException):
     #(
     def __init__(self, shape_entered: tuple[int, int], needed: tuple[int, int]) -> None:
-        message = f"*** Incorrect size of input data matrix: entered {shape_entered}, needed {needed}"
-        super().__init__(message)
+        messages = [ f"Incorrect size of input data matrix: entered {shape_entered}, needed {needed}" ]
+        super().__init__(messages)
     #)
 
 
-class MissingInputValuesType(Exception):
+class MissingInputValues(MultilineException):
     #(
     def __init__(self, missing: list[str]) -> None:
-        message = "\n".join([
-            f"*** Missing input values for '{name}'"
-            for n in missing
-        ])
-        super().__init__(message)
+        messages = [ f"Missing input values for '{n}'" for n in missing ]
+        super().__init__(messages)
     #)
 
 
@@ -271,7 +276,7 @@ def _verify_input_values_len(
         match x:
             case None:
                 return None
-            case [*_]:
+            case [*__]:
                 return len(x)
             case _:
                 return 0
@@ -352,7 +357,8 @@ def diff_single(
     > of derivatives of the ith-expression w.r.t. to j-th variable
     >
     """
-    return diff_multiple([expression], [wrt], *args, **kwargs)[0]
+    diff, *args = diff_multiple([expression], [wrt], *args, **kwargs)
+    return diff[0], *args
 
 
 def diff_multiple(
@@ -408,8 +414,18 @@ def diff_multiple(
 
     expressions = [ Equation(i, e) for i, e in enumerate(expressions) ]
     parsed_expressions, all_incidences = parse_equations(expressions, name_to_id)
+
+    # Extract tokens (quantity_id, shift) from incidences (equation_id, (quantity_id, shift))
     all_tokens = set(i.token for i in all_incidences)
-    wrt_tokens = [ parse_equation(" ".join(w), name_to_id)[1] for w in wrts ]
+
+    # Translate name-shifts to tokens, preserving the order
+    # Use output argument #3 from parse_equation which is a list with
+    # the tokens in the same order as the name-shifts 
+    wrt_tokens: list[list[Token]] = [ 
+        parse_equation(" ".join(w), name_to_id)[3] for w in wrts
+    ]
+
+    print(wrt_tokens[0])
 
     space = Space( 
         parsed_expressions,

@@ -363,11 +363,13 @@ def parse_equations(
         equations: list[Equation],
         name_to_id: dict[str, int]
     ) -> tuple[list[str], set[Incidence]]:
+
     parsed_equations: list[str] = list()
     incidences: set[Incidence] = set()
     error_log: list[tuple[str, str]] = list()
+
     for eqn in equations:
-        curr_parsed_equation, curr_tokens, curr_error_log = parse_equation(eqn.human, name_to_id)
+        curr_parsed_equation, curr_tokens, curr_error_log, *_ = parse_equation(eqn.human, name_to_id)
         incidences = incidences.union(Incidence(eqn.id, t) for t in curr_tokens)
         parsed_equations.append(curr_parsed_equation) 
         error_log += curr_error_log

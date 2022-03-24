@@ -14,9 +14,9 @@ _REPLACE_NONZERO_SHIFT = "x[{quantity_id}][t{shift:+g}]" + DIFF_EQUATION_ID
 _REPLACE_UKNOWN = "?"
 
 
-def parse_equation(human: str, name_to_id: dict[str, int]) -> tuple[str, set[Token], list[tuple[str, str]]]:
+def parse_equation(human: str, name_to_id: dict[str, int]) -> tuple[str, set[Token], list[tuple[str, str]], list[Token]]:
     #(
-    tokens: set[Token] = set()
+    tokens_list: list[Token] = []
     error_log: list[tuple[str, str]] = []
 
     def _replace_name_in_human(match: Match) -> str:
@@ -24,16 +24,19 @@ def parse_equation(human: str, name_to_id: dict[str, int]) -> tuple[str, set[Tok
         quantity_id = name_to_id.get(name)
         if quantity_id is not None:
             shift = _resolve_shift_str(match.group(2))
-            tokens.add(Token(quantity_id, shift))
+            tokens_list.append(Token(quantity_id, shift))
             return (_REPLACE_NONZERO_SHIFT if shift!=0 else _REPLACE_ZERO_SHIFT).format(quantity_id=quantity_id, shift=shift)
         else:
             error_log.append((name, human))
+            tokens_list.append(Token(None, None))
             return _REPLACE_UKNOWN
 
     equation: str = _QUANTITY_NAME_PATTERN.sub(_replace_name_in_human, human)
     equation = _postprocess(equation)
 
-    return equation, tokens, error_log
+    tokens_set = set(tokens_list)
+
+    return equation, tokens_set, error_log, tokens_list
     #)
 
 
