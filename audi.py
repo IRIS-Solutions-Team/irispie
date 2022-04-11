@@ -1,33 +1,42 @@
 
+#(
 from __future__ import annotations
 
-from sys import exit
-from numpy import log, exp, zeros, NaN, ndarray, array, vstack, full
+
+
+from numpy import (
+    log, exp, zeros, NaN, 
+    ndarray, array, vstack, full
+)
+
+
 from re import findall, compile
+
 from typing import NamedTuple, Union
+
 from collections.abc import Sequence
+
 from numbers import Number
 
-from .parser import DIFF_EQUATION_ID, parse_equation, extract_names
-from .incidence import Incidence, Token, get_max_shift, get_min_shift, get_max_quantity_id
-from .model import Equation, parse_equations
 
 
-_VARIABLE_NAME_PATTERN = compile(r"\b[A-Za-z]\w*\b(?!\()")
+from .exceptions import ListException
+
+from .parser import DIFF_EQUATION_ID
+
+from .incidence import (
+    Incidence, Token, get_max_shift, 
+    get_min_shift, get_max_quantity_id
+)
+#)
 
 
 InputValue = Union[Number, list[Number]]
+
 InputValuesDict = dict[str, InputValue]
 
 
-class MultilineException(Exception):
-    #(
-    def __init__(self, messages: list[str]) -> None:
-        messages = "\n\n" + "\n".join([ "![modiphy] " + m for m in messages ]) + "\n"
-        super().__init__(messages) 
-    #)
-
-class InvalidInputDataColumns(MultilineException):
+class InvalidInputDataColumns(ListException):
     #(
     def __init__(self, invalid: tuple[int, int], needed: tuple[int, int]) -> None:
         messages = [
@@ -38,7 +47,7 @@ class InvalidInputDataColumns(MultilineException):
     #)
 
 
-class InvalidInputDataArrayShape(MultilineException):
+class InvalidInputDataArrayShape(ListException):
     #(
     def __init__(self, shape_entered: tuple[int, int], needed: tuple[int, int]) -> None:
         messages = [ f"Incorrect size of input data matrix: entered {shape_entered}, needed {needed}" ]
@@ -46,15 +55,9 @@ class InvalidInputDataArrayShape(MultilineException):
     #)
 
 
-class MissingInputValues(MultilineException):
-    #(
-    def __init__(self, missing: list[str]) -> None:
-        messages = [ f"Missing input values for '{n}'" for n in missing ]
-        super().__init__(messages)
-    #)
-
-
 class Unit():
+
+    _data: ndarray  = None
 
     def __init__(
             self, 
@@ -63,6 +66,7 @@ class Unit():
             data_index: Optional[tuple[slice, slice]]=None,
             log_flag: bool=False,
         ) -> None:
+
         self._value = value
         self.diff = diff
         self._data_index = data_index
@@ -200,8 +204,8 @@ class Space:
         self.t_zero = -min_shift
         self.columns_to_eval = (self.t_zero, self.t_zero + num_columns_to_eval - 1)
 
-        self._calculate_x()
-        self._calculate_func(parsed_equations)
+        self._populate_x()
+        self._populate_func(parsed_equations)
 
 
     @property
@@ -210,13 +214,16 @@ class Space:
 
 
     def _preallocate_x(self) -> None:
-        self.x = [ [None for _ in range(self.num_shifts)] for _ in range(self.num_data_rows) ]
+        self.x: list[list] = [ 
+            [None for _ in range(self.num_shifts)] 
+            for _ in range(self.num_data_rows)
+        ]
 
 
-    def _calculate_x(self) -> None:
+    def _populate_x(self) -> None:
         self._preallocate_x()
         for t in self._all_tokens:
-            diff = [ _prepare_diff(t, w) for w in self._wrt_tokens ]
+            diff = [ self._prepare_diff(t, w) for w in self._wrt_tokens ]
             data_index = (
                 slice(t.quantity_id, t.quantity_id+1),
                 slice(self.columns_to_eval[0]+t.shift, self.columns_to_eval[1]+t.shift+1),
@@ -225,10 +232,13 @@ class Space:
             self.x[t.quantity_id][self.t_zero+t.shift] = Unit(None, diff, data_index, log_flag)
 
 
-    def _calculate_func(self, parsed_equations: list[str]) -> None:
+    def _populate_func(self, parsed_equations: list[str]) -> None:
         #(
         # Replace x[0][0][_] with x[0][0][i] 
-        parsed_equations = ( e.replace(DIFF_EQUATION_ID, f"[{i}]") for i, e in enumerate(parsed_equations) )
+        parsed_equations = ( 
+            e.replace(DIFF_EQUATION_ID, f"[{i}]") 
+            for i, e in enumerate(parsed_equations)
+        )
 
         # Wrap each equation in (___).diff
         wrapped_equations = ( f"({e}).diff," for e in parsed_equations )
@@ -253,14 +263,15 @@ class Space:
 
 
 
-def _prepare_diff(token: Token, wrt_tokens: list[Token]) -> Union[float, ndarray]:
-        if token in wrt_tokens:
-            num_wrt = len(wrt_tokens)
-            diff = zeros((num_wrt, 1), dtype=int)
-            diff[wrt_tokens.index(token), :] = 1
-            return diff
-        else:
-            return 0
+    @staticmethod
+    def _prepare_diff(token: Token, wrt_tokens: list[Token]) -> Union[float, ndarray]:
+            if token in wrt_tokens:
+                num_wrt = len(wrt_tokens)
+                diff = zeros((num_wrt, 1), dtype=int)
+                diff[wrt_tokens.index(token), :] = 1
+                return diff
+            else:
+                return 0
 
 
 def _verify_input_values_len(
@@ -287,163 +298,4 @@ def _verify_input_values_len(
     if invalid:
         raise InvalidInputDataColumns(invalid, num_data_columns)
     #)
-
-
-def _verify_input_values_names(
-        input_values: InputValuesDict,
-        all_names: list[str], 
-    ) -> None:
-    """
-    Verify that input_values dict contains all_names
-    """
-    if (missing := set(all_names).difference(input_values.keys())):
-        raise MissingInputValues(missing)
-
-
-def _data_matrix_from_input_values(
-        input_values: InputValuesDict,
-        name_to_id: dict[str, int],
-        data_shape: tuple[int, int]
-    ) -> ndarray:
-
-    all_names = name_to_id.keys()
-    _verify_input_values_names(input_values, all_names)
-    _verify_input_values_len(input_values, all_names, data_shape[1])
-
-    data = full(data_shape, NaN)
-    for name, id in name_to_id.items():
-        data[id, :] = input_values[name]
-
-    return data
-
-
-def diff_single(
-        expression: str,
-        wrt: list[str],
-        *args,
-        **kwargs,
-    ) -> ndarray:
-    """
-    {== Differentiate an expression w.r.t. to selected variables ==}
-
-    ## Syntax
-
-        d = diff_single(expression, wrt, input_values, num_columns_to_eval=1, log_list=None)
-
-    ## Input arguments
-
-    * `expression`: `str`
-    >
-    > Expression that will be differentiated with respect to the list of
-    > variables given by `wrt`
-    >
-
-    * `wrt`: `list[str]`
-    >
-    > List of lists of variables with respect to which the corresponding
-    > expression will be differentiated
-    >
-
-    * `input_values`: `dict[str, Number]`
-    >
-    > Dictionary of values at which the expressions will be differentiated
-    >
-
-    ## Output arguments
-
-    * `d`: `ndarray`
-    >
-    > List of arrays with the numerical derivatives; d[i][j,:] is an array
-    > of derivatives of the ith-expression w.r.t. to j-th variable
-    >
-    """
-    diff, *args = diff_multiple([expression], [wrt], *args, **kwargs)
-    return diff[0], *args
-
-
-def diff_multiple(
-        expressions: list[str],
-        wrts: list[list[str]],
-        input_values: InputValuesDict,
-        num_columns_to_eval: int=1,
-        log_list: Optional[list[str]]=None,
-    ) -> list[ndarray]:
-    """
-    {== Differentiate a list of expressions w.r.t. to selected variables all at once ==}
-
-    ## Syntax
-
-        d = diff_multiple(expressions, wrts, input_values, num_columns_to_eval=1, log_list=None)
-
-    ## Input arguments
-
-    * `expressions`: `list[str]`
-    >
-    > List of expressions; expressions[i] will be differentiated with
-    > respect to the list of variables given by `wrt[i]`
-    >
-
-    * `wrts`: `list[list[str]]`
-    >
-    > List of lists of variables with respect to which the corresponding
-    > expression will be differentiated
-    >
-
-    * `input_values`: `dict[str, Number]`
-    >
-    > Dictionary of values at which the expressions will be differentiated
-    >
-
-    ## Output arguments
-
-    * `d`: `list[ndarray]`
-    >
-    > List of arrays with the numerical derivatives; d[i][j,:] is an array
-    > of derivatives of the ith-expression w.r.t. to j-th variable
-    >
-    """
-
-    all_names = extract_names(" ".join(expressions))
-
-    name_to_id = { name:i for i, name in enumerate(all_names) }
-
-    id_to_log_flag = (
-        { name_to_id[n]:True for n in log_list if n in name_to_id } 
-        if log_list is not None else {}
-    )
-
-    expressions = [ Equation(i, e) for i, e in enumerate(expressions) ]
-    parsed_expressions, all_incidences = parse_equations(expressions, name_to_id)
-
-    # Extract tokens (quantity_id, shift) from incidences (equation_id, (quantity_id, shift))
-    all_tokens = set(i.token for i in all_incidences)
-
-    # Translate name-shifts to tokens, preserving the order
-    # Use output argument #3 from parse_equation which is a list with
-    # the tokens in the same order as the name-shifts 
-    wrt_tokens: list[list[Token]] = [ 
-        parse_equation(" ".join(w), name_to_id)[3] for w in wrts
-    ]
-
-    print(wrt_tokens[0])
-
-    space = Space( 
-        parsed_expressions,
-        all_tokens,
-        wrt_tokens,
-        id_to_log_flag,
-        num_columns_to_eval,
-    )
-
-    data = _data_matrix_from_input_values(input_values, name_to_id, space.data_shape)
-
-    return space.eval(data), space, name_to_id
-
-
-# if __name__=="__main__":
-    # expressions = ["log(a) + c{+1}*b{+1}^2 + b", "c{-1}*d + 2*d{+1}"]
-    # wrts = [["a", "b{+1}", "c{-1}"], ["c{-1}", "d", "d{+1}"]]
-    # input_values = {"a":5, "b":2, "c":3, "d":-4,}
-# 
-    # diff, space, name_to_id = diff_multiple(expressions, wrts, input_values, 3, ["a"])
 
