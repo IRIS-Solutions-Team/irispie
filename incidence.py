@@ -9,11 +9,11 @@ def get_max_shift(inputs: Union[set[Incidence], set[Token]], **kwargs) -> int:
 
 
 def get_min_shift(inputs: Union[set[Incidence], set[Token]], **kwargs) -> int:
-    return min(collect_shifts(inputs, **kwargs))
+    return min(collect_shifts(inputs, **kwargs)) if inputs else None
 
 
 def get_max_quantity_id(inputs: Union[set[Incidence], set[Token]], **kwargs) -> int:
-    return max(collect_quantity_ids(inputs, **kwargs))
+    return max(collect_quantity_ids(inputs, **kwargs)) if inputs else None
 
 
 def collect_quantity_ids(inputs: Union[set[Incidence], set[Token]], **kwargs) -> Generator[int, None, None]:

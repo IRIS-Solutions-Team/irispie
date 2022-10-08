@@ -7,10 +7,10 @@ from typing import Optional
 from .incidence import Token
 
 
-DIFF_EQUATION_ID = "[_]"
+EQUATION_ID_PLACEHOLDER = "[_]"
 _QUANTITY_NAME_PATTERN = compile(r"\b([a-zA-Z]\w*)\b({[-+\d]+})?(?!\()")
-_REPLACE_ZERO_SHIFT = "x[{quantity_id}][t]" + DIFF_EQUATION_ID
-_REPLACE_NONZERO_SHIFT = "x[{quantity_id}][t{shift:+g}]" + DIFF_EQUATION_ID
+_REPLACE_ZERO_SHIFT = "x[{quantity_id}][t]" + EQUATION_ID_PLACEHOLDER
+_REPLACE_NONZERO_SHIFT = "x[{quantity_id}][t{shift:+g}]" + EQUATION_ID_PLACEHOLDER
 _REPLACE_UKNOWN = "?"
 
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Union, Optional
 from enum import Flag
-from collections.abc import Sequence, Iterable
+from collections.abc import Sequence
 
 
 class Freq(Flag):
