@@ -3,7 +3,7 @@
 # import sys, importlib  as il
 # sys.path.append('..')
 # 
-# import modiphy.eqman as eq
+# import modiphy.equations as eq
 # il.reload(eq)
 
 eqs = list()

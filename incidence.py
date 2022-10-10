@@ -1,27 +1,34 @@
 
 from __future__ import annotations
-
-from typing import NamedTuple, Union, Generator, Optional, Callable
+from typing import NamedTuple, Union, Iterable, Optional, Callable
 
 
 def get_max_shift(inputs: Union[set[Incidence], set[Token]], **kwargs) -> int:
-    return max(collect_shifts(inputs, **kwargs))
+    return max(generate_shifts(inputs, **kwargs))
 
 
 def get_min_shift(inputs: Union[set[Incidence], set[Token]], **kwargs) -> int:
-    return min(collect_shifts(inputs, **kwargs)) if inputs else None
+    return min(generate_shifts(inputs, **kwargs)) if inputs else None
 
 
 def get_max_quantity_id(inputs: Union[set[Incidence], set[Token]], **kwargs) -> int:
-    return max(collect_quantity_ids(inputs, **kwargs)) if inputs else None
+    return max(generate_quantity_ids(inputs, **kwargs)) if inputs else None
 
 
-def collect_quantity_ids(inputs: Union[set[Incidence], set[Token]], **kwargs) -> Generator[int, None, None]:
-    return (sh for i in inputs if (sh := i.get_quantity_id(**kwargs)) is not None)
+def generate_quantity_ids(inputs: Union[set[Incidence], set[Token]], **kwargs) -> Iterable[int]:
+    return (qid for i in inputs if (qid := i.get_quantity_id(**kwargs)) is not None)
 
 
-def collect_shifts(inputs: Union[set[Incidence], set[Token]], **kwargs) -> Generator[int, None, None]:
+def generate_shifts(inputs: Union[set[Incidence], set[Token]], **kwargs) -> Iterable[int]:
     return (sh for i in inputs if (sh := i.get_shift(**kwargs)) is not None)
+
+
+def generate_tokens(incidences: Iterable[Incidence]) -> Iterable[Token]:
+    return (inc.token for inc in incidences)
+
+
+def generate_equation_ids(incidences: Iterable[Incidence]) -> Iterable[int]:
+    return (inc.equation_id for inc in incidences)
 
 
 class Token(NamedTuple):

@@ -7,3 +7,4 @@ from numbers import Number
 InputValueT = Union[Number, list[Number]]
 InputValuesT = dict[str, InputValueT]
 
+

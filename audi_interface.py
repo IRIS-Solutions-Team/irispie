@@ -1,5 +1,4 @@
 
-#(
 from __future__ import annotations
 from typing import Optional
 from numpy import ndarray, full, NaN
@@ -7,9 +6,8 @@ from numpy import ndarray, full, NaN
 from .exceptions import ListException
 from .audi import Space
 from .types import InputValueT, InputValuesT
-from .eqman import Equation, xtrings_from_equations, xtring_from_human, names_from_human
+from .equations import Equation, xtrings_from_equations, xtring_from_human, names_from_human
 from .incidence import Token
-#)
 
 
 class MissingInputValues(ListException):
