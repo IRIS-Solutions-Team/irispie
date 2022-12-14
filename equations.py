@@ -101,12 +101,16 @@ def generate_all_names(equations: list[Equation]) -> list[str]:
 
 
 def create_name_to_id_from_equations(equations: list[Equation]) -> dict[str, int]:
+    """
+    """
     all_names = sorted(list(set(generate_all_names(equations))))
     return { name: quantity_id for quantity_id, name in enumerate(all_names) }
 
 
 
 def create_evaluator_func_string(equations: Iterable[str]) -> str:
+    """
+    """
     return EVALUATOR_FORMAT.format(equations=" , ".join(equations))
 
 
@@ -117,7 +121,6 @@ def get_wrt_tokens_by_equations(
 ) -> dict[int, list[Token]]:
 
     wrt_tokens_by_equations = {}
-    all_tokens = set(generate_all_tokens(equations))
     for eqn in equations:
         wrt_tokens_by_equations[eqn.id] = [
             tok for tok in wrt_tokens
