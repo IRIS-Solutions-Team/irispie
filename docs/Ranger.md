@@ -1,0 +1,4 @@
+
+# Date ranges (`Ranger` class)
+
+
