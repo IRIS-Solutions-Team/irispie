@@ -21,4 +21,10 @@ r = Ranger(d2, d1, -1)
 r = Ranger(d2, d1, -2)
 ```
 
+```
+list(r)
+r[i]
+len(r)
+```
+
 ### Unesolved date ranges
