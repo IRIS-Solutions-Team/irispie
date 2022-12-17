@@ -1,12 +1,15 @@
 
 
-# from modiphy.model import Model
+from modiphy.dating import (
+    Freq, Dater, Ranger,
+    yy, hh, qq, mm, dd, ii,
+    start, end
+)
 
-# from modiphy.audi_interface import (
-    # diff_single, diff_multiple
-# )
-# 
-# from modiphy.dating import (
-    # yy, hh, qq, mm, ii, dd
-# )
+
+from modiphy.series import (
+    Series, 
+    cat, log, exp, sqrt,
+)
+
 

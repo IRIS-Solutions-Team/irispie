@@ -2,7 +2,12 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Union, Optional, Self, Callable, Iterable
+
+from typing import (
+        Union, Optional, Self, Callable, Iterable,
+        Protocol, runtime_checkable,
+)
+
 from numbers import Number
 from enum import Flag
 from collections.abc import Sequence
@@ -51,9 +56,21 @@ FREQ_SDMX_FORMATS = {
 }
 
 
+@runtime_checkable
+class ResolvableP(Protocol):
+    is_resolved: bool
+    def resolve(self, context) -> object: ...
+
+
+@runtime_checkable
+class ResolutionContextP(Protocol):
+    start_date: Dater
+    end_date: Dater
+
+
 def _check_daters(first, second) -> None:
     if type(first) is not type(second):
-        raise Exception("Input dates must be the same frequency")
+        raise Exception("Dates must be the same date frequency")
 
 
 def _check_daters_decorate(func: Callable) -> Callable:
@@ -81,17 +98,45 @@ def _remove_blanks_decorate(func: Callable) -> Callable:
     return wrapper
 
 
-class Dater:
+class RangeableM:
+    #(
+    def __rshift__(self, end_date: Self) -> Ranger:
+        return Ranger(self, end_date, 1) 
+
+    def __lshift__(self, start_date: Self) -> Ranger:
+        return Ranger(start_date, self, -1) 
+    #)
+
+
+class Dater(RangeableM):
     #(
     freq = None
+    is_resolved = True
+
+
+    def resolve(self, context: ResolutionContextP) -> Self:
+        return self
+
+
+    def __bool__(self) -> bool:
+        return bool(self.is_resolved)
 
 
     def __init__(self, serial=0):
         self.serial = int(serial)
 
 
+    def __len__(self):
+        return 1
+
+
     def __repr__(self) -> str:
         return self.__str__()
+
+
+    def __format__(self, *args) -> str:
+        str_format = args[0] if args else ""
+        return ("{date_str:"+str_format+"}").format(date_str=self.__str__())
 
 
     def __iter__(self) -> Iterable:
@@ -108,24 +153,14 @@ class Dater:
 
     def __sub__(self, other: Union[Self, int]) -> Union[Self, int]:
         if isinstance(other, Dater):
-            return self.diff(other)
+            return self._sub_dater(other)
         else:
             return self.__add__(-int(other))
 
 
     @_check_daters_decorate
-    def diff(self, other: Self) -> int:
+    def _sub_dater(self, other: Self) -> int:
         return self.serial - other.serial
-
-
-    @_check_daters_decorate
-    def __rshift__(self, end_date: Self) -> Ranger:
-        return Ranger(self, end_date, 1) 
-
-
-    @_check_daters_decorate
-    def __lshift__(self, end_date: Self) -> Ranger:
-        return Ranger(start_date, end_date, -1) 
 
 
     def __index__(self):
@@ -166,7 +201,7 @@ class Dater:
 class IntegerDater(Dater):
     #(
     freq = Freq.INTEGER
-
+    is_resolved = True
 
     def __repr__(self) -> str:
         return f"ii({self.serial})"
@@ -181,6 +216,7 @@ class IntegerDater(Dater):
 class DailyDater(Dater):
     #(
     freq: Freq = Freq.DAILY
+    is_resolved = True
 
 
     @_remove_blanks_decorate
@@ -264,24 +300,28 @@ class RegularDater:
 
 class YearlyDater(Dater, RegularDater): 
     freq: Freq = Freq.YEARLY
+    is_resolved: bool = True
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"yy{self.year}"
 
 
 class HalfyearlyDater(Dater, RegularDater):
     freq: Freq = Freq.HALFYEARLY
+    is_resolved: bool = True
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"hh{self.year_period}"
 
 
 class QuarterlyDater(Dater, RegularDater):
     freq: Freq = Freq.QUARTERLY
+    is_resolved: bool = True
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"qq{self.year_period}"
 
 
 class MonthlyDater(Dater, RegularDater):
     freq: Freq = Freq.MONTHLY
+    is_resolved: bool = True
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"mm{self.year_period}"
 
@@ -296,12 +336,31 @@ ii = IntegerDater
 
 class Ranger():
     #(
-    def __init__(self, start_date: Dater, end_date: Dater, step: int=1) -> None:
-        _check_daters(start_date, end_date)
-        start_serial = start_date.serial
-        end_serial = end_date.serial
-        self._class = type(start_date)
-        self._serials = range(start_serial, end_serial+_sign(step), step)
+    def __init__(self, start_date: Optional[Dater]=None, end_date: Optional[Dater]=None, step: int=1) -> None:
+        self.start_date = start_date if start_date is not None else start
+        self.end_date = end_date if end_date is not None else end
+        self.step = step
+        if self.is_resolved:
+            _check_daters(start_date, end_date)
+
+
+    @property
+    def _class(self):
+        return type(self.start_date) if self.is_resolved else None
+
+
+    @property
+    def _serials(self) -> Optional[range]:
+        return range(self.start_date.serial, self.end_date.serial+_sign(self.step), self.step) if self.is_resolved else None
+
+
+    def __bool__(self) -> bool:
+        return self.is_resolved
+
+
+    @property
+    def is_resolved(self) -> bool:
+        return bool(self.start_date and self.end_date)
 
 
     @property
@@ -309,35 +368,12 @@ class Ranger():
         return self._class.freq
 
 
-    @property
-    def start_date(self) -> Dater:
-        return self._class(self._serials.start)
-
-
-    @property
-    def end_date(self) -> Dater:
-        return self._class(self._serials.stop-_sign(self.step))
-
-
-    @property
-    def step(self) -> int:
-        return self._serials.step
-
-
-    def __len__(self) -> int:
-        return len(self._serials)
-
-
-    def __getitem__(self, key: Union[int, slice]) -> Union[Self, Dater]:
-        if isinstance(key, slice):
-            self._serials = self._serials[key]
-            return self
-        else:
-            return self._class(self._serials[key])
+    def __len__(self) -> Optional[int]:
+        return len(self._serials) if self.is_resolved else None
 
 
     def __str__(self) -> str:
-        step_string = f", {self.step}" if self.step!=1 else ""
+        step_str = f", {self.step}" if self.step!=1 else ""
         start_date_str = self.start_date.__str__()
         end_date_str = self.end_date.__str__()
         return f"Ranger({start_date_str}, {end_date_str}{step_str})"
@@ -359,18 +395,38 @@ class Ranger():
 
     def __sub__(self, offset: Union[Dater, int]) -> Union[range, Self]:
         if isinstance(offset, Dater):
-            return range(self.start_date-offset, self.end_date-offset, self.step)
+            return range(self.start_date-offset, self.end_date-offset, self.step) if self.is_resolved else None
         else:
             return Ranger(self.start_date-offset, self.end_date-offset, self.step)
 
 
-    def __rsub__(self, other: Dater) -> range:
+    def __rsub__(self, ather: Dater) -> Optional[range]:
         if isinstance(other, Dater):
-            return range(other-self.start_date, other-self.end_date, -self.step)
+            return range(other-self.start_date, other-self.end_date, -self.step) if self.is_resolved else None
+        else:
+            return None
 
 
     def __iter__(self) -> Iterable:
-        return (self._class(x) for x in self._serials)
+        return (self._class(x) for x in self._serials) if self.is_resolved else None
+
+
+    def __getitem__(self, i: int) -> Optional[Dater]:
+        return (self._class(self._serials[i])) if self.is_resolved else None
+
+
+    def resolve(self, context: ResolutionContextP) -> Self:
+        resolved_start_date = self.start_date if self.start_date else self.start_date.resolve(context)
+        resolved_end_date = self.end_date if self.end_date else self.end_date.resolve(context)
+        return Ranger(resolved_start_date, resolved_end_date, self.step)
+
+
+    def __enter__(self):
+        return self
+
+
+    def __exit__(self, *args):
+        pass
     #)
 
 
@@ -380,5 +436,39 @@ def _sign(x: Number) -> int:
 
 def date_index(dates: Iterable[Dater], base: Dater) -> Iterable[int]:
     return (x-base for x in dates)
+
+
+
+class UnresolvedDater(RangeableM):
+    #(
+    is_resolved = False
+
+    def __init__(self, resolve_from: str, offset: int=0) -> None:
+        self._resolve_from = resolve_from
+        self._offset = offset
+
+    def __add__(self, offset: int) -> None:
+        return type(self)(self._resolve_from, self._offset+offset)
+
+    def __sub__(self, offset: int) -> None:
+        return type(self)(self._resolve_from, self._offset-offset)
+
+    def __str__(self) -> str:
+        return "<>." + self._resolve_from + (f"{self._offset:+g}" if self._offset else "")
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
+    def __bool__(self) -> bool:
+        return False
+
+    def resolve(self, context: ResolutionContextP) -> Dater:
+        return context.__getattribute__(self._resolve_from) + self._offset
+    #)
+
+
+start = UnresolvedDater("start_date")
+
+end = UnresolvedDater("end_date")
 
 
