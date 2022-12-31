@@ -1,12 +1,15 @@
 
-from __future__ import annotations
+from datetime import (
+    date as dt_date,
+)
 
-from datetime import date
 
 from typing import (
         Union, Optional, Self, Callable, Iterable,
         Protocol, runtime_checkable,
+        Any, 
 )
+
 
 from numbers import Number
 from enum import Flag
@@ -64,8 +67,8 @@ class ResolvableP(Protocol):
 
 @runtime_checkable
 class ResolutionContextP(Protocol):
-    start_date: Dater
-    end_date: Dater
+    start_date: Any
+    end_date: Any
 
 
 def _check_daters(first, second) -> None:
@@ -100,10 +103,10 @@ def _remove_blanks_decorate(func: Callable) -> Callable:
 
 class RangeableM:
     #(
-    def __rshift__(self, end_date: Self) -> Ranger:
+    def __rshift__(self, end_date: Self):
         return Ranger(self, end_date, 1) 
 
-    def __lshift__(self, start_date: Self) -> Ranger:
+    def __lshift__(self, start_date: Self):
         return Ranger(start_date, self, -1) 
     #)
 
@@ -226,7 +229,7 @@ class DailyDater(Dater):
 
     @classmethod
     def serial_from_ymd(cls: type, year: int, month: int=1, day: int=1) -> int:
-        return date(year, month, day).toordinal()
+        return dt_date(year, month, day).toordinal()
 
 
     @classmethod
@@ -236,14 +239,14 @@ class DailyDater(Dater):
 
     @classmethod
     def ymd_from_serial(cls: type, serial: int) -> tuple[int, int, int]:
-        temp = date.fromordinal(serial)
+        temp = dt_date.fromordinal(serial)
         return temp.year, temp.month, temp.day
 
 
     def yp_from_serial(self) -> tuple[int, int]:
-        boy_serial = date(date.fromordinal(self.serial).year, 1, 1)
+        boy_serial = dt_date(dt_date.fromordinal(self.serial).year, 1, 1)
         per = self.serial - boy_serial + 1
-        year = date.fromordinal(self.serial).year
+        year = dt_date.fromordinal(self.serial).year
         return year, per
 
 
@@ -427,6 +430,10 @@ class Ranger():
 
     def __exit__(self, *args):
         pass
+
+
+    def __eq__(self: Self, other: Self) -> bool:
+        return self.start_date==other.start_date and self.end_date==other.end_date and self.step==other.step
     #)
 
 
