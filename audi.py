@@ -20,7 +20,7 @@ from .incidence import (
 
 from .equations import (
     X_REF_PATTERN, EquationKind, Equation, create_name_to_id_from_equations,
-    generate_all_tokens, create_evaluator_func_string
+    collect_all_tokens, create_evaluator_func_string
 )
 #)
 
@@ -209,7 +209,7 @@ class InvarianceAtom():
         """
         if isinstance(other, DiffAtom):
             new_diff = self._diff | other._diff
-            new_invariant = self._invariant & self._invariant
+            new_invariant = self._invariant & other._invariant
         else:
             new_diff = self._diff
             new_invariant = self._invariant
@@ -357,7 +357,7 @@ class Space:
         """
         self = cls()
 
-        all_tokens = set(generate_all_tokens(equations))
+        all_tokens = set(collect_all_tokens(equations))
         min_shift = get_min_shift(all_tokens)
         max_shift = get_max_shift(all_tokens)
         self.shape_data = (

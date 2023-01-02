@@ -1,58 +1,73 @@
 
-from __future__ import annotations
-from typing import NamedTuple, Union, Iterable, Optional, Callable
+from numpy import(
+    zeros, vstack
+)
+
+from typing import (
+    Iterable, NamedTuple, Callable, Self
+)
+
+from itertools import (
+    chain,
+)
 
 
-def get_max_shift(inputs: Union[set[Incidence], set[Token]], **kwargs) -> int:
-    return max(generate_shifts(inputs, **kwargs))
+from .quantities import (
+    Quantity, QuantityKind, create_id_to_kind
+)
 
-
-def get_min_shift(inputs: Union[set[Incidence], set[Token]], **kwargs) -> int:
-    return min(generate_shifts(inputs, **kwargs)) if inputs else None
-
-
-def get_max_quantity_id(inputs: Union[set[Incidence], set[Token]], **kwargs) -> int:
-    return max(generate_quantity_ids(inputs, **kwargs)) if inputs else None
-
-
-def generate_quantity_ids(inputs: Union[set[Incidence], set[Token]], **kwargs) -> Iterable[int]:
-    return (qid for i in inputs if (qid := i.get_quantity_id(**kwargs)) is not None)
-
-
-def generate_shifts(inputs: Union[set[Incidence], set[Token]], **kwargs) -> Iterable[int]:
-    return (sh for i in inputs if (sh := i.get_shift(**kwargs)) is not None)
-
-
-def generate_tokens(incidences: Iterable[Incidence]) -> Iterable[Token]:
-    return (inc.token for inc in incidences)
-
-
-def generate_equation_ids(incidences: Iterable[Incidence]) -> Iterable[int]:
-    return (inc.equation_id for inc in incidences)
 
 
 class Token(NamedTuple):
-    #(
     quantity_id: int
     shift: int
 
-    def get_quantity_id(self, shift_test: Callable=lambda x: True) -> Optional[int]:
-        return self.quantity_id if shift_test(self.shift) else None
+    def lag(self: Self) -> Self:
+        return Token(self.quantity_id, self.shift-1)
 
-    def get_shift(self, quantity_test: Callable=lambda x: True) -> Optional[int]:
-        return self.shift if quantity_test(self.quantity_id) else None
-    #)
+    def lead(self: Self) -> Self:
+        return Token(self.quantity_id, self.shift+1)
+
+    def print(self: Self, id_to_name: dict[int, str]) -> str:
+        s = id_to_name[self.quantity_id]
+        if self.shift:
+            s += f"{{{self.shift:+g}}}"
+        return s
 
 
-class Incidence(NamedTuple):
-    #(
-    equation_id: Optional[int]
-    token: Token
+Tokens = Iterable[Token]
 
-    def get_shift(self, equation_test: Callable=lambda x: True, **kwargs) -> Optional[int]:
-        return self.token.get_shift(**kwargs) if equation_test(self.equation_id) else None
 
-    def get_quantity_id(self, equation_test: Callable=lambda x: True, **kwargs) -> Optional[int]:
-        return self.token.get_quantity_id(**kwargs) if equation_test(self.equation_id) else None
-    #)
+def get_max_shift(tokens: Tokens) -> int:
+    return max(tok.shift in tokens) if tokens else None
+
+
+def get_min_shift(tokens: Tokens) -> int:
+    return min(tok.shift in tokens) if tokens else None
+
+
+def get_max_quantity_id(tokens: Tokens) -> int:
+    return max(tok.quantity_id in tokens) if tokens else None
+
+
+def generate_quantity_ids_from_tokens(tokens: Tokens) -> Iterable[int]:
+    return (tok.quantity_id for tok in tokens)
+
+
+def _get_some_shift_for_quantity(tokens: Tokens, quantity_id: int, some: Callable) -> int:
+    return some(tok.shift for tok in tokens if tok.quantity_id==quantity_id)
+
+
+def get_some_shifts_by_quantities(tokens: Tokens, some: Callable) -> dict[int, int]:
+    tokens = set(tokens)
+    unique_quantity_ids = set(generate_quantity_ids_from_tokens(tokens))
+    return {
+        quantity_id: _get_some_shift_for_quantity(tokens, quantity_id, some)
+        for quantity_id in unique_quantity_ids
+    }
+
+
+def generate_tokens_of_kind(tokens: Tokens, id_to_kind: dict, kind: QuantityKind) -> Tokens:
+    return (tok for tok in tokens if id_to_kind[tok.quantity_id] is kind)
+
 

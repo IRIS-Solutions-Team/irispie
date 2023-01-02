@@ -1,15 +1,10 @@
 
-from datetime import (
-    date as dt_date,
-)
-
+from datetime import date
 
 from typing import (
-        Union, Optional, Self, Callable, Iterable,
-        Protocol, runtime_checkable,
-        Any, 
+    Union, Optional, Self, Callable, Iterable, Any,
+    Protocol, runtime_checkable,
 )
-
 
 from numbers import Number
 from enum import Flag
@@ -222,76 +217,50 @@ class DailyDater(Dater):
     is_resolved = True
 
 
-    @_remove_blanks_decorate
-    def __repr__(self) -> str:
-        return f"dd{self.year_month_day()}"
-
-
     @classmethod
-    def serial_from_ymd(cls: type, year: int, month: int=1, day: int=1) -> int:
-        return dt_date(year, month, day).toordinal()
+    def from_ymd(cls: type, year: int, month: int=1, day: int=1) -> Self:
+        serial = date(year, month, day).toordinal()
+        return cls(serial)
 
 
-    @classmethod
-    def from_ymd(cls: type, *args):
-        return cls(cls.serial_from_ymd(*args))
-
-
-    @classmethod
-    def ymd_from_serial(cls: type, serial: int) -> tuple[int, int, int]:
-        temp = dt_date.fromordinal(serial)
-        return temp.year, temp.month, temp.day
-
-
-    def yp_from_serial(self) -> tuple[int, int]:
-        boy_serial = dt_date(dt_date.fromordinal(self.serial).year, 1, 1)
+    def to_yp(self: Self) -> tuple[int, int]:
+        boy_serial = date(date.fromordinal(self.serial).year, 1, 1)
         per = self.serial - boy_serial + 1
-        year = dt_date.fromordinal(self.serial).year
+        year = date.fromordinal(self.serial).year
         return year, per
 
 
-    @property
-    def year_month_day(self) -> tuple[int, int, int]:
-        return self.ymd_from_serial(self.serial)
-
-
-    @property
-    def year_per(self) -> tuple[int, int]:
-        return self.yp_from_serial()
+    def to_ymd(self: Self) -> tuple[int, int, int]:
+        py_date = date.fromordinal(self.serial)
+        return py_date.year, py_date.month, py_date.day
 
 
     def __str__(self) -> str:
-        year, month, day = self.year_month_day
+        year, month, day = self.to_ymd()
         letter = self.freq.letter
         return self.freq.sdmx_format.format(year=year, month=month, day=day, letter=letter)
+
+
+    @_remove_blanks_decorate
+    def __repr__(self) -> str:
+        return f"dd{self.to_ymd()}"
     #)
 
 
-class RegularDater:
+class RegularDaterM:
     #(
     @classmethod
-    def serial_from_yp(cls: type, year: int, per: int) -> int:
-        return int(year)*int(cls.freq.value) + int(per) - 1
-
-
-    def yp_from_serial(self) -> tuple[int, int]:
-        return self.serial//self.freq.value, self.serial%self.freq.value+1
-
-
-    @classmethod
     def from_yp(cls: type, year: int, per: int=1) -> Self:
-        new_serial = cls.serial_from_yp(year, per)
+        new_serial = int(year)*int(cls.freq.value) + int(per) - 1
         return cls(new_serial)
 
 
-    @property
-    def year_period(self) -> tuple[int, int]:
-        return self.yp_from_serial()
+    def to_yp(self) -> tuple[int, int]:
+        return self.serial//self.freq.value, self.serial%self.freq.value+1
 
 
-    @property
-    def year(self) -> int:
-        return self.yp_from_serial()[0]
+    def get_year(self) -> int:
+        return self.to_yp()[0]
 
 
     def __str__(self) -> str:
@@ -301,28 +270,28 @@ class RegularDater:
     #)
 
 
-class YearlyDater(Dater, RegularDater): 
+class YearlyDater(Dater, RegularDaterM): 
     freq: Freq = Freq.YEARLY
     is_resolved: bool = True
     @_remove_blanks_decorate
-    def __repr__(self) -> str: return f"yy{self.year}"
+    def __repr__(self) -> str: return f"yy{self.get_year}"
 
 
-class HalfyearlyDater(Dater, RegularDater):
+class HalfyearlyDater(Dater, RegularDaterM):
     freq: Freq = Freq.HALFYEARLY
     is_resolved: bool = True
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"hh{self.year_period}"
 
 
-class QuarterlyDater(Dater, RegularDater):
+class QuarterlyDater(Dater, RegularDaterM):
     freq: Freq = Freq.QUARTERLY
     is_resolved: bool = True
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"qq{self.year_period}"
 
 
-class MonthlyDater(Dater, RegularDater):
+class MonthlyDater(Dater, RegularDaterM):
     freq: Freq = Freq.MONTHLY
     is_resolved: bool = True
     @_remove_blanks_decorate
@@ -415,7 +384,7 @@ class Ranger():
 
 
     def __getitem__(self, i: int) -> Optional[Dater]:
-        return (self._class(self._serials[i])) if self.is_resolved else None
+        return self._class(self._serials[i]) if self.is_resolved else None
 
 
     def resolve(self, context: ResolutionContextP) -> Self:

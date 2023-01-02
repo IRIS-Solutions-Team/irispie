@@ -2,14 +2,21 @@
 from functools import partial as ft_partial
 
 
+from numbers import Number
+
+
 from typing import (
+    Union,
     Iterable, Callable, Self,
     Protocol, runtime_checkable
 )
 
+
 from copy import deepcopy as cp_deepcopy
 
+
 from numpy import (
+    ndarray as np_ndarray,
     full as np_full,
     nan as np_nan,
     vstack as np_vstack,
@@ -22,13 +29,15 @@ from numpy import (
     log as np_log,
     exp as np_exp,
     sqrt as np_sqrt,
+    mean as np_mean,
+    max as np_max,
 )
 
 
 from .dating import (
-    Ranger as dt_Ranger,
-    date_index as dt_date_index,
-    ResolvableP as dt_ResolvableP,
+    Ranger as Ranger,
+    date_index as date_index,
+    ResolvableP as ResolvableP,
 )
 
 
@@ -41,7 +50,7 @@ def _str_row(date, data, date_str_format, numeric_format, nan_str: str):
 
 
 def _get_date_positions(dates, base, num_periods):
-    pos = list(dt_date_index(dates, base))
+    pos = list(date_index(dates, base))
     min_pos = min(pos)
     max_pos = max(pos)
     add_before = max(-min_pos, 0)
@@ -53,7 +62,7 @@ def _get_date_positions(dates, base, num_periods):
 def _trim_decorate(func):
     def wrapper(self, *args, **kwargs):
         func(self, *args, **kwargs)
-        self._trim()
+        return self._trim()
     return wrapper
 
 
@@ -62,18 +71,22 @@ class Series:
     date_str_format = '>12'
     nan_str = "·"
 
-    def __init__(self, num_columns=None, data_type=float):
-        self._reset(num_columns, data_type)
+
+    def __init__(self, num_columns=1, data_type=float):
+        self.data_type = data_type
+        self._reset(num_columns=num_columns, data_type=data_type)
         self.comment = ""
 
 
-    def _reset(self, num_columns, data_type):
-        num_columns = num_columns if num_columns else 1
+    def _reset(self, num_columns=None, data_type=None):
+        num_columns = num_columns if num_columns else self.num_columns
+        data_type = data_type if data_type else self.data_type
         self.start_date = None
         self.data = np_full((0, num_columns), np_nan, dtype=data_type)
+        return self
 
 
-    def _create_nans(self, num_rows):
+    def _create_nans(self, num_rows=0):
         return np_full((num_rows, self.shape[1]), np_nan, dtype=self.data_type)
 
 
@@ -83,13 +96,13 @@ class Series:
 
 
     @property
-    def data_type(self):
-        return self.data.dtype
+    def num_columns(self):
+        return self.data.shape[1]
 
 
     @property
     def range(self):
-        return dt_Ranger(self.start_date, self.end_date) if self.start_date else None
+        return Ranger(self.start_date, self.end_date) if self.start_date else None
 
 
     @property
@@ -104,11 +117,11 @@ class Series:
 
 
     @_trim_decorate
-    def set_data(self, dates, data, columns=None) -> None:
+    def set_data(self, dates, data, columns=None) -> Self:
         if dates is Ellipsis:
-            dates = dt_Ranger(None, None)
+            dates = Ranger(None, None)
 
-        if isinstance(dates, dt_ResolvableP) and not dates.is_resolved:
+        if isinstance(dates, ResolvableP) and not dates.is_resolved:
             dates = dates.resolve(self)
 
         if not self.start_date:
@@ -121,7 +134,7 @@ class Series:
             self.start_date -= add_before
 
         if columns is None:
-            columns = self._get_default_columns()
+            columns = slice(None) #self._get_default_columns()
 
         if isinstance(pos, Iterable) and isinstance(columns, Iterable):
             self.data[np_ix_(pos, columns)] = data
@@ -139,7 +152,7 @@ class Series:
         if dates is Ellipsis:
             dates = slice(None)
 
-        if isinstance(dates, dt_ResolvableP) and not dates.is_resolved:
+        if isinstance(dates, ResolvableP) and not dates.is_resolved:
             dates = dates.resolve(self)
 
         if not dates:
@@ -165,29 +178,29 @@ class Series:
         return new
 
 
-    def _get_encompassing_range(*args) -> dt_Ranger:
+    def _get_encompassing_range(*args) -> Ranger:
         start_dates = [x.start_date for x in args if x.start_date]
         end_dates = [x.end_date for x in args if x.end_date]
         start_date = min(start_dates) if start_dates else None
         end_date = max(end_dates) if end_dates else None
-        return dt_Ranger(start_date, end_date)
+        return Ranger(start_date, end_date)
 
 
     def _trim(self):
         if self.data.size==0:
-            return
+            return self._reset()
         num_leading = _get_num_leading_nan_rows(self.data)
         if num_leading == self.data.shape[0]:
-            self.start_date = None
-            return
+            return self._reset()
         num_trailing = _get_num_leading_nan_rows(self.data[::-1])
         if not num_leading and not num_trailing:
-            return
+            return self
         slice_from = num_leading if num_leading else None
         slice_to = -num_trailing if num_trailing else None
         self.data = self.data[slice(slice_from, slice_to), ...]
         if slice_from:
             self.start_date += int(slice_from)
+        return self
 
 
     def _create_expanded_data(self, add_before, add_after):
@@ -234,10 +247,97 @@ class Series:
             raise Exception("Time series data being assigned must preserve the number of columns")
 
 
-    def _unop(self, func: Callable, *args, **kwargs) -> Self:
-        result = cp_deepcopy(self)
-        result.data = func(result.data, *args, **kwargs)
-        return result
+    def __neg__(self):
+        """
+        -self
+        """
+        self.data = -self.data
+        return self
+
+
+    def __add__(self, other) -> Union[Self, np_ndarray]:
+        """
+        self + other
+        """
+        arg = other.data if isinstance(other, type(self)) else other
+        return self._unop(lambda data: data.__add__(arg))
+
+
+    def __radd__(self, other):
+        """
+        other + self
+        """
+        return self._unop(lambda data: data.__radd__(other))
+
+
+    def __mul__(self, other) -> Union[Self, np_ndarray]:
+        """
+        self + other
+        """
+        arg = other.data if isinstance(other, type(self)) else other
+        return self._unop(lambda data: data.__mul__(arg))
+
+
+    def __rmul__(self, other):
+        """
+        other + self
+        """
+        return self._unop(lambda data: data.__rmul__(other))
+
+
+    def __sub__(self, other):
+        """
+        self - other
+        """
+        arg = other.data if isinstance(other, type(self)) else other
+        return self._unop(lambda data: data.__sub__(arg))
+
+
+    def __rsub__(self, other):
+        """
+        other - self
+        """
+        return self._unop(lambda data: data.__rsub__(other))
+
+
+    def __truediv__(self, other):
+        """
+        self - other
+        """
+        arg = other.data if isinstance(other, type(self)) else other
+        return self._unop(lambda data: data.__truediv__(arg))
+
+
+    def __rtruediv__(self, other):
+        """
+        other - self
+        """
+        return self._unop(lambda data: data.__rtruediv__(other))
+
+
+
+    def _unop(self, func: Callable, *args, **kwargs) -> Union[Self, np_ndarray]:
+        new_data = func(self.data, *args, **kwargs)
+        if new_data.shape == self.data.shape:
+            new = cp_deepcopy(self)
+            new.data = new_data
+            return new._trim()
+        elif kwargs.get("axis")==1 and new_data.shape==(self.data.shape[0],):
+            new = cp_deepcopy(self)
+            new.data = new_data.reshape(self.data.shape[0], 1)
+            return new._trim()
+        elif kwargs.get("axis") is None and new_data.shape==():
+            return new_data
+        elif kwargs.get("axis")==0 and new_data.shape==(self.data.shape[1],):
+            return new_data
+        else:
+            raise Exception("Unary operation on a time series resulted in data with an unexpected shape")
+
+
+    def _binop(self, other: Union[Self, Number], func):
+        if not isinstance(other, type(self)):
+            unop_func = lambda data: func(data, other)
+            return _unop(self, unop_func)
 
 
     @property
@@ -264,6 +364,8 @@ def _unop(x: Series, func: Callable, *args, **kwargs) -> object:
 log = ft_partial(_unop, func=np_log)
 exp = ft_partial(_unop, func=np_exp)
 sqrt = ft_partial(_unop, func=np_sqrt)
+mean = ft_partial(_unop, func=np_mean)
+max_ = ft_partial(_unop, func=np_max)
 
 
 def cat(first, *args) -> Series:
