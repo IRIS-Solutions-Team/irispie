@@ -9,8 +9,8 @@ from .incidence import Token
 
 EQUATION_ID_PLACEHOLDER = "[_]"
 _QUANTITY_NAME_PATTERN = compile(r"\b([a-zA-Z]\w*)\b({[-+\d]+})?(?!\()")
-_REPLACE_ZERO_SHIFT = "x[{quantity_id}][t]" + EQUATION_ID_PLACEHOLDER
-_REPLACE_NONZERO_SHIFT = "x[{quantity_id}][t{shift:+g}]" + EQUATION_ID_PLACEHOLDER
+_REPLACE_ZERO_SHIFT = "x[{qid}][t]" + EQUATION_ID_PLACEHOLDER
+_REPLACE_NONZERO_SHIFT = "x[{qid}][t{shift:+g}]" + EQUATION_ID_PLACEHOLDER
 _REPLACE_UKNOWN = "?"
 
 
@@ -21,11 +21,11 @@ def parse_equation(human: str, name_to_id: dict[str, int]) -> tuple[str, set[Tok
 
     def _replace_name_in_human(match: Match) -> str:
         name = match.group(1)
-        quantity_id = name_to_id.get(name)
-        if quantity_id is not None:
+        qid = name_to_id.get(name)
+        if qid is not None:
             shift = _resolve_shift_str(match.group(2))
-            tokens_list.append(Token(quantity_id, shift))
-            return (_REPLACE_NONZERO_SHIFT if shift!=0 else _REPLACE_ZERO_SHIFT).format(quantity_id=quantity_id, shift=shift)
+            tokens_list.append(Token(qid, shift))
+            return (_REPLACE_NONZERO_SHIFT if shift!=0 else _REPLACE_ZERO_SHIFT).format(qid=qid, shift=shift)
         else:
             error_log.append((name, human))
             tokens_list.append(Token(None, None))

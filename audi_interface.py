@@ -181,18 +181,18 @@ def diff_multiple(
     # Retrieve all names from equations and all names from wrts
     all_names = names_from_human(" ".join(expressions) + " " + " ".join(w for e in wrts for w in e))
 
-    # Create map {name: quantity_id}
+    # Create map {name: qid}
     name_to_id = { name: i for i, name in enumerate(all_names) }
 
-    # Create map {quantity_id: True, ...} for all names in name_to_id
-    id_to_log_flag = (
+    # Create map {qid: True, ...} for all names in name_to_id
+    id_to_logly = (
         { name_to_id[name]: (name in log_list) for name in name_to_id }
     )
 
     expressions = [ Equation(i, e) for i, e in enumerate(expressions) ]
     xtrings, incidences = xtrings_from_equations(expressions, name_to_id)
 
-    # Extract all tokens (quantity_id, shift) from incidences (equation_id, (quantity_id, shift))
+    # Extract all tokens (qid, shift) from incidences (eid, (qid, shift))
     all_tokens = set(i.token for i in incidences)
 
     # Translate name-shifts to tokens, preserving the order
@@ -211,7 +211,7 @@ def diff_multiple(
         xtrings,
         all_tokens,
         wrt_tokens,
-        id_to_log_flag,
+        id_to_logly,
         num_columns_to_eval,
         id_to_name
     )

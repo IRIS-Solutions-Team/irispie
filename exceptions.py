@@ -14,3 +14,7 @@ class UndeclaredName(Exception):
         message = "\n" + message + "\n"
         super().__init__(message)
 
+class UnknownName(Exception):
+    def __init__(self, name):
+        super().__init__(f"Name not found in Model object: '{name}'")
+

@@ -2,93 +2,140 @@
 """
 
 
-#(
+#[
 from __future__ import annotations
 
-from numpy import log as np_log, exp as np_exp, zeros, NaN, ndarray, all as np_all
-from re import findall, compile
-from typing import NamedTuple, Optional, Union, Callable
+import numpy
+import math
+
+from typing import NoReturn, Protocol
 from numbers import Number
-from math import log as math_log, exp as math_exp
+from collections.abc import Iterable, Sequence
 
 from .exceptions import ListException
-
 from .incidence import (
-    Token, get_max_shift, 
-    get_min_shift, get_max_quantity_id
+    Token, Tokens, get_max_shift, 
+    get_min_shift, get_max_qid,
 )
-
 from .equations import (
-    X_REF_PATTERN, EquationKind, Equation, create_name_to_id_from_equations,
-    collect_all_tokens, create_evaluator_func_string
+    X_REF_PATTERN, EquationKind, Equation, Equations,
+    generate_all_tokens_from_equations, 
+    create_evaluator_func_string,
 )
-#)
+#]
 
 
-
-
-class DiffAtom():
-    """
-    Atomic value for differentiating equations
-    """
-#(
-    _data: ndarray  = None
-
-    def __init__(
-            self, 
-            value: Optional[Number]=None,
-            diff: Optional[Union[Number, ndarray]]=None,
-            data_index: Optional[tuple[slice, slice]]=None,
-            log_flag: bool=False,
-        ) -> None:
-        """
-        """
-        self._value = value
-        self._diff = diff
-        self._data_index = data_index
-        self._log_flag = log_flag
-
-
+class ValueMixin:
+    #[
     @property
     def value(self):
-        return self._value if self._value is not None else self._data[self._data_index]
+        return self._value if self._value is not None else self._data_context[self._data_index]
+    #]
+
+
+class LoglyMixin:
+    #[
+    @property
+    def logly(self):
+        return self._logly if self._logly is not None else self._logly_context.get(self._logly_index, False)
+    #]
+
+
+class DifferentiationAtom(ValueMixin, LoglyMixin):
+    """
+    Atomic value for differentiation
+    """
+    _data_context: numpy.ndarray | None = None
+    _logly_context: dict[int, bool] | None = None
+    _is_atom: bool = True
+    #[
+    def __init__(self) -> NoReturn:
+        """
+        """
+        self._value = None
+        self._diff = None
+        self._logly = None
+        self._data_index = None
+        self._logly_index = None
+
+
+    @classmethod
+    def no_context(
+        cls: type,
+        value: Number,
+        diff: Number,
+        logly: bool,
+    ) -> Self:
+        self = cls()
+        self._value = value
+        self._diff = diff
+        self._logly = logly
+        return self
+
+
+    @classmethod
+    def in_context(
+            cls: type,
+            diff: numpy.ndarray,
+            token: Token, 
+            columns_to_eval: tuple[int, int],
+        ):
+        """
+        """
+        self = cls()
+        self._diff = diff if numpy.any(diff!=0) else 0
+        self._data_index = (
+            slice(token.qid, token.qid+1),
+            slice(columns_to_eval[0]+token.shift, columns_to_eval[1]+token.shift+1),
+        )
+        self._logly_index = token.qid
+        return self
+
+
+    @classmethod
+    def zero_atom(
+        cls: type,
+        diff_shape: tuple[int, int],
+    ) -> Self:
+        return DifferentiationAtom.no_context(0, numpy.zeros(diff_shape), False)
 
 
     @property
     def diff(self):
-        return self._diff if not self._log_flag else self._diff * self.value
+        return self._diff if not self.logly else self._diff * self.value
 
 
     def __neg__(self):
         new_value = -self.value
         new_diff = -self.diff
-        return DiffAtom(new_value, new_diff)
+        return DifferentiationAtom.no_context(new_value, new_diff, False)
 
 
     def __add__(self, other):
-        if isinstance(other, DiffAtom):
+        if hasattr(other, "_is_atom"):
             new_value = self.value + other.value
             new_diff = self.diff + other.diff
         else:
             new_value = self.value + other
             new_diff = self.diff
-        return DiffAtom(new_value, new_diff)
+        return DifferentiationAtom.no_context(new_value, new_diff, False)
 
 
     def __sub__(self, other):
-        if isinstance(other, DiffAtom):
+        if hasattr(other, "_is_atom"):
             new_value = self.value - other.value
             new_diff = self.diff - other.diff
         else:
             new_value = self.value - other
             new_diff = self.diff
-        return DiffAtom(new_value, new_diff)
+        new_logly = False
+        return DifferentiationAtom.no_context(new_value, new_diff, False)
 
 
     def __mul__(self, other):
         self_value = self.value
         self_diff = self.diff
-        if isinstance(other, DiffAtom):
+        if hasattr(other, "_is_atom"):
             other_value = other.value
             other_diff = other.diff
             new_value = self_value * other_value
@@ -96,21 +143,21 @@ class DiffAtom():
         else:
             new_value = self_value * other
             new_diff = self_diff * other
-        return DiffAtom(new_value, new_diff)
+        return DifferentiationAtom.no_context(new_value, new_diff, False)
 
 
     def __truediv__(self, other):
         self_value = self.value
         self_diff = self.diff
-        if isinstance(other, DiffAtom):
+        if hasattr(other, "_is_atom"):
             other_value = other.value
             other_diff = other.diff
             new_value = self_value / other_value
-            new_diff = (self_diff*other_value - self_value*other_diff) / (other_diff**2)
+            new_diff = (self_diff*other_value - self_value*other_diff) / (other_value**2)
         else:
             new_value = self_value / other
             new_diff = self_diff / other
-        return DiffAtom(new_value, new_diff)
+        return DifferentiationAtom.no_context(new_value, new_diff, False)
 
 
     def __rtruediv__(self, other):
@@ -118,14 +165,14 @@ class DiffAtom():
         self_diff = self.diff
         new_value = other / self_value
         new_diff = -other*self_diff / (self_value**2)
-        return DiffAtom(new_value, new_diff)
+        return DifferentiationAtom.no_context(new_value, new_diff, False)
 
 
     def __pow__(self, other):
         """
-        Differentiate self**other 
+        Differenatiate self**other 
         """
-        if isinstance(other, DiffAtom):
+        if hasattr(other, "_is_atom"):
             # self(x)**other(x)
             # d[self(x)**other(x)] = d[self(x)**other] + d[self**other(x)]
             new_value = self.value**other.value
@@ -135,21 +182,21 @@ class DiffAtom():
         else:
             # self(x)**other
             new_value, new_diff = self._power(other)
-        return DiffAtom(new_value, new_diff)
+        return DifferentiationAtom.no_context(new_value, new_diff, False)
 
 
     def _exponential(self, other):
         """
-        Differentiate exponential function other**self(x)
+        Differenatiate exponential function other**self(x)
         """
         new_value = other**self.value
-        new_diff = other**self.value * np_log(other) * self.diff
+        new_diff = other**self.value * numpy.log(other) * self.diff
         return new_value, new_diff
 
 
     def _power(self, other):
         """
-        Differentiate power function self(x)**other
+        Differenatiate power function self(x)**other
         """
         self_value = self.value
         self_diff = self.diff
@@ -164,341 +211,350 @@ class DiffAtom():
 
     def __rsub__(self, other):
         """
-        Differentiate other - self
+        Differenatiate other - self
         """
         return self.__neg__().__add__(other)
 
 
     def log(self):
-        new_value = np_log(self.value)
+        new_value = numpy.log(self.value)
         new_diff = 1 / self.value * self.diff
-        return DiffAtom(new_value, new_diff)
+        return DifferentiationAtom.no_context(new_value, new_diff, False)
 
 
     def exp(self):
-        new_value = np_exp(self.value)
+        new_value = numpy.exp(self.value)
         new_diff = new_value * self.diff
-        return DiffAtom(new_value, new_diff)
-#)
+        return DifferentiationAtom.no_context(new_value, new_diff, False)
+    #]
 
 
-
-
-
-class InvarianceAtom():
+class InvarianceAtom(LoglyMixin):
     """
-    Atomic value for investigating the invariance of derivatives
+    Atomic value for invariance testing
     """
-#(
-    def __init__(
-        self,
-        diff: Optional[ndarray]=None,
-        invariant: Optional[ndarray]=None,
-        log_flag: bool=False,
-    ) -> None:
+    _data_context: numpy.ndarray | None = None
+    _logly_context: dict[int, bool] | None = None
+    _is_atom: bool = True
+    #[
+    def __init__(self) -> NoReturn:
         """
         """
+        self._diff = None
+        self._invariant = None
+        self._logly = None
+        self._logly_index = None
+
+
+    @classmethod
+    def no_context(
+        cls: type,
+        diff: numpy.ndarray,
+        invariant: numpy.ndarray,
+        logly: bool,
+    ) -> Self:
+        self = cls()
         self._diff = diff
         self._invariant = invariant
-        self._log_flag = log_flag
+        return self
 
 
-    def __add__(self, other):
+    @classmethod
+    def in_context(
+        cls: type,
+        diff: numpy.ndarray,
+        token: Token,
+        *args,
+    ) -> Self:
+        """
+        """
+        self = cls()
+        self._diff = diff==1
+        self._invariant = numpy.full((diff.shape[0], 1), True)
+        self._logly_index = token.qid
+        return self
+
+
+    def __add__(self, other: Self | Number) -> Self:
         """
         Invariance of self(x)+other(x) or self(x)+other
         """
-        if isinstance(other, DiffAtom):
+        if hasattr(other, "_is_atom"):
             new_diff = self._diff | other._diff
             new_invariant = self._invariant & other._invariant
         else:
             new_diff = self._diff
             new_invariant = self._invariant
-        return InvarianceAtom(new_diff, new_invariant)
+        return InvarianceAtom.no_context(new_diff, new_invariant, False)
 
 
-    def __mul__(self, other):
+    def __mul__(self, other: Self | Number):
         """
-        Differentiate self(x)*other(x) or self(x)*other
+        Invariance of self(x)*other(x) or self(x)*other
         """
-        if isinstance(other, DiffAtom):
+        if hasattr(other, "_is_atom"):
             new_diff = self._diff | other._diff
-            new_invariant = (
-                np_all(self._diff, axis=0) & other._invariant
-                |
-                np_all(other._diff, axis=0) & self._invariant
-            )
-            new_log_flag = False
+            if numpy.all(self._diff==False):
+                new_invariant = other._invariant
+                new_logly = other.logly
+            elif numpy.all(other._diff==False):
+                new_invariant = self._invariant
+                new_logly = self.logly
+            else:
+                new_invariant = (
+                    numpy.logical_not(self._diff) & other._invariant
+                    & numpy.logical_not(other._diff) & self._invariant
+                )
+                new_logly = False
         else:
             new_diff = self._diff
             new_invariant = self._invariant
-            new_log_flag = self._log_flag
-        return InvarianceAtom(new_diff, new_invariant, new_log_flag)
+            new_logly = self.logly
+        return InvarianceAtom.no_context(new_diff, new_invariant, new_logly)
 
 
     def __rmul__(self, other):
         """
-        Differentiat other*self(x)
+        Invariance of other*self(x)
         """
-        return self
+        return InvarianceAtom.no_context(self._diff, self._invariant, self._logly)
 
 
     def __truediv__(self, other):
         """
-        Invariance self(x)/other(x) or self(x)/other
+        Invariance of self(x)/other(x) or self(x)/other
         """
-        if isinstance(other, DiffAtom):
+        if hasattr(other, "_is_atom"):
             new_diff = self._diff | other._diff
-            new_invariant = np_all(other._diff, axis=0) & self._invariant
-            new_log_flag = False
+            new_invariant = numpy.all(other._diff, axis=0) & self._invariant
+            new_logly = False
         else:
             new_diff = self._diff
             new_invariant = self._invariant
-            new_log_flag = self._log_flag
-        return InvarianceAtom(new_diff, new_invariant)
+            new_logly = self._logly
+        return InvarianceAtom.no_context(new_diff, new_invariant, new_logly)
 
 
-    def __rtruediv__(self, other):
+    def __rtruediv__(self, other: Number) -> Self:
         """
-        Invariance of self(x)/other
+        Invariance of self(x) / other
         """
         new_diff = self._diff
         new_invariant = False & self._invariant
-        return InvarianceAtom(new_diff, new_invariant)
+        return InvarianceAtom.no_context(new_diff, new_invariant, False)
 
 
     __sub__ = __add__
     __radd__ = __add__
-    __rsub = __add__
+    __rsub__ = __add__
 
 
-    def log(self):
+    def log(self) -> Self:
         """
         Invariance of log(self(x))
         """
         new_diff = self._diff
-        new_invariant = new_invariant if self._log_flag else (False & new_invariant)
-        return InvarianceAtom(new_diff, new_invariant)
+        new_invariant = new_invariant if self._logly else (False & self._invariant)
+        return InvarianceAtom.no_context(new_diff, new_invariant, False)
 
 
-    def _unary(self):
+    def _unary(self) -> Self:
         """
         Invariance of f(self(x))
         """
         new_diff = self._diff
         new_invariant = False & self._invariant
-        return InvarianceAtom(new_diff, new_invariant)
+        return InvarianceAtom.no_context(new_diff, new_invariant, False)
 
 
-    def _binary(self, other):
+    def _binary(self, other: Self | Number) -> Self:
         """
         Invariance of f(self(x), other(x)) or f(self(x), other)
         """
-        if isinstance(other, DiffAtom):
+        if hasattr(other, "_is_atom"):
             new_diff = self._diff | other._diff
-        elif:
+        else:
             new_diff = self._diff
         new_invariant = False & self._invariant
-        return InvarianceAtom(new_diff, new_invariant)
+        return InvarianceAtom.no_context(new_diff, new_invariant, False)
 
 
     exp = _unary
     __pow__ = _binary
-#)
-
-
-
-
-
-#(
-def create_zero_atom(diff_shape: tuple[int, int]) -> DiffAtom:
-    return DiffAtom(0, zeros(diff_shape))
-
-
-def create_zero_invariant_atom(diff_shape: tuple[int, int]) -> DiffAtom:
-    return DiffAtom(np.full(diff_shape, False, dtype=bool), np.full(diff_shape, False, dtype=bool))
+    #]
 
 
 def log(x): 
-    if isinstance(x, Number)
-        return math_log(x)
-    else
+    """
+    """
+    #[
+    if isinstance(x, Number):
+        return math.log(x)
+    else:
         return x.log()
+    #]
 
 
 def exp(x): 
+    """
+    """
+    #[
     if isinstance(x, Number):
-        return math_exp(x)
+        return math.exp(x)
     else:
         return x.exp()
-#)
+    #]
 
 
-
-
-
-class Space:
+class Context:
     """
     """
-#(
-    def __init__(self) -> None:
-        self._x: dict = {}
-        self._func: Optional[Callable] = None
+    #[
+    def __init__(
+        self,
+        atom_class: type,
+    ) -> NoReturn:
+        """
+        Initialize Audi contextual space
+        """
+        self._atom_class = atom_class
+        self._x = None
+        self._func_string = None
+        self._func = None
 
 
     @classmethod
-    def from_equations(
-        cls,
-        equations: list[Equation],
-        wrt_tokens_by_equations: dict[int, list[Token]],
-        num_columns_to_eval: int,
-        id_to_log_flag: dict[int, bool],
-    ) -> Space:
+    def for_equations(
+        cls: type,
+        atom_class: type,
+        equations: Equations,
+        eid_to_wrt_tokens: dict[int, Tokens],
+        num_columns_to_eval: int = 1,
+        /,
+    ) -> Self:
         """
         """
-        self = cls()
+        self = cls(atom_class)
 
-        all_tokens = set(collect_all_tokens(equations))
+        all_tokens = set(generate_all_tokens_from_equations(equations))
         min_shift = get_min_shift(all_tokens)
         max_shift = get_max_shift(all_tokens)
         self.shape_data = (
-            1 + (get_max_quantity_id(all_tokens) or 0),
+            1 + (get_max_qid(all_tokens) or 0),
             -min_shift + num_columns_to_eval + max_shift,
         )
-        self._t_zero = -min_shift
-        self._columns_to_eval = (self._t_zero, self._t_zero + num_columns_to_eval - 1)
 
-        self.wrt_tokens_by_equations = wrt_tokens_by_equations
-        self._x = _create_atom_array(equations, self.wrt_tokens_by_equations, self._columns_to_eval, id_to_log_flag)
+        t_zero = -min_shift
+        self._columns_to_eval = (t_zero, t_zero + num_columns_to_eval - 1)
 
-        self._xtrings = [ _create_audi_xtring(eqn, wrt_tokens_by_equations[eqn.id], num_columns_to_eval) for eqn in equations ]
-        self._func_string = create_evaluator_func_string(self._xtrings)
+        self._populate_atom_array(equations, eid_to_wrt_tokens, self._columns_to_eval)
+
+        xtrings = [ 
+            _create_audi_xtring(eqn, eid_to_wrt_tokens[eqn.id]) 
+           for eqn in equations 
+        ]
+
+        self._func_string = create_evaluator_func_string(xtrings)
         self._func = eval(self._func_string)
 
         return self
 
 
-    @classmethod
-    def _create_atom_array(
-        cls,
-        equations: list[Equation],
-        wrt_tokens_by_equations: dict[int, list[Token]],
+    def _populate_atom_array(
+        self,
+        equations: Equations,
+        eid_to_wrt_tokens: dict[int, Tokens],
         columns_to_eval: tuple[int, int],
-        id_to_log_flag: dict[int, bool],
-    ) -> Space:
+    ) -> NoReturn:
         """
         """
         x = {}
+        atom_constructor_in_context = self._atom_class.in_context
         for eqn in equations:
-            wrt_tokens_here = wrt_tokens_by_equations[eqn.id]
+            wrt_tokens_here = eid_to_wrt_tokens[eqn.id]
             for tok in eqn.incidence:
                 key = _create_audi_key(tok, eqn.id)
                 diff = _diff_value_for_atom_from_incidence(tok, wrt_tokens_here)
-                log_flag = id_to_log_flag.get(tok.quantity_id, False)
-                x[key] = cls._create_atom(diff, log_flag, tok, columns_to_eval)
-        return x
+                x[key] = atom_constructor_in_context(diff, tok, columns_to_eval)
+        self._x = x
 
 
-    def eval(self, data: ndarray) -> list[ndarray]:
+    def eval(
+        self,
+        data_context: numpy.ndarray,
+        logly_context: dict[int, bool],
+    ) -> Iterable[Atom]:
+        self._verify_data_array_shape(data_context.shape)
+        self._atom_class._data_context = data_context
+        self._atom_class._logly_context = logly_context
+        output = self._func(self._x, None)
+        self._atom_class._data_context = None
+        self._atom_class._logly_context = None
+        return output
+
+
+    def _verify_data_array_shape(self, shape_data: numpy.ndarray) -> NoReturn:
         """
         """
-        self._verify_data_array_shape(data.shape)
-        DiffAtom._data = data
-        return self._func(self._x, None)
+        if shape_data[0]>=self.shape_data[0] and shape_data[1]>=self.shape_data[1]:
+            return
+        raise InvalidInputDataArrayShape(shape_data, self.shape_data)
+    #]
 
 
-    def _verify_data_array_shape(self, shape_data: ndarray) -> None:
-        """
-        """
-        if shape_data!=self.shape_data:
-            raise InvalidInputDataArrayShape(shape_data, self.shape_data)
-#)
-
-
-
-
-
-class DiffSpace(Space):
-    """
-    """
-#(
-    def _create_atom(diff, log_flag, tok, columns_to_eval):
-        """
-        """
-        data_index = (
-            slice(tok.quantity_id, tok.quantity_id+1),
-            slice(columns_to_eval[0]+tok.shift, columns_to_eval[1]+tok.shift+1),
-        )
-        return DiffAtom(None, diff, data_index, log_flag)
-#)
-
-
-
-
-
-class InvarianceSpace(Space):
-    """
-    """
-#(
-    def _create_atom(diff, log_flag, tok, columns_to_eval):
-        """
-        """
-        invariant = np.fill((diff.shape[0], 1), True)
-        return InvarianceAtom(diff, invariant, log_flag)
-#)
-
-
-
-
-#(
 def _diff_value_for_atom_from_incidence(
     token: Token,
-    wrt_tokens: list[Token],
-) -> Union[array, float]:
+    wrt_tokens: Tokens,
+) -> numpy.ndarray:
     """
     """
+    #[
+    diff = numpy.zeros((len(wrt_tokens), 1))
     if token in wrt_tokens:
-        diff = zeros((len(wrt_tokens), 1))
         diff[wrt_tokens.index(token)] = 1
-    else:
-        diff = 0
     return diff
+    #]
 
 
-def _create_audi_xtring(equation: Equation, wrt_tokens: list[Token], num_columns_to_eval: int) -> str:
+def _create_audi_xtring(
+    equation: Equation,
+    wrt_tokens: Tokens,
+) -> str:
     """
     """
+    #[
     xtring = equation.replace_equation_ref_in_xtring(equation.id)
     xtring = xtring.replace("[", "['").replace("]", "']")
-    # Add np.zeros(___,___)+ to enforce the correct size of the resulting
-    # diff in degenerate cases
-    diff_shape = (len(wrt_tokens), num_columns_to_eval)
-    xtring = f"create_zero_atom({diff_shape})+" + xtring
-    xtring = "(" + xtring + ").diff"
     return xtring
+    #]
 
 
-def _create_audi_key(token: Token, equation_id: int) -> str:
+def _create_audi_key(
+    token: Token,
+    eid: int,
+) -> str:
     """
+    Craete a hashable representation of a token in an Audi expression
     """
+    #[
     return X_REF_PATTERN.format( 
-        quantity_id=token.quantity_id,
+        qid=token.qid,
         shift=token.shift,
-        equation_id=equation_id,
+        eid=eid,
     )
-#)
-
-
-
-#
-# Errors
-#
+    #]
 
 
 class InvalidInputDataArrayShape(ListException):
     """
     """
-    def __init__(self, shape_entered: tuple[int, int], needed: tuple[int, int]) -> None:
+    #[
+    def __init__(
+        self,
+        shape_entered: tuple[int, int],
+        needed: tuple[int, int]
+    ) -> NoReturn:
         messages = [ f"Incorrect size of input data matrix: entered {shape_entered}, needed {needed}" ]
         super().__init__(messages)
-
+    #]
 

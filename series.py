@@ -1,19 +1,19 @@
 
-from functools import partial as ft_partial
+#---{ External imports
 
+from functools import partial
 
 from numbers import Number
 
-
-from typing import (
-    Union,
-    Iterable, Callable, Self,
-    Protocol, runtime_checkable
+from collections.abc import (
+    Iterable, Callable,
 )
 
+from typing import (
+    Self, Protocol, runtime_checkable,
+)
 
-from copy import deepcopy as cp_deepcopy
-
+from copy import deepcopy 
 
 from numpy import (
     ndarray as np_ndarray,
@@ -33,12 +33,15 @@ from numpy import (
     max as np_max,
 )
 
+#---}
 
-from .dating import (
-    Ranger as Ranger,
-    date_index as date_index,
-    ResolvableP as ResolvableP,
+#---{ Internal imports
+
+from .dates import (
+    Ranger, date_index, ResolvableProtocol,
 )
+
+#---}
 
 
 def _str_row(date, data, date_str_format, numeric_format, nan_str: str):
@@ -67,9 +70,11 @@ def _trim_decorate(func):
 
 
 class Series:
-    numeric_format = '15g'
-    date_str_format = '>12'
-    nan_str = "·"
+    """
+    """
+    numeric_format: str = "15g"
+    date_str_format: str = ">12"
+    nan_str: str = "·"
 
 
     def __init__(self, num_columns=1, data_type=float):
@@ -86,7 +91,7 @@ class Series:
         return self
 
 
-    def _create_nans(self, num_rows=0):
+    def _create_rows_of_nans(self, num_rows=0):
         return np_full((num_rows, self.shape[1]), np_nan, dtype=self.data_type)
 
 
@@ -121,12 +126,12 @@ class Series:
         if dates is Ellipsis:
             dates = Ranger(None, None)
 
-        if isinstance(dates, ResolvableP) and not dates.is_resolved:
+        if isinstance(dates, ResolvableP) and dates.needs_resolve:
             dates = dates.resolve(self)
 
         if not self.start_date:
             self.start_date = next(iter(dates))
-            self.data = self._create_nans(1)
+            self.data = self._create_rows_of_nans(1)
 
         pos, add_before, add_after = _get_date_positions(dates, self.start_date, self.shape[0]-1)
         self.data = self._create_expanded_data(add_before, add_after)
@@ -152,11 +157,11 @@ class Series:
         if dates is Ellipsis:
             dates = slice(None)
 
-        if isinstance(dates, ResolvableP) and not dates.is_resolved:
+        if isinstance(dates, ResolvableP) and dates.needs_resolve:
             dates = dates.resolve(self)
 
         if not dates:
-            return self._create_nans(0)[:,columns]
+            return self._create_rows_of_nans(0)[:,columns]
 
         pos, add_before, add_after = _get_date_positions(dates, self.start_date, self.shape[0]-1)
         data = self._create_expanded_data(add_before, add_after)
@@ -166,9 +171,9 @@ class Series:
             return data[pos, columns]
 
 
-    def cat(self, *args):
+    def hstack(self, *args):
         if not args:
-            return cp_deepcopy(self)
+            return deepcopy(self)
         encompassing_range = self._get_encompassing_range(*args)
         new_data = self.get_data(encompassing_range)
         add_data = (x.get_data(encompassing_range) for x in args)
@@ -206,9 +211,9 @@ class Series:
     def _create_expanded_data(self, add_before, add_after):
         data = np_copy(self.data)
         if add_before:
-            data = np_vstack((self._create_nans(add_before), data))
+            data = np_vstack((self._create_rows_of_nans(add_before), data))
         if add_after:
-            data = np_vstack((data, self._create_nans(add_after)))
+            data = np_vstack((data, self._create_rows_of_nans(add_after)))
         return data
 
 
@@ -255,7 +260,7 @@ class Series:
         return self
 
 
-    def __add__(self, other) -> Union[Self, np_ndarray]:
+    def __add__(self, other) -> Self|np_ndarray:
         """
         self + other
         """
@@ -270,7 +275,7 @@ class Series:
         return self._unop(lambda data: data.__radd__(other))
 
 
-    def __mul__(self, other) -> Union[Self, np_ndarray]:
+    def __mul__(self, other) -> Self|np_ndarray:
         """
         self + other
         """
@@ -316,14 +321,14 @@ class Series:
 
 
 
-    def _unop(self, func: Callable, *args, **kwargs) -> Union[Self, np_ndarray]:
+    def _unop(self, func: Callable, *args, **kwargs) -> Self|np_ndarray:
         new_data = func(self.data, *args, **kwargs)
         if new_data.shape == self.data.shape:
-            new = cp_deepcopy(self)
+            new = deepcopy(self)
             new.data = new_data
             return new._trim()
         elif kwargs.get("axis")==1 and new_data.shape==(self.data.shape[0],):
-            new = cp_deepcopy(self)
+            new = deepcopy(self)
             new.data = new_data.reshape(self.data.shape[0], 1)
             return new._trim()
         elif kwargs.get("axis") is None and new_data.shape==():
@@ -334,7 +339,7 @@ class Series:
             raise Exception("Unary operation on a time series resulted in data with an unexpected shape")
 
 
-    def _binop(self, other: Union[Self, Number], func):
+    def _binop(self, other: Self|Number, func):
         if not isinstance(other, type(self)):
             unop_func = lambda data: func(data, other)
             return _unop(self, unop_func)
@@ -342,7 +347,7 @@ class Series:
 
     @property
     def copy(self) -> Self:
-        return cp_deepcopy(self)
+        return deepcopy(self)
 
 
 
@@ -361,14 +366,14 @@ def _unop(x: Series, func: Callable, *args, **kwargs) -> object:
         return func(x, *args, **kwargs)
 
 
-log = ft_partial(_unop, func=np_log)
-exp = ft_partial(_unop, func=np_exp)
-sqrt = ft_partial(_unop, func=np_sqrt)
-mean = ft_partial(_unop, func=np_mean)
-max_ = ft_partial(_unop, func=np_max)
+log = partial(_unop, func=np_log)
+exp = partial(_unop, func=np_exp)
+sqrt = partial(_unop, func=np_sqrt)
+mean = partial(_unop, func=np_mean)
+max_ = partial(_unop, func=np_max)
 
 
-def cat(first, *args) -> Series:
-    return first.cat(*args)
+def hstack(first, *args) -> Series:
+    return first.hstack(*args)
 
 

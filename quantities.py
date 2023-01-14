@@ -1,69 +1,87 @@
-
-from enum import (
-    Flag as en_Flag,
-    auto as en_auto,
-)
+"""
+Model quantities
+"""
 
 
-from dataclasses import (
-    dataclass as dc_dataclass,
-)
+#[
+from __future__ import annotations
+
+import enum
+import dataclasses
+
+from typing import TypeAlias
+from collections.abc import Iterable
+#]
 
 
-from typing import (
-    Iterable as tp_Iterable,
-)
-
-
-
-class QuantityKind(en_Flag):
-    UNSPECIFIED = en_auto()
-    TRANSITION_VARIABLE = en_auto()
-    TRANSITION_SHOCK = en_auto()
-    MEASUREMENT_VARIABLE = en_auto()
-    MEASUREMENT_SHOCK = en_auto()
-    PARAMETER = en_auto()
+class QuantityKind(enum.Flag):
+    """
+    Classification of model quantities
+    """
+    #[
+    UNSPECIFIED = enum.auto()
+    TRANSITION_VARIABLE = enum.auto()
+    TRANSITION_SHOCK = enum.auto()
+    MEASUREMENT_VARIABLE = enum.auto()
+    MEASUREMENT_SHOCK = enum.auto()
+    PARAMETER = enum.auto()
 
     VARIABLE = TRANSITION_VARIABLE | MEASUREMENT_VARIABLE
     SHOCK = TRANSITION_SHOCK | MEASUREMENT_SHOCK
-    FIRST_ORDER_SYSTEM = VARIABLE | SHOCK
+
+    IN_TRANSITION_EQUATIONS = TRANSITION_VARIABLE | TRANSITION_SHOCK | PARAMETER
+    IN_MEASUREMENT_EQUATIONS = TRANSITION_VARIABLE | MEASUREMENT_VARIABLE | MEASUREMENT_SHOCK | PARAMETER
+
+    IN_TRANSITION_SYSTEM_WRTS = TRANSITION_VARIABLE | TRANSITION_SHOCK
+    IN_MEASUREMENT_SYSTEM_WRTS = TRANSITION_VARIABLE | MEASUREMENT_VARIABLE | MEASUREMENT_SHOCK
+    #]
 
 
-@dc_dataclass
-class Quantity():
+@dataclasses.dataclass
+class Quantity:
     """
     """
-    id: int
-    human: str
+    id: int | None = None
+    human: str | None = None
     kind: QuantityKind = QuantityKind.UNSPECIFIED
-    log_flag: bool = False
+    logly: bool | None = None
 
 
-def create_name_to_id(quantities: tp_Iterable[Quantity]) -> dict[str, int]:
+Quantities: TypeAlias = Iterable[Quantity]
+
+
+def create_name_to_qid(quantities: Quantities) -> dict[str, int]:
     return { qty.human: qty.id for qty in quantities }
 
 
-def create_id_to_name(quantities: tp_Iterable[Quantity]) -> dict[int, str]:
+def create_qid_to_name(quantities: Quantities) -> dict[int, str]:
     return { qty.id: qty.human for qty in quantities }
 
 
-def create_id_to_kind(quantities: tp_Iterable[Quantity]) -> dict[int, str]:
+def create_qid_to_kind(quantities: Quantities) -> dict[int, str]:
     return { qty.id: qty.kind for qty in quantities }
 
 
-def generate_quantity_ids_by_kind(quantities: tp_Iterable[Quantity], kind: QuantityKind) -> list[int]:
+def generate_qids_by_kind(quantities: Quantities, kind: QuantityKind) -> list[int]:
     return ( qty.id for qty in quantities if qty.kind in kind )
 
 
-def generate_quantity_names_by_kind(quantities: tp_Iterable[Quantity], kind: QuantityKind) -> list[str]:
+def generate_quantity_names_by_kind(quantities: Quantities, kind: QuantityKind) -> list[str]:
     return ( qty.human for qty in quantities if qty.kind in kind )
 
 
-def generate_all_quantity_names(quantities: tp_Iterable[Quantity]) -> tp_Iterable[int]:
+def generate_all_quantity_names(quantities: Quantities) -> Iterable[int]:
     return ( qty.human for qty in quantities )
 
 
-def generate_all_quantity_ids(quantities: tp_Iterable[Quantity]) -> tp_Iterable[int]:
+def generate_all_qids(quantities: Quantities) -> Iterable[int]:
     return ( qty.id for qty in quantities )
 
+
+def get_max_qid(quantities: Quantities) -> int:
+    return max(qty.id for qty in quantities)
+
+
+def create_qid_to_logly(quantities: Quantities) -> dict[int, bool]:
+    return { qty.id: qty.logly for qty in quantities }
 

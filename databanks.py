@@ -1,20 +1,24 @@
 
-#[
-from __future__ import annotations
+#( External imports
+from types import (
+    SimpleNamespace,
+)
 
-import types
-import copy
+from copy import (
+    deepcopy
+)
 
-from typing import Optional, Self, TypeAlias
-from collections.abc import Iterable, Callable
-#]
+from typing import (
+    Optional, Iterable, Self, Callable, TypeAlias
+)
+#)
 
 
 SourceNames: TypeAlias = Iterable[str] | str | Callable[[str], bool] | None
 TargetNames: TypeAlias = Iterable[str] | str | Callable[[str], str] | None
 
 
-class Databank(types.SimpleNamespace):
+class Databank(SimpleNamespace):
     #(
     def _get_names(self: Self) -> Iterable[str]:
         """
@@ -28,7 +32,7 @@ class Databank(types.SimpleNamespace):
     ) -> Self:
         """
         """
-        new_databank = copy.deepcopy(self)
+        new_databank = deepcopy(self)
         new_databank = new_databank._rename(source_names, target_names)
         new_databank._keep(target_names)
         return new_databank
