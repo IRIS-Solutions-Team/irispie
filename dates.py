@@ -334,8 +334,8 @@ class Ranger():
         """
         Date range constructor
         """
-        start_date = dater_from_integer(start_date)
-        end_date = dater_from_integer(end_date)
+        start_date = resolve_dater_or_integer(start_date)
+        end_date = resolve_dater_or_integer(end_date)
         self._start_date = start_date if start_date is not None else start
         self._end_date = end_date if end_date is not None else end
         self._step = step
@@ -458,7 +458,7 @@ def date_index(dates: Iterable[Dater], base: Dater) -> Iterable[int]:
 
 
 
-class ContextualDater(RangeableMixin):
+class ContextualDater(Dater, RangeableMixin):
     """
     Dates with context dependent resolution
     """
@@ -493,10 +493,11 @@ start = ContextualDater("start_date")
 end = ContextualDater("end_date")
 
 
-def dater_from_integer(input_date: Any) -> Dater:
+def resolve_dater_or_integer(input_date: Any) -> Dater:
     """
     Convert non-dater to integer dater
     """
-    return input_date if isinstance(input_date, Dater) else IntegerDater(int(input_date))
-
+    if isinstance(input_date, Number):
+        input_date = IntegerDater(int(input_date))
+    return input_date
 
