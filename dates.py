@@ -233,6 +233,13 @@ class DailyDater(Dater):
         return cls(serial)
 
 
+    @classmethod
+    def from_year_period(cls, year: int, period: int) -> Self:
+        boy_serial = datetime.date(year, 1, 1).toordinal()
+        serial = boy_serial + int(period) - 1
+        return cls(serial)
+
+
     def to_year_period(self: Self) -> tuple[int, int]:
         boy_serial = datetime.date(datetime.date.fromordinal(self.serial).year, 1, 1)
         per = self.serial - boy_serial + 1
@@ -318,8 +325,13 @@ yy = YearlyDater.from_year_period
 hh = HalfyearlyDater.from_year_period
 qq = QuarterlyDater.from_year_period
 mm = MonthlyDater.from_year_period
-dd = DailyDater.from_ymd
 ii = IntegerDater
+
+def dd(year: int, month: int | ellipsis, day: int) -> DailyDater:
+    if month is Ellipsis:
+        return DailyDater.from_year_period(year, day)
+    else:
+        return DailyDater.from_ymd(year, month, day)
 
 
 class Ranger():
