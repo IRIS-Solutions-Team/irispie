@@ -31,9 +31,12 @@ from .quantities import (
     generate_qids_by_kind,
     get_max_qid
 )
-from modiphy.metaford import (
+from .audi import (
+    Context, DiffernAtom,
+)
+from .metaford import (
     SystemVectors, SolutionVectors,
-    SystemMap, SystemDifferentiationContexts,
+    SystemMap,
 )
 from .exceptions import (
     UnknownName
@@ -207,13 +210,18 @@ class Model:
         self._system_vectors = SystemVectors(self._equations, self._quantities)
         self._solution_vectors = SolutionVectors(self._system_vectors)
         self._system_map = SystemMap(self._system_vectors)
-        self._system_differentiation_context = SystemDifferentiationContexts(self._system_vectors)
+
+        self._system_differn_context = Context.for_equations(
+            DiffernAtom, 
+            self._system_vectors.equations,
+            self._system_vectors.eid_to_wrt_tokens,
+        )
 
 
-    def solve(
+    def _systemize(
         self, 
-        /,
-        variant: int = 0,
+        variant,
+        /
     ) -> Self:
         """
         """
@@ -222,11 +230,11 @@ class Model:
         value_context = self.create_steady_array(variant=variant, num_columns=num_columns)
         logly_context = self.create_qid_to_logly()
 
-        self._system_differentiation_context.transition_equations.eval(
+        self._system_differn_context.transition_equations.eval(
             value_context, logly_context
         )
 
-        self._ford = System(self._system_vectors)
+        system = System(self._system_vectors)
 
 
 
@@ -241,7 +249,8 @@ class Model:
         self = cls()
         self._quantities = copy.deepcopy(source.quantities)
         self._equations = copy.deepcopy(source.equations)
-        finalize_equations_from_humans(self._equations, create_name_to_qid(self._quantities))
+        name_to_qid = create_name_to_qid(self._quantities)
+        finalize_equations_from_humans(self._equations, name_to_qid)
         self._variants = [ Variant(self._quantities) ]
         self._assign_auto_values()
         self._prepare_ford()

@@ -15,4 +15,7 @@ from modiphy.series import (
     hstack, log, exp, sqrt, mean, max_
 )
 
+from modiphy.sources import (
+    Source,
+)
 

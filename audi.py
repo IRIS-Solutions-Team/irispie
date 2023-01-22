@@ -8,7 +8,7 @@ from __future__ import annotations
 import numpy
 import math
 
-from typing import NoReturn, Protocol
+from typing import NoReturn
 from numbers import Number
 from collections.abc import Iterable, Sequence
 
@@ -41,7 +41,7 @@ class LoglyMixin:
     #]
 
 
-class DifferentiationAtom(ValueMixin, LoglyMixin):
+class DiffernAtom(ValueMixin, LoglyMixin):
     """
     Atomic value for differentiation
     """
@@ -66,6 +66,9 @@ class DifferentiationAtom(ValueMixin, LoglyMixin):
         diff: Number,
         logly: bool,
     ) -> Self:
+        """
+        Create atom with self-contained data and logly contexts
+        """
         self = cls()
         self._value = value
         self._diff = diff
@@ -81,6 +84,7 @@ class DifferentiationAtom(ValueMixin, LoglyMixin):
             columns_to_eval: tuple[int, int],
         ):
         """
+        Create atom with pointers to data and logly contexts
         """
         self = cls()
         self._diff = diff if numpy.any(diff!=0) else 0
@@ -97,7 +101,7 @@ class DifferentiationAtom(ValueMixin, LoglyMixin):
         cls: type,
         diff_shape: tuple[int, int],
     ) -> Self:
-        return DifferentiationAtom.no_context(0, numpy.zeros(diff_shape), False)
+        return DiffernAtom.no_context(0, numpy.zeros(diff_shape), False)
 
 
     @property
@@ -108,7 +112,7 @@ class DifferentiationAtom(ValueMixin, LoglyMixin):
     def __neg__(self):
         new_value = -self.value
         new_diff = -self.diff
-        return DifferentiationAtom.no_context(new_value, new_diff, False)
+        return DiffernAtom.no_context(new_value, new_diff, False)
 
 
     def __add__(self, other):
@@ -118,7 +122,7 @@ class DifferentiationAtom(ValueMixin, LoglyMixin):
         else:
             new_value = self.value + other
             new_diff = self.diff
-        return DifferentiationAtom.no_context(new_value, new_diff, False)
+        return DiffernAtom.no_context(new_value, new_diff, False)
 
 
     def __sub__(self, other):
@@ -129,7 +133,7 @@ class DifferentiationAtom(ValueMixin, LoglyMixin):
             new_value = self.value - other
             new_diff = self.diff
         new_logly = False
-        return DifferentiationAtom.no_context(new_value, new_diff, False)
+        return DiffernAtom.no_context(new_value, new_diff, False)
 
 
     def __mul__(self, other):
@@ -143,7 +147,7 @@ class DifferentiationAtom(ValueMixin, LoglyMixin):
         else:
             new_value = self_value * other
             new_diff = self_diff * other
-        return DifferentiationAtom.no_context(new_value, new_diff, False)
+        return DiffernAtom.no_context(new_value, new_diff, False)
 
 
     def __truediv__(self, other):
@@ -157,7 +161,7 @@ class DifferentiationAtom(ValueMixin, LoglyMixin):
         else:
             new_value = self_value / other
             new_diff = self_diff / other
-        return DifferentiationAtom.no_context(new_value, new_diff, False)
+        return DiffernAtom.no_context(new_value, new_diff, False)
 
 
     def __rtruediv__(self, other):
@@ -165,7 +169,7 @@ class DifferentiationAtom(ValueMixin, LoglyMixin):
         self_diff = self.diff
         new_value = other / self_value
         new_diff = -other*self_diff / (self_value**2)
-        return DifferentiationAtom.no_context(new_value, new_diff, False)
+        return DiffernAtom.no_context(new_value, new_diff, False)
 
 
     def __pow__(self, other):
@@ -182,7 +186,7 @@ class DifferentiationAtom(ValueMixin, LoglyMixin):
         else:
             # self(x)**other
             new_value, new_diff = self._power(other)
-        return DifferentiationAtom.no_context(new_value, new_diff, False)
+        return DiffernAtom.no_context(new_value, new_diff, False)
 
 
     def _exponential(self, other):
@@ -219,13 +223,13 @@ class DifferentiationAtom(ValueMixin, LoglyMixin):
     def log(self):
         new_value = numpy.log(self.value)
         new_diff = 1 / self.value * self.diff
-        return DifferentiationAtom.no_context(new_value, new_diff, False)
+        return DiffernAtom.no_context(new_value, new_diff, False)
 
 
     def exp(self):
         new_value = numpy.exp(self.value)
         new_diff = new_value * self.diff
-        return DifferentiationAtom.no_context(new_value, new_diff, False)
+        return DiffernAtom.no_context(new_value, new_diff, False)
     #]
 
 
@@ -427,14 +431,17 @@ class Context:
     def for_equations(
         cls: type,
         atom_class: type,
-        equations: Equations,
-        eid_to_wrt_tokens: dict[int, Tokens],
+        wrt_tokens: Tokens,
+        eids: Iterable[int],
+        source_equations: Equations,
         num_columns_to_eval: int = 1,
         /,
     ) -> Self:
         """
         """
         self = cls(atom_class)
+
+        equations = sort_equations(eqn for eqn in source_equations if eqn.id in eids)
 
         all_tokens = set(generate_all_tokens_from_equations(equations))
         min_shift = get_min_shift(all_tokens)
@@ -447,6 +454,7 @@ class Context:
         t_zero = -min_shift
         self._columns_to_eval = (t_zero, t_zero + num_columns_to_eval - 1)
 
+        eid_to_wrt_tokens = create_eid_to_wrt_tokens(equations, wrt_tokens)
         self._populate_atom_array(equations, eid_to_wrt_tokens, self._columns_to_eval)
 
         xtrings = [ 

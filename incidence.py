@@ -1,44 +1,49 @@
+"""
+Incidence tokens and wrt tokens
+"""
 
-#---{ External imports
+#[
+from __future__ import annotations
+
+from collections.abc import Iterable
+from numbers import Number
 
 from typing import (
-    Iterable, NamedTuple, Callable, Self,
-    TypeAlias,
+    NamedTuple, Callable, Self, 
+    Protocol, TypeAlias,
 )
 
-from itertools import (
-    chain,
-)
-
-#---}
-
-
-#---{ Internal imports
+from itertools import chain
 
 from .quantities import (
-    Quantity, QuantityKind, create_qid_to_kind
+    QuantityKind
 )
-
-#---}
+#]
 
 
 class Token(NamedTuple):
     """
+    Incidence
     """
+    #[
     qid: int
     shift: int
 
-    def lag(self: Self) -> Self:
-        return Token(self.qid, self.shift-1)
+    def shifted(
+        self: Self,
+        by: int,
+    ) -> Self:
+        return Token(self.qid, self.shift+by)
 
-    def lead(self: Self) -> Self:
-        return Token(self.qid, self.shift+1)
-
-    def print(self: Self, qid_to_name: dict[int, str]) -> str:
+    def print(
+        self,
+        qid_to_name: dict[int, str], 
+    ) -> str:
         s = qid_to_name[self.qid]
         if self.shift:
-            s += f"{{{self.shift:+g}}}"
+            s += "{shift:+g}".format(shift=self.shift)
         return s
+    #]
 
 
 """
@@ -75,7 +80,7 @@ def generate_tokens_of_kinds(tokens: Tokens, qid_to_kind: dict, kinds: QuantityK
     return (tok for tok in tokens if qid_to_kind[tok.qid] in kinds)
 
 
-def sort_tokens(tokens: Tokens) -> Tokens:
+def sort_tokens(tokens: Iterable[Token]) -> Iterable[Token]:
     """
     Sort tokens by shift and id
     """

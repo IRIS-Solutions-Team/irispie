@@ -9,6 +9,7 @@ import enum
 import re
 import dataclasses 
 import itertools
+import operator
 
 from typing import Self, NoReturn
 from collections.abc import Iterable
@@ -40,7 +41,7 @@ class EquationKind(enum.Flag):
     TRANSITION_EQUATION = enum.auto()
     MEASUREMENT_EQUATION = enum.auto()
 
-    EQUATION = TRANSITION_EQUATION | MEASUREMENT_EQUATION
+    SYSTEM_EQUATION = TRANSITION_EQUATION | MEASUREMENT_EQUATION
     #]
 
 
@@ -120,17 +121,16 @@ def create_evaluator_func_string(equations: Iterable[str]) -> str:
 
 def create_eid_to_wrt_tokens(
     equations: Equations,
-    wrt_tokens: Tokens|None =None,
-) -> dict[int, Tokens]:
+    all_wrt_tokens: WrtTokens|None =None,
+) -> dict[int, WrtTokens]:
     """
     """
     #[
     eid_to_wrt_tokens = {}
     for eqn in equations:
-        include_tokens = set(eqn.incidence)
-        if wrt_tokens:
-            include_tokens = include_tokens.intersection(wrt_tokens)
-        eid_to_wrt_tokens[eqn.id] = sort_tokens(include_tokens)
+        eid_to_wrt_tokens[eqn.id] = sort_tokens(
+            wrt for wrt in all_wrt_tokens if wrt in eqn.incidence
+        )
     return eid_to_wrt_tokens
     #]
 
@@ -188,4 +188,19 @@ def generate_eids_by_kind(
     kind: EquationKind,
 ) -> Iterable[int]:
     return (eqn.id for eqn in equations if eqn.kind in kind)
+
+
+def generate_equations_of_kind(
+    equations: Equations,
+    kind: EquationKind,
+) -> Equations:
+    return (eqn for eqn in equations if eqn.kind in kind)
+
+
+def sort_equations(
+    equations: Equations,
+    /
+) -> Equations:
+    return sorted(equations, key=operator.attrgetter("id"))
+
 
