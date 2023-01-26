@@ -149,14 +149,14 @@ class Model:
     def change_logly(
         self,
         new_logly: bool,
-        names: Iterable[str],
+        names: Iterable[str] | None = None,
         /
     ) -> NoReturn:
-        names = set(names)
+        names = set(names) if names else None
         qids = [ 
             qty.id 
             for qty in self._quantities 
-            if qty.human in names 
+            if qty.logly is not None and (names is None or qty.human in names)
         ]
         self._quantities = change_logly(self._quantities, new_logly, qids)
 
