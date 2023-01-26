@@ -86,3 +86,16 @@ def get_max_qid(quantities: Quantities) -> int:
 def create_qid_to_logly(quantities: Quantities) -> dict[int, bool]:
     return { qty.id: qty.logly for qty in quantities }
 
+
+def change_logly(
+    quantities: Quantities,
+    new_logly: bool,
+    qids: Iterable[int],
+    /
+) -> Quantities:
+    qids = set(qids)
+    return [
+        qty if qty.id not in qids or qty.logly is None else Quantity(qty.id, qty.human, qty.kind, new_logly)
+        for qty in quantities
+    ]
+

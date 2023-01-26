@@ -40,8 +40,6 @@ class EquationKind(enum.Flag):
     UNSPECIFIED = enum.auto()
     TRANSITION_EQUATION = enum.auto()
     MEASUREMENT_EQUATION = enum.auto()
-
-    SYSTEM_EQUATION = TRANSITION_EQUATION | MEASUREMENT_EQUATION
     #]
 
 
@@ -178,7 +176,7 @@ def _postprocess_xtring(equation: str) -> str:
     equation = equation.replace(" ", "")
     lhs_rhs = equation.split("=")
     if len(lhs_rhs)==2:
-        equation = lhs_rhs[0] + "-(" + lhs_rhs[1] + ")" 
+        equation = "-(" + lhs_rhs[0] + ")+" + lhs_rhs[1]
     return equation
     #]
 

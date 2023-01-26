@@ -431,9 +431,8 @@ class Context:
     def for_equations(
         cls: type,
         atom_class: type,
-        wrt_tokens: Tokens,
-        eids: Iterable[int],
-        source_equations: Equations,
+        equations: Equations,
+        eid_to_wrt_tokens: dict[int, Tokens],
         num_columns_to_eval: int = 1,
         /,
     ) -> Self:
@@ -441,8 +440,7 @@ class Context:
         """
         self = cls(atom_class)
 
-        equations = sort_equations(eqn for eqn in source_equations if eqn.id in eids)
-
+        equations = list(equations)
         all_tokens = set(generate_all_tokens_from_equations(equations))
         min_shift = get_min_shift(all_tokens)
         max_shift = get_max_shift(all_tokens)
@@ -454,8 +452,11 @@ class Context:
         t_zero = -min_shift
         self._columns_to_eval = (t_zero, t_zero + num_columns_to_eval - 1)
 
-        eid_to_wrt_tokens = create_eid_to_wrt_tokens(equations, wrt_tokens)
-        self._populate_atom_array(equations, eid_to_wrt_tokens, self._columns_to_eval)
+        self._populate_atom_array(
+            equations,
+            eid_to_wrt_tokens,
+            self._columns_to_eval,
+        )
 
         xtrings = [ 
             _create_audi_xtring(eqn, eid_to_wrt_tokens[eqn.id]) 

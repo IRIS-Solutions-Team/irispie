@@ -49,16 +49,9 @@ from .incidence import (
 @dataclasses.dataclass
 class SystemVectors:
     """
-    Vectors of quantities in first-order system matrices
+    Vectors of quantities and equation ids in first-order system matrices
     """
     #[
-    # equations: Equations | None = None
-    # eid_to_wrt_tokens: dict[int, Tokens] | None = None
-    # transition_equations: Equations | None = None
-    # transition_eid_to_wrt_tokens: dict[int, Tokens] | None = None
-    # measurement_equations: Equations | None = None
-    # measurement_eid_to_wrt_tokens: dict[int, Tokens] | None = None
-
     transition_eids: Iterable[int] | None = None
     measurement_eids: Iterable[int] | None = None
     eid_to_wrt_tokens: dict[int, Tokens] | None = None
@@ -68,34 +61,47 @@ class SystemVectors:
     measurement_variables: Tokens | None = None
     measurement_shocks: Tokens | None = None 
 
+    shape_AB_excl_dynid: tuple[int, int] | None = None
+    shape_C_excl_dynid: tuple[int, int] | None = None
+    shape_D_excl_dynid: tuple[int, int] | None = None
+    shape_F: tuple[int, int] | None = None
+    shape_G: tuple[int, int] | None = None
+    shape_H: tuple[int, int] | None = None
+
     def __init__(self, equations: Equations, quantities: Quantities) -> NoReturn:
         """
         Construct system vectors from a list of equations and a list of quantities
         """
-        sorted_equations = sort_equations(equations)
-        self.transition_eids = [eqn.id for eqn in system_equations if eqn.kind in EquationKind.TRANSITION_EQUATION]
-        self.measurement_eids = [eqn.id for eqn in system_equations if eqn.kind in EquationKind.MEASUREMENT_EQUATION]
-
+        self.transition_eids = sorted([eqn.id for eqn in equations if eqn.kind in EquationKind.TRANSITION_EQUATION])
+        self.measurement_eids = sorted([eqn.id for eqn in equations if eqn.kind in EquationKind.MEASUREMENT_EQUATION])
         qid_to_kind = create_qid_to_kind(quantities)
-        all_tokens = set(generate_all_tokens_from_equations(system_equations))
+        all_tokens = set(generate_all_tokens_from_equations(equations))
         all_wrt_tokens = set(generate_tokens_of_kinds(all_tokens, qid_to_kind, QuantityKind.SYSTEM_QUANTITY))
         self.eid_to_wrt_tokens = create_eid_to_wrt_tokens(equations, all_wrt_tokens)
-
-        # self.equations = sorted([ eqn for eqn in equations if eqn.kind in EquationKind.SYSTEM_EQUATION ], key=operator.attrgetter("id"))
-
-        # all_transition_wrt_tokens = set(tok for tok in all_tokens if qid_to_kind[tok.qid] in QuantityKind.IN_TRANSITION_SYSTEM_WRTS)
-        # self.transition_equations = sorted([ eqn for eqn in equations if eqn.kind in EquationKind.TRANSITION_EQUATION ], key=operator.attrgetter("id"))
-        # self.transition_eid_to_wrt_tokens = create_eid_to_wrt_tokens(self.transition_equations, all_transition_wrt_tokens)
-
-        # all_measurement_wrt_tokens = set(tok for tok in all_tokens if qid_to_kind[tok.qid] in QuantityKind.IN_MEASUREMENT_SYSTEM_WRTS)
-        # self.measurement_equations = sorted([ eqn for eqn in equations if eqn.kind in EquationKind.MEASUREMENT_EQUATION ], key=operator.attrgetter("id"))
-        # self.measurement_eid_to_wrt_tokens = create_eid_to_wrt_tokens(self.measurement_equations, all_measurement_wrt_tokens)
 
         tokens_transition_variables = generate_tokens_of_kinds(all_tokens, qid_to_kind, QuantityKind.TRANSITION_VARIABLE)
         self.transition_variables = sort_tokens(_create_system_transition_vector(tokens_transition_variables))
         self.transition_shocks = sort_tokens(generate_tokens_of_kinds(all_tokens, qid_to_kind, QuantityKind.TRANSITION_SHOCK))
         self.measurement_variables = sort_tokens(generate_tokens_of_kinds(all_tokens, qid_to_kind, QuantityKind.MEASUREMENT_VARIABLE))
         self.measurement_shocks = sort_tokens(generate_tokens_of_kinds(all_tokens, qid_to_kind, QuantityKind.MEASUREMENT_SHOCK))
+
+        self.shape_AB_excl_dynid = (len(self.transition_eids), len(self.transition_variables))
+        self.shape_C_excl_dynid = (len(self.transition_eids), 1)
+        self.shape_D_excl_dynid = (len(self.transition_eids), len(self.transition_shocks))
+
+        self.shape_F = (len(self.measurement_eids), len(self.measurement_variables))
+        self.shape_G = (len(self.measurement_eids), len(self.transition_variables))
+        self.shape_H = (len(self.measurement_eids), 1)
+        self.shape_J = (len(self.measurement_eids), len(self.measurement_shocks))
+
+    def generate_system_equations_from_equations(
+        self,
+        equations: Equations,
+        /
+    ) -> Equations:
+        eid_to_equation = { eqn.id:eqn for eqn in equations }
+        system_eids = self.transition_eids + self.measurement_eids
+        return ( eid_to_equation[eid] for eid in system_eids )
     #]
 
 
@@ -166,6 +172,9 @@ class SystemMap:
     D: ArrayMap | None = None
     dynid_A: numpy.ndarray | None = None
     dynid_B: numpy.ndarray | None = None
+    dynid_C: numpy.ndarray | None = None
+    dynid_D: numpy.ndarray | None = None
+
     F: ArrayMap | None = None
     G: ArrayMap | None = None
     H: None = None
@@ -177,45 +186,91 @@ class SystemMap:
     ) -> NoReturn:
         """
         """
+
+        system_eids = system_vectors.transition_eids + system_vectors.measurement_eids
+        rhs_offsets = list(itertools.accumulate(
+            len(system_vectors.eid_to_wrt_tokens[eid]) 
+            for eid in system_eids
+        ))
+        rhs_offsets.pop()
+        rhs_offsets.insert(0, 0)
+        eid_to_rhs_offset = dict(zip(system_eids, rhs_offsets))
+
         # Transition equations
 
         self.A = vstack_array_maps(
-            ArrayMap.for_equation(system_vectors.eid_to_wrt_tokens[eid], system_vectors.transition_variables, )
-            for eid in system_vectors.transition_eids
+            ArrayMap.for_equation(
+                system_vectors.eid_to_wrt_tokens[eid],
+                system_vectors.transition_variables,
+                eid_to_rhs_offset[eid],
+                lhs_row,
+            )
+            for lhs_row, eid in enumerate(system_vectors.transition_eids)
         )
 
-        lagged = [ t.shifted(-1) for t in system_vectors.transition_variables ]
-        lagged = [ t if t not in system_vectors.transition_variables else None for t in lagged ]
+        lagged_transition_variables = [ t.shifted(-1) for t in system_vectors.transition_variables ]
+        lagged_transition_variables = [ 
+            t if t not in system_vectors.transition_variables else None 
+            for t in lagged_transition_variables 
+        ]
         self.B = vstack_array_maps(
-            ArrayMap.for_equation(system_vectors.eid_to_wrt_tokens[eid], lagged, )
-            for eid in system_vectors.transition_eids
+            ArrayMap.for_equation(
+                system_vectors.eid_to_wrt_tokens[eid],
+                lagged_transition_variables, 
+                eid_to_rhs_offset[eid],
+                lhs_row,
+            )
+            for lhs_row, eid in enumerate(system_vectors.transition_eids)
         )
 
         self.A.remove_nones()
         self.B.remove_nones()
 
-        self.dynid_A, self.dynid_B = _create_dynid_matrices(system_vectors.transition_variables)
+        num_dynid_rows = len(system_vectors.transition_variables) - len(system_vectors.transition_eids)
+        self.dynid_A, self.dynid_B = _create_dynid_matrices(system_vectors.transition_variables, )
+        self.dynid_C = numpy.zeros((num_dynid_rows, system_vectors.shape_C_excl_dynid[1]), dtype=float, )
+        self.dynid_D = numpy.zeros((num_dynid_rows, system_vectors.shape_D_excl_dynid[1]), dtype=float, )
 
         self.D = vstack_array_maps(
-            ArrayMap.for_equation(system_vectors.eid_to_wrt_tokens[eid], system_vectors.transition_shocks, )
-            for eid in system_vectors.transition_eids
+            ArrayMap.for_equation(
+                system_vectors.eid_to_wrt_tokens[eid],
+                system_vectors.transition_shocks,
+                eid_to_rhs_offset[eid],
+                lhs_row,
+            )
+            for lhs_row, eid in enumerate(system_vectors.transition_eids)
         )
 
         # Measurement equations
 
         self.F = vstack_array_maps(
-            ArrayMap.for_equation(system_vectors.eid_to_wrt_tokens[eid], system_vectors.measurement_variables, )
-            for eid in system_vectors.measurement_eids
+            ArrayMap.for_equation(
+                system_vectors.eid_to_wrt_tokens[eid],
+                system_vectors.measurement_variables, 
+                eid_to_rhs_offset[eid],
+                lhs_row,
+            )
+            for lhs_row, eid in enumerate(system_vectors.measurement_eids)
         )
 
         self.G = vstack_array_maps(
-            ArrayMap.for_equation(system_vectors.eid_to_wrt_tokens[eid], system_vectors.transition_variables, )
-            for eid in system_vectors.measurement_eids
+            ArrayMap.for_equation(
+                system_vectors.eid_to_wrt_tokens[eid],
+                system_vectors.transition_variables, 
+                eid_to_rhs_offset[eid],
+                lhs_row,
+            )
+            for lhs_row, eid in enumerate(system_vectors.measurement_eids)
         )
 
         self.J = vstack_array_maps(
-            ArrayMap.for_equation(system_vectors.eid_to_wrt_tokens[eid], system_vectors.measurement_shocks, )
-            for eid in system_vectors.measurement_eids
+            ArrayMap.for_equation(
+                system_vectors.eid_to_wrt_tokens[eid],
+                system_vectors.measurement_shocks, 
+                eid_to_rhs_offset[eid],
+                lhs_row,
+            )
+            for lhs_row, eid in enumerate(system_vectors.measurement_eids)
         )
     #]
 
@@ -262,7 +317,8 @@ class ArrayMap:
     def append(
         self,
         lhs: tuple[int, int], 
-        rhs: tuple[int, int]
+        rhs: tuple[int, int],
+        /
     ) -> NoReturn:
         """
         """
@@ -304,17 +360,16 @@ class ArrayMap:
         cls,
         tokens_in_equation_on_rhs: Tokens,
         tokens_in_columns_on_lhs: Tokens,
+        rhs_offset: int,
+        lhs_row: int,
     ) -> ArrayMap:
         """
         """
         map = cls()
-        for i, t in enumerate(tokens_in_equation_on_rhs):
-            append = (
-                map.append((0, tokens_in_columns_on_lhs.index(t)), (i, 0))
-                if t in tokens_in_columns_on_lhs
-                else ArrayMap.NOT_FOUND
-            )
-            map.append(append)
+        for rhs_row, t in enumerate(tokens_in_equation_on_rhs, start=rhs_offset):
+            if t in tokens_in_columns_on_lhs:
+                lhs_column = tokens_in_columns_on_lhs.index(t)
+                map.append((lhs_row, lhs_column), (rhs_row, 0))
         return map
     #]
 
@@ -324,10 +379,7 @@ def vstack_array_maps(maps: Iterable[ArrayMap]) -> ArrayMap:
     """
     #[
     stacked_map = ArrayMap()
-    rhs_row_offset = 0
-    for lhs_row, m in enumerate(maps):
-        m.offset(lhs_row, rhs_row_offset)
-        rhs_row_offset += len(m)
+    for m in maps:
         stacked_map.merge_with(m)
     return stacked_map
     #]

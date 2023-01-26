@@ -29,7 +29,7 @@ from .quantities import (
     create_name_to_qid, create_qid_to_name, create_qid_to_logly,
     generate_all_qids, generate_all_quantity_names, 
     generate_qids_by_kind,
-    get_max_qid
+    get_max_qid, change_logly
 )
 from .audi import (
     Context, DiffernAtom,
@@ -37,6 +37,9 @@ from .audi import (
 from .metaford import (
     SystemVectors, SolutionVectors,
     SystemMap,
+)
+from .ford import (
+    System
 )
 from .exceptions import (
     UnknownName
@@ -84,9 +87,11 @@ class Variant:
     """
     _missing_value: Any | None = None
     _values: dict[int, Any] | None = None
+    _system: System | None = None
     #[
     def __init__(self, quantities:Quantities) -> NoReturn:
         self._initilize_values(quantities)
+        self._system = System()
 
     def _initilize_values(self, quantities:Quantities) -> NoReturn:
         self._values = { qty.id: self._missing_value for qty in quantities }
@@ -139,6 +144,21 @@ class Model:
             self._shrink_num_variants(new_num)
         elif new_num>self.num_variants:
             self._expand_num_variants(new_num)
+
+
+    def change_logly(
+        self,
+        new_logly: bool,
+        names: Iterable[str],
+        /
+    ) -> NoReturn:
+        names = set(names)
+        qids = [ 
+            qty.id 
+            for qty in self._quantities 
+            if qty.human in names 
+        ]
+        self._quantities = change_logly(self._quantities, new_logly, qids)
 
 
     @property
@@ -211,32 +231,62 @@ class Model:
         self._solution_vectors = SolutionVectors(self._system_vectors)
         self._system_map = SystemMap(self._system_vectors)
 
+        system_equations = self._system_vectors.generate_system_equations_from_equations(self._equations)
         self._system_differn_context = Context.for_equations(
-            DiffernAtom, 
-            self._system_vectors.equations,
-            self._system_vectors.eid_to_wrt_tokens,
+           DiffernAtom, 
+           system_equations,
+           self._system_vectors.eid_to_wrt_tokens,
         )
 
 
-    def _systemize(
+    def systemize(
         self, 
-        variant,
+        variant: int = 0,
         /
     ) -> Self:
         """
         """
-        num_columns = 1 + self._get_max_shift - self._get_min_shift()
-
+        num_columns = self._system_differn_context.shape_data[1]
         value_context = self.create_steady_array(variant=variant, num_columns=num_columns)
         logly_context = self.create_qid_to_logly()
 
-        self._system_differn_context.transition_equations.eval(
-            value_context, logly_context
-        )
+        tt = self._system_differn_context.eval(value_context, logly_context)
 
-        system = System(self._system_vectors)
+        td = numpy.vstack([x.diff for x in tt])
+        tc = numpy.vstack([x.value for x in tt])
 
+        ma = self._system_map
+        sy = self._system_vectors
 
+        system = System()
+
+        system.A = numpy.zeros(sy.shape_AB_excl_dynid, dtype=float)
+        system.A[ma.A.lhs] = td[ma.A.rhs]
+        system.A = numpy.vstack((system.A, ma.dynid_A))
+
+        system.B = numpy.zeros(sy.shape_AB_excl_dynid, dtype=float)
+        system.B[ma.B.lhs] = td[ma.B.rhs]
+        system.B = numpy.vstack((system.B, ma.dynid_B))
+
+        system.C = numpy.zeros(sy.shape_C_excl_dynid, dtype=float)
+        system.C = numpy.vstack((system.C, ma.dynid_C))
+
+        system.D = numpy.zeros(sy.shape_D_excl_dynid, dtype=float)
+        system.D[ma.D.lhs] = td[ma.D.rhs]
+        system.D = numpy.vstack((system.D, ma.dynid_D))
+
+        system.F = numpy.zeros(sy.shape_F, dtype=float)
+        system.F[ma.F.lhs] = td[ma.F.rhs]
+
+        system.G = numpy.zeros(sy.shape_G, dtype=float)
+        system.G[ma.G.lhs] = td[ma.G.rhs]
+
+        system.H = numpy.zeros(sy.shape_H, dtype=float)
+
+        system.J = numpy.zeros(sy.shape_J, dtype=float)
+        system.J[ma.J.lhs] = td[ma.J.rhs]
+
+        self._variants[variant]._system = system
 
 
     @classmethod

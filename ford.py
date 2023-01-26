@@ -23,15 +23,9 @@ from __future__ import annotations
 
 import dataclasses
 import numpy 
-import itertools
-import operator
 
 from typing import Self, NoReturn
 from collections.abc import Iterable
-
-from .models import (
-    Model,
-)
 #]
 
 
@@ -50,16 +44,4 @@ class System:
     B: numpy.ndarray | None = None
     C: numpy.ndarray | None = None
     D: numpy.ndarray | None = None
-
-
-    @classmethod
-    def for_model(
-        cls: type,
-        model: Model,
-        /
-    ) -> Self:
-    """
-    """
-
-
 
