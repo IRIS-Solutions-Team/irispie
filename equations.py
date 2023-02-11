@@ -50,8 +50,10 @@ class Equation:
     id: int | None = None
     human: str | None = None
     kind: EquationKind = EquationKind.UNSPECIFIED
+    descript: str | None = None
     xtring: str | None = None
     incidence: Tokens | None = None
+    entry: int | None = None
     """
     """
     #[
@@ -64,6 +66,10 @@ class Equation:
 
     def remove_equation_ref_from_xtring(self):
         return self.xtring.replace(","+_EQUATION_REF, "")
+
+    def set_id(self, qid: int) -> Self:
+        self.id = qid
+        return self
     #]
 
 

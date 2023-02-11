@@ -12,36 +12,36 @@ import enum
 import copy
 import numpy
 
-from .sources import (
+from ..sources import (
     Source,
 )
-from .incidence import (
+from ..incidence import (
     Token,
     get_max_shift, get_min_shift,
 )
-from .equations import (
+from ..equations import (
     EquationKind, Equation,
     finalize_equations_from_humans,
     generate_all_tokens_from_equations
 )
-from .quantities import (
+from ..quantities import (
     QuantityKind, Quantity,
     create_name_to_qid, create_qid_to_name, create_qid_to_logly,
     generate_all_qids, generate_all_quantity_names, 
     generate_qids_by_kind,
     get_max_qid, change_logly
 )
-from .audi import (
+from ..audi import (
     Context, DiffernAtom,
 )
-from .metaford import (
+from ..metaford import (
     SystemVectors, SolutionVectors,
     SystemMap,
 )
-from .ford import (
+from ..systems import (
     System
 )
-from .exceptions import (
+from ..exceptions import (
     UnknownName
 )
 #]
@@ -121,7 +121,8 @@ class Model:
     def __init__(self):
         self._quantities: list[Quantity] = []
         self._qid_to_logly: dict[int, bool] = {}
-        self._equations: list[Equation] = []
+        self._dynamic_equations: list[Equation] = []
+        self._steady_equations: list[Equation] = []
         self._variants: list[Variant] = []
 
 
@@ -227,11 +228,11 @@ class Model:
     def _prepare_ford(self, /) -> NoReturn:
         """
         """
-        self._system_vectors = SystemVectors(self._equations, self._quantities)
+        self._system_vectors = SystemVectors(self._dynamic_equations, self._quantities)
         self._solution_vectors = SolutionVectors(self._system_vectors)
         self._system_map = SystemMap(self._system_vectors)
 
-        system_equations = self._system_vectors.generate_system_equations_from_equations(self._equations)
+        system_equations = self._system_vectors.generate_system_equations_from_equations(self._dynamic_equations)
         self._system_differn_context = Context.for_equations(
            DiffernAtom, 
            system_equations,
@@ -297,13 +298,15 @@ class Model:
         **kwargs,
     ) -> Self:
         self = cls()
-        self._quantities = copy.deepcopy(source.quantities)
-        self._equations = copy.deepcopy(source.equations)
+        self._quantities = source.quantities[:]
+        self._dynamic_equations = source.dynamic_equations[:]
+        self._steady_equations = source.steady_equations[:]
         name_to_qid = create_name_to_qid(self._quantities)
-        finalize_equations_from_humans(self._equations, name_to_qid)
+        finalize_equations_from_humans(self._dynamic_equations, name_to_qid)
+        finalize_equations_from_humans(self._steady_equations, name_to_qid)
         self._variants = [ Variant(self._quantities) ]
         self._assign_auto_values()
-        self._prepare_ford()
+        #self._prepare_ford()
         return self
     #]
 

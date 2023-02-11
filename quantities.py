@@ -25,8 +25,9 @@ class QuantityKind(enum.Flag):
     MEASUREMENT_VARIABLE = enum.auto()
     MEASUREMENT_SHOCK = enum.auto()
     PARAMETER = enum.auto()
+    EXOGENOUS_VARIABLE = enum.auto()
 
-    VARIABLE = TRANSITION_VARIABLE | MEASUREMENT_VARIABLE
+    LOGLY_VARIABLE = TRANSITION_VARIABLE | MEASUREMENT_VARIABLE
     SHOCK = TRANSITION_SHOCK | MEASUREMENT_SHOCK
 
     IN_TRANSITION_EQUATIONS = TRANSITION_VARIABLE | TRANSITION_SHOCK | PARAMETER
@@ -42,10 +43,22 @@ class QuantityKind(enum.Flag):
 class Quantity:
     """
     """
+    #[
     id: int | None = None
     human: str | None = None
     kind: QuantityKind = QuantityKind.UNSPECIFIED
     logly: bool | None = None
+    descript: str | None = None
+    entry: int | None = None
+
+    def set_id(self, qid: int) -> Self:
+        self.id = qid
+        return self
+
+    def set_logly(self, logly: bool) -> Self:
+        self.logly = logly
+        return self
+    #]
 
 
 Quantities: TypeAlias = Iterable[Quantity]

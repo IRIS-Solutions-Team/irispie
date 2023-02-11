@@ -10,7 +10,7 @@ import numpy
 from typing import Self, NoReturn
 from collections.abc import Iterable
 
-from .models import (
+from .models.core import (
     Model,
 )
 #]
