@@ -11,6 +11,8 @@ import collections
 from typing import NoReturn, TypeAlias
 from collections.abc import Iterable
 
+from .parsers import preparser, model_source_parser
+
 from .equations import (
     EquationKind, Equation,
 )
@@ -24,7 +26,7 @@ QuantityInput: TypeAlias = tuple[str, str]
 EquationInput: TypeAlias = tuple[str, tuple[str, str]]
 
 
-class Source:
+class ModelSource:
     """
     """
     #[
@@ -34,6 +36,7 @@ class Source:
         self.steady_equations = []
         self.log_variables = []
         self.all_but = []
+        self.context: dict | None = None
         self.sealed = False
 
 
@@ -92,6 +95,8 @@ class Source:
 
 
     def add_log_variables(self, log_variable_inputs: tuple[str, Iterable[str]] | None) -> NoReturn:
+        if not log_variable_inputs:
+            return
         flag = log_variable_inputs[0]
         log_variables = log_variable_inputs[1]
         self.all_but.append(flag=="all-but")
@@ -150,19 +155,20 @@ class Source:
     def from_lists(
         cls,
         /,
-        transition_variables: Iterable[str], 
-        transition_equations: Iterable[str], 
-        transition_shocks: Iterable[str] | None = None,
-        measurement_variables: Iterable[str] | None = None,
-        measurement_equations: Iterable[str] | None = None,
-        measurement_shocks: Iterable[str] | None = None,
-        parameters: Iterable[str] | None = None,
+        transition_variables: Iterable[QuantityInput],
+        transition_equations: Iterable[EquationInput], 
+        transition_shocks: Iterable[QuantityInput] | None = None,
+        measurement_variables: Iterable[QuantityInput] | None = None,
+        measurement_equations: Iterable[EquationInput] | None = None,
+        measurement_shocks: Iterable[QuantityInput] | None = None,
+        parameters: Iterable[QuantityInput] | None = None,
+        exogenous_variables: Iterable[QuantityInput] | None = None,
         log_variables: Iterable[str] | None = None,
-        all_but: bool = False,
+        seal: bool = True,
     ) -> Self:
         """
         """
-        self = Source()
+        self = ModelSource()
         self.add_transition_variables(transition_variables)
         self.add_transition_equations(transition_equations)
         self.add_transition_shocks(transition_shocks)
@@ -170,15 +176,43 @@ class Source:
         self.add_measurement_equations(measurement_equations)
         self.add_measurement_shocks(measurement_shocks)
         self.add_parameters(parameters)
-        self.all_but = all_but
+        self.add_exogenous_variables(exogenous_variables)
         self.add_log_variables(log_variables)
-        self.seal()
+        if seal: self.seal()
         return self
+
+    @classmethod
+    def from_string(
+        cls,
+        source_string: str,
+        /,
+        context: dict | None = None,
+        seal: bool = True,
+    ) -> tuple[Self, dict]:
+        """
+        """
+        preparsed_string, preparser_info = preparser.from_string(source_string, context)
+        parsed_content = model_source_parser.from_string(preparsed_string)
+
+        self = ModelSource()
+        self.add_transition_variables(parsed_content.get("transition-variables"))
+        self.add_transition_shocks(parsed_content.get("transition-shocks"))
+        self.add_transition_equations(parsed_content.get("transition-equations"))
+        self.add_measurement_variables(parsed_content.get("measurement-variables"))
+        self.add_measurement_shocks(parsed_content.get("measurement-shocks"))
+        self.add_measurement_equations(parsed_content.get("measurement-equations"))
+        self.add_parameters(parsed_content.get("parameters"))
+        self.add_exogenous_variables(parsed_content.get("exogenous-variables"))
+        self.add_log_variables(parsed_content.get("log-variables"))
+        self.context = preparser_info["context"]
+        if seal: self.seal()
+        info = preparser_info
+        return self, info
     #]
 
 
 
-def _check_unique_names(names: Iterable[str]) -> NoReturn:
+def _check_unique_names(names: Iterable[str], /) -> NoReturn:
     """
     """
     #[
@@ -189,7 +223,7 @@ def _check_unique_names(names: Iterable[str]) -> NoReturn:
     #]
 
 
-def _handle_white_spaces(x: str) -> str:
+def _handle_white_spaces(x: str, /) -> str:
     return re.sub(r"[\s\n\r]+", " ", x)
 
 

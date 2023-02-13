@@ -17,6 +17,7 @@ $$
 
 """
 
+
 #[
 from __future__ import annotations
 
@@ -45,6 +46,7 @@ from .incidence import (
 )
 #]
 
+from IPython import embed
 
 @dataclasses.dataclass
 class SystemVectors:
@@ -166,19 +168,19 @@ class SystemMap:
     """
     """
     #[
-    A: ArrayMap | None = None
-    B: ArrayMap | None = None
+    A: _ArrayMap | None = None
+    B: _ArrayMap | None = None
     C: None = None
-    D: ArrayMap | None = None
+    D: _ArrayMap | None = None
     dynid_A: numpy.ndarray | None = None
     dynid_B: numpy.ndarray | None = None
     dynid_C: numpy.ndarray | None = None
     dynid_D: numpy.ndarray | None = None
 
-    F: ArrayMap | None = None
-    G: ArrayMap | None = None
+    F: _ArrayMap | None = None
+    G: _ArrayMap | None = None
     H: None = None
-    J: ArrayMap | None = None
+    J: _ArrayMap | None = None
 
     def __init__(
         self,
@@ -199,7 +201,7 @@ class SystemMap:
         # Transition equations
 
         self.A = vstack_array_maps(
-            ArrayMap.for_equation(
+            _ArrayMap.for_equation(
                 system_vectors.eid_to_wrt_tokens[eid],
                 system_vectors.transition_variables,
                 eid_to_rhs_offset[eid],
@@ -214,7 +216,7 @@ class SystemMap:
             for t in lagged_transition_variables 
         ]
         self.B = vstack_array_maps(
-            ArrayMap.for_equation(
+            _ArrayMap.for_equation(
                 system_vectors.eid_to_wrt_tokens[eid],
                 lagged_transition_variables, 
                 eid_to_rhs_offset[eid],
@@ -226,13 +228,10 @@ class SystemMap:
         self.A.remove_nones()
         self.B.remove_nones()
 
-        num_dynid_rows = len(system_vectors.transition_variables) - len(system_vectors.transition_eids)
-        self.dynid_A, self.dynid_B = _create_dynid_matrices(system_vectors.transition_variables, )
-        self.dynid_C = numpy.zeros((num_dynid_rows, system_vectors.shape_C_excl_dynid[1]), dtype=float, )
-        self.dynid_D = numpy.zeros((num_dynid_rows, system_vectors.shape_D_excl_dynid[1]), dtype=float, )
+        self.C = _ArrayMap.constant_vector(system_vectors.transition_eids)
 
         self.D = vstack_array_maps(
-            ArrayMap.for_equation(
+            _ArrayMap.for_equation(
                 system_vectors.eid_to_wrt_tokens[eid],
                 system_vectors.transition_shocks,
                 eid_to_rhs_offset[eid],
@@ -241,10 +240,15 @@ class SystemMap:
             for lhs_row, eid in enumerate(system_vectors.transition_eids)
         )
 
+        num_dynid_rows = len(system_vectors.transition_variables) - len(system_vectors.transition_eids)
+        self.dynid_A, self.dynid_B = _create_dynid_matrices(system_vectors.transition_variables, )
+        self.dynid_C = numpy.zeros((num_dynid_rows, system_vectors.shape_C_excl_dynid[1]), dtype=float, )
+        self.dynid_D = numpy.zeros((num_dynid_rows, system_vectors.shape_D_excl_dynid[1]), dtype=float, )
+
         # Measurement equations
 
         self.F = vstack_array_maps(
-            ArrayMap.for_equation(
+            _ArrayMap.for_equation(
                 system_vectors.eid_to_wrt_tokens[eid],
                 system_vectors.measurement_variables, 
                 eid_to_rhs_offset[eid],
@@ -254,7 +258,7 @@ class SystemMap:
         )
 
         self.G = vstack_array_maps(
-            ArrayMap.for_equation(
+            _ArrayMap.for_equation(
                 system_vectors.eid_to_wrt_tokens[eid],
                 system_vectors.transition_variables, 
                 eid_to_rhs_offset[eid],
@@ -263,8 +267,10 @@ class SystemMap:
             for lhs_row, eid in enumerate(system_vectors.measurement_eids)
         )
 
+        self.H = _ArrayMap.constant_vector(system_vectors.measurement_eids)
+
         self.J = vstack_array_maps(
-            ArrayMap.for_equation(
+            _ArrayMap.for_equation(
                 system_vectors.eid_to_wrt_tokens[eid],
                 system_vectors.measurement_shocks, 
                 eid_to_rhs_offset[eid],
@@ -302,10 +308,9 @@ def _create_dynid_matrices(system_transition_vector: Tokens):
     #]
 
 
-class ArrayMap:
+class _ArrayMap:
     """
     """
-    NOT_FOUND = ((None, None), (None, None))
     #[
     def __init__(self) -> NoReturn:
         self.lhs = ([], [])
@@ -322,8 +327,12 @@ class ArrayMap:
     ) -> NoReturn:
         """
         """
-        self.lhs = (self.lhs[0]+[lhs[0]], self.lhs[1]+[lhs[1]])
-        self.rhs = (self.rhs[0]+[rhs[0]], self.rhs[1]+[rhs[1]])
+        self.lhs[0].append(lhs[0])
+        self.lhs[1].append(lhs[1])
+        self.rhs[0].append(rhs[0])
+        self.rhs[1].append(rhs[1])
+        # self.lhs = (self.lhs[0]+[lhs[0]], self.lhs[1]+[lhs[1]])
+        # self.rhs = (self.rhs[0]+[rhs[0]], self.rhs[1]+[rhs[1]])
 
     def merge_with(
         self,
@@ -355,6 +364,7 @@ class ArrayMap:
         self.lhs = (list(unzipped_pruned[0]), list(unzipped_pruned[1]))
         self.rhs = (list(unzipped_pruned[2]), list(unzipped_pruned[3]))
 
+
     @classmethod
     def for_equation(
         cls,
@@ -362,23 +372,50 @@ class ArrayMap:
         tokens_in_columns_on_lhs: Tokens,
         rhs_offset: int,
         lhs_row: int,
-    ) -> ArrayMap:
+    ) -> Self:
         """
         """
+        raw_map = (
+            (lhs_row, tokens_in_columns_on_lhs.index(t), rhs_row, 0) 
+            for rhs_row, t in enumerate(tokens_in_equation_on_rhs, start=rhs_offset)
+            if t in tokens_in_columns_on_lhs
+        )
+        # Collect all lhr_rows, all lhs_columns, all rhs_rows, all rhs_columns
+        raw_map = zip(*raw_map)
         map = cls()
-        for rhs_row, t in enumerate(tokens_in_equation_on_rhs, start=rhs_offset):
-            if t in tokens_in_columns_on_lhs:
-                lhs_column = tokens_in_columns_on_lhs.index(t)
-                map.append((lhs_row, lhs_column), (rhs_row, 0))
+        try:
+            map.lhs = (list(next(raw_map)), list(next(raw_map)))
+            map.rhs = (list(next(raw_map)), list(next(raw_map)))
+        except:
+            map.lhs = ([], [])
+            map.rhs = ([], [])
+        # Equivalent to:
+        # map = cls()
+        # for rhs_row, t in enumerate(tokens_in_equation_on_rhs, start=rhs_offset):
+            # if t in tokens_in_columns_on_lhs:
+                # lhs_column = tokens_in_columns_on_lhs.index(t)
+                # map.append((lhs_row, lhs_column), (rhs_row, 0))
         return map
+
+    @classmethod
+    def constant_vector(
+        cls,
+        eids: Iterable[int],
+    ) -> Self:
+        """
+        """
+        num_equations = len(eids)
+        self = cls()
+        self.lhs = (list(range(num_equations)), [0]*num_equations)
+        self.rhs = (list(eids), [0]*num_equations)
+        return self
     #]
 
-
-def vstack_array_maps(maps: Iterable[ArrayMap]) -> ArrayMap:
+def vstack_array_maps(maps: Iterable[_ArrayMap]) -> _ArrayMap:
     """
     """
     #[
-    stacked_map = ArrayMap()
+    stacked_map = _ArrayMap()
     for m in maps:
         stacked_map.merge_with(m)
     return stacked_map

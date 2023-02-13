@@ -4,6 +4,9 @@
 #[
 from __future__ import annotations
 
+from IPython import embed
+from scipy import linalg
+import time
 from typing import Self, NoReturn
 from numbers import Number
 from collections.abc import Iterable, Callable
@@ -12,9 +15,8 @@ import enum
 import copy
 import numpy
 
-from ..sources import (
-    Source,
-)
+from .. import sources
+
 from ..incidence import (
     Token,
     get_max_shift, get_min_shift,
@@ -53,20 +55,29 @@ class ModelFlags(enum.IntFlag, ):
     #[
     LINEAR = enum.auto()
     GROWTH = enum.auto()
+    DEFAULT = 0
 
-    def is_linear(self, /) -> bool:
-        return self in ModelFlags.LINEAR
+    @property
+    def is_linear(self, /, ) -> bool:
+        return ModelFlags.LINEAR in self
 
-    def is_growth(self, /) -> bool:
-        return self in ModelFlags.GROWTH
+    @property
+    def is_growth(self, /, ) -> bool:
+        return ModelFlags.GROWTH in self
 
     @classmethod
-    def from_kwargs(cls: type, **kwargs) -> Self:
-        self = cls(0)
-        if kwargs.get("linear", False):
-            self |= ModelFlags.LINEAR
-        if kwargs.get("growth", False):
-            self |= ModelFlags.GROWTH
+    def update(cls, self, /, **kwargs) -> Self:
+        linear = kwargs.get("linear") if kwargs.get("linear") is not None else self.is_linear
+        growth = kwargs.get("growth") if kwargs.get("growth") is not None else self.is_growth
+        return cls.from_kwargs(linear=linear, growth=growth)
+
+    @classmethod
+    def from_kwargs(cls: type, **kwargs, ) -> Self:
+        self = cls.DEFAULT
+        if kwargs.get("linear"):
+            self |= cls.LINEAR
+        if kwargs.get("growth"):
+            self |= cls.GROWTH
         return self
     #]
 
@@ -96,21 +107,32 @@ class Variant:
     def _initilize_values(self, quantities:Quantities) -> NoReturn:
         self._values = { qty.id: self._missing_value for qty in quantities }
 
-    def update_values(self, update:dict) -> NoReturn:
+    def update_values(self, update: dict) -> NoReturn:
         for qid in self._values.keys() & update.keys():
             self._values[qid] = update[qid]
 
-    def create_steady_array(self, num_columns: int=1) -> numpy.ndarray:
+    def create_steady_array(
+        self,
+        /,
+        override_values: dict | None = None,
+        num_columns: int=1,
+    ) -> numpy.ndarray:
+        """
+        """
         steady_column = numpy.array(
-            self.prepare_values_for_steady_array(shift=0),
+            self.prepare_values_for_steady_array(override_values=override_values, shift=0),
             ndmin=2, dtype=float,
         ).transpose()
         steady_array = numpy.tile(steady_column, (1, num_columns))
         return steady_array
 
-    def prepare_values_for_steady_array(self, shift:int=0) -> Iterable:
+    def prepare_values_for_steady_array(self, override_values=None, shift:int=0) -> Iterable:
         _max_qid = max(self._values.keys())
-        return [ self._values.get(qid, self._missing_value) for qid in range(_max_qid+1) ]
+        values = self._values | override_values if override_values else self._values
+        return [ 
+            values.get(qid, self._missing_value) 
+            for qid in range(_max_qid+1)
+        ]
     #]
 
 
@@ -126,16 +148,31 @@ class Model:
         self._variants: list[Variant] = []
 
 
-    def assign(self: Self, variant: int=0, **kwargs, ) -> Self:
+    def assign(
+        self: Self,
+        /,
+        _variant: int | ... = ...,
+        **kwargs, 
+    ) -> Self:
         """
         """
         try:
-            update = _rekey_dict(kwargs, create_name_to_qid(self._quantities))
+            qid_to_value = _rekey_dict(kwargs, create_name_to_qid(self._quantities))
         except KeyError as _KeyError:
             raise UnknownName(_KeyError.args[0])
-
-        self._variants[variant].update_values(update)
+        _variant = resolve_variant(self, _variant)
+        for v in _variant:
+            self._variants[v].update_values(qid_to_value)
         return self
+
+
+    def assign_from_databank(
+        self, 
+        databank: Databank,
+        /,
+        _variant = ...,
+    ) -> Self:
+        return self.assign(_variant=_variant, **databank.__dict__)
 
 
     def change_num_variants(self, new_num: int) -> NoReturn:
@@ -166,15 +203,13 @@ class Model:
     def num_variants(self, /) -> int:
         return len(self._variants)
 
-
     @property
     def is_linear(self, /) -> bool:
-        return self._flags.is_linear()
-
+        return self._flags.is_linear
 
     @property
     def is_growth(self, /) -> bool:
-        return self._flags.is_growth()
+        return self._flags.is_growth
 
 
     def _get_max_shift(self: Self, /) -> int:
@@ -201,8 +236,14 @@ class Model:
         return create_qid_to_logly(self._quantities)
 
 
-    def create_steady_array(self, /, variant: int=0, **kwargs, ) -> numpy.ndarray:
-        return self._variants[variant].create_steady_array(**kwargs)
+    def create_steady_array(self, /, _variant: int=0, **kwargs, ) -> numpy.ndarray:
+        return self._variants[_variant].create_steady_array(**kwargs)
+
+
+    def create_zero_array(self, /, _variant: int=0, **kwargs, ) -> numpy.ndarray:
+        qid_to_logly = self.create_qid_to_logly()
+        override_values = {qid: int(qid_to_logly[qid]) for qid in qid_to_logly.keys() if qid_to_logly[qid] is not None }
+        return self._variants[_variant].create_steady_array(override_values=override_values, **kwargs)
 
 
     def _assign_auto_values(self: Self, /) -> NoReturn:
@@ -231,7 +272,6 @@ class Model:
         self._system_vectors = SystemVectors(self._dynamic_equations, self._quantities)
         self._solution_vectors = SolutionVectors(self._system_vectors)
         self._system_map = SystemMap(self._system_vectors)
-
         system_equations = self._system_vectors.generate_system_equations_from_equations(self._dynamic_equations)
         self._system_differn_context = Context.for_equations(
            DiffernAtom, 
@@ -241,73 +281,134 @@ class Model:
 
 
     def systemize(
-        self, 
-        variant: int = 0,
-        /
+        self,
+        /,
+        _variant: int | ... = ...,
+        linear: bool | None = None,
+        growth: bool | None = None,
     ) -> Self:
         """
         """
+        model_flags = ModelFlags.update(self._flags, linear=linear, growth=growth)
+        for v in resolve_variant(self, _variant):
+            self._systemize(v, model_flags)
+        return self
+
+
+    def _systemize(
+        self, 
+        _variant: int,
+        model_flags: ModelFlags,
+        /,
+    ) -> NoReturn:
+        """
+        """
         num_columns = self._system_differn_context.shape_data[1]
-        value_context = self.create_steady_array(variant=variant, num_columns=num_columns)
         logly_context = self.create_qid_to_logly()
+        create_array = self.create_steady_array if not model_flags.is_linear else self.create_zero_array
+        value_context = create_array(_variant=_variant, num_columns=num_columns)
 
+        # Differentiate and evaluate constant
         tt = self._system_differn_context.eval(value_context, logly_context)
-
         td = numpy.vstack([x.diff for x in tt])
         tc = numpy.vstack([x.value for x in tt])
 
-        ma = self._system_map
-        sy = self._system_vectors
+        map = self._system_map
+        vec = self._system_vectors
 
         system = System()
 
-        system.A = numpy.zeros(sy.shape_AB_excl_dynid, dtype=float)
-        system.A[ma.A.lhs] = td[ma.A.rhs]
-        system.A = numpy.vstack((system.A, ma.dynid_A))
+        system.A = numpy.zeros(vec.shape_AB_excl_dynid, dtype=float)
+        system.A[map.A.lhs] = td[map.A.rhs]
+        system.A = numpy.vstack((system.A, map.dynid_A))
 
-        system.B = numpy.zeros(sy.shape_AB_excl_dynid, dtype=float)
-        system.B[ma.B.lhs] = td[ma.B.rhs]
-        system.B = numpy.vstack((system.B, ma.dynid_B))
+        system.B = numpy.zeros(vec.shape_AB_excl_dynid, dtype=float)
+        system.B[map.B.lhs] = td[map.B.rhs]
+        system.B = numpy.vstack((system.B, map.dynid_B))
 
-        system.C = numpy.zeros(sy.shape_C_excl_dynid, dtype=float)
-        system.C = numpy.vstack((system.C, ma.dynid_C))
+        system.C = numpy.zeros(vec.shape_C_excl_dynid, dtype=float)
+        system.C[map.C.lhs] = tc[map.C.rhs]
+        system.C = numpy.vstack((system.C, map.dynid_C))
 
-        system.D = numpy.zeros(sy.shape_D_excl_dynid, dtype=float)
-        system.D[ma.D.lhs] = td[ma.D.rhs]
-        system.D = numpy.vstack((system.D, ma.dynid_D))
+        system.D = numpy.zeros(vec.shape_D_excl_dynid, dtype=float)
+        system.D[map.D.lhs] = td[map.D.rhs]
+        system.D = numpy.vstack((system.D, map.dynid_D))
 
-        system.F = numpy.zeros(sy.shape_F, dtype=float)
-        system.F[ma.F.lhs] = td[ma.F.rhs]
+        system.F = numpy.zeros(vec.shape_F, dtype=float)
+        system.F[map.F.lhs] = td[map.F.rhs]
 
-        system.G = numpy.zeros(sy.shape_G, dtype=float)
-        system.G[ma.G.lhs] = td[ma.G.rhs]
+        system.G = numpy.zeros(vec.shape_G, dtype=float)
+        system.G[map.G.lhs] = td[map.G.rhs]
 
-        system.H = numpy.zeros(sy.shape_H, dtype=float)
+        system.H = numpy.zeros(vec.shape_H, dtype=float)
+        system.H[map.H.lhs] = tc[map.H.rhs]
 
-        system.J = numpy.zeros(sy.shape_J, dtype=float)
-        system.J[ma.J.lhs] = td[ma.J.rhs]
+        system.J = numpy.zeros(vec.shape_J, dtype=float)
+        system.J[map.J.lhs] = td[map.J.rhs]
 
-        self._variants[variant]._system = system
+        self._variants[_variant]._system = system
+
+
+    def _steady_linear_no_growth(
+        self, 
+        _variant: int,
+    ) -> NoReturn:
+        """
+        """
+        sys = self._variants[_variant]._system
+
+        transition_steady_level = -linalg.pinv(sys.A+sys.B) @ sys.C
+        self._variants[_variant].update_values({
+            t.qid:float(x) 
+            for t, x in zip(self._system_vectors.transition_variables, transition_steady_level) 
+            if not t.shift
+        })
+
+        measurement_steady_level = -linalg.pinv(sys.F) @ (sys.G @ transition_steady_level + sys.H)
+        self._variants[_variant].update_values({
+            t.qid:float(x) 
+            for t, x in zip(self._system_vectors.measurement_variables, measurement_steady_level) 
+            if not t.shift
+        })
 
 
     @classmethod
     @_resolve_model_flags
     def from_source(
         cls: type,
-        source: Source,
+        model_source: sources.ModelSource,
+        /,
         **kwargs,
     ) -> Self:
+        """
+        """
         self = cls()
-        self._quantities = source.quantities[:]
-        self._dynamic_equations = source.dynamic_equations[:]
-        self._steady_equations = source.steady_equations[:]
+        self._quantities = model_source.quantities[:]
+        self._dynamic_equations = model_source.dynamic_equations[:]
+        self._steady_equations = model_source.steady_equations[:]
+
         name_to_qid = create_name_to_qid(self._quantities)
         finalize_equations_from_humans(self._dynamic_equations, name_to_qid)
         finalize_equations_from_humans(self._steady_equations, name_to_qid)
+
         self._variants = [ Variant(self._quantities) ]
         self._assign_auto_values()
-        #self._prepare_ford()
+        self._prepare_ford()
         return self
+
+
+    @classmethod
+    def from_string(
+        cls,
+        source_string: str,
+        /,
+        context: dict | None = None,
+        **kwargs,
+    ) -> tuple[Self, dict]:
+        """
+        """
+        model_source, info = sources.ModelSource.from_string(source_string, context=context)
+        return Model.from_source(model_source, **kwargs)
     #]
 
 
@@ -316,4 +417,15 @@ def _rekey_dict(dict_to_rekey: dict, old_key_to_new_key: dict, /) -> dict:
         old_key_to_new_key[key]: value 
         for key, value in dict_to_rekey.items()
     }
+
+
+def resolve_variant(self, _variant) -> Iterable[int]:
+    #[
+    if isinstance(_variant, Number):
+        resolved_variant = [_variant,]
+    elif _variant is Ellipsis:
+        return range(self.num_variants)
+    else:
+        return _variant
+    #]
 

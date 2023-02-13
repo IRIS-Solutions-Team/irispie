@@ -497,7 +497,7 @@ class ContextualDater(Dater, RangeableMixin):
         return False
 
     def resolve(self, context: ResolutionContextProtocol) -> Dater:
-        return context.__getattribute__(self._resolve_from) + self._offset
+        return getattr(context, self._resolve_from) + self._offset
     #]
 
 

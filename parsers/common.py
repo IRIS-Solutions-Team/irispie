@@ -32,3 +32,7 @@ def translate_keywords(commands_pattern: re.Pattern, code: str) -> str:
     return re.sub(commands_pattern, lambda m: _KEYWORD_PREFIX + m.group(1), code)
 
 
+def add_blank_lines(source: str) -> str:
+    return "\n" + source + "\n"
+
+

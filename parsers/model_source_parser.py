@@ -7,7 +7,6 @@ import functools
 from collections.abc import Iterable
 
 from . import common
-from .. import sources
 
 
 _GRAMMAR_DEF = common.GRAMMAR_DEF + r"""
@@ -32,7 +31,7 @@ _GRAMMAR_DEF = common.GRAMMAR_DEF + r"""
     eqn_body = eqn_version eqn_steady
     eqn_steady = (eqn_version_separator eqn_version)?
     eqn_version_separator = "!!"
-    eqn_version = ~r"[\?\w\.\(\)=\+\^\-\*\{\} \t\n]+"
+    eqn_version = ~r"[\?\w\.\(\)=\+\^\-\*\{\}/ \t\n]+"
 
     qty_block = qty_keyword qty_ended*
     qty_keyword = transition_variables_keyword / transition_shocks_keyword / measurement_variables_keyword / measurement_shocks_keyword / parameters_keyword / exogenous_variables_keyword
@@ -70,14 +69,15 @@ class _Visitor(parsimonious.nodes.NodeVisitor):
     #[
     def __init__(self):
         super().__init__()
-        self.source = sources.Source()
+        self.content = {}
+        # self.source = sources.Source()
 
     def _add(self, block_name, new_content):
-        block_name = block_name.replace("-", "_")
-        self.source.__getattribute__("add_"+block_name)(new_content)
+        updated_content = self.content.setdefault(block_name, []) + new_content
+        self.content[block_name] = updated_content
 
     def visit_source(self, node, visited_children):
-        return self.source
+        return self.content
 
     def _visit_block(self, node, visited_children):
         block_name = visited_children[0]
@@ -154,10 +154,10 @@ class _Visitor(parsimonious.nodes.NodeVisitor):
     #]
 
 
-def parse_from_string(source: str) -> dict[str, tuple]:
-    source = "\n" + source + "\n"
-    source = _translate_keywords(source)
-    nodes = _GRAMMAR["source"].parse(source)
+def from_string(source_string: str) -> sources.Source:
+    source_string = common.add_blank_lines(source_string)
+    source_string = _translate_keywords(source_string)
+    nodes = _GRAMMAR["source"].parse(source_string)
     visitor = _Visitor()
     return visitor.visit(nodes)
 

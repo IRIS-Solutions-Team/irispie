@@ -1,17 +1,10 @@
 
-#( External imports
-from types import (
-    SimpleNamespace,
-)
-
-from copy import (
-    deepcopy
-)
-
-from typing import (
-    Optional, Iterable, Self, Callable, TypeAlias
-)
-#)
+#[
+from types import SimpleNamespace
+from copy import deepcopy
+from typing import Self, Callable, TypeAlias, NoReturn
+from collections.abc import Iterable
+#]
 
 
 SourceNames: TypeAlias = Iterable[str] | str | Callable[[str], bool] | None
@@ -19,7 +12,7 @@ TargetNames: TypeAlias = Iterable[str] | str | Callable[[str], str] | None
 
 
 class Databank(SimpleNamespace):
-    #(
+    #[
     def _get_names(self: Self) -> Iterable[str]:
         """
         """
@@ -27,8 +20,9 @@ class Databank(SimpleNamespace):
 
     def _copy(
         self: Self,
-        source_names: Iterable[str]|None =None,
-        target_names: InputNames =None
+        /,
+        source_names: SourceNames = None,
+        target_names: TargetNames = None,
     ) -> Self:
         """
         """
@@ -37,11 +31,11 @@ class Databank(SimpleNamespace):
         new_databank._keep(target_names)
         return new_databank
 
-
     def _rename(
         self: Self,
-        source_names: SourceNames =None
-        target_names: TargetNames =None,
+        /,
+        source_names: SourceNames = None,
+        target_names: TargetNames = None,
     ) -> Self:
         """
         """
@@ -53,10 +47,10 @@ class Databank(SimpleNamespace):
             self.__dict__[new_name] = self.__dict__.pop(old_name)
         return self
 
-
     def _remove(
         self: Self,
-        remove_names: SourceNames =None,
+        /,
+        remove_names: SourceNames = None,
     ) -> Self:
         """
         """
@@ -68,10 +62,10 @@ class Databank(SimpleNamespace):
             del self.__dict__[n]
         return self
 
-
     def _keep(
         self: Self,
-        keep_names: SourceNames =None
+        /,
+        keep_names: SourceNames = None,
     ) -> Self:
         """
         """
@@ -81,7 +75,13 @@ class Databank(SimpleNamespace):
         keep_names = _resolve_source_target_names(keep_names, None, context_names)
         remove_names = set(context_names).difference(keep_names)
         return self._remove(remove_names)
-    #)
+
+    def __getitem__(self, name):
+        return self.__dict__[name]
+
+    def __setitem__(self, name, value) -> NoReturn:
+        self.__dict__[name] = value
+    #[
 
 
 def _resolve_source_target_names(

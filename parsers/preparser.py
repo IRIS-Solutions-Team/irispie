@@ -46,6 +46,7 @@ _GRAMMAR_DEF = common.GRAMMAR_DEF + r"""
 
 
 _GRAMMAR = parsimonious.grammar.Grammar(_GRAMMAR_DEF)
+_KEYWORD_PREFIX = _GRAMMAR["keyword_prefix"].literal
 _KEYWORDS = [ k.members[1].literal for k in _GRAMMAR["keyword"].members ]
 _KEYWORDS_PATTERN = common.compile_keywords_pattern(_KEYWORDS)
 _translate_keywords = functools.partial(common.translate_keywords, _KEYWORDS_PATTERN)
@@ -191,24 +192,50 @@ def _stringify(input):
         return ",".join([str(i) for i in input])
 
 
-def _evaluate_contextual_expressions(text, context):
+def _evaluate_contextual_expressions(text: str, context: dict, /):
     replace = lambda match: _stringify(eval(match.group(1), {}, context))
     return re.sub(_contextual_expression_pattern, replace, text)
 
 
-def parse_from_string(
-    source: str,
-    context: dict = None,
-) -> str:
-    """
-    """
-    context = context if context else {}
-    source = _translate_keywords(source)
-    source = "\n" + source + "\n"
+def _is_preparser_needed(source: str, /) -> bool:
+    return _KEYWORD_PREFIX in source
 
-    source = _evaluate_contextual_expressions(source, context)
-    nodes = _GRAMMAR["source"].parse(source)
-    visitor = _Visitor()
-    sequence = visitor.visit(nodes)
-    return _resolve_sequence(sequence)
+
+def from_string(
+    source: str,
+    context: dict | None = None,
+    /
+) -> tuple[str, dict]:
+    """
+    """
+    info = {
+        "context": None,
+        "preparser_needed": None,
+    }
+
+    info["context"] = context if context else {}
+
+    # Evaluate <...> expressions in the local context
+    source = _evaluate_contextual_expressions(source, info["context"])
+
+    # Replace human prefix (!) with processing prefix (¡)
+    source = _translate_keywords(source)
+
+    # Add blank lines pre and post source
+    source = common.add_blank_lines(source)
+
+    info["preparser_needed"] = _is_preparser_needed(source),
+
+    if info["preparser_needed"]:
+        # Parse input string structure into nodes
+        # Visit nodes and create a sequence of elements
+        # Resolve elements into preparsed string
+        nodes = _GRAMMAR["source"].parse(source)
+        visitor = _Visitor()
+        sequence = visitor.visit(nodes)
+        preparsed_source = _resolve_sequence(sequence)
+    else:
+        preparsed_source = source
+
+    return preparsed_source, info
 
