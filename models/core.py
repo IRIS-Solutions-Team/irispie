@@ -7,14 +7,17 @@ from __future__ import annotations
 from IPython import embed
 from scipy import linalg
 import time
-from typing import Self, NoReturn
+from typing import Self, NoReturn, TypeAlias
 from numbers import Number
 from collections.abc import Iterable, Callable
 
 import enum
 import copy
 import numpy
+import itertools
+import operator
 
+from . import variants
 from .. import sources
 
 from ..incidence import (
@@ -22,31 +25,27 @@ from ..incidence import (
     get_max_shift, get_min_shift,
 )
 from ..equations import (
-    EquationKind, Equation,
+    Equation,
     finalize_equations_from_humans,
     generate_all_tokens_from_equations
 )
 from ..quantities import (
     QuantityKind, Quantity,
     create_name_to_qid, create_qid_to_name, create_qid_to_logly,
-    generate_all_qids, generate_all_quantity_names, 
     generate_qids_by_kind,
-    get_max_qid, change_logly
+    change_logly
 )
-from ..audi import (
-    Context, DiffernAtom,
-)
-from ..metaford import (
-    SystemVectors, SolutionVectors,
-    SystemMap,
-)
-from ..systems import (
-    System
-)
-from ..exceptions import (
-    UnknownName
-)
+
+from .. import metaford
+from .. import systems
+from .. import exceptions
 #]
+
+
+SteadySolverReturn: TypeAlias = tuple[
+    numpy.ndarray|None, Iterable[int]|None, 
+    numpy.ndarray|None, Iterable[int]|None,
+]
 
 
 class ModelFlags(enum.IntFlag, ):
@@ -54,7 +53,7 @@ class ModelFlags(enum.IntFlag, ):
     """
     #[
     LINEAR = enum.auto()
-    GROWTH = enum.auto()
+    FLAT = enum.auto()
     DEFAULT = 0
 
     @property
@@ -62,27 +61,27 @@ class ModelFlags(enum.IntFlag, ):
         return ModelFlags.LINEAR in self
 
     @property
-    def is_growth(self, /, ) -> bool:
-        return ModelFlags.GROWTH in self
+    def is_flat(self, /, ) -> bool:
+        return ModelFlags.FLAT in self
 
     @classmethod
-    def update(cls, self, /, **kwargs) -> Self:
+    def update_from_kwargs(cls, self, /, **kwargs) -> Self:
         linear = kwargs.get("linear") if kwargs.get("linear") is not None else self.is_linear
-        growth = kwargs.get("growth") if kwargs.get("growth") is not None else self.is_growth
-        return cls.from_kwargs(linear=linear, growth=growth)
+        flat = kwargs.get("flat") if kwargs.get("flat") is not None else self.is_flat
+        return cls.from_kwargs(linear=linear, flat=flat)
 
     @classmethod
     def from_kwargs(cls: type, **kwargs, ) -> Self:
         self = cls.DEFAULT
         if kwargs.get("linear"):
             self |= cls.LINEAR
-        if kwargs.get("growth"):
-            self |= cls.GROWTH
+        if kwargs.get("flat"):
+            self |= cls.FLAT
         return self
     #]
 
 
-def _resolve_model_flags(func: Callable, /) -> Callable:
+def _resolve_model_flags(func: Callable, /, ) -> Callable:
     """
     Decorator for resolving model flags
     """
@@ -93,65 +92,19 @@ def _resolve_model_flags(func: Callable, /) -> Callable:
     return wrapper
 
 
-class Variant:
-    """
-    """
-    _missing_value: Any | None = None
-    _values: dict[int, Any] | None = None
-    _system: System | None = None
-    #[
-    def __init__(self, quantities:Quantities) -> NoReturn:
-        self._initilize_values(quantities)
-        self._system = System()
-
-    def _initilize_values(self, quantities:Quantities) -> NoReturn:
-        self._values = { qty.id: self._missing_value for qty in quantities }
-
-    def update_values(self, update: dict) -> NoReturn:
-        for qid in self._values.keys() & update.keys():
-            self._values[qid] = update[qid]
-
-    def create_steady_array(
-        self,
-        /,
-        override_values: dict | None = None,
-        num_columns: int=1,
-    ) -> numpy.ndarray:
-        """
-        """
-        steady_column = numpy.array(
-            self.prepare_values_for_steady_array(override_values=override_values, shift=0),
-            ndmin=2, dtype=float,
-        ).transpose()
-        steady_array = numpy.tile(steady_column, (1, num_columns))
-        return steady_array
-
-    def prepare_values_for_steady_array(self, override_values=None, shift:int=0) -> Iterable:
-        _max_qid = max(self._values.keys())
-        values = self._values | override_values if override_values else self._values
-        return [ 
-            values.get(qid, self._missing_value) 
-            for qid in range(_max_qid+1)
-        ]
-    #]
-
-
 class Model:
     """
     """
     #[
     def __init__(self):
         self._quantities: list[Quantity] = []
-        self._qid_to_logly: dict[int, bool] = {}
         self._dynamic_equations: list[Equation] = []
         self._steady_equations: list[Equation] = []
-        self._variants: list[Variant] = []
-
+        self._variants: list[variants.Variant] = []
 
     def assign(
         self: Self,
         /,
-        _variant: int | ... = ...,
         **kwargs, 
     ) -> Self:
         """
@@ -159,30 +112,39 @@ class Model:
         try:
             qid_to_value = _rekey_dict(kwargs, create_name_to_qid(self._quantities))
         except KeyError as _KeyError:
-            raise UnknownName(_KeyError.args[0])
-        _variant = resolve_variant(self, _variant)
-        for v in _variant:
-            self._variants[v].update_values(qid_to_value)
+            raise exceptions.UnknownName(_KeyError.args[0])
+        for v in self._variants:
+            v.update_values_from_dict(qid_to_value)
         return self
-
 
     def assign_from_databank(
         self, 
         databank: Databank,
         /,
-        _variant = ...,
     ) -> Self:
-        return self.assign(_variant=_variant, **databank.__dict__)
-
-
-    def change_num_variants(self, new_num: int) -> NoReturn:
         """
+        """
+        return self.assign(**databank.__dict__)
+
+    @property
+    def copy(self) -> Self:
+        return copy.deepcopy(self)
+
+    def __getitem__(self, variants):
+        variants = resolve_variant(self, variants)
+        self_copy = copy.copy(self)
+        self_copy._variants = [ self._variants[i] for i in variants ]
+        return self_copy
+
+    def change_num_variants(self, new_num: int, /, ) -> Self:
+        """
+        Change number of alternative parameter variants in model object
         """
         if new_num<self.num_variants:
-            self._shrink_num_variants(new_num)
+            self._shrink_num_variants(new_num, )
         elif new_num>self.num_variants:
-            self._expand_num_variants(new_num)
-
+            self._expand_num_variants(new_num, )
+        return self
 
     def change_logly(
         self,
@@ -198,178 +160,187 @@ class Model:
         ]
         self._quantities = change_logly(self._quantities, new_logly, qids)
 
-
     @property
-    def num_variants(self, /) -> int:
+    def num_variants(self, /, ) -> int:
         return len(self._variants)
 
     @property
-    def is_linear(self, /) -> bool:
+    def is_linear(self, /, ) -> bool:
         return self._flags.is_linear
 
     @property
-    def is_growth(self, /) -> bool:
-        return self._flags.is_growth
+    def is_flat(self, /, ) -> bool:
+        return self._flags.is_flat
 
-
-    def _get_max_shift(self: Self, /) -> int:
+    def _get_max_shift(self: Self, /, ) -> int:
         return get_max_shift(self._collect_all_tokens)
 
-
-    def _get_min_shift(self: Self, /) -> int:
+    def _get_min_shift(self: Self, /, ) -> int:
         return get_min_shift(self._collect_all_tokens)
 
-
-    def create_steady_evaluator(self, /) -> SteadyEvaluator:
+    def create_steady_evaluator(self, /, ) -> SteadyEvaluator:
         return SteadyEvaluator(self)
 
-
-    def create_name_to_qid(self, /) -> dict[str, int]:
+    def create_name_to_qid(self, /, ) -> dict[str, int]:
         return create_name_to_qid(self._quantities)
 
-
-    def create_qid_to_name(self, /) -> dict[int, str]:
+    def create_qid_to_name(self, /, ) -> dict[int, str]:
         return create_qid_to_name(self._quantities)
 
-
-    def create_qid_to_logly(self, /) -> dict[int, bool]:
+    def create_qid_to_logly(self, /, ) -> dict[int, bool]:
         return create_qid_to_logly(self._quantities)
 
+    def _create_steady_array(
+        self,
+        variant: Variant,
+        /,
+        **kwargs,
+    ) -> numpy.ndarray:
+        qid_to_logly = self.create.qid_to_logly()
+        return variant.create_steady_array(qid_to_logly, **kwargs, )
 
-    def create_steady_array(self, /, _variant: int=0, **kwargs, ) -> numpy.ndarray:
-        return self._variants[_variant].create_steady_array(**kwargs)
-
-
-    def create_zero_array(self, /, _variant: int=0, **kwargs, ) -> numpy.ndarray:
+    def _create_zero_array(
+        self,
+        variant: Variant,
+        /,
+        **kwargs,
+    ) -> numpy.ndarray:
+        """
+        """
         qid_to_logly = self.create_qid_to_logly()
-        override_values = {qid: int(qid_to_logly[qid]) for qid in qid_to_logly.keys() if qid_to_logly[qid] is not None }
-        return self._variants[_variant].create_steady_array(override_values=override_values, **kwargs)
+        levels = variant.levels
+        changes = variant.changes
+        update = { qid:(float(logly), float(logly), ) for qid, logly in qid_to_logly.items() if logly is not None }
+        levels = variants.update_levels_from_dict(levels, update, )
+        changes = variants.update_changes_from_dict(changes, update, )
+        return variants.create_steady_array(levels, changes, qid_to_logly, **kwargs, )
 
+    def _assign_auto_values(self: Self, /, ) -> NoReturn:
+        assign_shocks = { qid: (0, numpy.nan) for qid in  generate_qids_by_kind(self._quantities, QuantityKind.SHOCK) }
+        self._variants[0].update_values_from_dict(assign_shocks)
 
-    def _assign_auto_values(self: Self, /) -> NoReturn:
-        assign_shocks = { qid: 0 for qid in  generate_qids_by_kind(self._quantities, QuantityKind.SHOCK) }
-        self._variants[0].update_values(assign_shocks)
-
-
-    def _shrink_num_variants(self, new_num: int, /) -> NoReturn:
+    def _shrink_num_variants(self, new_num: int, /, ) -> NoReturn:
         if new_num<1:
             raise Exception('Number of variants must be one or more')
         self._variants = self._variants[0:new_num]
 
-
-    def _expand_num_variants(self, new_num: int, /) -> NoReturn:
+    def _expand_num_variants(self, new_num: int, /, ) -> NoReturn:
         for i in range(self.num_variants, new_num):
             self._variants.append(copy.deepcopy(self._variants[-1]))
 
-
-    def _collect_all_tokens(self, /) -> set[Token]:
+    def _collect_all_tokens(self, /, ) -> set[Token]:
         return set(generate_all_tokens_from_equations(self._equations))
 
 
-    def _prepare_ford(self, /) -> NoReturn:
-        """
-        """
-        self._system_vectors = SystemVectors(self._dynamic_equations, self._quantities)
-        self._solution_vectors = SolutionVectors(self._system_vectors)
-        self._system_map = SystemMap(self._system_vectors)
-        system_equations = self._system_vectors.generate_system_equations_from_equations(self._dynamic_equations)
-        self._system_differn_context = Context.for_equations(
-           DiffernAtom, 
-           system_equations,
-           self._system_vectors.eid_to_wrt_tokens,
-        )
+    # def systemize(
+        # self,
+        # /,
+        # _variant: int | ... = ...,
+        # linear: bool | None = None,
+        # flat: bool | None = None,
+    # ) -> Self:
+        # """
+        # """
+        # model_flags = ModelFlags.update_from_kwargs(self._flags, linear=linear, flat=flat)
+        # for v in resolve_variant(self, _variant):
+            # self._systemize(v, model_flags)
+        # return self
 
 
-    def systemize(
+    def _systemize_steady_linear(
+        self,
+        variant: Variant,
+        /,
+    ) -> systems.System:
+        """
+        """
+        smf = self._steady_metaford
+        num_columns = smf.system_differn_context.shape_data[1]
+        logly_context = self.create_qid_to_logly()
+        value_context = self._create_zero_array(variant, num_columns=num_columns)
+        return systems.System.for_model(smf, logly_context, value_context)
+
+
+    def steady(
         self,
         /,
-        _variant: int | ... = ...,
-        linear: bool | None = None,
-        growth: bool | None = None,
-    ) -> Self:
+        **kwargs, 
+    ) -> dict:
         """
         """
-        model_flags = ModelFlags.update(self._flags, linear=linear, growth=growth)
-        for v in resolve_variant(self, _variant):
-            self._systemize(v, model_flags)
-        return self
+        solver = self._choose_steady_solver(**kwargs)
+        for v in self._variants:
+            levels, qids_levels, changes, qids_changes = solver(v)
+            v.update_levels_from_array(levels, qids_levels)
+            v.update_changes_from_array(changes, qids_changes)
 
 
-    def _systemize(
+    def _choose_steady_solver(
+        self,
+        **kwargs,
+    ) -> Callable:
+        _STEADY_SOLVER = {
+            ModelFlags.DEFAULT: self._steady_nonlinear_nonflat,
+            ModelFlags.LINEAR: self._steady_linear_nonflat,
+            ModelFlags.FLAT: self._steady_nonlinear_flat,
+            ModelFlags.LINEAR | ModelFlags.FLAT: self._steady_linear_flat,
+        }
+        model_flags = ModelFlags.update_from_kwargs(self._flags, **kwargs)
+        return _STEADY_SOLVER[model_flags]
+
+
+    def _steady_linear_flat(
         self, 
-        _variant: int,
-        model_flags: ModelFlags,
+        variant: Variant,
         /,
-    ) -> NoReturn:
+    ) -> SteadySolverReturn:
         """
         """
-        num_columns = self._system_differn_context.shape_data[1]
-        logly_context = self.create_qid_to_logly()
-        create_array = self.create_steady_array if not model_flags.is_linear else self.create_zero_array
-        value_context = create_array(_variant=_variant, num_columns=num_columns)
+        pinv = linalg.pinv
+        smf = self._steady_metaford
+        sys = self._systemize_steady_linear(variant)
 
-        # Differentiate and evaluate constant
-        tt = self._system_differn_context.eval(value_context, logly_context)
-        td = numpy.vstack([x.diff for x in tt])
-        tc = numpy.vstack([x.value for x in tt])
+        # A @ Xi + B @ Xi{-1} + C = 0
+        # F @ Y + G @ Xi + H = 0
+        Xi = -pinv(sys.A + sys.B) @ sys.C
+        Y = -pinv(sys.F) @ (sys.G @ Xi + sys.H)
 
-        map = self._system_map
-        vec = self._system_vectors
+        levels = numpy.hstack((Xi.flat, Y.flat))
+        tokens = list(itertools.chain(
+            smf.system_vectors.transition_variables,
+            smf.system_vectors.measurement_variables,
+        ))
 
-        system = System()
+        # Extract only tokens with zero shift
+        zero_shift_index = [ not t.shift for t in tokens ]
+        zero_shift_levels = levels[zero_shift_index]
+        qids_levels = [ t.qid for t in itertools.compress(tokens, zero_shift_index) ]
 
-        system.A = numpy.zeros(vec.shape_AB_excl_dynid, dtype=float)
-        system.A[map.A.lhs] = td[map.A.rhs]
-        system.A = numpy.vstack((system.A, map.dynid_A))
-
-        system.B = numpy.zeros(vec.shape_AB_excl_dynid, dtype=float)
-        system.B[map.B.lhs] = td[map.B.rhs]
-        system.B = numpy.vstack((system.B, map.dynid_B))
-
-        system.C = numpy.zeros(vec.shape_C_excl_dynid, dtype=float)
-        system.C[map.C.lhs] = tc[map.C.rhs]
-        system.C = numpy.vstack((system.C, map.dynid_C))
-
-        system.D = numpy.zeros(vec.shape_D_excl_dynid, dtype=float)
-        system.D[map.D.lhs] = td[map.D.rhs]
-        system.D = numpy.vstack((system.D, map.dynid_D))
-
-        system.F = numpy.zeros(vec.shape_F, dtype=float)
-        system.F[map.F.lhs] = td[map.F.rhs]
-
-        system.G = numpy.zeros(vec.shape_G, dtype=float)
-        system.G[map.G.lhs] = td[map.G.rhs]
-
-        system.H = numpy.zeros(vec.shape_H, dtype=float)
-        system.H[map.H.lhs] = tc[map.H.rhs]
-
-        system.J = numpy.zeros(vec.shape_J, dtype=float)
-        system.J[map.J.lhs] = td[map.J.rhs]
-
-        self._variants[_variant]._system = system
+        return zero_shift_levels, qids_levels, None, None
 
 
-    def _steady_linear_no_growth(
-        self, 
-        _variant: int,
-    ) -> NoReturn:
-        """
-        """
-        sys = self._variants[_variant]._system
+    def _steady_linear_nonflat(
+        self,
+        variant: Variant,
+        /,
+    ) -> SteadySolverReturn:
+        return []
 
-        transition_steady_level = -linalg.pinv(sys.A+sys.B) @ sys.C
-        self._variants[_variant].update_values({
-            t.qid:float(x) 
-            for t, x in zip(self._system_vectors.transition_variables, transition_steady_level) 
-            if not t.shift
-        })
 
-        measurement_steady_level = -linalg.pinv(sys.F) @ (sys.G @ transition_steady_level + sys.H)
-        self._variants[_variant].update_values({
-            t.qid:float(x) 
-            for t, x in zip(self._system_vectors.measurement_variables, measurement_steady_level) 
-            if not t.shift
-        })
+    def _steady_nonlinear_flat(
+        self,
+        variant: Variant,
+        /,
+    ) -> SteadySolverReturn:
+        return []
+
+
+    def _steady_nonlinear_nonflat(
+        self,
+        variant: Variant,
+        /,
+    ) -> SteadySolverReturn:
+        return []
 
 
     @classmethod
@@ -391,9 +362,10 @@ class Model:
         finalize_equations_from_humans(self._dynamic_equations, name_to_qid)
         finalize_equations_from_humans(self._steady_equations, name_to_qid)
 
-        self._variants = [ Variant(self._quantities) ]
+        self._variants = [ variants.Variant(self._quantities) ]
         self._assign_auto_values()
-        self._prepare_ford()
+        self._dynamic_metaford = metaford.Metaford(self._dynamic_equations, self._quantities)
+        self._steady_metaford = metaford.Metaford(self._steady_equations, self._quantities)
         return self
 
 
@@ -412,20 +384,22 @@ class Model:
     #]
 
 
-def _rekey_dict(dict_to_rekey: dict, old_key_to_new_key: dict, /) -> dict:
+def _rekey_dict(dict_to_rekey: dict, old_key_to_new_key: dict, /, ) -> dict:
     return { 
         old_key_to_new_key[key]: value 
         for key, value in dict_to_rekey.items()
     }
 
 
-def resolve_variant(self, _variant) -> Iterable[int]:
+def resolve_variant(self, variants, /, ) -> Iterable[int]:
     #[
-    if isinstance(_variant, Number):
-        resolved_variant = [_variant,]
-    elif _variant is Ellipsis:
+    if isinstance(variants, Number):
+        return [variants, ]
+    elif variants is Ellipsis:
         return range(self.num_variants)
+    elif isinstance(variants, slice):
+        return range(*variants.indices(self.num_variants))
     else:
-        return _variant
+        return [v for v in variants]
     #]
 

@@ -94,14 +94,16 @@ class ModelSource:
         self._add_equations(equation_inputs, EquationKind.MEASUREMENT_EQUATION)
 
 
-    def add_log_variables(self, log_variable_inputs: tuple[str, Iterable[str]] | None) -> NoReturn:
+    def add_all_but(self, all_but_input: str | None) -> NoReturn:
+        if not all_but_input:
+            return
+        self.all_but.append(all_but_input)
+
+
+    def add_log_variables(self, log_variable_inputs: Iterable[str] | None, /, ) -> NoReturn:
         if not log_variable_inputs:
             return
-        flag = log_variable_inputs[0]
-        log_variables = log_variable_inputs[1]
-        self.all_but.append(flag=="all-but")
-        if log_variables:
-            self.log_variables += log_variables
+        self.log_variables += log_variable_inputs
 
 
     def _add_quantities(self, quantity_inputs: Iterable[QuantityInput] | None, kind: QuantityKind) -> NoReturn:
@@ -142,13 +144,13 @@ class ModelSource:
 
 
     def _is_logly_consistent(self, /) -> bool:
-        return all(self.all_but) or all(not x for x in self.all_but) if self.all_but else True
+        return all(a=="all-but" for a in self.all_but) or all(a=="" for a in self.all_but) if self.all_but else True
 
 
     def _resolve_default_logly(self, /) -> bool:
         if not self._is_logly_consistent():
             raise Exception("Inconsistent use of !all-but in !log-variables")
-        return self.all_but.pop() if self.all_but else False
+        return self.all_but.pop()=="all-but" if self.all_but else False
 
 
     @classmethod

@@ -127,7 +127,7 @@ class Dater(RangeableMixin):
 
 
     def __bool__(self) -> bool:
-        return bool(self.needs_resolve)
+        return not self.needs_resolve
 
 
     def __init__(self, serial=0):
@@ -382,7 +382,7 @@ class Ranger():
 
 
     def __bool__(self) -> bool:
-        return self.needs_resolve
+        return not self.needs_resolve
 
 
     # @property

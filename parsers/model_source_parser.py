@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import IPython as ip
 import parsimonious
 import functools
 from collections.abc import Iterable
@@ -88,14 +89,17 @@ class _Visitor(parsimonious.nodes.NodeVisitor):
     visit_eqn_block = _visit_block
 
     def visit_log_block(self, node, visited_children):
-        block_name, _, all_but, _, block_content = visited_children
-        self._add(block_name, (all_but, block_content))
+        block_name, _, _, _, block_content = visited_children
+        self._add(block_name, block_content)
 
     def visit_all_but_flag(self, node, visited_children):
-        return visited_children[0] if visited_children else ""
+        block_name = "all-but"
+        flag = visited_children[0] if visited_children else ""
+        self._add(block_name, flag)
+        return flag
 
-    def visit_all_but_keyword(self, node, visited_children):
-        return "all-but"
+    # def visit_all_but_keyword(self, node, visited_children):
+        # return "all-but"
 
     def visit_qty_ended(self, node, visited_children):
         _, description, _, name, _ = visited_children

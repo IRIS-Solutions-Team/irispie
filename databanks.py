@@ -15,6 +15,7 @@ class Databank(SimpleNamespace):
     #[
     def _get_names(self: Self) -> Iterable[str]:
         """
+        Get all names stored in a databank save for the private attributes
         """
         return [ n for n in dir(self) if not n.startswith("_") ]
 

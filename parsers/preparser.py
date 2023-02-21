@@ -161,12 +161,23 @@ class _End:
     #]
 
 
-def _find_matching_end(sequence: Sequence) -> int:
+_COMMENTS_PATTERN = re.compile(r'"[^"\n]*"|[%#].*|\.\.\..*')
+
+
+def _remove_comments(source: str, /, ) -> str:
+    return re.sub(
+        _COMMENTS_PATTERN,
+        lambda m: m.group(0) if m.group(0).startswith('"') else "",
+        source,
+    )
+
+
+def _find_matching_end(sequence: Sequence, /, ) -> int:
     level = list(itertools.accumulate(s.level for s in sequence))
     return level.index(0)
 
 
-def _resolve_sequence(sequence: Sequence) -> str:
+def _resolve_sequence(sequence: Sequence, /, ) -> str:
     code = ""
     while sequence:
         new_code, sequence = sequence[0].resolve(sequence)
@@ -214,6 +225,9 @@ def from_string(
     }
 
     info["context"] = context if context else {}
+
+    # Remove line comments %, #, ...
+    source = _remove_comments(source)
 
     # Evaluate <...> expressions in the local context
     source = _evaluate_contextual_expressions(source, info["context"])

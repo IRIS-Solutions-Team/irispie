@@ -3,6 +3,7 @@
 
 from functools import partial
 
+from IPython import embed
 from numbers import Number
 
 from collections.abc import (
@@ -77,7 +78,7 @@ class Series:
     nan_str: str = "·"
 
 
-    def __init__(self, num_columns=1, data_type=float):
+    def __init__(self, /, num_columns=1, data_type=float, ):
         self.data_type = data_type
         self._reset(num_columns=num_columns, data_type=data_type)
         self.comment = ""
@@ -126,7 +127,7 @@ class Series:
         if dates is Ellipsis:
             dates = Ranger(None, None)
 
-        if isinstance(dates, ResolvableP) and dates.needs_resolve:
+        if isinstance(dates, ResolvableProtocol) and dates.needs_resolve:
             dates = dates.resolve(self)
 
         if not self.start_date:
@@ -141,8 +142,15 @@ class Series:
         if columns is None:
             columns = slice(None) #self._get_default_columns()
 
+        if isinstance(columns, slice):
+            columns = range(*columns.indices(self.num_columns))
+
         if isinstance(pos, Iterable) and isinstance(columns, Iterable):
-            self.data[np_ix_(pos, columns)] = data
+            if isinstance(data, tuple):
+                for c, d in zip(columns, data):
+                    self.data[pos, c] = d
+            else:
+                self.data[np_ix_(pos, columns)] = data
         else:
             self.data[pos, columns] = data
 
@@ -157,7 +165,7 @@ class Series:
         if dates is Ellipsis:
             dates = slice(None)
 
-        if isinstance(dates, ResolvableP) and dates.needs_resolve:
+        if isinstance(dates, ResolvableProtocol) and dates.needs_resolve:
             dates = dates.resolve(self)
 
         if not dates:

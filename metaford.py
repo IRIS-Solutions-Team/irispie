@@ -29,6 +29,8 @@ import operator
 from typing import Self, NoReturn
 from collections.abc import Iterable
 
+from . import audi
+
 from .equations import (
     EquationKind, Equations,
     generate_all_tokens_from_equations,
@@ -46,7 +48,28 @@ from .incidence import (
 )
 #]
 
-from IPython import embed
+
+@dataclasses.dataclass
+class Metaford:
+    """
+    """
+    #[
+    system_vectors: SystemVectors | None = None
+    solution_vectors: SolutionVectors | None = None
+    system_map: SystemMap | None = None
+    system_differn_context: audi.Context | None = None
+
+    def __init__(self, equations, quantities) -> NoReturn:
+        self.system_vectors = SystemVectors(equations, quantities)
+        self.solution_vectors = SolutionVectors(self.system_vectors)
+        self.system_map = SystemMap(self.system_vectors)
+        self.system_differn_context = audi.Context.for_equations(
+           audi.DiffernAtom, 
+           self.system_vectors.generate_system_equations_from_equations(equations),
+           self.system_vectors.eid_to_wrt_tokens,
+        )
+    #]
+
 
 @dataclasses.dataclass
 class SystemVectors:
@@ -375,8 +398,9 @@ class _ArrayMap:
     ) -> Self:
         """
         """
+        index = tokens_in_columns_on_lhs.index
         raw_map = (
-            (lhs_row, tokens_in_columns_on_lhs.index(t), rhs_row, 0) 
+            (lhs_row, index(t), rhs_row, 0) 
             for rhs_row, t in enumerate(tokens_in_equation_on_rhs, start=rhs_offset)
             if t in tokens_in_columns_on_lhs
         )
