@@ -375,11 +375,14 @@ class Model:
         source_string: str,
         /,
         context: dict | None = None,
+        save_preparsed: str = "",
         **kwargs,
     ) -> tuple[Self, dict]:
         """
         """
-        model_source, info = sources.ModelSource.from_string(source_string, context=context)
+        model_source, info = sources.ModelSource.from_string(
+            source_string, context=context, save_preparsed=save_preparsed,
+        )
         return Model.from_source(model_source, **kwargs)
     #]
 

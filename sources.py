@@ -189,11 +189,14 @@ class ModelSource:
         source_string: str,
         /,
         context: dict | None = None,
+        save_preparsed: str = "",
         seal: bool = True,
     ) -> tuple[Self, dict]:
         """
         """
-        preparsed_string, preparser_info = preparser.from_string(source_string, context)
+        preparsed_string, preparser_info = preparser.from_string(
+            source_string, context, save_preparsed=save_preparsed, 
+        )
         parsed_content = model_source_parser.from_string(preparsed_string)
 
         self = ModelSource()
@@ -230,7 +233,7 @@ def _handle_white_spaces(x: str, /) -> str:
 
 
 def _reorder_by_kind(items: Iterable, /) -> Iterable:
-    return sorted(items, key=lambda x: x.kind.value)
+    return sorted(items, key=lambda x: (x.kind.value, x.entry))
 
 
 def _stamp_id(items: Iterable, /) -> Iterable:

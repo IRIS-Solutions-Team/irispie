@@ -1,6 +1,7 @@
 
 from __future__ import annotations
 
+from IPython import embed
 import re
 import parsimonious
 import functools
@@ -24,6 +25,7 @@ _GRAMMAR_DEF = common.GRAMMAR_DEF + r"""
 
     for_do_block = for_keyword white_spaces for_control do_keyword
         for_control = for_control_name white_spaces "=" white_spaces for_token_ended*
+        for_control_name_equal_sign = for_control_name white_spaces "=" white_spaces
         for_control_name = ~r"\?\w*"
         for_token_ended = for_token for_token_end
         for_token = ~r"\w+"
@@ -208,14 +210,28 @@ def _evaluate_contextual_expressions(text: str, context: dict, /):
     return re.sub(_contextual_expression_pattern, replace, text)
 
 
-def _is_preparser_needed(source: str, /) -> bool:
+def _is_preparser_needed(source: str, /, ) -> bool:
     return _KEYWORD_PREFIX in source
+
+
+def _save_preparsed_source(source: str, file_name: str, /, ) -> NoReturn:
+    if file_name:
+        with open(file_name, "wt+") as fid:
+            fid.write(source)
+
+
+def _run_preparser_on_source_string(source: str, /, ) -> str:
+    nodes = _GRAMMAR["source"].parse(source)
+    visitor = _Visitor()
+    sequence = visitor.visit(nodes)
+    return _resolve_sequence(sequence)
 
 
 def from_string(
     source: str,
     context: dict | None = None,
-    /
+    /,
+    save_preparsed: str = "",
 ) -> tuple[str, dict]:
     """
     """
@@ -238,18 +254,12 @@ def from_string(
     # Add blank lines pre and post source
     source = common.add_blank_lines(source)
 
-    info["preparser_needed"] = _is_preparser_needed(source),
+    info["preparser_needed"] = _is_preparser_needed(source)
 
-    if info["preparser_needed"]:
-        # Parse input string structure into nodes
-        # Visit nodes and create a sequence of elements
-        # Resolve elements into preparsed string
-        nodes = _GRAMMAR["source"].parse(source)
-        visitor = _Visitor()
-        sequence = visitor.visit(nodes)
-        preparsed_source = _resolve_sequence(sequence)
-    else:
-        preparsed_source = source
+    preparsed_source = _run_preparser_on_source_string(source) if info["preparser_needed"] else source
+
+    if save_preparsed:
+        _save_preparsed_source(preparsed_source, save_preparsed)
 
     return preparsed_source, info
 

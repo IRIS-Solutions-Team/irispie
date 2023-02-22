@@ -21,6 +21,7 @@ $$
 #[
 from __future__ import annotations
 
+from IPython import embed
 import dataclasses
 import numpy 
 import itertools
@@ -248,8 +249,8 @@ class SystemMap:
             for lhs_row, eid in enumerate(system_vectors.transition_eids)
         )
 
-        self.A.remove_nones()
-        self.B.remove_nones()
+        self.A._remove_nones()
+        self.B._remove_nones()
 
         self.C = _ArrayMap.constant_vector(system_vectors.transition_eids)
 
@@ -376,9 +377,11 @@ class _ArrayMap:
         self.lhs = ([lhs_row if i is not None else None for i in self.lhs[0]], self.lhs[1])
         self.rhs = ([i+rhs_row_offset if i is not None else None for i in self.rhs[0]], self.rhs[1])
 
-    def remove_nones(self) -> NoReturn:
+    def _remove_nones(self) -> NoReturn:
         """
         """
+        if not self.lhs[0]:
+            return
         zipped_pruned = [
             i for i in zip(self.lhs[0], self.lhs[1], self.rhs[0], self.rhs[1])
             if i[0] is not None
