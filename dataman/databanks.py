@@ -10,8 +10,8 @@ from collections.abc import Iterable, Callable
 #]
 
 
-SourceNames: TypeAlias = Iterable[str] | str | Callable[[str], bool] | None
-TargetNames: TypeAlias = Iterable[str] | str | Callable[[str], str] | None
+SourceNames: TypeAlias = Iterable[str] | str | Callable[[str], bool]
+TargetNames: TypeAlias = Iterable[str] | str | Callable[[str], str]
 
 
 class Databank(types.SimpleNamespace):
@@ -23,8 +23,8 @@ class Databank(types.SimpleNamespace):
 
     def _copy(
         self: Self,
-        source_names: Iterable[str]|None =None,
-        target_names: InputNames =None
+        source_names: Iterable[str]|None = None,
+        target_names: InputNames = None
     ) -> Self:
         """
         """
@@ -36,8 +36,8 @@ class Databank(types.SimpleNamespace):
 
     def _rename(
         self: Self,
-        source_names: SourceNames =None
-        target_names: TargetNames =None,
+        source_names: SourceNames | None = None,
+        target_names: TargetNames | None = None,
     ) -> Self:
         """
         """
@@ -52,7 +52,7 @@ class Databank(types.SimpleNamespace):
 
     def _remove(
         self: Self,
-        remove_names: SourceNames =None,
+        remove_names: SourceNames | None = None,
     ) -> Self:
         """
         """
@@ -67,7 +67,7 @@ class Databank(types.SimpleNamespace):
 
     def _keep(
         self: Self,
-        keep_names: SourceNames =None
+        keep_names: SourceNames | None = None
     ) -> Self:
         """
         """
@@ -81,8 +81,8 @@ class Databank(types.SimpleNamespace):
 
 
 def _resolve_source_target_names(
-    source_names: SourceNames,
-    target_names: TargetNames,
+    source_names: SourceNames | None,
+    target_names: TargetNames | None,
     context_names: Iterable[str],
 ) -> tuple[Iterable[str], Iterable[str]]:
     if source_names is None:

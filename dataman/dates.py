@@ -11,6 +11,13 @@ from numbers import Number
 #]
 
 
+__all__ = [
+    "Frequency",
+    "yy", "hh", "qq", "mm", "dd", "ii",
+    "Ranger", "start", "end"
+]
+
+
 class Frequency(enum.IntEnum):
     """
     Enumeration of date frequencies
@@ -149,6 +156,14 @@ class Dater(RangeableMixin):
 
     def __iter__(self) -> Iterable:
         yield self
+
+
+    def _get_hash_key(self, /, ) -> tuple[int, int]:
+        return (int(self.serial), int(self.frequency), )
+
+
+    def __hash__(self, /, ) -> int:
+        return hash(self._get_hash_key(), )
 
 
     @_check_offset_decorator
@@ -326,6 +341,7 @@ hh = HalfyearlyDater.from_year_period
 qq = QuarterlyDater.from_year_period
 mm = MonthlyDater.from_year_period
 ii = IntegerDater
+
 
 def dd(year: int, month: int | ellipsis, day: int) -> DailyDater:
     if month is Ellipsis:

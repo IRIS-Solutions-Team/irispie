@@ -5,16 +5,10 @@ from functools import partial
 
 from IPython import embed
 from numbers import Number
+from collections.abc import Iterable, Callable
+from typing import Self
 
-from collections.abc import (
-    Iterable, Callable,
-)
-
-from typing import (
-    Self, Protocol, runtime_checkable,
-)
-
-from copy import deepcopy 
+import numpy
 
 from numpy import (
     ndarray as np_ndarray,
@@ -32,7 +26,11 @@ from numpy import (
     sqrt as np_sqrt,
     mean as np_mean,
     max as np_max,
+    min as np_min,
 )
+
+import itertools
+import copy
 
 #---}
 
@@ -124,64 +122,69 @@ class Series:
 
     @_trim_decorate
     def set_data(self, dates, data, columns=None) -> Self:
-        if dates is Ellipsis:
-            dates = Ranger(None, None)
-
-        if isinstance(dates, ResolvableProtocol) and dates.needs_resolve:
-            dates = dates.resolve(self)
-
+        dates = self._resolve_dates(dates)
+        columns = self._resolve_columns(columns)
         if not self.start_date:
             self.start_date = next(iter(dates))
             self.data = self._create_rows_of_nans(1)
-
         pos, add_before, add_after = _get_date_positions(dates, self.start_date, self.shape[0]-1)
         self.data = self._create_expanded_data(add_before, add_after)
         if add_before:
             self.start_date -= add_before
-
-        if columns is None:
-            columns = slice(None) #self._get_default_columns()
-
-        if isinstance(columns, slice):
-            columns = range(*columns.indices(self.num_columns))
-
-        if isinstance(pos, Iterable) and isinstance(columns, Iterable):
-            if isinstance(data, tuple):
-                for c, d in zip(columns, data):
-                    self.data[pos, c] = d
-            else:
-                self.data[np_ix_(pos, columns)] = data
-        else:
-            self.data[pos, columns] = data
-
+        if not isinstance(data, tuple):
+            data = itertools.repeat(data)
+        for c, d in zip(columns, data):
+            self.data[pos, c] = d
         return self
 
 
-    def _get_default_columns(self):
-        return 0 if self.data.shape[1]==1 else slice(None)
-
-
-    def get_data(self, dates, columns=slice(None)):
-        if dates is Ellipsis:
-            dates = slice(None)
-
-        if isinstance(dates, ResolvableProtocol) and dates.needs_resolve:
-            dates = dates.resolve(self)
-
-        if not dates:
-            return self._create_rows_of_nans(0)[:,columns]
-
+    def get_data(self, dates, columns=None) -> numpy.ndarray:
+        dates = self._resolve_dates(dates)
+        columns = self._resolve_columns(columns)
+        base_date = self.start_date
+        if not dates or not base_date:
+            num_dates = len(set(dates))
+            return self._create_rows_of_nans(num_dates)[:,columns]
         pos, add_before, add_after = _get_date_positions(dates, self.start_date, self.shape[0]-1)
         data = self._create_expanded_data(add_before, add_after)
-        if isinstance(pos, Iterable) and isinstance(columns, Iterable):
-            return data[np_ix_(pos, columns)]
-        else:
-            return data[pos, columns]
+        if not isinstance(pos, Iterable):
+            pos = (pos, )
+        return data[np_ix_(pos, columns)]
+
+
+    def _resolve_dates(self, dates):
+        if not dates or dates is Ellipsis:
+            dates = Ranger(None, None)
+        if isinstance(dates, ResolvableProtocol) and dates.needs_resolve:
+            dates = dates.resolve(self)
+        return dates
+
+
+    def _resolve_columns(self, columns):
+        if columns is None or columns is Ellipsis:
+            columns = slice(None)
+        if isinstance(columns, slice):
+            columns = range(*columns.indices(self.num_columns))
+        if not isinstance(columns, Iterable):
+            columns = (columns, )
+        return columns
+
+
+    def __getitem__(self, index):
+        if not isinstance(index, tuple):
+            index = (index, None, )
+        return self.get_data(index[0], columns=index[1])
+
+
+    def __setitem__(self, index, data):
+        if not isinstance(index, tuple):
+            index = (index, None, )
+        return self.set_data(index[0], data, columns=index[1])
 
 
     def hstack(self, *args):
         if not args:
-            return deepcopy(self)
+            return copy.deepcopy(self)
         encompassing_range = self._get_encompassing_range(*args)
         new_data = self.get_data(encompassing_range)
         add_data = (x.get_data(encompassing_range) for x in args)
@@ -332,11 +335,11 @@ class Series:
     def _unop(self, func: Callable, *args, **kwargs) -> Self|np_ndarray:
         new_data = func(self.data, *args, **kwargs)
         if new_data.shape == self.data.shape:
-            new = deepcopy(self)
+            new = copy.deepcopy(self)
             new.data = new_data
             return new._trim()
         elif kwargs.get("axis")==1 and new_data.shape==(self.data.shape[0],):
-            new = deepcopy(self)
+            new = copy.deepcopy(self)
             new.data = new_data.reshape(self.data.shape[0], 1)
             return new._trim()
         elif kwargs.get("axis") is None and new_data.shape==():
@@ -355,7 +358,7 @@ class Series:
 
     @property
     def copy(self) -> Self:
-        return deepcopy(self)
+        return copy.deepcopy(self)
 
 
 
@@ -378,7 +381,8 @@ log = partial(_unop, func=np_log)
 exp = partial(_unop, func=np_exp)
 sqrt = partial(_unop, func=np_sqrt)
 mean = partial(_unop, func=np_mean)
-max_ = partial(_unop, func=np_max)
+max = partial(_unop, func=np_max)
+min = partial(_unop, func=np_min)
 
 
 def hstack(first, *args) -> Series:
