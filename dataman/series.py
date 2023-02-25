@@ -2,6 +2,7 @@
 
 from functools import partial
 
+from IPython import embed
 from numbers import Number
 from collections.abc import Iterable, Callable
 from typing import Self
@@ -19,7 +20,9 @@ __all__ = [
     "Series",
 ]
 
+
 underscore_functions = ["log", "exp", "sqrt", "max", "min", "mean", "median"]
+
 
 def _str_row(date, data, date_str_format, numeric_format, nan_str: str):
     date_str = ("{:"+date_str_format+"}").format(date)
@@ -109,6 +112,9 @@ class Series:
         self.data = self._create_expanded_data(add_before, add_after)
         if add_before:
             self.start_date -= add_before
+        if isinstance(data, numpy.ndarray):
+            self.data[pos, :] = data
+            return
         if not isinstance(data, tuple):
             data = itertools.repeat(data)
         for c, d in zip(columns, data):
