@@ -220,13 +220,13 @@ class DiffernAtom(ValueMixin, LoglyMixin):
         return self.__neg__().__add__(other)
 
 
-    def log(self):
+    def __log__(self):
         new_value = numpy.log(self.value)
         new_diff = 1 / self.value * self.diff
         return DiffernAtom.no_context(new_value, new_diff, False)
 
 
-    def exp(self):
+    def __exp__(self):
         new_value = numpy.exp(self.value)
         new_diff = new_value * self.diff
         return DiffernAtom.no_context(new_value, new_diff, False)
@@ -385,28 +385,6 @@ class InvarianceAtom(LoglyMixin):
 
     exp = _unary
     __pow__ = _binary
-    #]
-
-
-def log(x): 
-    """
-    """
-    #[
-    if isinstance(x, Number):
-        return math.log(x)
-    else:
-        return x.log()
-    #]
-
-
-def exp(x): 
-    """
-    """
-    #[
-    if isinstance(x, Number):
-        return math.exp(x)
-    else:
-        return x.exp()
     #]
 
 

@@ -1,47 +1,25 @@
 
-#---{ External imports
 
 from functools import partial
 
-from IPython import embed
 from numbers import Number
 from collections.abc import Iterable, Callable
 from typing import Self
 
 import numpy
-
-from numpy import (
-    ndarray as np_ndarray,
-    full as np_full,
-    nan as np_nan,
-    vstack as np_vstack,
-    hstack as np_hstack,
-    copy as np_copy,
-    ix_ as np_ix_,
-    all as np_all,
-    isnan as np_isnan,
-    argmax as np_argmax,
-    log as np_log,
-    exp as np_exp,
-    sqrt as np_sqrt,
-    mean as np_mean,
-    max as np_max,
-    min as np_min,
-)
-
 import itertools
 import copy
-
-#---}
-
-#---{ Internal imports
 
 from .dates import (
     Ranger, date_index, ResolvableProtocol,
 )
 
-#---}
 
+__all__ = [
+    "Series",
+]
+
+underscore_functions = ["log", "exp", "sqrt", "max", "min", "mean", "median"]
 
 def _str_row(date, data, date_str_format, numeric_format, nan_str: str):
     date_str = ("{:"+date_str_format+"}").format(date)
@@ -86,12 +64,12 @@ class Series:
         num_columns = num_columns if num_columns else self.num_columns
         data_type = data_type if data_type else self.data_type
         self.start_date = None
-        self.data = np_full((0, num_columns), np_nan, dtype=data_type)
+        self.data = numpy.full((0, num_columns), numpy.nan, dtype=data_type)
         return self
 
 
     def _create_rows_of_nans(self, num_rows=0):
-        return np_full((num_rows, self.shape[1]), np_nan, dtype=self.data_type)
+        return numpy.full((num_rows, self.shape[1]), numpy.nan, dtype=self.data_type)
 
 
     @property
@@ -149,7 +127,7 @@ class Series:
         data = self._create_expanded_data(add_before, add_after)
         if not isinstance(pos, Iterable):
             pos = (pos, )
-        return data[np_ix_(pos, columns)]
+        return data[numpy.ix_(pos, columns)]
 
 
     def _resolve_dates(self, dates):
@@ -188,7 +166,7 @@ class Series:
         encompassing_range = self._get_encompassing_range(*args)
         new_data = self.get_data(encompassing_range)
         add_data = (x.get_data(encompassing_range) for x in args)
-        new_data = np_hstack((new_data, *add_data))
+        new_data = numpy.hstack((new_data, *add_data))
         new = Series(num_columns=new_data.shape[1]);
         new.set_data(encompassing_range, new_data)
         return new
@@ -220,11 +198,11 @@ class Series:
 
 
     def _create_expanded_data(self, add_before, add_after):
-        data = np_copy(self.data)
+        data = numpy.copy(self.data)
         if add_before:
-            data = np_vstack((self._create_rows_of_nans(add_before), data))
+            data = numpy.vstack((self._create_rows_of_nans(add_before), data))
         if add_after:
-            data = np_vstack((data, self._create_rows_of_nans(add_after)))
+            data = numpy.vstack((data, self._create_rows_of_nans(add_after)))
         return data
 
 
@@ -271,7 +249,7 @@ class Series:
         return self
 
 
-    def __add__(self, other) -> Self|np_ndarray:
+    def __add__(self, other) -> Self|numpy.ndarray:
         """
         self + other
         """
@@ -286,7 +264,7 @@ class Series:
         return self._unop(lambda data: data.__radd__(other))
 
 
-    def __mul__(self, other) -> Self|np_ndarray:
+    def __mul__(self, other) -> Self|numpy.ndarray:
         """
         self + other
         """
@@ -332,22 +310,23 @@ class Series:
 
 
 
-    def _unop(self, func: Callable, *args, **kwargs) -> Self|np_ndarray:
+    def _unop(self, func: Callable, *args, **kwargs) -> Self | numpy.ndarray:
         new_data = func(self.data, *args, **kwargs)
-        if new_data.shape == self.data.shape:
+        axis = kwargs.get("axis")
+        if (axis is None or axis==1) and new_data.shape==self.data.shape:
             new = copy.deepcopy(self)
             new.data = new_data
             return new._trim()
-        elif kwargs.get("axis")==1 and new_data.shape==(self.data.shape[0],):
+        elif (axis is None or axis==1) and new_data.shape==(self.data.shape[0],):
             new = copy.deepcopy(self)
             new.data = new_data.reshape(self.data.shape[0], 1)
             return new._trim()
-        elif kwargs.get("axis") is None and new_data.shape==():
+        elif axis is None and new_data.shape==():
             return new_data
-        elif kwargs.get("axis")==0 and new_data.shape==(self.data.shape[1],):
+        elif axis==0 and new_data.shape==(self.data.shape[1],):
             return new_data
         else:
-            raise Exception("Unary operation on a time series resulted in data with an unexpected shape")
+            raise Exception("Unary operation on a time series resulted in a data array with an unexpected shape")
 
 
     def _binop(self, other: Self|Number, func):
@@ -356,15 +335,30 @@ class Series:
             return _unop(self, unop_func)
 
 
+    def _replace_data(self, new_data, /, ) -> Self:
+        self.data = new_data
+        return self._trim()
+
     @property
     def copy(self) -> Self:
         return copy.deepcopy(self)
 
+    for n in ["log", "exp", "sqrt"]:
+        exec(f"def {n}(self): return self._replace_data(numpy.{n}(self.data))")
+
+    for n in underscore_functions:
+        exec(f"def _{n}_(self, *args, **kwargs): return self._unop(func=numpy.{n}, *args, **kwargs)")
+
+    # _exp_ = partial(_unop, func=numpy.exp)
+    # _sqrt_ = partial(_unop, func=numpy.sqrt)
+    # _mean_ = partial(_unop, func=numpy.mean)
+    # _max_ = partial(_unop, func=numpy.max)
+    # _min_ = partial(_unop, func=numpy.min)
 
 
 def _get_num_leading_nan_rows(data):
     try:
-        num = next(x[0] for x in enumerate(data) if not np_all(np_isnan(x[1])))
+        num = next(x[0] for x in enumerate(data) if not numpy.all(numpy.isnan(x[1])))
     except StopIteration:
         num = data.shape[0]
     return num
@@ -375,14 +369,6 @@ def _unop(x: Series, func: Callable, *args, **kwargs) -> object:
         return x._unop(func, *args, **kwargs)
     else:
         return func(x, *args, **kwargs)
-
-
-log = partial(_unop, func=np_log)
-exp = partial(_unop, func=np_exp)
-sqrt = partial(_unop, func=np_sqrt)
-mean = partial(_unop, func=np_mean)
-max = partial(_unop, func=np_max)
-min = partial(_unop, func=np_min)
 
 
 def hstack(first, *args) -> Series:

@@ -14,7 +14,7 @@ from numbers import Number
 __all__ = [
     "Frequency",
     "yy", "hh", "qq", "mm", "dd", "ii",
-    "Ranger", "start", "end"
+    "Ranger", "start", "end",
 ]
 
 
