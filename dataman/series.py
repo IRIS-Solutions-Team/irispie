@@ -1,18 +1,18 @@
 
-
-from functools import partial
+from __future__ import annotations
 
 from IPython import embed
+from functools import partial
 from numbers import Number
 from collections.abc import Iterable, Callable
-from typing import Self
+from typing import Self, TypeAlias, NoReturn
 
 import numpy
 import itertools
 import copy
 
 from .dates import (
-    Ranger, date_index, ResolvableProtocol,
+    Dater, Ranger, date_index, ResolvableProtocol,
 )
 
 
@@ -20,8 +20,13 @@ __all__ = [
     "Series",
 ]
 
-
 underscore_functions = ["log", "exp", "sqrt", "max", "min", "mean", "median"]
+
+
+EllipsisType = type(Ellipsis)
+Dates: TypeAlias = Dater | Iterable[Dater] | Ranger | EllipsisType | None
+Columns: TypeAlias = int | Iterable[int] | slice
+Data: TypeAlias = Number | Iterable[Number] | tuple | numpy.ndarray
 
 
 def _str_row(date, data, date_str_format, numeric_format, nan_str: str):
@@ -102,7 +107,13 @@ class Series:
 
 
     @_trim_decorate
-    def set_data(self, dates, data, columns=None) -> Self:
+    def set_data(
+        self,
+        dates: Dates,
+        data: Data,
+        columns: Columns = None,
+        /,
+    ) -> Self:
         dates = self._resolve_dates(dates)
         columns = self._resolve_columns(columns)
         if not self.start_date:
@@ -122,7 +133,12 @@ class Series:
         return self
 
 
-    def get_data(self, dates, columns=None) -> numpy.ndarray:
+    def get_data(
+        self,
+        dates: Dates,
+        columns: Columns = None,
+        /,
+    ) -> numpy.ndarray:
         dates = self._resolve_dates(dates)
         columns = self._resolve_columns(columns)
         base_date = self.start_date
@@ -137,7 +153,9 @@ class Series:
 
 
     def _resolve_dates(self, dates):
-        if not dates or dates is Ellipsis:
+        if dates is None:
+            return []
+        if dates is Ellipsis:
             dates = Ranger(None, None)
         if isinstance(dates, ResolvableProtocol) and dates.needs_resolve:
             dates = dates.resolve(self)
@@ -157,13 +175,13 @@ class Series:
     def __getitem__(self, index):
         if not isinstance(index, tuple):
             index = (index, None, )
-        return self.get_data(index[0], columns=index[1])
+        return self.get_data(index[0], index[1])
 
 
     def __setitem__(self, index, data):
         if not isinstance(index, tuple):
             index = (index, None, )
-        return self.set_data(index[0], data, columns=index[1])
+        return self.set_data(index[0], data, index[1])
 
 
     def hstack(self, *args):

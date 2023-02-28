@@ -24,8 +24,8 @@ _GRAMMAR_DEF = common.GRAMMAR_DEF + r"""
     )
 
     for_do_block = for_keyword white_spaces for_control do_keyword
-        for_control = for_control_name white_spaces "=" white_spaces for_token_ended*
-        for_control_name_equal_sign = for_control_name white_spaces "=" white_spaces
+        for_control = for_control_name_equals? for_token_ended*
+        for_control_name_equals = for_control_name white_spaces "=" white_spaces
         for_control_name = ~r"\?\w*"
         for_token_ended = for_token for_token_end
         for_token = ~r"\w+"
@@ -78,11 +78,13 @@ class _Visitor(parsimonious.nodes.NodeVisitor):
         self._add(_End())
 
     def visit_for_do_block(self, node, visited_children):
-        control_name, tokens = visited_children[2]    
+        control_name, tokens = visited_children[2]
         self.content.append(_For(control_name, tokens))
 
     def visit_for_control(self, node, visited_children):
-        return [visited_children[0], visited_children[4]]
+        control_name = visited_children[0][0] if visited_children[0] else "?"
+        tokens = visited_children[1]
+        return [control_name, tokens]
 
     def visit_for_token_ended(self, node, visited_children):
         return visited_children[0]
@@ -91,7 +93,7 @@ class _Visitor(parsimonious.nodes.NodeVisitor):
     #    return node.text
 
     def visit_for_control_name_equals(self, node, visited_children):
-        return visited_children[0][1] if visited_children else "?"
+        return visited_children[0]
 
     # def visit_for_control_name(self, node, visited_children):
     #    return node.text

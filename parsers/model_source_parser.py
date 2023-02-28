@@ -1,13 +1,26 @@
+"""
+"""
 
 
 from __future__ import annotations
-
-import IPython as ip
 import parsimonious
 import functools
+import re
 from collections.abc import Iterable
 
 from . import common
+
+
+def from_string(source_string: str, /, ) -> sources.Source:
+    """
+    """
+    source_string = _resolve_shortcut_keywords(source_string)
+    source_string = common.add_blank_lines(source_string)
+    source_string = _translate_keywords(source_string)
+    nodes = _GRAMMAR["source"].parse(source_string)
+    visitor = _Visitor()
+    return visitor.visit(nodes)
+
 
 
 _GRAMMAR_DEF = common.GRAMMAR_DEF + r"""
@@ -149,20 +162,25 @@ class _Visitor(parsimonious.nodes.NodeVisitor):
 
     def visit_eqn_version(self, node, visited_children):
         return node.text.strip()
- 
+
     def visit_description_text(self, node, visited_children):
         return node.text
- 
+
     def generic_visit(self, node, visited_children):
         return visited_children or node.text or None
     #]
 
 
-def from_string(source_string: str) -> sources.Source:
-    source_string = common.add_blank_lines(source_string)
-    source_string = _translate_keywords(source_string)
-    nodes = _GRAMMAR["source"].parse(source_string)
-    visitor = _Visitor()
-    return visitor.visit(nodes)
+_SHORTCUT_KEYWORDS = [
+    ( re.compile(common.HUMAN_PREFIX + r"variables\b"), common.HUMAN_PREFIX + r"transition-variables" ),
+    ( re.compile(common.HUMAN_PREFIX + r"shocks\b"), common.HUMAN_PREFIX + r"transition-shocks" ),
+    ( re.compile(common.HUMAN_PREFIX + r"equations\b"), common.HUMAN_PREFIX + r"transition-equations" ),
+]
+
+
+def _resolve_shortcut_keywords(source_string: str, /, ) -> str:
+    for short, long in _SHORTCUT_KEYWORDS:
+        source_string = re.sub(short, long, source_string)
+    return source_string
 
 
