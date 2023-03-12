@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 from IPython import embed
-from scipy import linalg
 import time
 from typing import Self, NoReturn, TypeAlias
 from numbers import Number
@@ -296,27 +295,81 @@ class Model:
     ) -> SteadySolverReturn:
         """
         """
-        pinv = linalg.pinv
+        pinv = numpy.linalg.pinv
         smf = self._steady_metaford
         sys = self._systemize_steady_linear(variant)
-
-        # A @ Xi + B @ Xi{-1} + C = 0
-        # F @ Y + G @ Xi + H = 0
+        #
+        # A•Xi + B•Xi{-1} + C = 0:
+        # -->
+        # A•Xi + B•Xi + C = 0
+        #
+        # F•Y + G•Xi + H = 0
+        #
         Xi = -pinv(sys.A + sys.B) @ sys.C
         Y = -pinv(sys.F) @ (sys.G @ Xi + sys.H)
-
+        #
         levels = numpy.hstack((Xi.flat, Y.flat))
         tokens = list(itertools.chain(
             smf.system_vectors.transition_variables,
             smf.system_vectors.measurement_variables,
         ))
-
+        #
         # Extract only tokens with zero shift
+        #
         zero_shift_index = [ not t.shift for t in tokens ]
         zero_shift_levels = levels[zero_shift_index]
         qids_levels = [ t.qid for t in itertools.compress(tokens, zero_shift_index) ]
-
+        #
+        #
         return zero_shift_levels, qids_levels, None, None
+
+
+#     def _steady_linear_nonflat(
+#         self, 
+#         variant: Variant,
+#         /,
+#     ) -> SteadySolverReturn:
+#         """
+#         """
+#         pinv = numpy.linalg.pinv
+#         smf = self._steady_metaford
+#         sys = self._systemize_steady_linear(variant)
+#         #
+#         # A @ Xi + B @ Xi{-1} + C = 0:
+#         # -->
+#         # A @ Xi + B @ (Xi-dXi) + C = 0
+#         # A @ (Xi + k*dXi) + B @ (Xi + (k-1)*dXi) + C = 0
+#         #
+#         k = 1
+#         AB = numpy.vstack(
+#             numpy.hstack((sys.A + sys.B, -sys.B)),
+#             numpy.hstack((sys.A + sys.B, k*sys.A + (k-1)*sys.B))
+#         )
+#         C = numpy.tile(sys.C, (2, 1))
+#         Xi_dXi = -pinv(AB) @ C
+#         #
+#         # F @ Y + G @ Xi + H = 0:
+#         # -->
+#         # F @ Y + G @ Xi + H = 0
+#         # F @ (Y + k*dY) + G @ (Xi + k*dXi) + H = 0
+#         #
+# 
+#         Y = -pinv(sys.F) @ (sys.G @ Xi + sys.H)
+#         #
+#         levels = numpy.hstack((Xi.flat, Y.flat))
+#         tokens = list(itertools.chain(
+#             smf.system_vectors.transition_variables,
+#             smf.system_vectors.measurement_variables,
+#         ))
+#         #
+#         # Extract only tokens with zero shift
+#         #
+#         zero_shift_index = [ not t.shift for t in tokens ]
+#         zero_shift_levels = levels[zero_shift_index]
+#         qids_levels = [ t.qid for t in itertools.compress(tokens, zero_shift_index) ]
+#         #
+#         #
+#         return zero_shift_levels, qids_levels, None, None
 
 
     def _steady_linear_nonflat(
