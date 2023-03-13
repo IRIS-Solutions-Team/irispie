@@ -13,8 +13,6 @@ from typing import (
     Protocol, TypeAlias,
 )
 
-from itertools import chain
-
 from .quantities import (
     QuantityKind
 )

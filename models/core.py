@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 from IPython import embed
-import time
 from typing import Self, NoReturn, TypeAlias
 from numbers import Number
 from collections.abc import Iterable, Callable
@@ -14,6 +13,7 @@ import enum
 import copy
 import numpy
 import itertools
+import functools
 import operator
 
 from . import variants
@@ -35,9 +35,10 @@ from ..quantities import (
     change_logly
 )
 
-from .. import metaford
-from .. import systems
+from ..fords import descriptors
+from ..fords import systems
 from .. import exceptions
+from ..dataman import databanks
 #]
 
 
@@ -91,6 +92,95 @@ def _resolve_model_flags(func: Callable, /, ) -> Callable:
     return wrapper
 
 
+def _solve_steady_linear_flat(
+    sys,
+    /,
+) -> tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray]:
+    #[
+    """
+    """
+    pinv = numpy.linalg.pinv
+    vstack = numpy.vstack
+    hstack = numpy.hstack
+    A, B, C, F, G, H = sys.A, sys.B, sys.C, sys.F, sys.G, sys.H
+    #
+    # A @ Xi + B @ Xi{-1} + C = 0
+    # F @ Y + G @ Xi + H = 0
+    #
+    Xi = -pinv(A + B) @ C
+    dXi = numpy.zeros(Xi.shape)
+    #
+    Y = -pinv(F) @ (G @ Xi + H)
+    dY = numpy.zeros(Y.shape)
+    #
+    return Xi, Y, dXi, dY
+    #]
+
+
+def _solve_steady_linear_nonflat(
+    sys,
+    /,
+) -> tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray]:
+    #[
+    """
+    """
+    pinv = numpy.linalg.pinv
+    vstack = numpy.vstack
+    hstack = numpy.hstack
+    A, B, C, F, G, H = sys.A, sys.B, sys.C, sys.F, sys.G, sys.H
+    k = 1
+    #
+    # A @ Xi + B @ Xi{-1} + C = 0:
+    # -->
+    # A @ Xi + B @ (Xi - dXi) + C = 0
+    # A @ (Xi + k*dXi) + B @ (Xi + (k-1)*dXi) + C = 0
+    #
+    AB = vstack((
+        hstack(( A + B, 0*A + (0-1)*B )),
+        hstack(( A + B, k*A + (k-1)*B )),
+    ))
+    CC = vstack((
+        C,
+        C,
+    ))
+    Xi_dXi = -pinv(AB) @ CC
+    #
+    # F @ Y + G @ Xi + H = 0:
+    # -->
+    # F @ Y + G @ Xi + H = 0
+    # F @ (Y + k*dY) + G @ (Xi + k*dXi) + H = 0
+    #
+    FF = vstack((
+        hstack(( F, 0*F )),
+        hstack(( F, k*F )),
+    ))
+    GG = vstack((
+        hstack(( G, 0*G )),
+        hstack(( G, k*G )),
+    ))
+    HH = vstack((
+        H,
+        H,
+    ))
+    Y_dY = -pinv(FF) @ (GG @ Xi_dXi + HH)
+    #
+    # Separate levels and changes
+    #
+    num_xi = A.shape[1]
+    num_y = F.shape[1]
+    Xi, dXi = (
+        Xi_dXi[0:num_xi, ...],
+        Xi_dXi[num_xi:, ...],
+    )
+    Y, dY = (
+        Y_dY[0:num_y, ...],
+        Y_dY[num_y:, ...]
+    )
+    #
+    return Xi, Y, dXi, dY
+    #]
+
+
 class Model:
     """
     """
@@ -118,7 +208,7 @@ class Model:
 
     def assign_from_databank(
         self, 
-        databank: Databank,
+        databank: databanks.Databank,
         /,
     ) -> Self:
         """
@@ -246,18 +336,48 @@ class Model:
         # return self
 
 
-    def _systemize_steady_linear(
+    def _systemize_steady(
         self,
         variant: Variant,
         /,
     ) -> systems.System:
         """
+        Evaluatoe 
         """
-        smf = self._steady_metaford
-        num_columns = smf.system_differn_context.shape_data[1]
+        sdr = self._steady_descriptor
+        num_columns = sdr.system_differn_context.shape_data[1]
         logly_context = self.create_qid_to_logly()
         value_context = self._create_zero_array(variant, num_columns=num_columns)
-        return systems.System.for_model(smf, logly_context, value_context)
+        return systems.System.for_descriptor(sdr, logly_context, value_context)
+
+
+    def _get_steady_something(
+        self,
+        /,
+        extractor_from_variant: Callable,
+    ) -> dict[str, Number|numpy.ndarray]:
+        """
+        """
+        qid_to_name = self.create_qid_to_name()
+        steady_something_hstacked = numpy.hstack(tuple(
+            extractor_from_variant(v).reshape(-1, 1) 
+            for v in self._variants
+        ))
+        if self.num_variants==1:
+            extractor = lambda qid: steady_something_hstacked[qid, 0]
+        else:
+            extractor = lambda qid: steady_something_hstacked[qid, ...]
+        return databanks.Databank._from_dict({ name: extractor(qid) for qid, name in qid_to_name.items() })
+
+
+    get_steady_levels = functools.partialmethod(
+        _get_steady_something, extractor_from_variant=operator.attrgetter("levels")
+    )
+
+
+    get_steady_changes = functools.partialmethod(
+        _get_steady_something, extractor_from_variant=operator.attrgetter("changes")
+    )
 
 
     def steady(
@@ -274,110 +394,58 @@ class Model:
             v.update_changes_from_array(changes, qids_changes)
 
 
-    def _choose_steady_solver(
+    def _apply_delog(
         self,
-        **kwargs,
-    ) -> Callable:
-        _STEADY_SOLVER = {
-            ModelFlags.DEFAULT: self._steady_nonlinear_nonflat,
-            ModelFlags.LINEAR: self._steady_linear_nonflat,
-            ModelFlags.FLAT: self._steady_nonlinear_flat,
-            ModelFlags.LINEAR | ModelFlags.FLAT: self._steady_linear_flat,
-        }
-        model_flags = ModelFlags.update_from_kwargs(self._flags, **kwargs)
-        return _STEADY_SOLVER[model_flags]
+        vector: numpy.ndarray,
+        qids: Iterable[int],
+        /,
+    ) -> numpy.ndarray:
+        """
+        """
+        qid_to_logly = self.create_qid_to_logly()
+        logly_index = [ qid_to_logly[qid] for qid in qids ]
+        if any(logly_index):
+            vector[logly_index] = numpy.exp(vector[logly_index])
+        return vector
 
 
-    def _steady_linear_flat(
+    def _steady_linear(
         self, 
         variant: Variant,
         /,
+        algorithm: Callable,
     ) -> SteadySolverReturn:
         """
         """
-        pinv = numpy.linalg.pinv
-        smf = self._steady_metaford
-        sys = self._systemize_steady_linear(variant)
         #
-        # A•Xi + B•Xi{-1} + C = 0:
-        # -->
-        # A•Xi + B•Xi + C = 0
+        # Calculate first-order system for this variant
         #
-        # F•Y + G•Xi + H = 0
+        sys = self._systemize_steady(variant)
         #
-        Xi = -pinv(sys.A + sys.B) @ sys.C
-        Y = -pinv(sys.F) @ (sys.G @ Xi + sys.H)
+        # Calculate steady state for this variant
         #
-        levels = numpy.hstack((Xi.flat, Y.flat))
-        tokens = list(itertools.chain(
-            smf.system_vectors.transition_variables,
-            smf.system_vectors.measurement_variables,
-        ))
+        Xi, Y, dXi, dY = algorithm(sys)
+        levels = numpy.hstack(( Xi.flat, Y.flat ))
+        changes = numpy.hstack(( dXi.flat, dY.flat ))
         #
         # Extract only tokens with zero shift
         #
+        tokens = list(itertools.chain(
+            self._steady_descriptor.system_vectors.transition_variables,
+            self._steady_descriptor.system_vectors.measurement_variables,
+        ))
         zero_shift_index = [ not t.shift for t in tokens ]
-        zero_shift_levels = levels[zero_shift_index]
-        qids_levels = [ t.qid for t in itertools.compress(tokens, zero_shift_index) ]
+        qids = [ t.qid for t in itertools.compress(tokens, zero_shift_index) ]
+        levels = levels[zero_shift_index]
+        levels = self._apply_delog(levels, qids)
+        changes = self._apply_delog(changes, qids)
+        changes = changes[zero_shift_index]
         #
-        #
-        return zero_shift_levels, qids_levels, None, None
+        return levels, qids, changes, qids
 
 
-#     def _steady_linear_nonflat(
-#         self, 
-#         variant: Variant,
-#         /,
-#     ) -> SteadySolverReturn:
-#         """
-#         """
-#         pinv = numpy.linalg.pinv
-#         smf = self._steady_metaford
-#         sys = self._systemize_steady_linear(variant)
-#         #
-#         # A @ Xi + B @ Xi{-1} + C = 0:
-#         # -->
-#         # A @ Xi + B @ (Xi-dXi) + C = 0
-#         # A @ (Xi + k*dXi) + B @ (Xi + (k-1)*dXi) + C = 0
-#         #
-#         k = 1
-#         AB = numpy.vstack(
-#             numpy.hstack((sys.A + sys.B, -sys.B)),
-#             numpy.hstack((sys.A + sys.B, k*sys.A + (k-1)*sys.B))
-#         )
-#         C = numpy.tile(sys.C, (2, 1))
-#         Xi_dXi = -pinv(AB) @ C
-#         #
-#         # F @ Y + G @ Xi + H = 0:
-#         # -->
-#         # F @ Y + G @ Xi + H = 0
-#         # F @ (Y + k*dY) + G @ (Xi + k*dXi) + H = 0
-#         #
-# 
-#         Y = -pinv(sys.F) @ (sys.G @ Xi + sys.H)
-#         #
-#         levels = numpy.hstack((Xi.flat, Y.flat))
-#         tokens = list(itertools.chain(
-#             smf.system_vectors.transition_variables,
-#             smf.system_vectors.measurement_variables,
-#         ))
-#         #
-#         # Extract only tokens with zero shift
-#         #
-#         zero_shift_index = [ not t.shift for t in tokens ]
-#         zero_shift_levels = levels[zero_shift_index]
-#         qids_levels = [ t.qid for t in itertools.compress(tokens, zero_shift_index) ]
-#         #
-#         #
-#         return zero_shift_levels, qids_levels, None, None
-
-
-    def _steady_linear_nonflat(
-        self,
-        variant: Variant,
-        /,
-    ) -> SteadySolverReturn:
-        return []
+    _steady_linear_flat = functools.partialmethod(_steady_linear, algorithm=_solve_steady_linear_flat)
+    _steady_linear_nonflat = functools.partialmethod(_steady_linear, algorithm=_solve_steady_linear_nonflat)
 
 
     def _steady_nonlinear_flat(
@@ -385,7 +453,7 @@ class Model:
         variant: Variant,
         /,
     ) -> SteadySolverReturn:
-        return []
+        return None, None, None, None
 
 
     def _steady_nonlinear_nonflat(
@@ -393,7 +461,24 @@ class Model:
         variant: Variant,
         /,
     ) -> SteadySolverReturn:
-        return []
+        return None, None, None, None
+
+
+    def _choose_steady_solver(
+        self,
+        **kwargs,
+    ) -> Callable:
+        """
+        Choose steady solver depending on linear and flat flags
+        """
+        STEADY_SOLVER = {
+            ModelFlags.DEFAULT: self._steady_nonlinear_nonflat,
+            ModelFlags.FLAT: self._steady_nonlinear_flat,
+            ModelFlags.LINEAR: self._steady_linear_nonflat,
+            ModelFlags.LINEAR | ModelFlags.FLAT: self._steady_linear_flat,
+        }
+        model_flags = ModelFlags.update_from_kwargs(self._flags, **kwargs)
+        return STEADY_SOLVER[model_flags]
 
 
     @classmethod
@@ -417,8 +502,8 @@ class Model:
 
         self._variants = [ variants.Variant(self._quantities) ]
         self._assign_auto_values()
-        self._dynamic_metaford = metaford.Metaford(self._dynamic_equations, self._quantities)
-        self._steady_metaford = metaford.Metaford(self._steady_equations, self._quantities)
+        self._dynamic_descriptor = descriptors.Descriptor(self._dynamic_equations, self._quantities)
+        self._steady_descriptor = descriptors.Descriptor(self._steady_equations, self._quantities)
         return self
 
 

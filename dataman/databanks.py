@@ -2,29 +2,45 @@
 #[
 from __future__ import annotations
 
-import types
 import copy
-
-from typing import Optional, Self, TypeAlias
+import types
+from typing import Self, TypeAlias, NoReturn
 from collections.abc import Iterable, Callable
+from numbers import Number
 #]
 
 
-SourceNames: TypeAlias = Iterable[str] | str | Callable[[str], bool]
-TargetNames: TypeAlias = Iterable[str] | str | Callable[[str], str]
+SourceNames: TypeAlias = Iterable[str] | str | Callable[[str], bool] | None
+TargetNames: TypeAlias = Iterable[str] | str | Callable[[str], str] | None
 
 
 class Databank(types.SimpleNamespace):
-    #(
+    #[
+    @classmethod
+    def _from_dict(
+        cls,
+        _dict: dict,
+        /,
+    ) -> NoReturn:
+        """
+        """
+        self = cls()
+        for k, v in _dict.items():
+            self.__setattr__(k, v)
+        return self
+
+
     def _get_names(self: Self) -> Iterable[str]:
         """
+        Get all names stored in a databank save for the private attributes
         """
         return [ n for n in dir(self) if not n.startswith("_") ]
 
     def _copy(
         self: Self,
-        source_names: Iterable[str]|None = None,
-        target_names: InputNames = None
+        /,
+        source_names: SourceNames = None,
+        target_names: TargetNames = None,
     ) -> Self:
         """
         """
@@ -33,11 +49,11 @@ class Databank(types.SimpleNamespace):
         new_databank._keep(target_names)
         return new_databank
 
-
     def _rename(
         self: Self,
-        source_names: SourceNames | None = None,
-        target_names: TargetNames | None = None,
+        /,
+        source_names: SourceNames = None,
+        target_names: TargetNames = None,
     ) -> Self:
         """
         """
@@ -49,10 +65,10 @@ class Databank(types.SimpleNamespace):
             self.__dict__[new_name] = self.__dict__.pop(old_name)
         return self
 
-
     def _remove(
         self: Self,
-        remove_names: SourceNames | None = None,
+        /,
+        remove_names: SourceNames = None,
     ) -> Self:
         """
         """
@@ -64,10 +80,10 @@ class Databank(types.SimpleNamespace):
             del self.__dict__[n]
         return self
 
-
     def _keep(
         self: Self,
-        keep_names: SourceNames | None = None
+        /,
+        keep_names: SourceNames = None,
     ) -> Self:
         """
         """
@@ -77,13 +93,29 @@ class Databank(types.SimpleNamespace):
         keep_names = _resolve_source_target_names(keep_names, None, context_names)
         remove_names = set(context_names).difference(keep_names)
         return self._remove(remove_names)
-    #)
+
+    def __getitem__(self, name):
+        return self.__dict__[name]
+
+    def __setitem__(self, name, value) -> NoReturn:
+        self.__dict__[name] = value
+
+    def __repr__(self, /, ) -> NoReturn:
+        INDENT = "    "
+        SEPARATOR = ": "
+        s = [ INDENT+k+SEPARATOR + _databank_repr(v) for k, v, in self.__dict__.items() ]
+        return "\n".join(s)
+
+    def __str__(self, /, ) -> NoReturn:
+        return repr(self)
+    #]
 
 
 def _resolve_source_target_names(
-    source_names: SourceNames | None,
-    target_names: TargetNames | None,
+    source_names: SourceNames,
+    target_names: TargetNames,
     context_names: Iterable[str],
+    /,
 ) -> tuple[Iterable[str], Iterable[str]]:
     if source_names is None:
         source_names = context_names
@@ -99,4 +131,12 @@ def _resolve_source_target_names(
         target_names = (target_names(n) for n in source_names)
     return source_names, target_names
 
+
+def _databank_repr(value, /, ) -> str:
+    if isinstance(value, Number):
+        return str(value)
+    elif isinstance(value, str):
+        return f'"value"'
+    else:
+        return str(type(value))
 

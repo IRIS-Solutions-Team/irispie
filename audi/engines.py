@@ -5,6 +5,7 @@
 #[
 from __future__ import annotations
 
+from IPython import embed
 import numpy
 import math
 
@@ -12,12 +13,15 @@ from typing import NoReturn
 from numbers import Number
 from collections.abc import Iterable, Sequence
 
-from .exceptions import ListException
-from .incidence import (
+
+from ..exceptions import ListException
+
+from ..incidence import (
     Token, Tokens, get_max_shift, 
     get_min_shift, get_max_qid,
 )
-from .equations import (
+
+from ..equations import (
     X_REF_PATTERN, EquationKind, Equation, Equations,
     generate_all_tokens_from_equations, 
     create_evaluator_func_string,
@@ -220,13 +224,13 @@ class DiffernAtom(ValueMixin, LoglyMixin):
         return self.__neg__().__add__(other)
 
 
-    def __log__(self):
+    def log(self):
         new_value = numpy.log(self.value)
         new_diff = 1 / self.value * self.diff
         return DiffernAtom.no_context(new_value, new_diff, False)
 
 
-    def __exp__(self):
+    def exp(self):
         new_value = numpy.exp(self.value)
         new_diff = new_value * self.diff
         return DiffernAtom.no_context(new_value, new_diff, False)
@@ -544,4 +548,19 @@ class InvalidInputDataArrayShape(ListException):
         messages = [ f"Incorrect size of input data matrix: entered {shape_entered}, needed {needed}" ]
         super().__init__(messages)
     #]
+
+
+def log(x):
+    if hasattr(x, "log"):
+        return x.log()
+    else:
+        return numpy.log(x)
+
+
+def exp(x):
+    if hasattr(x, "exp"):
+        return x.exp()
+    else:
+        return numpy.exp(x)
+
 

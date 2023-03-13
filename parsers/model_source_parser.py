@@ -3,6 +3,8 @@
 
 
 from __future__ import annotations
+
+from IPython import embed
 import parsimonious
 import functools
 import re
@@ -108,11 +110,8 @@ class _Visitor(parsimonious.nodes.NodeVisitor):
     def visit_all_but_flag(self, node, visited_children):
         block_name = "all-but"
         flag = visited_children[0] if visited_children else ""
-        self._add(block_name, flag)
+        self._add(block_name, [flag])
         return flag
-
-    # def visit_all_but_keyword(self, node, visited_children):
-        # return "all-but"
 
     def visit_qty_ended(self, node, visited_children):
         _, description, _, name, _ = visited_children

@@ -1,5 +1,5 @@
 """
-# Metadata on first-order system and solution
+# Descriptor for first-order systems and solutions
 
 ## Unsolved system
 
@@ -21,28 +21,28 @@ $$
 #[
 from __future__ import annotations
 
-from IPython import embed
 import dataclasses
 import numpy 
 import itertools
 import operator
-
 from typing import Self, NoReturn
 from collections.abc import Iterable
 
-from . import audi
+from ..audi.engines import (
+    Context, DiffernAtom,
+)
 
-from .equations import (
+from ..equations import (
     EquationKind, Equations,
     generate_all_tokens_from_equations,
     generate_eids_by_kind, sort_equations,
     create_eid_to_wrt_tokens,
 )
-from .quantities import (
+from ..quantities import (
     QuantityKind, Quantities,
     create_qid_to_kind,
 )
-from .incidence import (
+from ..incidence import (
     Token, Tokens, 
     get_some_shifts_by_quantities,
     sort_tokens, generate_tokens_of_kinds,
@@ -51,21 +51,21 @@ from .incidence import (
 
 
 @dataclasses.dataclass
-class Metaford:
+class Descriptor:
     """
     """
     #[
     system_vectors: SystemVectors | None = None
     solution_vectors: SolutionVectors | None = None
     system_map: SystemMap | None = None
-    system_differn_context: audi.Context | None = None
+    system_differn_context: Context | None = None
 
-    def __init__(self, equations, quantities) -> NoReturn:
+    def __init__(self, equations, quantities, /,) -> NoReturn:
         self.system_vectors = SystemVectors(equations, quantities)
         self.solution_vectors = SolutionVectors(self.system_vectors)
         self.system_map = SystemMap(self.system_vectors)
-        self.system_differn_context = audi.Context.for_equations(
-           audi.DiffernAtom, 
+        self.system_differn_context = Context.for_equations(
+           DiffernAtom, 
            self.system_vectors.generate_system_equations_from_equations(equations),
            self.system_vectors.eid_to_wrt_tokens,
         )
