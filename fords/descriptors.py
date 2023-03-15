@@ -44,7 +44,7 @@ from ..quantities import (
 )
 from ..incidence import (
     Token, Tokens, 
-    get_some_shifts_by_quantities,
+    get_some_shift_by_quantities,
     sort_tokens, generate_tokens_of_kinds,
 )
 #]
@@ -157,8 +157,9 @@ def _create_system_transition_vector(tokens_transition_variables: Tokens) -> Tok
     """
     #[
     tokens_transition_variables = set(tokens_transition_variables)
-    min_shifts = get_some_shifts_by_quantities(tokens_transition_variables, lambda x: min(min(x), -1))
-    max_shifts = get_some_shifts_by_quantities(tokens_transition_variables, max)
+    min_shifts = get_some_shift_by_quantities(tokens_transition_variables, lambda x: min(min(x), -1))
+    max_shifts = get_some_shift_by_quantities(tokens_transition_variables, max)
+    #
     vector_for_id = lambda qid: [Token(qid, sh) for sh in range(min_shifts[qid]+1, max_shifts[qid]+1)]
     unique_ids = set(t.qid for t in tokens_transition_variables)
     return itertools.chain.from_iterable(vector_for_id(i) for i in unique_ids)
@@ -200,7 +201,7 @@ class SystemMap:
     dynid_B: numpy.ndarray | None = None
     dynid_C: numpy.ndarray | None = None
     dynid_D: numpy.ndarray | None = None
-
+    #
     F: _ArrayMap | None = None
     G: _ArrayMap | None = None
     H: None = None
@@ -221,9 +222,9 @@ class SystemMap:
         rhs_offsets.pop()
         rhs_offsets.insert(0, 0)
         eid_to_rhs_offset = dict(zip(system_eids, rhs_offsets))
-
+        #
         # Transition equations
-
+        #
         self.A = vstack_array_maps(
             _ArrayMap.for_equation(
                 system_vectors.eid_to_wrt_tokens[eid],
@@ -248,12 +249,12 @@ class SystemMap:
             )
             for lhs_row, eid in enumerate(system_vectors.transition_eids)
         )
-
+        #
         self.A._remove_nones()
         self.B._remove_nones()
-
+        #
         self.C = _ArrayMap.constant_vector(system_vectors.transition_eids)
-
+        #
         self.D = vstack_array_maps(
             _ArrayMap.for_equation(
                 system_vectors.eid_to_wrt_tokens[eid],
@@ -263,14 +264,14 @@ class SystemMap:
             )
             for lhs_row, eid in enumerate(system_vectors.transition_eids)
         )
-
+        #
         num_dynid_rows = len(system_vectors.transition_variables) - len(system_vectors.transition_eids)
         self.dynid_A, self.dynid_B = _create_dynid_matrices(system_vectors.transition_variables, )
         self.dynid_C = numpy.zeros((num_dynid_rows, system_vectors.shape_C_excl_dynid[1]), dtype=float, )
         self.dynid_D = numpy.zeros((num_dynid_rows, system_vectors.shape_D_excl_dynid[1]), dtype=float, )
-
+        #
         # Measurement equations
-
+        #
         self.F = vstack_array_maps(
             _ArrayMap.for_equation(
                 system_vectors.eid_to_wrt_tokens[eid],
@@ -310,8 +311,8 @@ def _create_dynid_matrices(system_transition_vector: Tokens):
     Create dynamic identity matrix for unsolved system
     """
     #[
-    num_columns = len(system_transition_vector)
-    max_shifts = get_some_shifts_by_quantities(system_transition_vector, max)
+    max_shifts = get_some_shift_by_quantities(system_transition_vector, max)
+    #
     index_A = ([], [])
     index_B = ([], [])
     row_count = 0
@@ -324,6 +325,8 @@ def _create_dynid_matrices(system_transition_vector: Tokens):
         index_B[0].append(row_count)
         index_B[1].append(j)
         row_count += 1
+    #
+    num_columns = len(system_transition_vector)
     dynid_A = numpy.zeros((row_count, num_columns), dtype=float)
     dynid_B = numpy.zeros((row_count, num_columns), dtype=float)
     dynid_A[index_A] = 1

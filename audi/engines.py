@@ -26,6 +26,8 @@ from ..equations import (
     generate_all_tokens_from_equations, 
     create_evaluator_func_string,
 )
+
+from ..functions import *
 #]
 
 
@@ -224,13 +226,13 @@ class DiffernAtom(ValueMixin, LoglyMixin):
         return self.__neg__().__add__(other)
 
 
-    def log(self):
+    def _log_(self):
         new_value = numpy.log(self.value)
         new_diff = 1 / self.value * self.diff
         return DiffernAtom.no_context(new_value, new_diff, False)
 
 
-    def exp(self):
+    def _exp_(self):
         new_value = numpy.exp(self.value)
         new_diff = new_value * self.diff
         return DiffernAtom.no_context(new_value, new_diff, False)
@@ -357,7 +359,7 @@ class InvarianceAtom(LoglyMixin):
     __rsub__ = __add__
 
 
-    def log(self) -> Self:
+    def _log_(self) -> Self:
         """
         Invariance of log(self(x))
         """
@@ -548,19 +550,5 @@ class InvalidInputDataArrayShape(ListException):
         messages = [ f"Incorrect size of input data matrix: entered {shape_entered}, needed {needed}" ]
         super().__init__(messages)
     #]
-
-
-def log(x):
-    if hasattr(x, "log"):
-        return x.log()
-    else:
-        return numpy.log(x)
-
-
-def exp(x):
-    if hasattr(x, "exp"):
-        return x.exp()
-    else:
-        return numpy.exp(x)
 
 

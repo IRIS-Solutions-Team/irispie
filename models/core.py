@@ -18,6 +18,7 @@ import operator
 
 from . import variants
 from .. import sources
+from .. import parsers
 
 from ..incidence import (
     Token,
@@ -39,6 +40,7 @@ from ..fords import descriptors
 from ..fords import systems
 from .. import exceptions
 from ..dataman import databanks
+from .. import evaluators
 #]
 
 
@@ -261,14 +263,8 @@ class Model:
     def is_flat(self, /, ) -> bool:
         return self._flags.is_flat
 
-    def _get_max_shift(self: Self, /, ) -> int:
-        return get_max_shift(self._collect_all_tokens)
-
-    def _get_min_shift(self: Self, /, ) -> int:
-        return get_min_shift(self._collect_all_tokens)
-
-    def create_steady_evaluator(self, /, ) -> SteadyEvaluator:
-        return SteadyEvaluator(self)
+    def create_steady_evaluator(self, /, ) -> evaluators.SteadyEvaluator:
+        return evaluators.SteadyEvaluator(self)
 
     def create_name_to_qid(self, /, ) -> dict[str, int]:
         return create_name_to_qid(self._quantities)
@@ -276,33 +272,33 @@ class Model:
     def create_qid_to_name(self, /, ) -> dict[int, str]:
         return create_qid_to_name(self._quantities)
 
+
     def create_qid_to_logly(self, /, ) -> dict[int, bool]:
         return create_qid_to_logly(self._quantities)
 
-    def _create_steady_array(
+    def create_steady_array(
         self,
-        variant: Variant,
         /,
+        variant: variants.Variant|None = None,
         **kwargs,
     ) -> numpy.ndarray:
-        qid_to_logly = self.create.qid_to_logly()
+        qid_to_logly = self.create_qid_to_logly()
+        if variant is None:
+            variant = self._variants[0]
         return variant.create_steady_array(qid_to_logly, **kwargs, )
 
-    def _create_zero_array(
+    def create_zero_array(
         self,
-        variant: Variant,
         /,
+        variant: variants.Variant|None = None,
         **kwargs,
     ) -> numpy.ndarray:
         """
         """
         qid_to_logly = self.create_qid_to_logly()
-        levels = variant.levels
-        changes = variant.changes
-        update = { qid:(float(logly), float(logly), ) for qid, logly in qid_to_logly.items() if logly is not None }
-        levels = variants.update_levels_from_dict(levels, update, )
-        changes = variants.update_changes_from_dict(changes, update, )
-        return variants.create_steady_array(levels, changes, qid_to_logly, **kwargs, )
+        if variant is None:
+            variant = self._variants[0]
+        return variant.create_zero_array(qid_to_logly, **kwargs, )
 
     def _assign_auto_values(self: Self, /, ) -> NoReturn:
         assign_shocks = { qid: (0, numpy.nan) for qid in  generate_qids_by_kind(self._quantities, QuantityKind.SHOCK) }
@@ -316,9 +312,6 @@ class Model:
     def _expand_num_variants(self, new_num: int, /, ) -> NoReturn:
         for i in range(self.num_variants, new_num):
             self._variants.append(copy.deepcopy(self._variants[-1]))
-
-    def _collect_all_tokens(self, /, ) -> set[Token]:
-        return set(generate_all_tokens_from_equations(self._equations))
 
 
     # def systemize(
@@ -347,7 +340,7 @@ class Model:
         sdr = self._steady_descriptor
         num_columns = sdr.system_differn_context.shape_data[1]
         logly_context = self.create_qid_to_logly()
-        value_context = self._create_zero_array(variant, num_columns=num_columns)
+        value_context = self.create_zero_array(variant, num_columns=num_columns)
         return systems.System.for_descriptor(sdr, logly_context, value_context)
 
 
@@ -515,14 +508,27 @@ class Model:
         context: dict | None = None,
         save_preparsed: str = "",
         **kwargs,
-    ) -> tuple[Self, dict]:
+    ) -> Self:
         """
         """
         model_source, info = sources.ModelSource.from_string(
             source_string, context=context, save_preparsed=save_preparsed,
         )
-        return Model.from_source(model_source, **kwargs)
+        return Model.from_source(model_source, **kwargs, )
+
+    @classmethod
+    def from_file(
+        cls,
+        source_files: str|Iterable[str],
+        /,
+        **kwargs,
+    ) -> Self:
+        """
+        """
+        source_string = parsers.common.combine_source_files(source_files)
+        return Model.from_string(source_string, **kwargs, )
     #]
+
 
 
 def _rekey_dict(dict_to_rekey: dict, old_key_to_new_key: dict, /, ) -> dict:

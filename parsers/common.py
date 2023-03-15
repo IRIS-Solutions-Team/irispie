@@ -36,3 +36,20 @@ def add_blank_lines(source: str) -> str:
     return "\n" + source + "\n"
 
 
+def combine_source_files(
+    source_files: str|Iterable[str], 
+    /,
+    joint: str = "\n\n",
+) -> str:
+    """
+    """
+    if isinstance(source_files, str):
+        source_files = [source_files]
+    source_string = []
+    for f in source_files:
+        with open(f, "r") as fid:
+            source_string.append(fid.read())
+    source_string = "\n\n".join(source_string)
+    return source_string
+
+

@@ -15,6 +15,7 @@ from typing import Self, NoReturn
 from collections.abc import Iterable
 
 from .incidence import Token, Tokens, sort_tokens
+from . import incidence
 from .exceptions import UndeclaredName
 #]
 
@@ -40,6 +41,7 @@ class EquationKind(enum.Flag):
     UNSPECIFIED = enum.auto()
     TRANSITION_EQUATION = enum.auto()
     MEASUREMENT_EQUATION = enum.auto()
+    STEADY_EVALUATOR = TRANSITION_EQUATION | MEASUREMENT_EQUATION
     #]
 
 
@@ -203,8 +205,21 @@ def generate_equations_of_kind(
 
 def sort_equations(
     equations: Equations,
-    /
+    /,
 ) -> Equations:
     return sorted(equations, key=operator.attrgetter("id"))
 
+
+def get_min_shift_from_equations(
+    equations: Equations,
+    /,
+) -> int:
+    return incidence.get_min_shift(generate_all_tokens_from_equations(equations))
+
+
+def get_max_shift_from_equations(
+    equations: Equations,
+    /,
+) -> int:
+    return incidence.get_max_shift(generate_all_tokens_from_equations(equations))
 

@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from numbers import Number
+import operator
+import itertools
 
 from typing import (
     NamedTuple, Callable, Self, 
@@ -65,13 +67,10 @@ def generate_qids_from_tokens(tokens: Tokens) -> Iterable[int]:
     return (tok.qid for tok in tokens)
 
 
-def get_some_shifts_by_quantities(tokens: Tokens, some: Callable) -> dict[int, int]:
-    tokens = set(tokens)
-    unique_qids = set(generate_qids_from_tokens(tokens))
-    return {
-        qid: _get_some_shift_for_quantity(tokens, qid, some)
-        for qid in unique_qids
-    }
+def get_some_shift_by_quantities(tokens: Tokens, something: Callable) -> dict:
+    key = operator.attrgetter("qid")
+    sorted_tokens = sorted(tokens, key=key)
+    return { k: something(t.shift for t in tokens) for k, tokens in itertools.groupby(sorted_tokens, key=key) }
 
 
 def generate_tokens_of_kinds(tokens: Tokens, qid_to_kind: dict, kinds: QuantityKind) -> Tokens:
@@ -93,9 +92,4 @@ def print_tokens(
     Create list of printed tokens
     """
     return [ t.print(id_to_name) for t in tokens ]
-
-
-def _get_some_shift_for_quantity(tokens: Tokens, qid: int, some: Callable) -> int:
-    return some(tok.shift for tok in tokens if tok.qid==qid)
-
 

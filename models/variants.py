@@ -3,7 +3,8 @@
 
 #[
 from __future__ import annotations
-
+from IPython import embed
+import warnings
 import numpy
 from numbers import Number
 
@@ -38,30 +39,60 @@ class Variant:
         self.changes = update_from_array(self.changes, changes, qids, )
 
     def create_steady_array(
-        self, qid_to_logly,
+        self,
+        qid_to_logly: dict[int, bool],
         /,
         num_columns: int = 1,
+        shift_in_first_column: int = 0,
     ) -> numpy.ndarray:
         """
         """
-        return create_steady_array(self.levels, self.changes, qid_to_logly, num_columns, )
+        levels = numpy.copy(self.levels).reshape(-1, 1)
+        changes = numpy.copy(self.changes).reshape(-1, 1)
+        #
+        if num_columns==1 and shift_in_first_column==0:
+            return levels
+        #
+        logly = numpy.array([
+            qid_to_logly[i] is True
+            for i in range(levels.shape[0])
+        ])
+        #
+        shift_vec = numpy.array(range(shift_in_first_column, num_columns))
+        #
+        warnings.filterwarnings(action="ignore", category=RuntimeWarning)
+        levels[logly] = numpy.log(levels[logly])
+        changes[logly] = numpy.log(changes[logly])
+        warnings.filterwarnings(action="default", category=RuntimeWarning)
+        #
+        levels[numpy.isnan(levels) | numpy.isinf(levels)] = numpy.nan
+        changes[numpy.isnan(changes) | numpy.isinf(changes)] = 0
+        #
+        steady_array = levels + changes * shift_vec
+        #
+        warnings.filterwarnings(action="ignore", category=RuntimeWarning)
+        steady_array[logly, :] = numpy.exp(steady_array[logly, :])
+        warnings.filterwarnings(action="default", category=RuntimeWarning)
+        #
+        return steady_array
+
+
+    def create_zero_array(
+        self,
+        qid_to_logly: dict[int, bool],
+        /,
+        num_columns: int = 1,
+        shift_in_first_column: int = 0,
+    ) -> numpy.ndarray:
+        """
+        """
+        levels = numpy.copy(self.levels).reshape(-1, 1)
+        inx_set_to_0 = [ qid for qid, logly in qid_to_logly.items() if logly is False ]
+        inx_set_to_1 = [ qid for qid, logly in qid_to_logly.items() if logly is True ]
+        levels[inx_set_to_0] = 0
+        levels[inx_set_to_1] = 1
+        return numpy.tile(levels, (1, num_columns))
     #]
-
-
-def create_steady_array(
-    levels: numpy.ndarray,
-    changes: numpy.ndarray,
-    qid_to_logly: dict[int, bool],
-    /,
-    num_columns: int = 1,
-) -> numpy.ndarray:
-    """
-    Create a steady array from levels and changes with a certain number of columns
-    """
-    levels = levels.reshape(-1, 1)
-    changes = changes.reshape(-1, 1)
-    steady_array = numpy.tile(levels, (1, num_columns))
-    return steady_array
 
 
 def update_from_array(
