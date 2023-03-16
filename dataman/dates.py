@@ -59,6 +59,9 @@ SDMX_FORMATS = {
 }
 
 
+BASE_YEAR = 2020
+
+
 @runtime_checkable
 class ResolutionContextProtocol(Protocol):
     """
@@ -128,51 +131,42 @@ class Dater(RangeableMixin):
     frequency = None
     needs_resolve = False
 
+    def get_distance_from_origin(self) -> int:
+        return self.serial - self.origin
 
     def resolve(self, context: ResolutionContextProtocol) -> Self:
         return self
 
-
     def __bool__(self) -> bool:
         return not self.needs_resolve
-
 
     def __init__(self, serial=0):
         self.serial = int(serial)
 
-
     def __len__(self):
         return 1
 
-
     def __repr__(self) -> str:
         return self.__str__()
-
 
     def __format__(self, *args) -> str:
         str_format = args[0] if args else ""
         return ("{date_str:"+str_format+"}").format(date_str=self.__str__())
 
-
-    def __iter__(self) -> Iterable:
+    def __iter__(self) -> Iterable[Self]:
         yield self
-
 
     def _get_hash_key(self, /, ) -> tuple[int, int]:
         return (int(self.serial), int(self.frequency), )
 
-
     def __hash__(self, /, ) -> int:
         return hash(self._get_hash_key(), )
-
 
     @_check_offset_decorator
     def __add__(self, other: int) -> Self:
         return type(self)(self.serial + int(other))
 
-
     __radd__ = __add__
-
 
     def __sub__(self, other: Union[Self, int]) -> Union[Self, int]:
         if isinstance(other, Dater):
@@ -180,40 +174,32 @@ class Dater(RangeableMixin):
         else:
             return self.__add__(-int(other))
 
-
     @_check_daters_decorate
     def _sub_dater(self, other: Self) -> int:
         return self.serial - other.serial
 
-
     def __index__(self):
         return self.serial
-
 
     @_check_daters_decorate
     def __eq__(self, other) -> bool:
         return self.serial == other.serial
 
-
     @_check_daters_decorate
     def __ne__(self, other) -> bool:
         return self.serial != other.serial
-
 
     @_check_daters_decorate
     def __lt__(self, other) -> bool:
         return self.serial < other.serial
 
-
     @_check_daters_decorate
     def __le__(self, other) -> bool:
         return self.serial <= other.serial
 
-
     @_check_daters_decorate
     def __gt__(self, other) -> bool:
         return self.serial > other.serial
-
 
     @_check_daters_decorate
     def __ge__(self, other) -> bool:
@@ -225,10 +211,10 @@ class IntegerDater(Dater):
     #[
     frequency = Frequency.INTEGER
     needs_resolve = False
+    origin = 0
 
     def __repr__(self) -> str:
         return f"ii({self.serial})"
-
 
     def __str__(self) -> str:
         serial = self.serial
@@ -240,13 +226,12 @@ class DailyDater(Dater):
     #[
     frequency: Frequency = Frequency.DAILY
     needs_resolve = False
-
+    origin = datetime.date(BASE_YEAR, 1, 1).toordinal()
 
     @classmethod
     def from_ymd(cls: type, year: int, month: int=1, day: int=1) -> Self:
         serial = datetime.date(year, month, day).toordinal()
         return cls(serial)
-
 
     @classmethod
     def from_year_period(cls, year: int, period: int) -> Self:
@@ -254,29 +239,29 @@ class DailyDater(Dater):
         serial = boy_serial + int(period) - 1
         return cls(serial)
 
-
     def to_year_period(self: Self) -> tuple[int, int]:
         boy_serial = datetime.date(datetime.date.fromordinal(self.serial).year, 1, 1)
         per = self.serial - boy_serial + 1
         year = datetime.date.fromordinal(self.serial).year
         return year, per
 
-
     def to_ymd(self: Self) -> tuple[int, int, int]:
         py_date = datetime.date.fromordinal(self.serial)
         return py_date.year, py_date.month, py_date.day
-
 
     def __str__(self) -> str:
         year, month, day = self.to_ymd()
         letter = self.frequency.letter
         return self.frequency.sdmx_format.format(year=year, month=month, day=day, letter=letter)
 
-
     @_remove_blanks_decorate
     def __repr__(self) -> str:
         return f"dd{self.to_ymd()}"
     #]
+
+
+def _serial_from_ypf(year: int, per: int, freq: int) -> int:
+    return int(year)*int(freq) + int(per) - 1
 
 
 class RegularDaterMixin:
@@ -289,17 +274,14 @@ class RegularDaterMixin:
         ) -> Self:
         if per=="end":
             per = cls.frequency.value
-        new_serial = int(year)*int(cls.frequency.value) + int(per) - 1
+        new_serial = _serial_from_ypf(year, per, cls.frequency.value)
         return cls(new_serial)
-
 
     def to_year_period(self) -> tuple[int, int]:
         return self.serial//self.frequency.value, self.serial%self.frequency.value+1
 
-
     def get_year(self) -> int:
         return self.to_year_period()[0]
-
 
     def __str__(self) -> str:
         year, per = self.to_year_period()
@@ -311,6 +293,8 @@ class RegularDaterMixin:
 class YearlyDater(Dater, RegularDaterMixin): 
     frequency: Frequency = Frequency.YEARLY
     needs_resolve: bool = False
+    origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.YEARLY)
+
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"yy({self.get_year()})"
 
@@ -318,6 +302,8 @@ class YearlyDater(Dater, RegularDaterMixin):
 class HalfyearlyDater(Dater, RegularDaterMixin):
     frequency: Frequency = Frequency.HALFYEARLY
     needs_resolve: bool = False
+    origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.HALFYEARLY)
+
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"hh{self.to_year_period()}"
 
@@ -325,6 +311,8 @@ class HalfyearlyDater(Dater, RegularDaterMixin):
 class QuarterlyDater(Dater, RegularDaterMixin):
     frequency: Frequency = Frequency.QUARTERLY
     needs_resolve: bool = False
+    origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.QUARTERLY)
+
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"qq{self.to_year_period()}"
 
@@ -332,6 +320,8 @@ class QuarterlyDater(Dater, RegularDaterMixin):
 class MonthlyDater(Dater, RegularDaterMixin):
     frequency: Frequency = Frequency.MONTHLY
     needs_resolve: bool = False
+    origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.MONTHLY)
+
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"mm{self.to_year_period()}"
 

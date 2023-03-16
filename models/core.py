@@ -20,15 +20,11 @@ from . import variants
 from .. import sources
 from .. import parsers
 
-from ..incidence import (
-    Token,
-    get_max_shift, get_min_shift,
-)
-from ..equations import (
-    Equation,
-    finalize_equations_from_humans,
-    generate_all_tokens_from_equations
-)
+from ..incidence import (Token, )
+
+from .. import equations
+from ..equations import (Equation, )
+
 from ..quantities import (
     QuantityKind, Quantity,
     create_name_to_qid, create_qid_to_name, create_qid_to_logly,
@@ -192,6 +188,8 @@ class Model:
         self._dynamic_equations: list[Equation] = []
         self._steady_equations: list[Equation] = []
         self._variants: list[variants.Variant] = []
+        self._min_shift: int|None = None
+        self._max_shift: int|None = None
 
     def assign(
         self: Self,
@@ -206,6 +204,8 @@ class Model:
             raise exceptions.UnknownName(_KeyError.args[0])
         for v in self._variants:
             v.update_values_from_dict(qid_to_value)
+        #
+        self._enforce_auto_values()
         return self
 
     def assign_from_databank(
@@ -300,9 +300,20 @@ class Model:
             variant = self._variants[0]
         return variant.create_zero_array(qid_to_logly, **kwargs, )
 
-    def _assign_auto_values(self: Self, /, ) -> NoReturn:
-        assign_shocks = { qid: (0, numpy.nan) for qid in  generate_qids_by_kind(self._quantities, QuantityKind.SHOCK) }
+    def _enforce_auto_values(self: Self, /, ) -> NoReturn:
+        # Reset levels of shocks to zero, remove changes
+        assign_shocks = { 
+            qid: (0, numpy.nan) 
+            for qid in generate_qids_by_kind(self._quantities, QuantityKind.SHOCK)
+        }
         self._variants[0].update_values_from_dict(assign_shocks)
+        #
+        # Remove changes from quantities that are not logly variables
+        assign_non_logly = { 
+            qid: (..., numpy.nan) 
+            for qid in  generate_qids_by_kind(self._quantities, ~QuantityKind.LOGLY_VARIABLE)
+        }
+        self._variants[0].update_values_from_dict(assign_non_logly)
 
     def _shrink_num_variants(self, new_num: int, /, ) -> NoReturn:
         if new_num<1:
@@ -362,16 +373,19 @@ class Model:
             extractor = lambda qid: steady_something_hstacked[qid, ...]
         return databanks.Databank._from_dict({ name: extractor(qid) for qid, name in qid_to_name.items() })
 
-
     get_steady_levels = functools.partialmethod(
-        _get_steady_something, extractor_from_variant=operator.attrgetter("levels")
+        _get_steady_something, extractor_from_variant=operator.attrgetter("levels"),
     )
-
 
     get_steady_changes = functools.partialmethod(
-        _get_steady_something, extractor_from_variant=operator.attrgetter("changes")
+        _get_steady_something, extractor_from_variant=operator.attrgetter("changes"),
     )
 
+    def get_log_status(
+        self,
+        /,
+    ) -> dict[str, bool]:
+        return { qty.human: qty.logly for qty in self._quantities if qty.kind in QuantityKind.LOGLY_VARIABLE }
 
     def steady(
         self,
@@ -385,7 +399,6 @@ class Model:
             levels, qids_levels, changes, qids_changes = solver(v)
             v.update_levels_from_array(levels, qids_levels)
             v.update_changes_from_array(changes, qids_changes)
-
 
     def _apply_delog(
         self,
@@ -474,6 +487,15 @@ class Model:
         return STEADY_SOLVER[model_flags]
 
 
+    def _populate_min_max_shifts(self) -> NoReturn:
+        self._min_shift = equations.get_min_shift_from_equations(
+            self._dynamic_equations + self._steady_equations
+        )
+        self._max_shift = equations.get_max_shift_from_equations(
+            self._dynamic_equations + self._steady_equations
+        )
+
+
     @classmethod
     @_resolve_model_flags
     def from_source(
@@ -490,13 +512,15 @@ class Model:
         self._steady_equations = model_source.steady_equations[:]
 
         name_to_qid = create_name_to_qid(self._quantities)
-        finalize_equations_from_humans(self._dynamic_equations, name_to_qid)
-        finalize_equations_from_humans(self._steady_equations, name_to_qid)
+        equations.finalize_dynamic_equations(self._dynamic_equations, name_to_qid)
+        equations.finalize_steady_equations(self._steady_equations, name_to_qid)
 
         self._variants = [ variants.Variant(self._quantities) ]
-        self._assign_auto_values()
+        self._enforce_auto_values()
         self._dynamic_descriptor = descriptors.Descriptor(self._dynamic_equations, self._quantities)
         self._steady_descriptor = descriptors.Descriptor(self._steady_equations, self._quantities)
+
+        self._populate_min_max_shifts()
         return self
 
 
@@ -515,6 +539,7 @@ class Model:
             source_string, context=context, save_preparsed=save_preparsed,
         )
         return Model.from_source(model_source, **kwargs, )
+
 
     @classmethod
     def from_file(
