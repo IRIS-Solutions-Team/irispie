@@ -4,14 +4,21 @@ from __future__ import annotations
 
 import copy
 import types
-from typing import Self, TypeAlias, NoReturn
-from collections.abc import Iterable, Callable
-from numbers import Number
+from typing import (Self, TypeAlias, NoReturn, Literal, )
+from collections.abc import (Iterable, Callable, )
+from numbers import (Number, )
+
+from .dates import (Dater, )
 #]
 
 
 SourceNames: TypeAlias = Iterable[str] | str | Callable[[str], bool] | None
 TargetNames: TypeAlias = Iterable[str] | str | Callable[[str], str] | None
+
+
+class EmptyDateRange(Exception):
+    def __init__(self):
+        super().__init__("Empty date range is not allowed in this context.")
 
 
 class Databank(types.SimpleNamespace):
@@ -21,7 +28,7 @@ class Databank(types.SimpleNamespace):
         cls,
         _dict: dict,
         /,
-    ) -> NoReturn:
+    ) -> Self:
         """
         """
         self = cls()
@@ -30,11 +37,29 @@ class Databank(types.SimpleNamespace):
         return self
 
 
+    @classmethod
+    def _for_model(
+        cls,
+        model,
+        base_range: Iterable[Dater],
+        /,
+        interpret_range: Literal["base"]|Literal["all"] = "base",
+        deviation: bool = False,
+    ) -> Self:
+        range_list = [t for t in base_range]
+        if not range_list:
+            raise EmptyDateRange()
+        start_date = t[0]
+        end_date = t[-1]
+
+
+
     def _get_names(self: Self) -> Iterable[str]:
         """
-        Get all names stored in a databank save for the private attributes
+        Get all names stored in a databank save for private attributes
         """
         return [ n for n in dir(self) if not n.startswith("_") ]
+
 
     def _copy(
         self: Self,
@@ -48,6 +73,7 @@ class Databank(types.SimpleNamespace):
         new_databank = new_databank._rename(source_names, target_names)
         new_databank._keep(target_names)
         return new_databank
+
 
     def _rename(
         self: Self,
@@ -65,6 +91,7 @@ class Databank(types.SimpleNamespace):
             self.__dict__[new_name] = self.__dict__.pop(old_name)
         return self
 
+
     def _remove(
         self: Self,
         /,
@@ -80,6 +107,7 @@ class Databank(types.SimpleNamespace):
             del self.__dict__[n]
         return self
 
+
     def _keep(
         self: Self,
         /,
@@ -94,17 +122,22 @@ class Databank(types.SimpleNamespace):
         remove_names = set(context_names).difference(keep_names)
         return self._remove(remove_names)
 
+
     def __getitem__(self, name):
         return self.__dict__[name]
+
 
     def __setitem__(self, name, value) -> NoReturn:
         self.__dict__[name] = value
 
+
     def __repr__(self, /, ) -> NoReturn:
         INDENT = "    "
         SEPARATOR = ": "
-        s = [ INDENT+k+SEPARATOR + _databank_repr(v) for k, v, in self.__dict__.items() ]
+        max_len = max(len(k) for k in self.__dict__.keys())
+        s = [ INDENT + k.rjust(max_len) + SEPARATOR + _databank_repr(v) for k, v, in self.__dict__.items() ]
         return "\n".join(s)
+
 
     def __str__(self, /, ) -> NoReturn:
         return repr(self)

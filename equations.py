@@ -5,6 +5,7 @@ Model equations
 #[
 from __future__ import annotations
 
+from IPython import embed
 import enum
 import re
 import dataclasses 
@@ -78,12 +79,41 @@ class Equation:
 Equations: TypeAlias = Iterable[Equation]
 
 
+STEADY_REF_PATTERN = re.compile(r"&x\b")
+
+
 def generate_all_tokens_from_equations(equations: Equations) -> Iterable[Token]:
     return itertools.chain.from_iterable(eqn.incidence for eqn in equations)
 
 
-def finalize_equations_from_humans(
-    equations: list[Equation],
+def finalize_dynamic_equations(
+    equations: Equations,
+    name_to_id: dict[str, int],
+) -> NoReturn:
+    _finalize_equations_from_humans(equations, name_to_id)
+    _replace_steady_ref(equations)
+
+
+def finalize_steady_equations(
+    equations: Equations,
+    name_to_id: dict[str, int],
+) -> NoReturn:
+    _finalize_equations_from_humans(equations, name_to_id)
+    _remove_steady_ref(equations)
+
+
+def _replace_steady_ref(equations: Equations) -> NoReturn:
+    for eqn in equations:
+        eqn.xtring = re.sub(STEADY_REF_PATTERN, "L", eqn.xtring)
+
+
+def _remove_steady_ref(equations: Equations) -> NoReturn:
+    for eqn in equations:
+        eqn.xtring = re.sub(STEADY_REF_PATTERN, "x", eqn.xtring)
+
+
+def _finalize_equations_from_humans(
+    equations: Equations,
     name_to_id: dict[str, int],
 ) -> NoReturn:
     """
@@ -105,14 +135,14 @@ def generate_names_from_human(human: str) -> Iterable[str]:
     return (f[0] for f in _QUANTITY_NAME_PATTERN.findall(human))
 
 
-def generate_all_names(equations: list[Equation]) -> list[str]:
+def generate_all_names(equations: Equations) -> list[str]:
     """
     Extract all names from a list of equations
     """
     return generate_names_from_human(" ".join(e.human for e in equations))
 
 
-def create_name_to_qid_from_equations(equations: list[Equation]) -> dict[str, int]:
+def create_name_to_qid_from_equations(equations: Equations) -> dict[str, int]:
     """
     """
     all_names = sorted(list(set(generate_all_names(equations))))

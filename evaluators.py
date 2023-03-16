@@ -107,7 +107,7 @@ class SteadyEvaluator:
         """
         xtrings = [ eqn.remove_equation_ref_from_xtring() for eqn in self._equations ]
         func_string = ",".join(xtrings)
-        self._func = eval(f"lambda x, t={self._t_zero}: numpy.array([{func_string}], dtype=float)")
+        self._func = eval(f"lambda x, t={self._t_zero}, L=None: numpy.array([{func_string}], dtype=float)")
 
 
     def _create_incidence_matrix(self, /) -> NoReturn:

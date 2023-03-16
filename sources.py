@@ -198,7 +198,7 @@ class ModelSource:
             source_string, context, save_preparsed=save_preparsed, 
         )
         parsed_content = model_source_parser.from_string(preparsed_string)
-
+        #
         self = ModelSource()
         self.add_transition_variables(parsed_content.get("transition-variables"))
         self.add_transition_shocks(parsed_content.get("transition-shocks"))
@@ -209,10 +209,14 @@ class ModelSource:
         self.add_parameters(parsed_content.get("parameters"))
         self.add_exogenous_variables(parsed_content.get("exogenous-variables"))
         self.add_log_variables(parsed_content.get("log-variables"))
+        for i in parsed_content.get("all-but", []):
+            self.add_all_but(i)
         self.context = preparser_info["context"]
-        if seal: self.seal()
-        info = preparser_info
-        return self, info
+        #
+        if seal: 
+            self.seal()
+        #
+        return self, preparser_info
     #]
 
 
@@ -229,7 +233,7 @@ def _check_unique_names(names: Iterable[str], /) -> NoReturn:
 
 
 def _handle_white_spaces(x: str, /) -> str:
-    return re.sub(r"[\s\n\r]+", " ", x)
+    return re.sub(r"[\s\n\r]+", "", x)
 
 
 def _reorder_by_kind(items: Iterable, /) -> Iterable:

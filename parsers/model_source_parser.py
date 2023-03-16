@@ -47,7 +47,7 @@ _GRAMMAR_DEF = common.GRAMMAR_DEF + r"""
     eqn_body = eqn_version eqn_steady
     eqn_steady = (eqn_version_separator eqn_version)?
     eqn_version_separator = "!!"
-    eqn_version = ~r"[\?\w\.\(\)=\+\^\-\*\{\}/ \t\n]+"
+    eqn_version = ~r"[\?\w\.\(\)=\+\^\-\*\{\}/ \t\n&\$]+"
 
     qty_block = qty_keyword qty_ended*
     qty_keyword = transition_variables_keyword / transition_shocks_keyword / measurement_variables_keyword / measurement_shocks_keyword / parameters_keyword / exogenous_variables_keyword
@@ -89,8 +89,9 @@ class _Visitor(parsimonious.nodes.NodeVisitor):
         # self.source = sources.Source()
 
     def _add(self, block_name, new_content):
-        updated_content = self.content.setdefault(block_name, []) + new_content
-        self.content[block_name] = updated_content
+        if new_content:
+            updated_content = self.content.setdefault(block_name, []) + new_content
+            self.content[block_name] = updated_content
 
     def visit_source(self, node, visited_children):
         return self.content
