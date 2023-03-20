@@ -4,7 +4,7 @@ from typing import Optional
 from numpy import ndarray, full, NaN
 
 from .exceptions import ListException
-from .audi import Space
+from .aldi import Space
 from .types import InputValueT, InputValuesT
 from .equations import Equation, xtrings_from_equations, xtring_from_human, names_from_human
 from .incidence import Token

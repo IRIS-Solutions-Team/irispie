@@ -7,6 +7,8 @@ import types
 from typing import (Self, TypeAlias, NoReturn, Literal, )
 from collections.abc import (Iterable, Callable, )
 from numbers import (Number, )
+import numpy
+import re
 
 from .dates import (Dater, )
 #]
@@ -14,6 +16,12 @@ from .dates import (Dater, )
 
 SourceNames: TypeAlias = Iterable[str] | str | Callable[[str], bool] | None
 TargetNames: TypeAlias = Iterable[str] | str | Callable[[str], str] | None
+
+
+_REPR_MAX_LEN = 70
+_REPR_CONT = "..."
+_REPR_INDENT = "    "
+_REPR_SEPARATOR = ": "
 
 
 class EmptyDateRange(Exception):
@@ -52,14 +60,17 @@ class Databank(types.SimpleNamespace):
         start_date = t[0]
         end_date = t[-1]
 
-
-
     def _get_names(self: Self) -> Iterable[str]:
         """
         Get all names stored in a databank save for private attributes
         """
         return [ n for n in dir(self) if not n.startswith("_") ]
 
+    def _to_dict(self: Self) -> dict:
+        """
+        Convert Databank to dict
+        """
+        return vars(self)
 
     def _copy(
         self: Self,
@@ -73,7 +84,6 @@ class Databank(types.SimpleNamespace):
         new_databank = new_databank._rename(source_names, target_names)
         new_databank._keep(target_names)
         return new_databank
-
 
     def _rename(
         self: Self,
@@ -91,7 +101,6 @@ class Databank(types.SimpleNamespace):
             self.__dict__[new_name] = self.__dict__.pop(old_name)
         return self
 
-
     def _remove(
         self: Self,
         /,
@@ -107,7 +116,6 @@ class Databank(types.SimpleNamespace):
             del self.__dict__[n]
         return self
 
-
     def _keep(
         self: Self,
         /,
@@ -122,22 +130,21 @@ class Databank(types.SimpleNamespace):
         remove_names = set(context_names).difference(keep_names)
         return self._remove(remove_names)
 
-
     def __getitem__(self, name):
         return self.__dict__[name]
-
 
     def __setitem__(self, name, value) -> NoReturn:
         self.__dict__[name] = value
 
+    def __or__(self, other) -> Self:
+        new = copy.deepcopy(self)
+        new.__dict__.update(other.__dict__)
+        return new
 
     def __repr__(self, /, ) -> NoReturn:
-        INDENT = "    "
-        SEPARATOR = ": "
-        max_len = max(len(k) for k in self.__dict__.keys())
-        s = [ INDENT + k.rjust(max_len) + SEPARATOR + _databank_repr(v) for k, v, in self.__dict__.items() ]
+        max_len = max(len(str(k)) for k in self.__dict__.keys())
+        s = [ _REPR_INDENT + str(k).rjust(max_len) + _REPR_SEPARATOR + _databank_repr(v) for k, v, in self.__dict__.items() ]
         return "\n".join(s)
-
 
     def __str__(self, /, ) -> NoReturn:
         return repr(self)
@@ -165,11 +172,18 @@ def _resolve_source_target_names(
     return source_names, target_names
 
 
-def _databank_repr(value, /, ) -> str:
-    if isinstance(value, Number):
-        return str(value)
-    elif isinstance(value, str):
-        return f'"value"'
+def _databank_repr(x, /, ) -> str:
+    if x is None:
+        s = "None"
+    elif x is ...:
+        s = "..."
+    elif isinstance(x, Number) or isinstance(x, Dater):
+        s = str(x)
+    elif isinstance(x, str):
+        s = f'"{x}"'
+    elif isinstance(x, numpy.ndarray) or isinstance(x, list):
+        s = re.sub("\n + ", " ", repr(x))
     else:
-        return str(type(value))
+        s = repr(type(x))
+    return s if len(s)<_REPR_MAX_LEN else s[0:_REPR_MAX_LEN] + _REPR_CONT
 

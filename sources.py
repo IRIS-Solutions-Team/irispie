@@ -8,7 +8,7 @@ from __future__ import annotations
 from IPython import embed
 import re
 import collections
-from typing import NoReturn, TypeAlias
+from typing import NoReturn, TypeAlias, Literal
 from collections.abc import Iterable
 
 from .parsers import preparser, model_source_parser
@@ -16,14 +16,17 @@ from .parsers import preparser, model_source_parser
 from .equations import (
     EquationKind, Equation,
 )
-from .quantities import (
-    QuantityKind, Quantity,
-)
+
+from . import quantities
 #]
 
 
 QuantityInput: TypeAlias = tuple[str, str]
 EquationInput: TypeAlias = tuple[str, tuple[str, str]]
+
+
+_STD_PREFIX = "std_"
+_STD_DESCRIPT = "(Std) "
 
 
 class ModelSource:
@@ -42,6 +45,7 @@ class ModelSource:
 
     def seal(self, /) -> NoReturn:
         _check_unique_names(qty.human for qty in self.quantities)
+        self._add_stds()
         self.quantities = _reorder_by_kind(self.quantities)
         self.dynamic_equations = _reorder_by_kind(self.dynamic_equations)
         self.steady_equations = _reorder_by_kind(self.steady_equations)
@@ -63,19 +67,19 @@ class ModelSource:
 
 
     def add_parameters(self, names: Iterable[QuantityInput] | None) -> NoReturn:
-        self._add_quantities(names, QuantityKind.PARAMETER)
+        self._add_quantities(names, quantities.QuantityKind.PARAMETER)
 
 
     def add_exogenous_variables(self, quantity_inputs: Iterable[QuantityInput] | None) -> NoReturn:
-        self._add_quantities(quantity_inputs, QuantityKind.EXOGENOUS_VARIABLE)
+        self._add_quantities(quantity_inputs, quantities.QuantityKind.EXOGENOUS_VARIABLE)
 
 
     def add_transition_variables(self, quantity_inputs: Iterable[QuantityInput] | None) -> NoReturn:
-        self._add_quantities(quantity_inputs, QuantityKind.TRANSITION_VARIABLE)
+        self._add_quantities(quantity_inputs, quantities.QuantityKind.TRANSITION_VARIABLE)
 
 
     def add_transition_shocks(self, quantity_inputs: Iterable[QuantityInput] | None) -> NoReturn:
-        self._add_quantities(quantity_inputs, QuantityKind.TRANSITION_SHOCK)
+        self._add_quantities(quantity_inputs, quantities.QuantityKind.TRANSITION_SHOCK)
 
 
     def add_transition_equations(self, equation_inputs: Iterable[EquationInput] | None) -> NoReturn:
@@ -83,11 +87,11 @@ class ModelSource:
 
 
     def add_measurement_variables(self, quantity_inputs: Iterable[EquationInput] | None) -> NoReturn:
-        self._add_quantities(quantity_inputs, QuantityKind.MEASUREMENT_VARIABLE)
+        self._add_quantities(quantity_inputs, quantities.QuantityKind.MEASUREMENT_VARIABLE)
 
 
     def add_measurement_shocks(self, quantity_inputs: Iterable[QuantityInput] | None) -> NoReturn:
-        self._add_quantities(quantity_inputs, QuantityKind.MEASUREMENT_SHOCK)
+        self._add_quantities(quantity_inputs, quantities.QuantityKind.MEASUREMENT_SHOCK)
 
 
     def add_measurement_equations(self, equation_inputs: Iterable[QuantityInput] | None) -> NoReturn:
@@ -106,12 +110,12 @@ class ModelSource:
         self.log_variables += log_variable_inputs
 
 
-    def _add_quantities(self, quantity_inputs: Iterable[QuantityInput] | None, kind: QuantityKind) -> NoReturn:
+    def _add_quantities(self, quantity_inputs: Iterable[QuantityInput] | None, kind: quantities.QuantityKind) -> NoReturn:
         if not quantity_inputs:
             return
         offset = self.quantities[-1].entry + 1 if self.quantities else 0
         self.quantities = self.quantities + [
-            Quantity(id=None, human=q[1].strip(), kind=kind, logly=None, descript=q[0].strip(), entry=i)
+            quantities.Quantity(id=None, human=q[1].strip(), kind=kind, logly=None, descript=q[0].strip(), entry=i)
             for i, q in enumerate(quantity_inputs, start=offset)
         ]
 
@@ -130,12 +134,27 @@ class ModelSource:
         ]
 
 
+    def _add_stds(self) -> NoReturn:
+        def _create_std_input_from_shock(shock):
+            descript = _STD_DESCRIPT + (shock.descript if shock.descript else shock.human)
+            human = _STD_PREFIX + shock.human
+            return(descript, human)
+        #
+        transition_shocks = (q for q in self.quantities if q.kind in quantities.QuantityKind.TRANSITION_SHOCK)
+        transition_std_inputs = (_create_std_input_from_shock(i) for i in transition_shocks)
+        self._add_quantities(transition_std_inputs, quantities.QuantityKind.TRANSITION_STD)
+        #
+        measurement_shocks = (q for q in self.quantities if q.kind in quantities.QuantityKind.MEASUREMENT_SHOCK)
+        measurement_std_inputs = (_create_std_input_from_shock(i) for i in measurement_shocks)
+        self._add_quantities(measurement_std_inputs, quantities.QuantityKind.MEASUREMENT_STD)
+
+
     def _populate_logly(self, /) -> NoReturn:
         default_logly = self._resolve_default_logly()
         qid_to_logly = { 
             qty.id: default_logly if qty.human not in self.log_variables else not default_logly
             for qty in self.quantities
-            if qty.kind in QuantityKind.LOGLY_VARIABLE
+            if qty.kind in quantities.QuantityKind.LOGLY_VARIABLE
         }
         self.quantities = [
             qty.set_logly(qid_to_logly.get(qty.id, None))

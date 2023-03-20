@@ -101,7 +101,6 @@ class DiffernAtom(ValueMixin, LoglyMixin):
         self._logly_index = token.qid
         return self
 
-
     @classmethod
     def zero_atom(
         cls: type,
@@ -109,17 +108,17 @@ class DiffernAtom(ValueMixin, LoglyMixin):
     ) -> Self:
         return DiffernAtom.no_context(0, numpy.zeros(diff_shape), False)
 
-
     @property
     def diff(self):
         return self._diff if not self.logly else self._diff * self.value
 
+    def __pos__(self):
+        return self
 
     def __neg__(self):
         new_value = -self.value
         new_diff = -self.diff
         return DiffernAtom.no_context(new_value, new_diff, False)
-
 
     def __add__(self, other):
         if hasattr(other, "_is_atom"):
@@ -130,7 +129,6 @@ class DiffernAtom(ValueMixin, LoglyMixin):
             new_diff = self.diff
         return DiffernAtom.no_context(new_value, new_diff, False)
 
-
     def __sub__(self, other):
         if hasattr(other, "_is_atom"):
             new_value = self.value - other.value
@@ -140,7 +138,6 @@ class DiffernAtom(ValueMixin, LoglyMixin):
             new_diff = self.diff
         new_logly = False
         return DiffernAtom.no_context(new_value, new_diff, False)
-
 
     def __mul__(self, other):
         self_value = self.value
@@ -155,7 +152,6 @@ class DiffernAtom(ValueMixin, LoglyMixin):
             new_diff = self_diff * other
         return DiffernAtom.no_context(new_value, new_diff, False)
 
-
     def __truediv__(self, other):
         self_value = self.value
         self_diff = self.diff
@@ -169,14 +165,12 @@ class DiffernAtom(ValueMixin, LoglyMixin):
             new_diff = self_diff / other
         return DiffernAtom.no_context(new_value, new_diff, False)
 
-
     def __rtruediv__(self, other):
         self_value = self.value
         self_diff = self.diff
         new_value = other / self_value
         new_diff = -other*self_diff / (self_value**2)
         return DiffernAtom.no_context(new_value, new_diff, False)
-
 
     def __pow__(self, other):
         """
@@ -194,7 +188,6 @@ class DiffernAtom(ValueMixin, LoglyMixin):
             new_value, new_diff = self._power(other)
         return DiffernAtom.no_context(new_value, new_diff, False)
 
-
     def _exponential(self, other):
         """
         Differenatiate exponential function other**self(x)
@@ -202,7 +195,6 @@ class DiffernAtom(ValueMixin, LoglyMixin):
         new_value = other**self.value
         new_diff = other**self.value * numpy.log(other) * self.diff
         return new_value, new_diff
-
 
     def _power(self, other):
         """
@@ -214,10 +206,9 @@ class DiffernAtom(ValueMixin, LoglyMixin):
         new_diff = other * (self_value**(other-1)) * self_diff
         return new_value, new_diff
 
-
     __rmul__ = __mul__
-    __radd__ = __add__
 
+    __radd__ = __add__
 
     def __rsub__(self, other):
         """
@@ -225,12 +216,10 @@ class DiffernAtom(ValueMixin, LoglyMixin):
         """
         return self.__neg__().__add__(other)
 
-
     def _log_(self):
         new_value = numpy.log(self.value)
         new_diff = 1 / self.value * self.diff
         return DiffernAtom.no_context(new_value, new_diff, False)
-
 
     def _exp_(self):
         new_value = numpy.exp(self.value)
@@ -443,7 +432,7 @@ class Context:
         )
 
         xtrings = [ 
-            _create_audi_xtring(eqn, eid_to_wrt_tokens[eqn.id]) 
+            _create_aldi_xtring(eqn, eid_to_wrt_tokens[eqn.id]) 
            for eqn in equations 
         ]
 
@@ -466,7 +455,7 @@ class Context:
         for eqn in equations:
             wrt_tokens_here = eid_to_wrt_tokens[eqn.id]
             for tok in eqn.incidence:
-                key = _create_audi_key(tok, eqn.id)
+                key = _create_aldi_key(tok, eqn.id)
                 diff = _diff_value_for_atom_from_incidence(tok, wrt_tokens_here)
                 x[key] = atom_constructor_in_context(diff, tok, columns_to_eval)
         self._x = x
@@ -509,7 +498,7 @@ def _diff_value_for_atom_from_incidence(
     #]
 
 
-def _create_audi_xtring(
+def _create_aldi_xtring(
     equation: Equation,
     wrt_tokens: Tokens,
 ) -> str:
@@ -522,7 +511,7 @@ def _create_audi_xtring(
     #]
 
 
-def _create_audi_key(
+def _create_aldi_key(
     token: Token,
     eid: int,
 ) -> str:

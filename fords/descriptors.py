@@ -28,9 +28,7 @@ import operator
 from typing import Self, NoReturn
 from collections.abc import Iterable
 
-from ..audi.engines import (
-    Context, DiffernAtom,
-)
+from ..aldi import engines as ad_
 
 from ..equations import (
     EquationKind, Equations,
@@ -58,17 +56,23 @@ class Descriptor:
     system_vectors: SystemVectors | None = None
     solution_vectors: SolutionVectors | None = None
     system_map: SystemMap | None = None
-    system_differn_context: Context | None = None
+    system_differn_context: ad_.Context | None = None
 
     def __init__(self, equations, quantities, /,) -> NoReturn:
         self.system_vectors = SystemVectors(equations, quantities)
         self.solution_vectors = SolutionVectors(self.system_vectors)
         self.system_map = SystemMap(self.system_vectors)
-        self.system_differn_context = Context.for_equations(
-           DiffernAtom, 
+        self.system_differn_context = ad_.Context.for_equations(
+           ad_.DiffernAtom, 
            self.system_vectors.generate_system_equations_from_equations(equations),
            self.system_vectors.eid_to_wrt_tokens,
         )
+
+    def get_num_backwards(self: Self) -> int:
+        return self.system_vectors.get_num_backwards()
+
+    def get_num_forwards(self: Self) -> int:
+        return self.system_vectors.get_num_forwards()
     #]
 
 
@@ -81,12 +85,12 @@ class SystemVectors:
     transition_eids: Iterable[int] | None = None
     measurement_eids: Iterable[int] | None = None
     eid_to_wrt_tokens: dict[int, Tokens] | None = None
-
+    #
     transition_variables: Tokens | None = None
     transition_shocks: Tokens | None = None 
     measurement_variables: Tokens | None = None
     measurement_shocks: Tokens | None = None 
-
+    #
     shape_AB_excl_dynid: tuple[int, int] | None = None
     shape_C_excl_dynid: tuple[int, int] | None = None
     shape_D_excl_dynid: tuple[int, int] | None = None
@@ -104,21 +108,27 @@ class SystemVectors:
         all_tokens = set(generate_all_tokens_from_equations(equations))
         all_wrt_tokens = set(generate_tokens_of_kinds(all_tokens, qid_to_kind, QuantityKind.SYSTEM_QUANTITY))
         self.eid_to_wrt_tokens = create_eid_to_wrt_tokens(equations, all_wrt_tokens)
-
+        #
         tokens_transition_variables = generate_tokens_of_kinds(all_tokens, qid_to_kind, QuantityKind.TRANSITION_VARIABLE)
         self.transition_variables = sort_tokens(_create_system_transition_vector(tokens_transition_variables))
         self.transition_shocks = sort_tokens(generate_tokens_of_kinds(all_tokens, qid_to_kind, QuantityKind.TRANSITION_SHOCK))
         self.measurement_variables = sort_tokens(generate_tokens_of_kinds(all_tokens, qid_to_kind, QuantityKind.MEASUREMENT_VARIABLE))
         self.measurement_shocks = sort_tokens(generate_tokens_of_kinds(all_tokens, qid_to_kind, QuantityKind.MEASUREMENT_SHOCK))
-
+        #
         self.shape_AB_excl_dynid = (len(self.transition_eids), len(self.transition_variables))
         self.shape_C_excl_dynid = (len(self.transition_eids), 1)
         self.shape_D_excl_dynid = (len(self.transition_eids), len(self.transition_shocks))
-
+        #
         self.shape_F = (len(self.measurement_eids), len(self.measurement_variables))
         self.shape_G = (len(self.measurement_eids), len(self.transition_variables))
         self.shape_H = (len(self.measurement_eids), 1)
         self.shape_J = (len(self.measurement_eids), len(self.measurement_shocks))
+
+    def get_num_backwards(self) -> int:
+        return _get_num_backwards(self.transition_variables)
+
+    def get_num_forwards(self) -> int:
+        return _get_num_forwards(self.transition_variables)
 
     def generate_system_equations_from_equations(
         self,

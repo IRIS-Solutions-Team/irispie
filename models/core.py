@@ -5,12 +5,13 @@
 from __future__ import annotations
 
 from IPython import embed
-from typing import Self, NoReturn, TypeAlias
+from typing import (Self, NoReturn, TypeAlias, Literal, )
 from numbers import Number
 from collections.abc import Iterable, Callable
 
 import enum
 import copy
+import scipy
 import numpy
 import itertools
 import functools
@@ -21,22 +22,17 @@ from .. import sources
 from .. import parsers
 
 from ..incidence import (Token, )
-
+from ..dataman import databanks
 from .. import equations
 from ..equations import (Equation, )
-
-from ..quantities import (
-    QuantityKind, Quantity,
-    create_name_to_qid, create_qid_to_name, create_qid_to_logly,
-    generate_qids_by_kind,
-    change_logly
-)
-
+from .. import quantities
+from ..quantities import (QuantityKind, Quantity, )
 from ..fords import descriptors
 from ..fords import systems
 from .. import exceptions
 from ..dataman import databanks
 from .. import evaluators
+from . import getters
 #]
 
 
@@ -79,15 +75,8 @@ class ModelFlags(enum.IntFlag, ):
     #]
 
 
-def _resolve_model_flags(func: Callable, /, ) -> Callable:
-    """
-    Decorator for resolving model flags
-    """
-    def wrapper(*args, **kwargs, ) -> Callable:
-        model = func(*args, **kwargs, )
-        model._flags = ModelFlags.from_kwargs(**kwargs, )
-        return model
-    return wrapper
+_DEFAULT_STD_LINEAR = 1
+_DEFAULT_STD_NONLINEAR = 0.01
 
 
 def _solve_steady_linear_flat(
@@ -98,6 +87,7 @@ def _solve_steady_linear_flat(
     """
     """
     pinv = numpy.linalg.pinv
+    lstsq = scipy.linalg.lstsq
     vstack = numpy.vstack
     hstack = numpy.hstack
     A, B, C, F, G, H = sys.A, sys.B, sys.C, sys.F, sys.G, sys.H
@@ -105,10 +95,12 @@ def _solve_steady_linear_flat(
     # A @ Xi + B @ Xi{-1} + C = 0
     # F @ Y + G @ Xi + H = 0
     #
-    Xi = -pinv(A + B) @ C
+    # Xi = -pinv(A + B) @ C
+    Xi, *_ = lstsq(-(A + B), C)
     dXi = numpy.zeros(Xi.shape)
     #
-    Y = -pinv(F) @ (G @ Xi + H)
+    # Y = -pinv(F) @ (G @ Xi + H)
+    Y, *_ = lstsq(-F, G @ Xi + H)
     dY = numpy.zeros(Y.shape)
     #
     return Xi, Y, dXi, dY
@@ -122,10 +114,12 @@ def _solve_steady_linear_nonflat(
     #[
     """
     """
-    pinv = numpy.linalg.pinv
+    # pinv = numpy.linalg.pinv
+    lstsq = numpy.linalg.lstsq
     vstack = numpy.vstack
     hstack = numpy.hstack
     A, B, C, F, G, H = sys.A, sys.B, sys.C, sys.F, sys.G, sys.H
+    num_y = F.shape[0]
     k = 1
     #
     # A @ Xi + B @ Xi{-1} + C = 0:
@@ -141,7 +135,8 @@ def _solve_steady_linear_nonflat(
         C,
         C,
     ))
-    Xi_dXi = -pinv(AB) @ CC
+    # Xi_dXi = -pinv(AB) @ CC
+    Xi_dXi, *_ = lstsq(-AB, CC, rcond=None)
     #
     # F @ Y + G @ Xi + H = 0:
     # -->
@@ -160,7 +155,8 @@ def _solve_steady_linear_nonflat(
         H,
         H,
     ))
-    Y_dY = -pinv(FF) @ (GG @ Xi_dXi + HH)
+    # Y_dY = -pinv(FF) @ (GG @ Xi_dXi + HH)
+    Y_dY, *_ = lstsq(-FF, GG @ Xi_dXi + HH, rcond=None)
     #
     # Separate levels and changes
     #
@@ -179,7 +175,7 @@ def _solve_steady_linear_nonflat(
     #]
 
 
-class Model:
+class Model(getters.GetterMixin):
     """
     """
     #[
@@ -199,7 +195,7 @@ class Model:
         """
         """
         try:
-            qid_to_value = _rekey_dict(kwargs, create_name_to_qid(self._quantities))
+            qid_to_value = _rekey_dict(kwargs, quantities.create_name_to_qid(self._quantities))
         except KeyError as _KeyError:
             raise exceptions.UnknownName(_KeyError.args[0])
         for v in self._variants:
@@ -249,7 +245,7 @@ class Model:
             for qty in self._quantities 
             if qty.logly is not None and (names is None or qty.human in names)
         ]
-        self._quantities = change_logly(self._quantities, new_logly, qids)
+        self._quantities = quantities.change_logly(self._quantities, new_logly, qids)
 
     @property
     def num_variants(self, /, ) -> int:
@@ -263,18 +259,26 @@ class Model:
     def is_flat(self, /, ) -> bool:
         return self._flags.is_flat
 
-    def create_steady_evaluator(self, /, ) -> evaluators.SteadyEvaluator:
-        return evaluators.SteadyEvaluator(self)
+    def create_steady_evaluator(
+        self,
+        equations: Equations | ... = ... ,
+        variant: Variant | ... | None = ... ,
+        /,
+    ) -> evaluators.SteadyEvaluator:
+        evaluator = evaluators.SteadyEvaluator.for_model(self, equations if equations is not ... else self._steady_equations)
+        if variant is not None:
+            evaluator.update_steady_array(self, variant if variant is not ... else self._variants[0])
+        return evaluator
 
     def create_name_to_qid(self, /, ) -> dict[str, int]:
-        return create_name_to_qid(self._quantities)
+        return quantities.create_name_to_qid(self._quantities)
 
     def create_qid_to_name(self, /, ) -> dict[int, str]:
-        return create_qid_to_name(self._quantities)
+        return quantities.create_qid_to_name(self._quantities)
 
 
     def create_qid_to_logly(self, /, ) -> dict[int, bool]:
-        return create_qid_to_logly(self._quantities)
+        return quantities.create_qid_to_logly(self._quantities)
 
     def create_steady_array(
         self,
@@ -304,14 +308,14 @@ class Model:
         # Reset levels of shocks to zero, remove changes
         assign_shocks = { 
             qid: (0, numpy.nan) 
-            for qid in generate_qids_by_kind(self._quantities, QuantityKind.SHOCK)
+            for qid in quantities.generate_qids_by_kind(self._quantities, QuantityKind.SHOCK)
         }
         self._variants[0].update_values_from_dict(assign_shocks)
         #
         # Remove changes from quantities that are not logly variables
         assign_non_logly = { 
             qid: (..., numpy.nan) 
-            for qid in  generate_qids_by_kind(self._quantities, ~QuantityKind.LOGLY_VARIABLE)
+            for qid in  quantities.generate_qids_by_kind(self._quantities, ~QuantityKind.LOGLY_VARIABLE)
         }
         self._variants[0].update_values_from_dict(assign_non_logly)
 
@@ -340,52 +344,36 @@ class Model:
         # return self
 
 
-    def _systemize_steady(
+    def _systemize(
         self,
         variant: Variant,
+        descriptor: descriptors.Descriptor,
         /,
     ) -> systems.System:
         """
         Evaluatoe 
         """
-        sdr = self._steady_descriptor
-        num_columns = sdr.system_differn_context.shape_data[1]
+        num_columns = descriptor.system_differn_context.shape_data[1]
         logly_context = self.create_qid_to_logly()
         value_context = self.create_zero_array(variant, num_columns=num_columns)
-        return systems.System.for_descriptor(sdr, logly_context, value_context)
+        return systems.System.for_descriptor(descriptor, logly_context, value_context)
 
+    #def _get_steady_something(
+    #    self,
+    #    /,
+    #    extractor_from_variant: Callable,
+    #) -> dict[str, Number|numpy.ndarray]:
+    #    """
+    #    """
+    #    return databanks.Databank._from_dict({ name: extractor(qid) for qid, name in qid_to_name.items() })
 
-    def _get_steady_something(
+    def _solve(
         self,
+        variant: variants.Variant,
         /,
-        extractor_from_variant: Callable,
-    ) -> dict[str, Number|numpy.ndarray]:
-        """
-        """
-        qid_to_name = self.create_qid_to_name()
-        steady_something_hstacked = numpy.hstack(tuple(
-            extractor_from_variant(v).reshape(-1, 1) 
-            for v in self._variants
-        ))
-        if self.num_variants==1:
-            extractor = lambda qid: steady_something_hstacked[qid, 0]
-        else:
-            extractor = lambda qid: steady_something_hstacked[qid, ...]
-        return databanks.Databank._from_dict({ name: extractor(qid) for qid, name in qid_to_name.items() })
-
-    get_steady_levels = functools.partialmethod(
-        _get_steady_something, extractor_from_variant=operator.attrgetter("levels"),
-    )
-
-    get_steady_changes = functools.partialmethod(
-        _get_steady_something, extractor_from_variant=operator.attrgetter("changes"),
-    )
-
-    def get_log_status(
-        self,
-        /,
-    ) -> dict[str, bool]:
-        return { qty.human: qty.logly for qty in self._quantities if qty.kind in QuantityKind.LOGLY_VARIABLE }
+    ) -> NoReturn:
+        system = self._systemize(variant, self._dynamic_descriptor)
+        return system
 
     def steady(
         self,
@@ -399,6 +387,20 @@ class Model:
             levels, qids_levels, changes, qids_changes = solver(v)
             v.update_levels_from_array(levels, qids_levels)
             v.update_changes_from_array(changes, qids_changes)
+
+    def check_steady(
+        self,
+        equations_switch: Literal["dynamic"] | Literal["steady"] = "dynamic",
+        /,
+        tolerance: float = 1e-12,
+        details: bool = False,
+    ) -> tuple[bool, Iterable[bool], Iterable[Number], Iterable[numpy.ndarray]]:
+        evaluator = self._steady_evaluator_for_dynamic_equations
+        dis = [ evaluator.update_steady_array(self, v).eval() for v in self._variants ]
+        max_abs_dis = [ numpy.max(numpy.abs(d)) for d in dis ]
+        status = [ d < tolerance for d in max_abs_dis ]
+        all_status = all(status)
+        return (all_status, status, max_abs_dis, dis) if details else all_status
 
     def _apply_delog(
         self,
@@ -424,9 +426,9 @@ class Model:
         """
         """
         #
-        # Calculate first-order system for this variant
+        # Calculate first-order system for steady equations for this variant
         #
-        sys = self._systemize_steady(variant)
+        sys = self._systemize(variant, self._steady_descriptor)
         #
         # Calculate steady state for this variant
         #
@@ -487,6 +489,12 @@ class Model:
         return STEADY_SOLVER[model_flags]
 
 
+    def _assign_default_stds(self, default_std, /, ):
+        if default_std is None:
+            default_std = _DEFAULT_STD_LINEAR if ModelFlags.LINEAR not in self._flags else _DEFAULT_STD_NONLINEAR
+        self.assign(**{ k: default_std for k in quantities.generate_quantity_names_by_kind(self._quantities, QuantityKind.STD) })
+
+
     def _populate_min_max_shifts(self) -> NoReturn:
         self._min_shift = equations.get_min_shift_from_equations(
             self._dynamic_equations + self._steady_equations
@@ -497,21 +505,23 @@ class Model:
 
 
     @classmethod
-    @_resolve_model_flags
     def from_source(
         cls: type,
         model_source: sources.ModelSource,
         /,
-        **kwargs,
+        default_std: int|None = None,
+        **kwargs, 
     ) -> Self:
         """
         """
         self = cls()
+        self._flags = ModelFlags.from_kwargs(**kwargs, )
+
         self._quantities = model_source.quantities[:]
         self._dynamic_equations = model_source.dynamic_equations[:]
         self._steady_equations = model_source.steady_equations[:]
 
-        name_to_qid = create_name_to_qid(self._quantities)
+        name_to_qid = quantities.create_name_to_qid(self._quantities)
         equations.finalize_dynamic_equations(self._dynamic_equations, name_to_qid)
         equations.finalize_steady_equations(self._steady_equations, name_to_qid)
 
@@ -520,7 +530,12 @@ class Model:
         self._dynamic_descriptor = descriptors.Descriptor(self._dynamic_equations, self._quantities)
         self._steady_descriptor = descriptors.Descriptor(self._steady_equations, self._quantities)
 
+        self._steady_evaluator_for_dynamic_equations = self.create_steady_evaluator(self._dynamic_equations, None) 
+        self._steady_evaluator_for_steady_equations = self.create_steady_evaluator(self._steady_equations, None) 
+
         self._populate_min_max_shifts()
+        self._assign_default_stds(default_std)
+
         return self
 
 
@@ -553,7 +568,6 @@ class Model:
         source_string = parsers.common.combine_source_files(source_files)
         return Model.from_string(source_string, **kwargs, )
     #]
-
 
 
 def _rekey_dict(dict_to_rekey: dict, old_key_to_new_key: dict, /, ) -> dict:

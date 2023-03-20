@@ -26,16 +26,21 @@ class System:
     """
     Unsolved system matrices
     """
+    #
     # Transition equations
+    #
     A: numpy.ndarray | None = None
     B: numpy.ndarray | None = None
     C: numpy.ndarray | None = None
     D: numpy.ndarray | None = None
+    #
     # Measurement equations
-    E: numpy.ndarray | None = None
-    B: numpy.ndarray | None = None
-    C: numpy.ndarray | None = None
-    D: numpy.ndarray | None = None
+    # F y + G xi + H + J e = 0
+    #
+    F: numpy.ndarray | None = None
+    G: numpy.ndarray | None = None
+    H: numpy.ndarray | None = None
+    J: numpy.ndarray | None = None
 
     @classmethod
     def for_descriptor(

@@ -7,6 +7,7 @@ from IPython import embed
 import warnings
 import numpy
 from numbers import Number
+from typing import Self, NoReturn, TypeAlias, Literal
 
 from ..quantities import get_max_qid
 #]
@@ -37,6 +38,15 @@ class Variant:
 
     def update_changes_from_array(self, changes: numpy.ndarray, qids: Iterable[int], /, ) -> NoReturn:
         self.changes = update_from_array(self.changes, changes, qids, )
+
+    def retrieve_values(
+        self,
+        attr: Literal["levels"] | Literal["changes"],
+        qids: Iterable[int]|None = None,
+        /,
+    ) -> numpy.ndarray:
+        values = numpy.copy(getattr(self, attr)).reshape(-1, 1)
+        return values[qids] if qids is not None else values
 
     def create_steady_array(
         self,
