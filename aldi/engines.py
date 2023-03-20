@@ -65,7 +65,6 @@ class DiffernAtom(ValueMixin, LoglyMixin):
         self._data_index = None
         self._logly_index = None
 
-
     @classmethod
     def no_context(
         cls: type,
@@ -81,7 +80,6 @@ class DiffernAtom(ValueMixin, LoglyMixin):
         self._diff = diff
         self._logly = logly
         return self
-
 
     @classmethod
     def in_context(
@@ -245,7 +243,6 @@ class InvarianceAtom(LoglyMixin):
         self._logly = None
         self._logly_index = None
 
-
     @classmethod
     def no_context(
         cls: type,
@@ -257,7 +254,6 @@ class InvarianceAtom(LoglyMixin):
         self._diff = diff
         self._invariant = invariant
         return self
-
 
     @classmethod
     def in_context(
@@ -274,7 +270,6 @@ class InvarianceAtom(LoglyMixin):
         self._logly_index = token.qid
         return self
 
-
     def __add__(self, other: Self | Number) -> Self:
         """
         Invariance of self(x)+other(x) or self(x)+other
@@ -286,7 +281,6 @@ class InvarianceAtom(LoglyMixin):
             new_diff = self._diff
             new_invariant = self._invariant
         return InvarianceAtom.no_context(new_diff, new_invariant, False)
-
 
     def __mul__(self, other: Self | Number):
         """
@@ -312,13 +306,11 @@ class InvarianceAtom(LoglyMixin):
             new_logly = self.logly
         return InvarianceAtom.no_context(new_diff, new_invariant, new_logly)
 
-
     def __rmul__(self, other):
         """
         Invariance of other*self(x)
         """
         return InvarianceAtom.no_context(self._diff, self._invariant, self._logly)
-
 
     def __truediv__(self, other):
         """
@@ -334,7 +326,6 @@ class InvarianceAtom(LoglyMixin):
             new_logly = self._logly
         return InvarianceAtom.no_context(new_diff, new_invariant, new_logly)
 
-
     def __rtruediv__(self, other: Number) -> Self:
         """
         Invariance of self(x) / other
@@ -343,11 +334,11 @@ class InvarianceAtom(LoglyMixin):
         new_invariant = False & self._invariant
         return InvarianceAtom.no_context(new_diff, new_invariant, False)
 
-
     __sub__ = __add__
-    __radd__ = __add__
-    __rsub__ = __add__
 
+    __radd__ = __add__
+
+    __rsub__ = __add__
 
     def _log_(self) -> Self:
         """
@@ -357,7 +348,6 @@ class InvarianceAtom(LoglyMixin):
         new_invariant = new_invariant if self._logly else (False & self._invariant)
         return InvarianceAtom.no_context(new_diff, new_invariant, False)
 
-
     def _unary(self) -> Self:
         """
         Invariance of f(self(x))
@@ -365,7 +355,6 @@ class InvarianceAtom(LoglyMixin):
         new_diff = self._diff
         new_invariant = False & self._invariant
         return InvarianceAtom.no_context(new_diff, new_invariant, False)
-
 
     def _binary(self, other: Self | Number) -> Self:
         """
@@ -377,7 +366,6 @@ class InvarianceAtom(LoglyMixin):
             new_diff = self._diff
         new_invariant = False & self._invariant
         return InvarianceAtom.no_context(new_diff, new_invariant, False)
-
 
     exp = _unary
     __pow__ = _binary
