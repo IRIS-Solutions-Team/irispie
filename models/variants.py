@@ -18,10 +18,11 @@ class Variant:
     Container for parameter variant specific attributes of a model
     """
     _missing = numpy.nan
-    __slots__ = ["levels", "changes"]
+    __slots__ = ["levels", "changes", "solution"]
     #[
     def __init__(self, quantities:Quantities, /, ) -> NoReturn:
         self._initilize_values(quantities)
+        self.solution = None
 
     def _initilize_values(self, quantities:Quantities, /, ) -> NoReturn:
         max_qid = get_max_qid(quantities, )

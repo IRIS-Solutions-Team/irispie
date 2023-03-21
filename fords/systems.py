@@ -14,14 +14,14 @@ $$
 from __future__ import annotations
 
 from IPython import embed
-import dataclasses
-import numpy 
+import dataclasses as dc_
+import numpy as np_ 
 
-from .descriptors import Descriptor
+from . import descriptors as de_
 #]
 
 
-@dataclasses.dataclass
+@dc_.dataclass
 class System:
     """
     Unsolved system matrices
@@ -29,65 +29,65 @@ class System:
     #
     # Transition equations
     #
-    A: numpy.ndarray | None = None
-    B: numpy.ndarray | None = None
-    C: numpy.ndarray | None = None
-    D: numpy.ndarray | None = None
+    A: np_.ndarray | None = None
+    B: np_.ndarray | None = None
+    C: np_.ndarray | None = None
+    D: np_.ndarray | None = None
     #
     # Measurement equations
     # F y + G xi + H + J e = 0
     #
-    F: numpy.ndarray | None = None
-    G: numpy.ndarray | None = None
-    H: numpy.ndarray | None = None
-    J: numpy.ndarray | None = None
+    F: np_.ndarray | None = None
+    G: np_.ndarray | None = None
+    H: np_.ndarray | None = None
+    J: np_.ndarray | None = None
 
     @classmethod
     def for_descriptor(
         cls,
-        descriptor: Descriptor,
+        descriptor: de_.Descriptor,
         logly_context: dict[int, bool],
-        value_context: numpy.ndarray,
+        value_context: np_.ndarray,
         /,
     ) -> NoReturn:
         """
         """
         # Differentiate and evaluate constant
         tt = descriptor.system_differn_context.eval(value_context, logly_context)
-        td = numpy.vstack([x.diff for x in tt])
-        tc = numpy.vstack([x.value for x in tt])
+        td = np_.vstack([x.diff for x in tt])
+        tc = np_.vstack([x.value for x in tt])
 
         smap = descriptor.system_map
         svec = descriptor.system_vectors
 
         self = cls()
 
-        self.A = numpy.zeros(svec.shape_AB_excl_dynid, dtype=float)
+        self.A = np_.zeros(svec.shape_AB_excl_dynid, dtype=float)
         self.A[smap.A.lhs] = td[smap.A.rhs]
-        self.A = numpy.vstack((self.A, smap.dynid_A))
+        self.A = np_.vstack((self.A, smap.dynid_A))
 
-        self.B = numpy.zeros(svec.shape_AB_excl_dynid, dtype=float)
+        self.B = np_.zeros(svec.shape_AB_excl_dynid, dtype=float)
         self.B[smap.B.lhs] = td[smap.B.rhs]
-        self.B = numpy.vstack((self.B, smap.dynid_B))
+        self.B = np_.vstack((self.B, smap.dynid_B))
 
-        self.C = numpy.zeros(svec.shape_C_excl_dynid, dtype=float)
+        self.C = np_.zeros(svec.shape_C_excl_dynid, dtype=float)
         self.C[smap.C.lhs] = tc[smap.C.rhs]
-        self.C = numpy.vstack((self.C, smap.dynid_C))
+        self.C = np_.vstack((self.C, smap.dynid_C))
 
-        self.D = numpy.zeros(svec.shape_D_excl_dynid, dtype=float)
+        self.D = np_.zeros(svec.shape_D_excl_dynid, dtype=float)
         self.D[smap.D.lhs] = td[smap.D.rhs]
-        self.D = numpy.vstack((self.D, smap.dynid_D))
+        self.D = np_.vstack((self.D, smap.dynid_D))
 
-        self.F = numpy.zeros(svec.shape_F, dtype=float)
+        self.F = np_.zeros(svec.shape_F, dtype=float)
         self.F[smap.F.lhs] = td[smap.F.rhs]
 
-        self.G = numpy.zeros(svec.shape_G, dtype=float)
+        self.G = np_.zeros(svec.shape_G, dtype=float)
         self.G[smap.G.lhs] = td[smap.G.rhs]
 
-        self.H = numpy.zeros(svec.shape_H, dtype=float)
+        self.H = np_.zeros(svec.shape_H, dtype=float)
         self.H[smap.H.lhs] = tc[smap.H.rhs]
 
-        self.J = numpy.zeros(svec.shape_J, dtype=float)
+        self.J = np_.zeros(svec.shape_J, dtype=float)
         self.J[smap.J.lhs] = td[smap.J.rhs]
 
         return self

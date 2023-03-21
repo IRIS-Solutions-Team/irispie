@@ -25,7 +25,7 @@ QuantityInput: TypeAlias = tuple[str, str]
 EquationInput: TypeAlias = tuple[str, tuple[str, str]]
 
 
-_STD_PREFIX = "std_"
+STD_PREFIX = "std_"
 _STD_DESCRIPT = "(Std) "
 
 
@@ -137,7 +137,7 @@ class ModelSource:
     def _add_stds(self) -> NoReturn:
         def _create_std_input_from_shock(shock):
             descript = _STD_DESCRIPT + (shock.descript if shock.descript else shock.human)
-            human = _STD_PREFIX + shock.human
+            human = STD_PREFIX + shock.human
             return(descript, human)
         #
         transition_shocks = (q for q in self.quantities if q.kind in quantities.QuantityKind.TRANSITION_SHOCK)

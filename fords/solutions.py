@@ -8,6 +8,7 @@ from IPython import embed
 import enum as en_
 import numpy as np_
 import scipy as sp_
+import dataclasses as dc_
 
 from ..fords import systems as sy_
 from ..fords import descriptors as de_
@@ -26,10 +27,41 @@ class StabilityKind(en_.Flag):
     NO_STABLE = en_.auto()
 
 
+@dc_.dataclass
 class Solution:
     """
     """
     #[
+    #
+    # Triangular solution
+    #
+    Ta: np_.ndarray | None = None
+    Ra: np_.ndarray | None = None
+    Ka: np_.ndarray | None = None
+    U: np_.ndarray | None = None
+    #
+    # Expansion of triangular solution
+    #
+    Xa: np_.ndarray | None = None
+    J: np_.ndarray | None = None
+    Ru: np_.ndarray | None = None
+    #
+    # Square solution
+    #
+    Tb: np_.ndarray | None = None
+    Rb: np_.ndarray | None = None
+    Kb: np_.ndarray | None = None
+    #
+    # Expansion of square solution
+    #
+    Xb: np_.ndarray | None = None
+    #
+    # Measurement equations
+    Za: np_.ndarray | None = None
+    Zb: np_.ndarray | None = None
+    H: np_.ndarray | None = None
+    D: np_.ndarray | None = None
+
     @classmethod
     def for_model(
         cls, 
@@ -42,17 +74,33 @@ class Solution:
         #
         qz = _solve_ordqz(system, tolerance, )
         stability = _classify_system_stability(descriptor, qz, tolerance, )
-
+        #
         triangular_solution_prelim = _solve_transition_equations(descriptor, system, qz, )
         #traingula_solution = _separate_unit_roots(
-
+        #
         U = triangular_solution_prelim[0]
         measurement_solution = _solve_measurement_equations(descriptor, system, U)
         square_solution = _square_from_triangular(triangular_solution_prelim)
-
+        #
         self.U, self.Ta, self.Ra, self.Ka, self.Xa, self.J, self.Ru = triangular_solution_prelim
         self.Tb, self.Rb, self.Kb, self.Xb = square_solution
         self.Za, self.Zb, self.H, self.D = measurement_solution
+        #
+        return self
+
+    def expand_square_solution(self, forward, /, ) -> np_.ndarray:
+        """
+        Expand R matrices of square solution for t+1...t+forward
+        """
+        R, Xb, J, Ru = self.Rb, self.Xb, self.J, self.Ru
+        if (R is None) or (Xb is None) or (J is None) or (Ru is None):
+            return None
+        Jk = np_.eye(J.shape[0])
+        # Rb(t+k) = -Xb J**(k-1) Ru e(t+k)
+        return [
+            -Xb @ np_.linalg.matrix_power(J, k) @ Ru 
+            for k in range(0, forward)
+        ]
     #]
 
 
@@ -76,7 +124,7 @@ def _square_from_triangular(triangular_solution):
     # R <- U*R;
     # K <- U*K;
     #
-    # a(t) = ... -Xa J**(k-1) Ru e(t+k)
+    # xi(t) = ... -Xb J**(k-1) Ru e(t+k)
     Tb = U @ _right_div(Ta, U)
     Rb = U @ Ra
     Kb = U @ Ka

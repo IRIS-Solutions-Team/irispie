@@ -2,9 +2,9 @@
 #[
 from __future__ import annotations
 
-import datetime
-import enum
-
+import datetime as dt_
+import enum as en_
+import functools as ft_
 from typing import NoReturn, Union, Self, Any, Protocol, runtime_checkable
 from collections.abc import Iterable, Callable
 from numbers import Number
@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 
-class Frequency(enum.IntEnum):
+class Frequency(en_.IntEnum):
     """
     Enumeration of date frequencies
     """
@@ -124,6 +124,20 @@ class RangeableMixin:
     #]
 
 
+class IsoMixin:
+    #[
+    def to_iso_string(
+        self: Self,
+        /,
+        position: Literal["start"] | Literal["center"] | Literal["end"] = "start",
+    ) -> str:
+        year, month, day = self.to_ymd()
+        return f"{year:04g}-{month:02g}-{day:02g}"
+
+    to_plotly_date = ft_.partialmethod(to_iso_string, position="center")
+    #]
+
+
 class Dater(RangeableMixin):
     """
     """
@@ -213,6 +227,9 @@ class IntegerDater(Dater):
     needs_resolve = False
     origin = 0
 
+    def to_plotly_date(self) -> str:
+        return str(self.serial)
+
     def __repr__(self) -> str:
         return f"ii({self.serial})"
 
@@ -222,31 +239,31 @@ class IntegerDater(Dater):
     #]
 
 
-class DailyDater(Dater):
+class DailyDater(Dater, IsoMixin):
     #[
     frequency: Frequency = Frequency.DAILY
     needs_resolve = False
-    origin = datetime.date(BASE_YEAR, 1, 1).toordinal()
+    origin = dt_.date(BASE_YEAR, 1, 1).toordinal()
 
     @classmethod
     def from_ymd(cls: type, year: int, month: int=1, day: int=1) -> Self:
-        serial = datetime.date(year, month, day).toordinal()
+        serial = dt_.date(year, month, day).toordinal()
         return cls(serial)
 
     @classmethod
     def from_year_period(cls, year: int, period: int) -> Self:
-        boy_serial = datetime.date(year, 1, 1).toordinal()
+        boy_serial = dt_.date(year, 1, 1).toordinal()
         serial = boy_serial + int(period) - 1
         return cls(serial)
 
     def to_year_period(self: Self) -> tuple[int, int]:
-        boy_serial = datetime.date(datetime.date.fromordinal(self.serial).year, 1, 1)
+        boy_serial = dt_.date(dt_.date.fromordinal(self.serial).year, 1, 1)
         per = self.serial - boy_serial + 1
-        year = datetime.date.fromordinal(self.serial).year
+        year = dt_.date.fromordinal(self.serial).year
         return year, per
 
-    def to_ymd(self: Self) -> tuple[int, int, int]:
-        py_date = datetime.date.fromordinal(self.serial)
+    def to_ymd(self: Self, /, **kwargs) -> tuple[int, int, int]:
+        py_date = dt_.date.fromordinal(self.serial)
         return py_date.year, py_date.month, py_date.day
 
     def __str__(self) -> str:
@@ -283,6 +300,14 @@ class RegularDaterMixin:
     def get_year(self) -> int:
         return self.to_year_period()[0]
 
+    def to_ymd(
+        self, 
+        /,
+        position: Literal["start"] | Literal["center"] | Literal["end"] = "center",
+    ) -> tuple[int, int, int]:
+        year, per = self.to_year_period()
+        return year, *self.month_day_resolution[position][per]
+
     def __str__(self) -> str:
         year, per = self.to_year_period()
         letter = self.frequency.letter
@@ -290,47 +315,98 @@ class RegularDaterMixin:
     #]
 
 
-class YearlyDater(Dater, RegularDaterMixin): 
+class YearlyDater(Dater, RegularDaterMixin, IsoMixin): 
+    #[
     frequency: Frequency = Frequency.YEARLY
     needs_resolve: bool = False
     origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.YEARLY)
+    month_day_resolution = {
+        "start": {1: (1, 1)},
+        "center": {1: (6, 30)},
+        "end": {1: (12, 31)},
+    }
 
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"yy({self.get_year()})"
+    #]
 
 
-class HalfyearlyDater(Dater, RegularDaterMixin):
+class HalfyearlyDater(Dater, RegularDaterMixin, IsoMixin):
+    #[
     frequency: Frequency = Frequency.HALFYEARLY
     needs_resolve: bool = False
     origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.HALFYEARLY)
+    month_day_resolution = {
+        "start": {1: (1, 1), 2: (7, 1)},
+        "center": {1: (3, 15), 2: (9, 15)},
+        "end": {1: (6, 30), 2: (12, 31)}
+    }
 
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"hh{self.to_year_period()}"
 
+    def to_ymd(
+        self, 
+        /,
+        position: Literal["start"] | Literal["center"] | Literal["end"] = "center",
+    ) -> tuple[int, int, int]:
+        year, per = self.to_year_period()
+        return (
+            year,
+            *{"start": (1, 1), "center": (6, 3), "end": (12, 31)}[position],
+        )
 
-class QuarterlyDater(Dater, RegularDaterMixin):
+    def get_month(
+        self,
+        /,
+        position: Literal["start"] | Literal["center"] | Literal["end"] = "center",
+    ) -> int:
+        _, per = self.to_year_period()
+        return month_resolution[position][per]
+    #]
+
+
+class QuarterlyDater(Dater, RegularDaterMixin, IsoMixin):
     frequency: Frequency = Frequency.QUARTERLY
     needs_resolve: bool = False
     origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.QUARTERLY)
+    month_day_resolution = {
+        "start": {1: (1, 1), 2: (4, 1), 3: (7, 1), 4: (10, 1)},
+        "center": {1: (2, 15), 2: (5, 15), 3: (8, 15), 4: (11, 15)},
+        "end": {1: (3, 30), 2: (5, 31), 3: (8, 31), 4: (11, 30)},
+    }
 
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"qq{self.to_year_period()}"
 
 
-class MonthlyDater(Dater, RegularDaterMixin):
+class MonthlyDater(Dater, RegularDaterMixin, IsoMixin):
+    #[
     frequency: Frequency = Frequency.MONTHLY
     needs_resolve: bool = False
     origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.MONTHLY)
+    month_day_resolution = {
+        "start": {1: (1, 1), 2: (2, 1), 3: (2, 1), 4: (4, 1), 5: (5, 1), 6: (6, 1), 7: (7, 1), 8: (8, 1), 9: (9, 1), 10: (10, 1), 11: (11, 1), 12: (12, 1)},
+        "center": {1: (1, 15), 2: (2, 15), 3: (2, 15), 4: (4, 15), 5: (5, 15), 6: (6, 15), 7: (7, 15), 8: (8, 15), 9: (9, 15), 10: (10, 15), 11: (11, 15), 12: (12, 15)},
+        "end": {1: (1, 31), 2: (2, 28), 3: (2, 31), 4: (4, 30), 5: (5, 31), 6: (6, 30), 7: (7, 31), 8: (8, 31), 9: (9, 30), 10: (10, 31), 11: (11, 30), 12: (12, 31)},
+    }
 
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"mm{self.to_year_period()}"
+    #]
 
 
 yy = YearlyDater.from_year_period
+
 hh = HalfyearlyDater.from_year_period
+
 qq = QuarterlyDater.from_year_period
+
 mm = MonthlyDater.from_year_period
+
 ii = IntegerDater
+
+
 
 
 def dd(year: int, month: int | ellipsis, day: int) -> DailyDater:
@@ -361,49 +437,39 @@ class Ranger():
         if not self.needs_resolve:
             _check_daters(start_date, end_date)
 
-
     @property
     def start_date(self):
         return self._start_date
-
 
     @property
     def end_date(self):
         return self._end_date
 
-
     @property
     def step(self):
         return self._step
-
 
     @property
     def _class(self):
         return type(self._start_date) if not self.needs_resolve else None
 
-
     @property
     def _serials(self) -> range|None:
         return range(self._start_date.serial, self._end_date.serial+_sign(self._step), self._step) if not self.needs_resolve else None
-
-
-    def __bool__(self) -> bool:
-        return not self.needs_resolve
-
 
     # @property
     # def needs_resolve(self) -> bool:
         # return bool(self._start_date and self._end_date)
 
-
     @property
     def frequency(self) -> Frequency:
         return self._class.frequency
 
+    def to_plotly_dates(self) -> Iterable[str]:
+        return [t.to_plotly_date() for t in self]
 
     def __len__(self) -> int|None:
         return len(self._serials) if not self.needs_resolve else None
-
 
     def __str__(self) -> str:
         step_str = f", {self._step}" if self._step!=1 else ""
@@ -411,20 +477,16 @@ class Ranger():
         end_date_str = self._end_date.__str__()
         return f"Ranger({start_date_str}, {end_date_str}{step_str})"
 
-
     def __repr__(self) -> str:
         step_rep = f", {self._step}" if self._step!=1 else ""
         start_date_rep = self._start_date.__repr__()
         end_date_rep = self._end_date.__repr__()
         return f"Ranger({start_date_rep}, {end_date_rep}{step_rep})"
 
-
     def __add__(self, offset: int) -> range:
         return Ranger(self._start_date+offset, self._end_date+offset, self._step)
 
-
     __radd__ = __add__
-
 
     def __sub__(self, offset: Union[Dater, int]) -> Union[range, Self]:
         if isinstance(offset, Dater):
@@ -432,38 +494,34 @@ class Ranger():
         else:
             return Ranger(self._start_date-offset, self._end_date-offset, self._step)
 
-
     def __rsub__(self, ather: Dater) -> range|None:
         if isinstance(other, Dater):
             return range(other-self._start_date, other-self._end_date, -self._step) if not self.needs_resolve else None
         else:
             return None
 
-
     def __iter__(self) -> Iterable:
         return (self._class(x) for x in self._serials) if not self.needs_resolve else None
 
-
     def __getitem__(self, i: int) -> Dater|None:
         return self._class(self._serials[i]) if not self.needs_resolve else None
-
 
     def resolve(self, context: ResolutionContextProtocol) -> Self:
         resolved_start_date = self._start_date if self._start_date else self._start_date.resolve(context)
         resolved_end_date = self._end_date if self._end_date else self._end_date.resolve(context)
         return Ranger(resolved_start_date, resolved_end_date, self._step)
 
-
     def __enter__(self):
         return self
-
 
     def __exit__(self, *args):
         pass
 
-
     def __eq__(self: Self, other: Self) -> bool:
         return self._start_date==other._start_date and self._end_date==other._end_date and self._step==other._step
+
+    def __bool__(self) -> bool:
+        return not self.needs_resolve
     #]
 
 

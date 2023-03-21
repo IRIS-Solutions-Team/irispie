@@ -18,21 +18,20 @@ import functools
 import operator
 
 from . import variants
-from .. import sources
+from .. import sources as so_
 from .. import parsers
 
 from ..incidence import (Token, )
-from ..dataman import databanks
-from .. import equations
+from .. import equations as eq_
 from ..equations import (Equation, )
-from .. import quantities
+from .. import quantities as qu_
 from ..quantities import (QuantityKind, Quantity, )
-from ..fords import descriptors
-from ..fords import systems
-from .. import exceptions
-from ..dataman import databanks
-from .. import evaluators
-from . import getters
+from ..fords import descriptors as de_
+from ..fords import systems as sy_
+from .. import exceptions as ex_
+from ..dataman import databanks as db_
+from .. import evaluators as ev_
+from . import getters as ge_
 #]
 
 
@@ -175,7 +174,7 @@ def _solve_steady_linear_nonflat(
     #]
 
 
-class Model(getters.GetterMixin):
+class Model(ge_.GetterMixin):
     """
     """
     #[
@@ -195,9 +194,9 @@ class Model(getters.GetterMixin):
         """
         """
         try:
-            qid_to_value = _rekey_dict(kwargs, quantities.create_name_to_qid(self._quantities))
+            qid_to_value = _rekey_dict(kwargs, qu_.create_name_to_qid(self._quantities))
         except KeyError as _KeyError:
-            raise exceptions.UnknownName(_KeyError.args[0])
+            raise ex_.UnknownName(_KeyError.args[0])
         for v in self._variants:
             v.update_values_from_dict(qid_to_value)
         #
@@ -206,7 +205,7 @@ class Model(getters.GetterMixin):
 
     def assign_from_databank(
         self, 
-        databank: databanks.Databank,
+        databank: db_.Databank,
         /,
     ) -> Self:
         """
@@ -245,7 +244,7 @@ class Model(getters.GetterMixin):
             for qty in self._quantities 
             if qty.logly is not None and (names is None or qty.human in names)
         ]
-        self._quantities = quantities.change_logly(self._quantities, new_logly, qids)
+        self._quantities = qu_.change_logly(self._quantities, new_logly, qids)
 
     @property
     def num_variants(self, /, ) -> int:
@@ -264,21 +263,28 @@ class Model(getters.GetterMixin):
         equations: Equations | ... = ... ,
         variant: Variant | ... | None = ... ,
         /,
-    ) -> evaluators.SteadyEvaluator:
-        evaluator = evaluators.SteadyEvaluator.for_model(self, equations if equations is not ... else self._steady_equations)
+    ) -> ev_.SteadyEvaluator:
+        evaluator = ev_.SteadyEvaluator.for_model(self, equations if equations is not ... else self._steady_equations)
         if variant is not None:
             evaluator.update_steady_array(self, variant if variant is not ... else self._variants[0])
         return evaluator
 
+    def create_plain_evaluator(
+        self,
+        equations: Equations | ... = ...,
+        /,
+    ) -> ev_.PlainEvaluator:
+        return ev_.PlainEvaluator.for_model(self, equations if equations is not ... else self._dynamic_equations)
+
     def create_name_to_qid(self, /, ) -> dict[str, int]:
-        return quantities.create_name_to_qid(self._quantities)
+        return qu_.create_name_to_qid(self._quantities)
 
     def create_qid_to_name(self, /, ) -> dict[int, str]:
-        return quantities.create_qid_to_name(self._quantities)
+        return qu_.create_qid_to_name(self._quantities)
 
 
     def create_qid_to_logly(self, /, ) -> dict[int, bool]:
-        return quantities.create_qid_to_logly(self._quantities)
+        return qu_.create_qid_to_logly(self._quantities)
 
     def create_steady_array(
         self,
@@ -308,14 +314,14 @@ class Model(getters.GetterMixin):
         # Reset levels of shocks to zero, remove changes
         assign_shocks = { 
             qid: (0, numpy.nan) 
-            for qid in quantities.generate_qids_by_kind(self._quantities, QuantityKind.SHOCK)
+            for qid in qu_.generate_qids_by_kind(self._quantities, QuantityKind.SHOCK)
         }
         self._variants[0].update_values_from_dict(assign_shocks)
         #
         # Remove changes from quantities that are not logly variables
         assign_non_logly = { 
             qid: (..., numpy.nan) 
-            for qid in  quantities.generate_qids_by_kind(self._quantities, ~QuantityKind.LOGLY_VARIABLE)
+            for qid in  qu_.generate_qids_by_kind(self._quantities, ~QuantityKind.LOGLY_VARIABLE)
         }
         self._variants[0].update_values_from_dict(assign_non_logly)
 
@@ -347,16 +353,16 @@ class Model(getters.GetterMixin):
     def _systemize(
         self,
         variant: Variant,
-        descriptor: descriptors.Descriptor,
+        descriptor: de_.Descriptor,
         /,
-    ) -> systems.System:
+    ) -> sy_.System:
         """
         Evaluatoe 
         """
         num_columns = descriptor.system_differn_context.shape_data[1]
         logly_context = self.create_qid_to_logly()
         value_context = self.create_zero_array(variant, num_columns=num_columns)
-        return systems.System.for_descriptor(descriptor, logly_context, value_context)
+        return sy_.System.for_descriptor(descriptor, logly_context, value_context)
 
     #def _get_steady_something(
     #    self,
@@ -365,7 +371,7 @@ class Model(getters.GetterMixin):
     #) -> dict[str, Number|numpy.ndarray]:
     #    """
     #    """
-    #    return databanks.Databank._from_dict({ name: extractor(qid) for qid, name in qid_to_name.items() })
+    #    return db_.Databank._from_dict({ name: extractor(qid) for qid, name in qid_to_name.items() })
 
     def _solve(
         self,
@@ -492,14 +498,14 @@ class Model(getters.GetterMixin):
     def _assign_default_stds(self, default_std, /, ):
         if default_std is None:
             default_std = _DEFAULT_STD_LINEAR if ModelFlags.LINEAR not in self._flags else _DEFAULT_STD_NONLINEAR
-        self.assign(**{ k: default_std for k in quantities.generate_quantity_names_by_kind(self._quantities, QuantityKind.STD) })
+        self.assign(**{ k: default_std for k in qu_.generate_quantity_names_by_kind(self._quantities, QuantityKind.STD) })
 
 
     def _populate_min_max_shifts(self) -> NoReturn:
-        self._min_shift = equations.get_min_shift_from_equations(
+        self._min_shift = eq_.get_min_shift_from_equations(
             self._dynamic_equations + self._steady_equations
         )
-        self._max_shift = equations.get_max_shift_from_equations(
+        self._max_shift = eq_.get_max_shift_from_equations(
             self._dynamic_equations + self._steady_equations
         )
 
@@ -507,7 +513,7 @@ class Model(getters.GetterMixin):
     @classmethod
     def from_source(
         cls: type,
-        model_source: sources.ModelSource,
+        model_source: so_.ModelSource,
         /,
         default_std: int|None = None,
         **kwargs, 
@@ -521,15 +527,16 @@ class Model(getters.GetterMixin):
         self._dynamic_equations = model_source.dynamic_equations[:]
         self._steady_equations = model_source.steady_equations[:]
 
-        name_to_qid = quantities.create_name_to_qid(self._quantities)
-        equations.finalize_dynamic_equations(self._dynamic_equations, name_to_qid)
-        equations.finalize_steady_equations(self._steady_equations, name_to_qid)
+        name_to_qid = qu_.create_name_to_qid(self._quantities)
+        eq_.finalize_dynamic_equations(self._dynamic_equations, name_to_qid)
+        eq_.finalize_steady_equations(self._steady_equations, name_to_qid)
 
         self._variants = [ variants.Variant(self._quantities) ]
         self._enforce_auto_values()
-        self._dynamic_descriptor = descriptors.Descriptor(self._dynamic_equations, self._quantities)
-        self._steady_descriptor = descriptors.Descriptor(self._steady_equations, self._quantities)
+        self._dynamic_descriptor = de_.Descriptor(self._dynamic_equations, self._quantities)
+        self._steady_descriptor = de_.Descriptor(self._steady_equations, self._quantities)
 
+        self._plain_evaluator_for_dynamic_equations = self.create_plain_evaluator(self._dynamic_equations)
         self._steady_evaluator_for_dynamic_equations = self.create_steady_evaluator(self._dynamic_equations, None) 
         self._steady_evaluator_for_steady_equations = self.create_steady_evaluator(self._steady_equations, None) 
 
@@ -550,7 +557,7 @@ class Model(getters.GetterMixin):
     ) -> Self:
         """
         """
-        model_source, info = sources.ModelSource.from_string(
+        model_source, info = so_.ModelSource.from_string(
             source_string, context=context, save_preparsed=save_preparsed,
         )
         return Model.from_source(model_source, **kwargs, )
