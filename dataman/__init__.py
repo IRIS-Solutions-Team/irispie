@@ -1,3 +1,6 @@
+"""
+Data management
+"""
 
 # from .series import (
     # Series,
