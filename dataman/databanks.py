@@ -1,16 +1,18 @@
 
 #[
 from __future__ import annotations
+from IPython import embed
 
-import copy
-import types
+import json as js_
+import copy as co_
+import types as ty_
+import numpy as np_
+import re as re_
 from typing import (Self, TypeAlias, NoReturn, Literal, )
 from collections.abc import (Iterable, Callable, )
 from numbers import (Number, )
-import numpy
-import re
 
-from .dates import (Dater, )
+from . import dates as da_
 #]
 
 
@@ -24,12 +26,23 @@ _REPR_INDENT = "    "
 _REPR_SEPARATOR = ": "
 
 
+DATABANK_OUTPUT_FORMAT_RESOLUTION = {
+    "dict": lambda x: vars(x),
+    "Databank": lambda x: x,
+    "databank": lambda x: x,
+    "json": lambda x: js_.dumps(vars(x)),
+    "json4": lambda x: js_.dumps(vars(x), indent=4),
+}
+
+
 class EmptyDateRange(Exception):
     def __init__(self):
         super().__init__("Empty date range is not allowed in this context.")
 
 
-class Databank(types.SimpleNamespace):
+class Databank(ty_.SimpleNamespace):
+    """
+    """
     #[
     @classmethod
     def _from_dict(
@@ -44,12 +57,11 @@ class Databank(types.SimpleNamespace):
             self.__setattr__(k, v)
         return self
 
-
     @classmethod
     def _for_model(
         cls,
         model,
-        base_range: Iterable[Dater],
+        base_range: Iterable[da_.Dater],
         /,
         interpret_range: Literal["base"]|Literal["all"] = "base",
         deviation: bool = False,
@@ -80,7 +92,7 @@ class Databank(types.SimpleNamespace):
     ) -> Self:
         """
         """
-        new_databank = copy.deepcopy(self)
+        new_databank = co_.deepcopy(self)
         new_databank = new_databank._rename(source_names, target_names)
         new_databank._keep(target_names)
         return new_databank
@@ -111,7 +123,7 @@ class Databank(types.SimpleNamespace):
         if remove_names is None:
             return self
         context_names = self._get_names()
-        remove_names = _resolve_source_target_names(remove_names, None, context_names)
+        remove_names, *_ = _resolve_source_target_names(remove_names, None, context_names)
         for n in set(remove_names).intersection(context_names):
             del self.__dict__[n]
         return self
@@ -126,9 +138,12 @@ class Databank(types.SimpleNamespace):
         if keep_names is None:
             return self
         context_names = self._get_names()
-        keep_names = _resolve_source_target_names(keep_names, None, context_names)
+        keep_names, *_ = _resolve_source_target_names(keep_names, None, context_names)
         remove_names = set(context_names).difference(keep_names)
         return self._remove(remove_names)
+
+    def _to_json(self, **kwargs):
+        return js_.dumps(vars(self), **kwargs)
 
     def __getitem__(self, name):
         return self.__dict__[name]
@@ -137,7 +152,7 @@ class Databank(types.SimpleNamespace):
         self.__dict__[name] = value
 
     def __or__(self, other) -> Self:
-        new = copy.deepcopy(self)
+        new = co_.deepcopy(self)
         new.__dict__.update(other.__dict__)
         return new
 
@@ -177,12 +192,12 @@ def _databank_repr(x, /, ) -> str:
         s = "None"
     elif x is ...:
         s = "..."
-    elif isinstance(x, Number) or isinstance(x, Dater):
+    elif isinstance(x, Number) or isinstance(x, da_.Dater):
         s = str(x)
     elif isinstance(x, str):
         s = f'"{x}"'
-    elif isinstance(x, numpy.ndarray) or isinstance(x, list):
-        s = re.sub("\n + ", " ", repr(x))
+    elif isinstance(x, np_.ndarray) or isinstance(x, list):
+        s = re_.sub("\n + ", " ", repr(x))
     else:
         s = repr(type(x))
     return s if len(s)<_REPR_MAX_LEN else s[0:_REPR_MAX_LEN] + _REPR_CONT

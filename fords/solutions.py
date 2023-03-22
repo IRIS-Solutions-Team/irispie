@@ -96,10 +96,13 @@ class Solution:
         if (R is None) or (Xb is None) or (J is None) or (Ru is None):
             return None
         Jk = np_.eye(J.shape[0])
+        #
         # Rb(t+k) = -Xb J**(k-1) Ru e(t+k)
+        # k = 1, ..., forward or k-1 = 0, ..., forward-1
+        #
         return [
-            -Xb @ np_.linalg.matrix_power(J, k) @ Ru 
-            for k in range(0, forward)
+            -Xb @ np_.linalg.matrix_power(J, k_minus_1) @ Ru 
+            for k_minus_1 in range(0, forward)
         ]
     #]
 
