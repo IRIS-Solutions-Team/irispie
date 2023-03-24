@@ -19,7 +19,7 @@
 ---
 
 
-* Progress overview
+* Current status
 
 * Live example
 
@@ -136,8 +136,9 @@ Matlab | Python | Comment
 
 * Default options: linear, flat/growth, anticipate, 
 
-*
+* Option/object/function names
 
+* 
 
 ---
 

@@ -36,8 +36,7 @@ class GetterMixin:
         qid_to_name = self.create_qid_to_name()
         qids = list(qu_.generate_qids_by_kind(self._quantities, kind))
         x = self._variants[0].retrieve_values(variant_attr, qids)
-        xxx= db_.Databank._from_dict({ qid_to_name[q]: float(x[i, 0]) for i, q in enumerate(qids) })
-        return xxx
+        return db_.Databank._from_dict({ qid_to_name[q]: float(x[i, 0]) for i, q in enumerate(qids) })
 
     @_decorate_output_format
     def get_steady_levels(
