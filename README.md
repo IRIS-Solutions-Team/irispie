@@ -58,3 +58,37 @@ virtualenv==20.21.0
 virtualenv-clone==0.5.7
 wcwidth==0.2.6
 ```
+
+## Setting up dependencies
+
+1. Install Python 3.11.X
+
+1. Install Git
+
+1. Create a virtual environoment in a folder of your choice
+
+```
+python3.11 -m venv env_irispie
+```
+
+1. Activate the virtual environment
+
+```
+source env_irispie/bin/activiate
+```
+
+1. Save the above list of dependencies to the current folder as `requirements`
+
+1. Install dependency packages
+
+```
+python -m pip install requirements
+```
+
+1. Clone the Iris Pie repository to the current folder
+
+```
+git clone https://github.com/IRIS-Solutions-Team/Iris-Pie.git irispie
+```
+
+
