@@ -69,7 +69,7 @@ class Variant:
             for i in range(levels.shape[0])
         ])
         #
-        shift_vec = numpy.array(range(shift_in_first_column, num_columns))
+        shift_vec = numpy.array(range(shift_in_first_column, shift_in_first_column+num_columns))
         #
         warnings.filterwarnings(action="ignore", category=RuntimeWarning)
         levels[logly] = numpy.log(levels[logly])

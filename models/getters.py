@@ -67,13 +67,21 @@ class GetterMixin:
     ) -> dict[str, Number]:
         return self._get_values_from_primary_variant(variant_attr="levels", kind=qu_.QuantityKind.PARAMETER), kwargs.get("output", "Databank")
 
-    get_stds = ft_.partialmethod(
-        _get_values_from_primary_variant, variant_attr="levels", kind=qu_.QuantityKind.STD,
-    )
+    @_decorate_output_format
+    def get_stds(
+        self,
+        /,
+        **kwargs,
+    ) -> dict[str, Number]:
+        return self._get_values_from_primary_variant(variant_attr="levels", kind=qu_.QuantityKind.STD), kwargs.get("output", "Databank")
 
-    get_parameters_stds = ft_.partialmethod(
-        _get_values_from_primary_variant, variant_attr="levels", kind=qu_.QuantityKind.PARAMETER_OR_STD,
-    )
+    @_decorate_output_format
+    def get_parameters_stds(
+        self,
+        /,
+        **kwargs,
+    ) -> dict[str, Number]:
+        return self._get_values_from_primary_variant(variant_attr="levels", kind=qu_.QuantityKind.PARAMETER_OR_STD), kwargs.get("output", "Databank")
 
     @_decorate_output_format
     def get_log_status(

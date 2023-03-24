@@ -14,39 +14,25 @@ import numpy as np_
 import itertools as it_
 import copy as co_
 
-from .dates import (Dater, Ranger, date_index, ResolvableProtocol, )
+from ..dataman.dates import (Dater, Ranger, date_index, ResolvableProtocol, )
+from ..dataman import views as vi_
+from ..dataman import dates as da_
+from ..dataman import filters as fi_
+from ..dataman import plotly as pl_
 #]
 
 
+underscore_functions = ["log", "exp", "sqrt", "max", "min", "mean", "median", "cumsum"]
+
+
 __all__ = [
-    "Series",
+    "Series", "diff", "pct", "roc",
 ]
-
-
-underscore_functions = ["log", "exp", "sqrt", "max", "min", "mean", "median"]
 
 
 Dates: TypeAlias = Dater | Iterable[Dater] | Ranger | EllipsisType | None
 Columns: TypeAlias = int | Iterable[int] | slice
 Data: TypeAlias = Number | Iterable[Number] | tuple | np_.ndarray
-
-
-_VERTICAL_ELLIPSIS = "⋮"
-
-
-def _str_row(date, data, date_str_format, numeric_format, nan_str: str):
-    date_str = ("{:"+date_str_format+"}").format(date)
-    value_format = "{:"+numeric_format+"}"
-    data_str = "".join([value_format.format(v) for v in data])
-    data_str = data_str.replace("nan", "{:>3}".format(nan_str))
-    return date_str + data_str
-
-
-def _short_str_row(shape, date_str_format, short_str_format):
-    date_str = ("{:"+date_str_format+"}").format(_VERTICAL_ELLIPSIS)
-    value_format = "{:"+short_str_format+"}"
-    data_str = "".join([value_format.format(_VERTICAL_ELLIPSIS)] * shape[1])
-    return date_str + data_str
 
 
 def _get_date_positions(dates, base, num_periods):
@@ -66,31 +52,32 @@ def _trim_decorate(func):
     return wrapper
 
 
-class Series:
+class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, vi_.SeriesViewMixin):
     """
     """
     __slots__ = [
         "start_date", "data", "data_type",
-        "_comment", "_column_names", "_user_data", "_short_rows"
+        "_descript", "_column_titles", "_user_data",
     ]
-    numeric_format: str = "15g"
-    short_str_format: str = ">15"
-    date_str_format: str = ">12"
-    nan_str: str = "·"
+    _numeric_format: str = "15g"
+    _short_str_format: str = ">15"
+    _date_str_format: str = ">12"
+    _nan_str: str = "·"
 
-    def __init__(self, /, num_columns=1, data_type=float, ):
+    def __init__(self, /, num_columns=1, data_type=float, descript="", ):
         self.data_type = data_type
-        self.reset(num_columns=num_columns, data_type=data_type)
+        self._descript = descript
+        self.reset(num_columns, data_type, descript, )
 
-    def reset(self, num_columns=None, data_type=None):
+    def reset(self, /, num_columns=None, data_type=None, descript=None, ):
         num_columns = num_columns if num_columns else self.num_columns
         data_type = data_type if data_type else self.data_type
+        descript = descript if descript else self._descript
         self.start_date = None
         self.data = np_.full((0, num_columns), np_.nan, dtype=data_type)
-        self._comment = ""
-        self._column_names = [""] * num_columns
+        self._descript = str(descript)
+        self._column_titles = [""] * num_columns
         self._user_data = {}
-        self._short_rows = 5
         return self
 
     def _create_rows_of_nans(self, num_rows=0):
@@ -112,10 +99,52 @@ class Series:
     def end_date(self):
         return self.start_date + self.data.shape[0] - 1 if self.start_date else None
 
+    @property
+    def frequency(self):
+        return self.start_date.frequency if self.start_date is not None else da_.Frequency.UNKNOWN
+
     @classmethod
-    def from_data(cls, dates, data):
-        self = cls()
+    def from_dates_and_data(
+        cls,
+        dates: Iterable[Dater],
+        data: np_.ndarray,
+        /,
+    ) -> Self:
+        num_columns = data.shape[1]
+        self = cls(num_columns=num_columns)
         self.set_data(dates, data)
+        return self
+
+    @classmethod
+    def from_start_date_and_data(
+        cls,
+        start_date: Dater,
+        data: np_.ndarray,
+        /,
+        **kwargs,
+    ) -> Self:
+        num_columns = data.shape[1]
+        self = cls(num_columns=num_columns, **kwargs)
+        self.start_date = start_date
+        self.data = data
+        return self
+
+    @classmethod
+    def from_func(
+        cls,
+        dates: Iterable[Dater],
+        func: Callable,
+        /,
+        **kwargs,
+    ) -> Self:
+        """
+        """
+        self = cls(**kwargs)
+        dates = [ t for t in dates ]
+        data = [ [ func() for j in range(self.num_columns) ] for i in range(len(dates)) ]
+        data = np_.array(data, dtype=self.data_type)
+        self.set_data(dates, data)
+        return self
 
     @_trim_decorate
     def set_data(
@@ -151,12 +180,12 @@ class Series:
     ) -> np_.ndarray:
         """
         """
-        dates = self._resolve_dates(dates)
+        dates = [ t for t in self._resolve_dates(dates) ]
         columns = self._resolve_columns(columns)
         base_date = self.start_date
         if not dates or not base_date:
             num_dates = len(set(dates))
-            return self._create_rows_of_nans(num_dates)[:,columns]
+            return self._create_rows_of_nans(num_dates)[:, columns]
         pos, add_before, add_after = _get_date_positions(dates, self.start_date, self.shape[0]-1)
         data = self._create_expanded_data(add_before, add_after)
         if not isinstance(pos, Iterable):
@@ -173,6 +202,17 @@ class Series:
         """
         column = column if column and column<self.data.shape[1] else 0
         return self.get_data(dates, column)
+
+    def extract_columns(
+        self,
+        columns,
+        /,
+    ) -> NoReturn:
+        if not isinstance(columns, Iterable):
+            columns = (columns, )
+        columns = [ c for c in columns ]
+        self.data = self.data[:, columns]
+        self.column_titles = [ self.column_titles[c] for c in columns ]
 
     def set_start_date(
         self,
@@ -201,9 +241,9 @@ class Series:
         return columns
 
     def __call__(self, shift):
-        return co_.deepcopy(self).set_start_date(
-            self.start_date - shift if self.start_date is not None else None
-        )
+        new = co_.deepcopy(self)
+        new.start_date = (new.start_date - shift) if new.start_date is not None else None
+        return new
 
     def __getitem__(self, index):
         if not isinstance(index, tuple):
@@ -228,6 +268,20 @@ class Series:
         new = Series(num_columns=new_data.shape[1]);
         new.set_data(encompassing_range, new_data)
         return new
+
+    def clip(
+        self,
+        new_start_date: Dater | None,
+        new_end_date: Dater | None,
+    ) -> NoReturn:
+        if new_start_date is None or new_start_date < self.start_date:
+            new_start_date = self.start_date
+        if new_end_date is None or new_end_date > self.end_date:
+            new_end_date = self.end_date
+        if new_start_date == self.start_date and new_end_date == self.end_date:
+            return
+        self.start_date = new_start_date
+        self.data = self.get_data(Ranger(new_start_date, new_end_date))
 
     def overlay_by_range(
         self,
@@ -315,29 +369,6 @@ class Series:
             data = np_.vstack((data, self._create_rows_of_nans(add_after)))
         return data
 
-    def _get_header_view(self, /, ):
-        shape = self.data.shape
-        return [ 
-            "", 
-            f"Series {shape[0]}-by-{shape[1]} {self.start_date}:{self.end_date}",
-            f"Comment: \"{self._comment}\"",
-            "", 
-        ]
-
-    def _get_data_view(self, /, ):
-        """
-        """
-        return [
-            _str_row(date, data_row, self.date_str_format, self.numeric_format, self.nan_str) 
-            for row, (date, data_row) in enumerate(zip(self.range, self.data))
-        ]
-
-    def __str__(self, /, ):
-        return "\n".join(self._get_header_view() + self._get_data_view())
-
-    def __repr__(self, /, ):
-        return self.__str__()
-
     def _check_data_shape(self, data, /, ):
         if data.shape[1] != self.data.shape[1]:
             raise Exception("Time series data being assigned must preserve the number of columns")
@@ -356,22 +387,12 @@ class Series:
         """
         return co_.deepcopy(self.copy)
 
-    def __invert__(self):
-        """
-        ~self for short display
-        """
-        header_view = self._get_header_view()
-        data_view = self._get_data_view()
-        short = _short_str_row(self.data.shape, self.date_str_format, self.short_str_format, )
-        data_view = data_view[:self._short_rows] + [short] + data_view[-self._short_rows:]
-        print("\n".join(header_view + data_view))
-
     def __add__(self, other) -> Self|np_.ndarray:
         """
         self + other
         """
         arg = other.data if isinstance(other, type(self)) else other
-        return self._unop(lambda data: data.__add__(arg))
+        return self._binop(other, lambda x, y: x + y)
 
     def __radd__(self, other):
         """
@@ -384,7 +405,7 @@ class Series:
         self + other
         """
         arg = other.data if isinstance(other, type(self)) else other
-        return self._unop(lambda data: data.__mul__(arg))
+        return self._binop(other, lambda x, y: x * y)
 
     def __rmul__(self, other):
         """
@@ -397,7 +418,7 @@ class Series:
         self - other
         """
         arg = other.data if isinstance(other, type(self)) else other
-        return self._unop(lambda data: data.__sub__(arg))
+        return self._binop(other, lambda x, y: x - y)
 
     def __rsub__(self, other):
         """
@@ -409,8 +430,9 @@ class Series:
         """
         self ** other
         """
+        # FIXME: 1 ** numpy.nan -> 1 !!!!!
         arg = other.data if isinstance(other, type(self)) else other
-        return self._unop(lambda data: data.__pow__(arg))
+        return self._binop(other, lambda x, y: x ** y)
 
     def __rpow__(self, other):
         """
@@ -423,7 +445,7 @@ class Series:
         self - other
         """
         arg = other.data if isinstance(other, type(self)) else other
-        return self._unop(lambda data: data.__truediv__(arg))
+        return self._binop(other, lambda x, y: x / y)
 
     def __rtruediv__(self, other):
         """
@@ -435,7 +457,7 @@ class Series:
         """
         self // other
         """
-        return self._unop(lambda data: data.__floordiv__(other))
+        return self._binop(other, lambda x, y: x // y)
 
     def __rfloordiv__(self, other):
         """
@@ -447,7 +469,7 @@ class Series:
         """
         self % other
         """
-        return self._unop(lambda data: data.__mod__(other))
+        return self._binop(other, lambda x, y: x % y)
 
     def __rmod__(self, other, /, ):
         """
@@ -458,7 +480,7 @@ class Series:
     def _unop(self, func, /, *args, **kwargs):
         new_data = func(self.data, *args, **kwargs)
         axis = kwargs.get("axis")
-        if (axis is None or axis==1) and new_data.shape==self.data.shape:
+        if new_data.shape==self.data.shape:
             new = co_.deepcopy(self)
             new.data = new_data
             return new._trim()
@@ -473,12 +495,18 @@ class Series:
         else:
             raise Exception("Unary operation on a time series resulted in a data array with an unexpected shape")
 
-
     def _binop(self, other, func, /, ):
         if not isinstance(other, type(self)):
             unop_func = lambda data: func(data, other)
             return _unop(self, unop_func)
-
+        encompassing_range = self._get_encompassing_range(self, other)
+        self_data = self.get_data(encompassing_range)
+        other_data = other.get_data(encompassing_range)
+        new = Series()
+        new.start_date = encompassing_range[0]
+        new.data = func(self_data, other_data)
+        new._trim()
+        return new
 
     def _replace_data(self, new_data, /, ):
         self.data = new_data
@@ -488,10 +516,14 @@ class Series:
         return co_.deepcopy(self)
 
     for n in ["log", "exp", "sqrt"]:
-        exec(f"def {n}(self): return self._replace_data(np_.{n}(self.data))")
+        exec(f"def {n}(self): return self._replace_data(np_.{n}(self.data, ), )")
+
+    for n in ["cumsum"]:
+        exec(f"def {n}(self): return self._replace_data(np_.{n}(self.data, axis=0, ), )")
 
     for n in underscore_functions:
-        exec(f"def _{n}_(self, *args, **kwargs): return self._unop(func=np_.{n}, *args, **kwargs)")
+        exec(f"def _{n}_(self, *args, **kwargs): return self._unop(np_.{n}, *args, **kwargs, )")
+
 
 def _get_num_leading_nan_rows(data):
     try:
@@ -501,7 +533,7 @@ def _get_num_leading_nan_rows(data):
     return num
 
 
-def _unop(x, func: Callable, *args, **kwargs) -> object:
+def _unop(x, func: Callable, /, *args, **kwargs) -> object:
     if isinstance(x, Series):
         return x._unop(func, *args, **kwargs)
     else:
@@ -519,4 +551,18 @@ def _create_data_from_number(
     /,
 ) -> np_.ndarray:
     return np_.full((len(range), 1), number, dtype=data_type)
+
+
+def diff(x, shift=-1):
+    return x - x(shift)
+
+def difflog(x, shift=-1):
+    return log(x) - log(x(shift))
+
+def pct(x, shift=-1):
+    return 100*(x/x(shift) - 1)
+
+def roc(x, shift=-1):
+    return x/x(shift)
+
 

@@ -78,6 +78,10 @@ def create_qid_to_name(quantities: Quantities) -> dict[int, str]:
     return { qty.id: qty.human for qty in quantities }
 
 
+def create_qid_to_descript(quantities: Quantities) -> dict[int, str]:
+    return { qty.id: qty.descript for qty in quantities }
+
+
 def create_qid_to_kind(quantities: Quantities) -> dict[int, str]:
     return { qty.id: qty.kind for qty in quantities }
 

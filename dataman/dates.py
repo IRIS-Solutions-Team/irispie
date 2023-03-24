@@ -2,6 +2,7 @@
 #[
 from __future__ import annotations
 
+import re as re_
 import datetime as dt_
 import enum as en_
 import functools as ft_
@@ -15,6 +16,7 @@ __all__ = [
     "Frequency",
     "yy", "hh", "qq", "mm", "dd", "ii",
     "Ranger", "start", "end",
+    "dater_from_sdmx_string",
 ]
 
 
@@ -30,14 +32,19 @@ class Frequency(en_.IntEnum):
     MONTHLY = 12
     WEEKLY = 52
     DAILY = 365
+    UNKNOWN = -1
 
     @property
     def letter(self) -> str:
-        return self.name[0]
+        return self.name[0] if self is not self.UNKNOWN else "?"
 
     @property
     def sdmx_format(self) -> str:
         return SDMX_FORMATS[self]
+
+    @property
+    def plotly_format(self) -> str:
+        return PLOTLY_FORMATS[self]
 
     @property
     def is_regular(self) -> bool:
@@ -45,9 +52,6 @@ class Frequency(en_.IntEnum):
     #]
 
 
-"""
-Lookup for SDMX date formats by frequencies
-"""
 SDMX_FORMATS = {
     Frequency.INTEGER: "({serial})",
     Frequency.YEARLY: "{year:04g}",
@@ -56,6 +60,17 @@ SDMX_FORMATS = {
     Frequency.MONTHLY: "{year:04g}-{per:02g}",
     Frequency.WEEKLY: "{year:04g}-{per:02g}",
     Frequency.DAILY: "{year:04g}-{month:02g}-{day:02g}",
+}
+
+
+PLOTLY_FORMATS = {
+    Frequency.INTEGER: None,
+    Frequency.YEARLY: "%Y",
+    Frequency.HALFYEARLY: "%Y-%m",
+    Frequency.QUARTERLY: "%Y-Q%q",
+    Frequency.MONTHLY: "%Y-%m",
+    Frequency.WEEKLY: "%Y-%W",
+    Frequency.DAILY: "%Y-%m-%d",
 }
 
 
@@ -145,6 +160,9 @@ class Dater(RangeableMixin):
     frequency = None
     needs_resolve = False
 
+    def __init__(self, serial=0) -> NoReturn:
+        self.serial = int(serial)
+
     def get_distance_from_origin(self) -> int:
         return self.serial - self.origin
 
@@ -153,9 +171,6 @@ class Dater(RangeableMixin):
 
     def __bool__(self) -> bool:
         return not self.needs_resolve
-
-    def __init__(self, serial=0):
-        self.serial = int(serial)
 
     def __len__(self):
         return 1
@@ -227,6 +242,12 @@ class IntegerDater(Dater):
     needs_resolve = False
     origin = 0
 
+    @classmethod
+    def from_sdmx_string(cls, sdmx: str) -> IntegerDater:
+        sdmx = sdmx.replace("(", "")
+        sdmx = sdmx.replace(")", "")
+        return cls(int(sdmx))
+
     def to_plotly_date(self) -> str:
         return str(self.serial)
 
@@ -236,6 +257,9 @@ class IntegerDater(Dater):
     def __str__(self) -> str:
         serial = self.serial
         return self.frequency.sdmx_format.format(serial=serial)
+
+    def to_plotly_date(self):
+        return self.serial
     #]
 
 
@@ -255,6 +279,11 @@ class DailyDater(Dater, IsoMixin):
         boy_serial = dt_.date(year, 1, 1).toordinal()
         serial = boy_serial + int(period) - 1
         return cls(serial)
+
+    @classmethod
+    def from_sdmx_string(cls, sdmx: str) -> DailyDater:
+        year, month, day = sdmx.split("-")
+        return cls.from_ymd(int(year), int(month), int(day))
 
     def to_year_period(self: Self) -> tuple[int, int]:
         boy_serial = dt_.date(dt_.date.fromordinal(self.serial).year, 1, 1)
@@ -308,6 +337,7 @@ class RegularDaterMixin:
         year, per = self.to_year_period()
         return year, *self.month_day_resolution[position][per]
 
+
     def __str__(self) -> str:
         year, per = self.to_year_period()
         letter = self.frequency.letter
@@ -326,6 +356,10 @@ class YearlyDater(Dater, RegularDaterMixin, IsoMixin):
         "end": {1: (12, 31)},
     }
 
+    @classmethod
+    def from_sdmx_string(cls, sdmx: str) -> YearlyDater:
+        return cls(int(sdmx))
+
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"yy({self.get_year()})"
     #]
@@ -341,6 +375,12 @@ class HalfyearlyDater(Dater, RegularDaterMixin, IsoMixin):
         "center": {1: (3, 15), 2: (9, 15)},
         "end": {1: (6, 30), 2: (12, 31)}
     }
+
+    @classmethod
+    def from_sdmx_string(cls, sdmx: str) -> HalfyearlyDater:
+        year, halfyear = sdmx.split("-")
+        halfyear = halfyear.upper().replace("H", "")
+        return cls.from_year_period(int(year), int(halfyear))
 
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"hh{self.to_year_period()}"
@@ -376,6 +416,12 @@ class QuarterlyDater(Dater, RegularDaterMixin, IsoMixin):
         "end": {1: (3, 30), 2: (5, 31), 3: (8, 31), 4: (11, 30)},
     }
 
+    @classmethod
+    def from_sdmx_string(cls, sdmx: str) -> QuarterlyDater:
+        year, quarter = sdmx.split("-")
+        quarter = quarter.upper().replace("Q", "")
+        return cls.from_year_period(int(year), int(quarter))
+
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"qq{self.to_year_period()}"
 
@@ -390,6 +436,11 @@ class MonthlyDater(Dater, RegularDaterMixin, IsoMixin):
         "center": {1: (1, 15), 2: (2, 15), 3: (2, 15), 4: (4, 15), 5: (5, 15), 6: (6, 15), 7: (7, 15), 8: (8, 15), 9: (9, 15), 10: (10, 15), 11: (11, 15), 12: (12, 15)},
         "end": {1: (1, 31), 2: (2, 28), 3: (2, 31), 4: (4, 30), 5: (5, 31), 6: (6, 30), 7: (7, 31), 8: (8, 31), 9: (9, 30), 10: (10, 31), 11: (11, 30), 12: (12, 31)},
     }
+
+    @classmethod
+    def from_sdmx_string(cls, sdmx: str) -> MonthlyDater:
+        year, month = sdmx.split("-")
+        return cls.from_year_period(int(year), int(month))
 
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"mm{self.to_year_period()}"
@@ -576,4 +627,39 @@ def resolve_dater_or_integer(input_date: Any) -> Dater:
     if isinstance(input_date, Number):
         input_date = IntegerDater(int(input_date))
     return input_date
+
+
+_DATER_CLASS_FROM_FREQUENCY_RESOLUTION = {
+    Frequency.INTEGER: IntegerDater,
+    Frequency.YEARLY: YearlyDater,
+    Frequency.HALFYEARLY: HalfyearlyDater,
+    Frequency.QUARTERLY: QuarterlyDater,
+    Frequency.MONTHLY: MonthlyDater,
+    Frequency.DAILY: DailyDater,
+}
+
+
+def dater_from_sdmx_string(freq: Frequency, sdmx: str) -> Dater:
+    """
+    """
+    return _DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_sdmx_string(sdmx)
+
+
+_FREQUENCY_FROM_STRING_RESOLUTION = {
+    "I": Frequency.INTEGER,
+    "Y": Frequency.YEARLY,
+    "H": Frequency.HALFYEARLY,
+    "Q": Frequency.QUARTERLY,
+    "M": Frequency.MONTHLY,
+    "W": Frequency.WEEKLY,
+    "D": Frequency.DAILY,
+}
+
+
+def frequency_from_string(text: str) -> Frequency:
+    """
+    """
+    first_letter_match = re_.search("[A-Z]", text.upper() + "X")
+    return _FREQUENCY_FROM_STRING_RESOLUTION.get(first_letter_match.group(0), Frequency.UNKNOWN)
+
 

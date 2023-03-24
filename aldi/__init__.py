@@ -1,4 +1,0 @@
-"""
-Algorithmic differentiators and invariators
-"""
-

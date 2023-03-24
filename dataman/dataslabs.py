@@ -1,6 +1,7 @@
 
 #[
 from __future__ import annotations
+from IPython import embed
 
 import numpy as np_
 from typing import (Self, NoReturn, )
@@ -18,10 +19,7 @@ class Dataslab:
     missing_names: Iterable[str] | None = None,
     column_dates: Iterable[Dater] | None = None
 
-    def to_datbank(
-        self,
-        /,
-    ) -> Self:
+    def to_databank(self, /, ) -> da_.Databank:
         """
         """
         out_databank = db_.Databank()
@@ -38,6 +36,7 @@ class Dataslab:
         names: Iterable[str],
         ext_range: Ranger,
         /,
+        column: int = 0,
     ) -> Self:
         """
         """
@@ -51,9 +50,9 @@ class Dataslab:
         num_periods = len(ext_range)
         nan_row = np_.full((1, num_periods), np_.nan, dtype=float)
         generate_data = tuple(
-            getattr(in_databank, n).get_data(ext_range).reshape(1, -1)
+            _extract_data_from_record(getattr(in_databank, n), ext_range, column)
             if n not in missing_names else nan_row
-            for n in  names
+            for n in names
         )
         #
         self.data = np_.vstack(generate_data)
@@ -62,4 +61,26 @@ class Dataslab:
         self.missing_names = missing_names
         return self
 
+    def remove_columns(
+        self,
+        remove: int,
+        /,
+    ) -> NoReturn:
+        if remove > 0:
+            self.data = self.data[:, remove:]
+            self.column_dates = self.column_dates[remove:]
+        elif remove < 0:
+            self.data = self.data[:, :remove]
+            self.column_dates = self.column_dates[:remove]
+
+
+
+def _extract_data_from_record(record, ext_range, column, /, ):
+    """
+    """
+    return (
+        record.get_data_column(ext_range, column).reshape(1, -1) 
+        if hasattr(record, "get_data")
+        else np_.full((1, len(ext_range)), float(record), dtype=float)
+    )
 

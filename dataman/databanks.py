@@ -1,3 +1,6 @@
+"""
+"""
+
 
 #[
 from __future__ import annotations
@@ -8,22 +11,27 @@ import copy as co_
 import types as ty_
 import numpy as np_
 import re as re_
-from typing import (Self, TypeAlias, NoReturn, Literal, )
+import operator as op_
+from typing import (Self, TypeAlias, NoReturn, Literal, Sequence, )
 from collections.abc import (Iterable, Callable, )
 from numbers import (Number, )
 
-from . import dates as da_
+from ..dataman import dates as da_
+from ..dataman import series as se_
+from ..dataman import views as vi_
+from ..dataman import imports as im_
+from ..dataman import exports as ex_
+from .. import quantities as qu_
 #]
+
+
+__all__ = [
+    "Databank",
+]
 
 
 SourceNames: TypeAlias = Iterable[str] | str | Callable[[str], bool] | None
 TargetNames: TypeAlias = Iterable[str] | str | Callable[[str], str] | None
-
-
-_REPR_MAX_LEN = 70
-_REPR_CONT = "..."
-_REPR_INDENT = "    "
-_REPR_SEPARATOR = ": "
 
 
 DATABANK_OUTPUT_FORMAT_RESOLUTION = {
@@ -40,10 +48,58 @@ class EmptyDateRange(Exception):
         super().__init__("Empty date range is not allowed in this context.")
 
 
-class Databank(ty_.SimpleNamespace):
+def _extended_range_tuple_from_base_range(input_range, min_shift, max_shift):
+    """
+    """
+    range_list = [t for t in input_range]
+    start_date, end_date = range_list[0], range_list[-1]
+    start_date += min_shift
+    end_date += max_shift
+    return start_date, end_date
+
+
+def _extended_range_tuple_from_extended_range(input_range, min_shift, max_shift):
+    """
+    """
+    range_list = [t for t in input_range]
+    start_date, end_date = range_list[0], range_list[-1]
+    return start_date, end_date
+
+
+_EXTENDED_RANGE_TUPLE_RESOLUTION = {
+    "base": _extended_range_tuple_from_base_range,
+    "extended": _extended_range_tuple_from_extended_range,
+}
+
+
+_SERIES_CONTSTRUCTOR_RESOLUTION = {
+    "start_date": se_.Series.from_start_date_and_data,
+    "range": se_.Series.from_dates_and_data,
+}
+
+
+_ARRAY_TRANSPOSER_RESOLUTION = {
+    "vertical": np_.transpose,
+    "horizontal": lambda x: x,
+}
+
+
+class Databank(
+    im_.DatabankImportMixin,
+    ex_.DatabankExportMixin,
+    vi_.DatabankViewMixin,
+    ty_.SimpleNamespace,
+):
     """
     """
     #[
+    def __init__(
+        self,
+        descript: str = "",
+        /,
+    ) -> NoReturn:
+        self._descript = descript
+
     @classmethod
     def _from_dict(
         cls,
@@ -61,22 +117,80 @@ class Databank(ty_.SimpleNamespace):
     def _for_model(
         cls,
         model,
-        base_range: Iterable[da_.Dater],
+        input_range: Iterable[da_.Dater],
         /,
-        interpret_range: Literal["base"]|Literal["all"] = "base",
+        interpret_range: Literal["base"] | Literal["extended"] = "base",
         deviation: bool = False,
     ) -> Self:
-        range_list = [t for t in base_range]
-        if not range_list:
+        """
+        """
+        min_shift, max_shift = model.get_min_max_shifts_in_dynamic()
+        start_date, end_date = _EXTENDED_RANGE_TUPLE_RESOLUTION[interpret_range](input_range, min_shift, max_shift)
+        num_columns = int(end_date - start_date + 1)
+        if num_columns < 1:
             raise EmptyDateRange()
-        start_date = t[0]
-        end_date = t[-1]
+        shift_in_first_column = start_date.get_distance_from_origin()
+        #
+        array = model.create_some_array(
+            deviation=deviation,
+            num_columns=num_columns,
+            shift_in_first_column=shift_in_first_column,
+        )
+        #
+        time_series_kind = qu_.QuantityKind.LOGLY_VARIABLE | qu_.QuantityKind.SHOCK
+        qid_to_kind = model.create_qid_to_kind()
+        qid_to_name = {
+            qid: (name if qid_to_kind[qid] in time_series_kind else "")
+            for qid, name in model.create_qid_to_name().items()
+        }
+        qid_to_descript = model.create_qid_to_descript()
+        #
+        self = Databank._from_array(
+            array, qid_to_name, start_date, 
+            array_orientation="horizontal",
+            interpret_dates="start_date",
+            qid_to_descript=qid_to_descript,
+        )
+        #
+        self = self | model.get_parameters_stds()
+        return self
+
+    @classmethod
+    def _from_array(
+        cls,
+        array: np_.ndarray,
+        qid_to_name: Sequence[str] | dict[int, str],
+        dates: da_.Dater,
+        /,
+        add_to_databank: Self | None = None,
+        qid_to_descript: dict[int, str] | None = None,
+        array_orientation: Literal["vertical"] | Literal["horizontal"] = "vertical",
+        interpret_dates: Literal["start_date"] | Literal["range"] = "start_date",
+    ) -> Self:
+        """
+        """
+        self = add_to_databank if add_to_databank else cls()
+        constructor = _SERIES_CONTSTRUCTOR_RESOLUTION[interpret_dates]
+        transposer = _ARRAY_TRANSPOSER_RESOLUTION[array_orientation]
+        for qid, data in enumerate(transposer(array)):
+            name = qid_to_name.get(qid, None)
+            if not name:
+                continue
+            descript = qid_to_descript[qid] if qid_to_descript else ""
+            series = constructor(dates, data.reshape(-1, 1), descript=descript)
+            setattr(self, name, series)
+        return self
 
     def _get_names(self: Self) -> Iterable[str]:
         """
         Get all names stored in a databank save for private attributes
         """
         return [ n for n in dir(self) if not n.startswith("_") ]
+
+    def _get_num_records(self: Self) -> int:
+        """
+        """
+        return sum(1 for n in dir(self) if not n.startswith("_"))
 
     def _to_dict(self: Self) -> dict:
         """
@@ -142,8 +256,66 @@ class Databank(ty_.SimpleNamespace):
         remove_names = set(context_names).difference(keep_names)
         return self._remove(remove_names)
 
+    def _filter(
+        self,
+        name_test: Callable | None = None,
+        value_test: Callable | None = None,
+    ) -> Iterable[str]:
+        """
+        """
+        names = self._get_names()
+        if name_test is None and value_test is None:
+            return names
+        name_test = name_test if name_test else lambda x: True
+        value_test = value_test if value_test else lambda x: True
+        return [ n for n in names if name_test(n) and value_test(getattr(self, n)) ]
+
+    def _get_series_names_by_frequency(
+        self,
+        frequency: da_.Frequency,
+    ) -> Iterable[str]:
+        """
+        """
+        return self._filter(value_test=lambda x: isinstance(x, se_.Series) and x.frequency==frequency)
+
+    def _get_range_by_frequency(
+        self,
+        frequency: da_.Frequency,
+    ) -> Ranger:
+        names = self._get_series_names_by_frequency(frequency)
+        if not names:
+            return Ranger(None, None)
+        min_start_date = min((getattr(self, n).start_date for n in names), key=op_.attrgetter("serial"))
+        max_end_date = max((getattr(self, n).end_date for n in names), key=op_.attrgetter("serial"))
+        return da_.Ranger(min_start_date, max_end_date)
+
     def _to_json(self, **kwargs):
         return js_.dumps(vars(self), **kwargs)
+
+    def _underlay(self, other) -> NoReturn:
+        """"
+        """
+        self_names = self._filter(value_test=lambda x: isinstance(x, se_.Series))
+        other_names = other._filter(value_test=lambda x: isinstance(x, se_.Series))
+        names = set(self_names).intersection(other_names)
+        for n in names:
+            self_n = getattr(self, n)
+            other_n = getattr(other, n)
+            if self_n.frequency == other_n.frequency:
+                self_n.underlay(other_n)
+
+    def _clip(
+        self,
+        new_start_date: da_.Dater | None = None,
+        new_end_date: da_.Dater | None = None,
+    ) -> NoReturn:
+        if new_start_date is None and new_end_date is None:
+            return
+        frequency = new_start_date.frequency if new_start_date is not None else new_end_date.frequency
+        names = self._filter(value_test=lambda x: isinstance(x, se_.Series) and x.frequency == frequency)
+        for n in names:
+            x = getattr(self, n)
+            x.clip(new_start_date, new_end_date)
 
     def __getitem__(self, name):
         return self.__dict__[name]
@@ -155,14 +327,6 @@ class Databank(ty_.SimpleNamespace):
         new = co_.deepcopy(self)
         new.__dict__.update(other.__dict__)
         return new
-
-    def __repr__(self, /, ) -> NoReturn:
-        max_len = max(len(str(k)) for k in self.__dict__.keys())
-        s = [ _REPR_INDENT + str(k).rjust(max_len) + _REPR_SEPARATOR + _databank_repr(v) for k, v, in self.__dict__.items() ]
-        return "\n".join(s)
-
-    def __str__(self, /, ) -> NoReturn:
-        return repr(self)
     #]
 
 
@@ -172,6 +336,8 @@ def _resolve_source_target_names(
     context_names: Iterable[str],
     /,
 ) -> tuple[Iterable[str], Iterable[str]]:
+    """
+    """
     if source_names is None:
         source_names = context_names
     if isinstance(source_names, str):
@@ -186,19 +352,4 @@ def _resolve_source_target_names(
         target_names = (target_names(n) for n in source_names)
     return source_names, target_names
 
-
-def _databank_repr(x, /, ) -> str:
-    if x is None:
-        s = "None"
-    elif x is ...:
-        s = "..."
-    elif isinstance(x, Number) or isinstance(x, da_.Dater):
-        s = str(x)
-    elif isinstance(x, str):
-        s = f'"{x}"'
-    elif isinstance(x, np_.ndarray) or isinstance(x, list):
-        s = re_.sub("\n + ", " ", repr(x))
-    else:
-        s = repr(type(x))
-    return s if len(s)<_REPR_MAX_LEN else s[0:_REPR_MAX_LEN] + _REPR_CONT
 

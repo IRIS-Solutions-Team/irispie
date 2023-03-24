@@ -12,7 +12,7 @@ from collections.abc import Iterable, Callable
 import enum
 import copy
 import scipy
-import numpy
+import numpy as np_
 import itertools
 import functools
 import operator
@@ -29,15 +29,21 @@ from ..quantities import (QuantityKind, Quantity, )
 from ..fords import descriptors as de_
 from ..fords import systems as sy_
 from .. import exceptions as ex_
-from ..dataman import databanks as db_
+from ..dataman import (databanks as db_, dates as da_)
 from .. import evaluators as ev_
 from . import getters as ge_
+from ..models import (simulations as si_, )
+from ..fords import (solutions as sl_, )
 #]
 
 
+__all__ = [
+    "Model"
+]
+
 SteadySolverReturn: TypeAlias = tuple[
-    numpy.ndarray|None, Iterable[int]|None, 
-    numpy.ndarray|None, Iterable[int]|None,
+    np_.ndarray|None, Iterable[int]|None, 
+    np_.ndarray|None, Iterable[int]|None,
 ]
 
 
@@ -81,14 +87,14 @@ _DEFAULT_STD_NONLINEAR = 0.01
 def _solve_steady_linear_flat(
     sys,
     /,
-) -> tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray]:
+) -> tuple[np_.ndarray, np_.ndarray, np_.ndarray, np_.ndarray]:
     #[
     """
     """
-    pinv = numpy.linalg.pinv
+    pinv = np_.linalg.pinv
     lstsq = scipy.linalg.lstsq
-    vstack = numpy.vstack
-    hstack = numpy.hstack
+    vstack = np_.vstack
+    hstack = np_.hstack
     A, B, C, F, G, H = sys.A, sys.B, sys.C, sys.F, sys.G, sys.H
     #
     # A @ Xi + B @ Xi{-1} + C = 0
@@ -96,11 +102,11 @@ def _solve_steady_linear_flat(
     #
     # Xi = -pinv(A + B) @ C
     Xi, *_ = lstsq(-(A + B), C)
-    dXi = numpy.zeros(Xi.shape)
+    dXi = np_.zeros(Xi.shape)
     #
     # Y = -pinv(F) @ (G @ Xi + H)
     Y, *_ = lstsq(-F, G @ Xi + H)
-    dY = numpy.zeros(Y.shape)
+    dY = np_.zeros(Y.shape)
     #
     return Xi, Y, dXi, dY
     #]
@@ -109,14 +115,14 @@ def _solve_steady_linear_flat(
 def _solve_steady_linear_nonflat(
     sys,
     /,
-) -> tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray]:
+) -> tuple[np_.ndarray, np_.ndarray, np_.ndarray, np_.ndarray]:
     #[
     """
     """
-    # pinv = numpy.linalg.pinv
-    lstsq = numpy.linalg.lstsq
-    vstack = numpy.vstack
-    hstack = numpy.hstack
+    # pinv = np_.linalg.pinv
+    lstsq = np_.linalg.lstsq
+    vstack = np_.vstack
+    hstack = np_.hstack
     A, B, C, F, G, H = sys.A, sys.B, sys.C, sys.F, sys.G, sys.H
     num_y = F.shape[0]
     k = 1
@@ -174,7 +180,7 @@ def _solve_steady_linear_nonflat(
     #]
 
 
-class Model(ge_.GetterMixin):
+class Model(si_.SimulationMixin, ge_.GetterMixin):
     """
     """
     #[
@@ -282,16 +288,25 @@ class Model(ge_.GetterMixin):
     def create_qid_to_name(self, /, ) -> dict[int, str]:
         return qu_.create_qid_to_name(self._quantities)
 
+    def create_qid_to_kind(self, /, ) -> dict[int, str]:
+        return qu_.create_qid_to_kind(self._quantities)
+
+    def create_qid_to_descript(self, /, ) -> dict[int, str]:
+        return qu_.create_qid_to_descript(self._quantities)
 
     def create_qid_to_logly(self, /, ) -> dict[int, bool]:
         return qu_.create_qid_to_logly(self._quantities)
+
+    def get_ordered_names(self, /, ) -> list[str]:
+        qid_to_name = self.create_qid_to_name()
+        return [ qid_to_name[qid] for qid in range(len(qid_to_name)) ]
 
     def create_steady_array(
         self,
         /,
         variant: variants.Variant|None = None,
         **kwargs,
-    ) -> numpy.ndarray:
+    ) -> np_.ndarray:
         qid_to_logly = self.create_qid_to_logly()
         if variant is None:
             variant = self._variants[0]
@@ -302,7 +317,7 @@ class Model(ge_.GetterMixin):
         /,
         variant: variants.Variant|None = None,
         **kwargs,
-    ) -> numpy.ndarray:
+    ) -> np_.ndarray:
         """
         """
         qid_to_logly = self.create_qid_to_logly()
@@ -310,17 +325,32 @@ class Model(ge_.GetterMixin):
             variant = self._variants[0]
         return variant.create_zero_array(qid_to_logly, **kwargs, )
 
+    def create_some_array(
+        self,
+        /,
+        deviation: bool,
+        **kwargs,
+    ) -> np_.ndarray:
+        return {
+            True: self.create_zero_array, False: self.create_steady_array,
+        }[deviation](**kwargs)
+
     def _enforce_auto_values(self: Self, /, ) -> NoReturn:
+        """
+        """
+        #
         # Reset levels of shocks to zero, remove changes
+        #
         assign_shocks = { 
-            qid: (0, numpy.nan) 
+            qid: (0, np_.nan) 
             for qid in qu_.generate_qids_by_kind(self._quantities, QuantityKind.SHOCK)
         }
         self._variants[0].update_values_from_dict(assign_shocks)
         #
         # Remove changes from quantities that are not logly variables
+        #
         assign_non_logly = { 
-            qid: (..., numpy.nan) 
+            qid: (..., np_.nan) 
             for qid in  qu_.generate_qids_by_kind(self._quantities, ~QuantityKind.LOGLY_VARIABLE)
         }
         self._variants[0].update_values_from_dict(assign_non_logly)
@@ -368,10 +398,18 @@ class Model(ge_.GetterMixin):
     #    self,
     #    /,
     #    extractor_from_variant: Callable,
-    #) -> dict[str, Number|numpy.ndarray]:
+    #) -> dict[str, Number|np_.ndarray]:
     #    """
     #    """
     #    return db_.Databank._from_dict({ name: extractor(qid) for qid, name in qid_to_name.items() })
+
+
+    def solve(
+        self,
+        /,
+    ) -> NoReturn:
+        for variant in self._variants:
+            self._solve(variant)
 
     def _solve(
         self,
@@ -379,7 +417,7 @@ class Model(ge_.GetterMixin):
         /,
     ) -> NoReturn:
         system = self._systemize(variant, self._dynamic_descriptor)
-        return system
+        variant.solution = sl_.Solution.for_model(self._dynamic_descriptor, system, )
 
     def steady(
         self,
@@ -400,26 +438,28 @@ class Model(ge_.GetterMixin):
         /,
         tolerance: float = 1e-12,
         details: bool = False,
-    ) -> tuple[bool, Iterable[bool], Iterable[Number], Iterable[numpy.ndarray]]:
+    ) -> tuple[bool, Iterable[bool], Iterable[Number], Iterable[np_.ndarray]]:
         evaluator = self._steady_evaluator_for_dynamic_equations
         dis = [ evaluator.update_steady_array(self, v).eval() for v in self._variants ]
-        max_abs_dis = [ numpy.max(numpy.abs(d)) for d in dis ]
+        max_abs_dis = [ np_.max(np_.abs(d)) for d in dis ]
         status = [ d < tolerance for d in max_abs_dis ]
         all_status = all(status)
+        if not all_status:
+            raise Exception("Invalid steady state")
         return (all_status, status, max_abs_dis, dis) if details else all_status
 
     def _apply_delog(
         self,
-        vector: numpy.ndarray,
+        vector: np_.ndarray,
         qids: Iterable[int],
         /,
-    ) -> numpy.ndarray:
+    ) -> np_.ndarray:
         """
         """
         qid_to_logly = self.create_qid_to_logly()
         logly_index = [ qid_to_logly[qid] for qid in qids ]
         if any(logly_index):
-            vector[logly_index] = numpy.exp(vector[logly_index])
+            vector[logly_index] = np_.exp(vector[logly_index])
         return vector
 
 
@@ -439,8 +479,8 @@ class Model(ge_.GetterMixin):
         # Calculate steady state for this variant
         #
         Xi, Y, dXi, dY = algorithm(sys)
-        levels = numpy.hstack(( Xi.flat, Y.flat ))
-        changes = numpy.hstack(( dXi.flat, dY.flat ))
+        levels = np_.hstack(( Xi.flat, Y.flat ))
+        changes = np_.hstack(( dXi.flat, dY.flat ))
         #
         # Extract only tokens with zero shift
         #
@@ -497,7 +537,7 @@ class Model(ge_.GetterMixin):
 
     def _assign_default_stds(self, default_std, /, ):
         if default_std is None:
-            default_std = _DEFAULT_STD_LINEAR if ModelFlags.LINEAR not in self._flags else _DEFAULT_STD_NONLINEAR
+            default_std = _DEFAULT_STD_LINEAR if ModelFlags.LINEAR in self._flags else _DEFAULT_STD_NONLINEAR
         self.assign(**{ k: default_std for k in qu_.generate_quantity_names_by_kind(self._quantities, QuantityKind.STD) })
 
 
@@ -509,6 +549,19 @@ class Model(ge_.GetterMixin):
             self._dynamic_equations + self._steady_equations
         )
 
+    def get_min_max_shifts_in_dynamic(self) -> tuple[int, int]:
+        return self._min_shift, self._max_shift
+
+    def get_extended_range_from_base_range(
+        self,
+        base_range: Iterable[Dater],
+    ) -> Iterable[Dater]:
+        base_range = [ t for t in base_range ]
+        num_base_periods = len(base_range)
+        start_date = base_range[0] + self._min_shift
+        end_date = base_range[-1] + self._max_shift
+        base_columns = [ c for c in range(-self._min_shift, -self._min_shift+num_base_periods) ]
+        return [ t for t in da_.Ranger(start_date, end_date) ], base_columns
 
     @classmethod
     def from_source(
