@@ -1,26 +1,3 @@
-# Iris Pie
-
-A macroeconomic modeling package for Python
-
-
-## Package dependencies
-
-* `numpy`
-
-* `scipy`
-
-* `parsimonious`
-
-* `plotly`
-
-* `pandas` 
-
-* `packaging` 
-
-
-## PIP requirements list
-
-```
 appnope==0.1.3
 asttokens==2.2.1
 backcall==0.2.0
@@ -57,4 +34,3 @@ traitlets==5.9.0
 virtualenv==20.21.0
 virtualenv-clone==0.5.7
 wcwidth==0.2.6
-```
