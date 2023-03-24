@@ -66,7 +66,7 @@ class DatabankExportMixin:
         file_name: str,
         /,
         descript_row: bool = False,
-        dates: Iterable[Dater] | None = None,
+        range: Iterable[Dater] | None = None,
         frequency: da_.Frequency | None = None,
         delimiter: str = ",",
         numeric_format: str = "g",
@@ -78,18 +78,18 @@ class DatabankExportMixin:
         if not frequency:
             raise NotImplementedYet("frequency=None")
         frequency = da_.Frequency(frequency)
-        dates = dates if dates else self._get_range_by_frequency(frequency)
-        dates = [ t for t in dates ]
-        num_data_rows = len(dates)
+        range = range if range else self._get_range_by_frequency(frequency)
+        range = [ t for t in range ]
+        num_data_rows = len(range)
         #
         names = self._get_series_names_by_frequency(frequency)
         descripts = [ getattr(self, n)._descript for n in names ]
         #
         num_series_columns = [ getattr(self, n).shape[1] for n in names ]
-        data_array = np_.hstack([ getattr(self, n).get_data(dates) for n in names ])
+        data_array = np_.hstack([ getattr(self, n).get_data(range) for n in names ])
         export_block = _ExportBlockDescriptor(
             frequency, names, descripts, descript_row,
-            num_series_columns, dates, data_array, 
+            num_series_columns, range, data_array, 
             delimiter, numeric_format, nan_str,
         )
         with open(file_name, "w+") as fid:
