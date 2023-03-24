@@ -41,6 +41,9 @@ def simulate_flat(
         for t in vec.transition_variables
     ], dtype=float).reshape(-1, 1)
 
+    # FIXME
+    curr_state[np_.isnan(curr_state)] = 0
+
     no_shift_state_to_slab_lhs = [
         t.qid
         for t in vec.transition_variables
@@ -55,7 +58,10 @@ def simulate_flat(
 
     measurement_variables_to_slab = [t.qid for t in vec.measurement_variables]
 
-    transition_shocks = data[[t.qid for t in vec.transition_shocks], :]
+    transition_shocks_in_slab = [t.qid for t in vec.transition_shocks]
+    transition_shocks = data[transition_shocks_in_slab, :]
+
+    measurement_shocks_in_slab = [t.qid for t in vec.measurement_shocks]
     measurement_shocks = data[[t.qid for t in vec.measurement_shocks], :]
 
     transition_shocks[np_.isnan(transition_shocks)] = 0
@@ -75,7 +81,6 @@ def simulate_flat(
         Rx = Rx + (Rk if Rk is not None else [])
 
     shock_column_end = column_start + forward
-
     for t in column_array:
         shock_impact = sum( 
             Rx[k] @ transition_shocks[:, (s,)] if Rx[k] is not None else 0 
@@ -86,6 +91,9 @@ def simulate_flat(
 
         y = Z @ curr_state + H @ measurement_shocks[:, (t,)] + D
         data[measurement_variables_to_slab, t] = y.flat
+
+    data[transition_shocks_in_slab, :] = transition_shocks
+    data[measurement_shocks_in_slab, :] = measurement_shocks
 
     return data
 
