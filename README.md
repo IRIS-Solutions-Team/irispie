@@ -18,6 +18,12 @@ A macroeconomic modeling package for Python
 * `packaging` 
 
 
+## Recommended
+
+* `ipython`
+
+
+
 ## PIP requirements list
 
 ```
