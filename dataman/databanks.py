@@ -12,16 +12,18 @@ import types as ty_
 import numpy as np_
 import re as re_
 import operator as op_
-from typing import (Self, TypeAlias, NoReturn, Literal, Sequence, )
+import functools as ft_
+from typing import (Self, TypeAlias, NoReturn, Literal, Sequence, Protocol, Any, )
 from collections.abc import (Iterable, Callable, )
 from numbers import (Number, )
 
-from ..dataman import dates as da_
-from ..dataman import series as se_
-from ..dataman import views as vi_
-from ..dataman import imports as im_
-from ..dataman import exports as ex_
-from .. import quantities as qu_
+from ..dataman import (dates as da_, )
+from ..dataman import (series as se_, )
+from ..dataman import (views as vi_, )
+from ..dataman import (imports as im_, )
+from ..dataman import (exports as ex_, )
+from .. import (quantities as qu_, )
+from ..mixins import (userdata as ud_, )
 #]
 
 
@@ -32,6 +34,16 @@ __all__ = [
 
 SourceNames: TypeAlias = Iterable[str] | str | Callable[[str], bool] | None
 TargetNames: TypeAlias = Iterable[str] | str | Callable[[str], str] | None
+InterpretRange: TypeAlias = Literal["base"] | Literal["extended"]
+
+
+class SteadyDatabankableProtocol(Protocol):
+    """
+    """
+    #[
+    def _get_min_max_shifts(self, *args) -> Any: ...
+    def _get_steady_databank(self, *args) -> Any: ...
+    #]
 
 
 DATABANK_OUTPUT_FORMAT_RESOLUTION = {
@@ -72,7 +84,7 @@ _EXTENDED_RANGE_TUPLE_RESOLUTION = {
 }
 
 
-_SERIES_CONTSTRUCTOR_RESOLUTION = {
+_SERIES_CONSTRUCTOR_RESOLUTION = {
     "start_date": se_.Series.from_start_date_and_data,
     "range": se_.Series.from_dates_and_data,
 }
@@ -87,6 +99,7 @@ _ARRAY_TRANSPOSER_RESOLUTION = {
 class Databank(
     im_.DatabankImportMixin,
     ex_.DatabankExportMixin,
+    ud_.DescriptMixin,
     vi_.DatabankViewMixin,
     ty_.SimpleNamespace,
 ):
@@ -95,10 +108,10 @@ class Databank(
     #[
     def __init__(
         self,
-        descript: str = "",
         /,
+        descript: str = "",
     ) -> NoReturn:
-        self._descript = descript
+        self.set_descript(descript)
 
     @classmethod
     def _from_dict(
@@ -111,48 +124,6 @@ class Databank(
         self = cls()
         for k, v in _dict.items():
             self.__setattr__(k, v)
-        return self
-
-    @classmethod
-    def _for_model(
-        cls,
-        model,
-        input_range: Iterable[da_.Dater],
-        /,
-        interpret_range: Literal["base"] | Literal["extended"] = "base",
-        deviation: bool = False,
-    ) -> Self:
-        """
-        """
-        min_shift, max_shift = model.get_min_max_shifts_in_dynamic()
-        start_date, end_date = _EXTENDED_RANGE_TUPLE_RESOLUTION[interpret_range](input_range, min_shift, max_shift)
-        num_columns = int(end_date - start_date + 1)
-        if num_columns < 1:
-            raise EmptyDateRange()
-        shift_in_first_column = start_date.get_distance_from_origin()
-        #
-        array = model.create_some_array(
-            deviation=deviation,
-            num_columns=num_columns,
-            shift_in_first_column=shift_in_first_column,
-        )
-        #
-        time_series_kind = qu_.QuantityKind.LOGLY_VARIABLE | qu_.QuantityKind.SHOCK
-        qid_to_kind = model.create_qid_to_kind()
-        qid_to_name = {
-            qid: (name if qid_to_kind[qid] in time_series_kind else "")
-            for qid, name in model.create_qid_to_name().items()
-        }
-        qid_to_descript = model.create_qid_to_descript()
-        #
-        self = Databank._from_array(
-            array, qid_to_name, start_date, 
-            array_orientation="horizontal",
-            interpret_dates="start_date",
-            qid_to_descript=qid_to_descript,
-        )
-        #
-        self = self | model.get_parameters_stds()
         return self
 
     @classmethod
@@ -170,7 +141,7 @@ class Databank(
         """
         """
         self = add_to_databank if add_to_databank else cls()
-        constructor = _SERIES_CONTSTRUCTOR_RESOLUTION[interpret_dates]
+        constructor = _SERIES_CONSTRUCTOR_RESOLUTION[interpret_dates]
         transposer = _ARRAY_TRANSPOSER_RESOLUTION[array_orientation]
         for qid, data in enumerate(transposer(array)):
             name = qid_to_name.get(qid, None)
@@ -181,16 +152,19 @@ class Databank(
             setattr(self, name, series)
         return self
 
+    def _name_test_(self, n) -> bool:
+        return not n.startswith("_") and not isinstance(getattr(self, n), type(self.__init__))
+
     def _get_names(self: Self) -> Iterable[str]:
         """
         Get all names stored in a databank save for private attributes
         """
-        return [ n for n in dir(self) if not n.startswith("_") ]
+        return [ n for n in dir(self) if self._name_test_(n) ]
 
     def _get_num_records(self: Self) -> int:
         """
         """
-        return sum(1 for n in dir(self) if not n.startswith("_"))
+        return sum(1 for n in dir(self) if self._name_test_(n) )
 
     def _to_dict(self: Self) -> dict:
         """
@@ -317,6 +291,26 @@ class Databank(
             x = getattr(self, n)
             x.clip(new_start_date, new_end_date)
 
+    def _add_steady(
+        self,
+        steady_databankable: SteadyDatabankableProtocol,
+        input_range: Iterable[da_.Dater],
+        /,
+        deviation: bool = False,
+        interpret_range: InterpretRange = "base",
+    ) -> Self:
+        """
+        """
+        min_shift, max_shift = steady_databankable._get_min_max_shifts()
+        start_date, end_date = _resolve_input_range(input_range, min_shift, max_shift, interpret_range)
+        num_columns = int(end_date - start_date + 1)
+        if num_columns < 1:
+            raise Exception("Empty date range is not allowed when creating steady databank")
+        steady_databank = steady_databankable._get_steady_databank(start_date, end_date, deviation=deviation)
+        self._update(steady_databank)
+
+    _add_zero = ft_.partialmethod(_add_steady, deviation=True)
+
     def __getitem__(self, name):
         return self.__dict__[name]
 
@@ -327,7 +321,27 @@ class Databank(
         new = co_.deepcopy(self)
         new.__dict__.update(other.__dict__)
         return new
+
+    def _update(
+        self,
+        other: Databank,
+        /,
+    ) -> Self:
+        """
+        Update self using records from other
+        """
+        self.__dict__.update(other.__dict__)
     #]
+
+
+#
+# Add databank methods without the leading underscore
+single_underscore_names = [
+    n for n in dir(Databank) 
+    if n.startswith("_") and not n.startswith("__") and not n.endswith("_")
+]
+for n in single_underscore_names:
+    setattr(Databank, n[1:], getattr(Databank, n))
 
 
 def _resolve_source_target_names(
@@ -352,4 +366,12 @@ def _resolve_source_target_names(
         target_names = (target_names(n) for n in source_names)
     return source_names, target_names
 
+
+def _resolve_input_range(
+    input_range: Iterable[da_.Dater],
+    min_shift: int,
+    max_shift: int,
+    interpret_range: InterpretRange,
+) -> tuple[Dater, Dater]:
+    return _EXTENDED_RANGE_TUPLE_RESOLUTION[interpret_range](input_range, min_shift, max_shift)
 

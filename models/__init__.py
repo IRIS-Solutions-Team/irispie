@@ -2,8 +2,8 @@
 Structural models
 """
 
-from .core import *
-from .core import __all__ as core_all
+from .facade import *
+from .facade import __all__ as facade_all
 
-__all__ = core_all
+__all__ = facade_all
 

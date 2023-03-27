@@ -11,12 +11,10 @@ from numpy import (log, exp, )
 from typing import (Self, NoReturn, )
 from collections.abc import (Iterable, )
 
-from .models import core
-from .models import variants
-from . import quantities
-from . import equations
+from .models import (facade as mf_, )
+from . import (quantities as qu_, )
+from . import (equations as eq_, )
 from .functions import *
-from . import equations
 #]
 
 
@@ -45,8 +43,8 @@ class SteadyEvaluator:
     @classmethod
     def for_model(
         cls,
-        in_model: core.Model,
-        in_equations: equations.Equations,
+        in_model: mf_.Model,
+        in_equations: eq_.Equations,
         /,
     ) -> Self:
         self = cls()
@@ -54,9 +52,9 @@ class SteadyEvaluator:
         self._quantities = []
         self._populate_equations(in_equations)
         self._populate_quantities(in_model)
-        self._qids = list(quantities.generate_all_qids(self._quantities))
-        self.min_shift = equations.get_min_shift_from_equations(self._equations)
-        self.max_shift = equations.get_max_shift_from_equations(self._equations)
+        self._qids = list(qu_.generate_all_qids(self._quantities))
+        self.min_shift = eq_.get_min_shift_from_equations(self._equations)
+        self.max_shift = eq_.get_max_shift_from_equations(self._equations)
         self._create_evaluator_function()
         self._create_incidence_matrix()
         self._x = None
@@ -106,16 +104,16 @@ class SteadyEvaluator:
         x = self._x_from_z(current)
         return self._func(x, self.t_zero, self._L)
 
-    def _populate_equations(self, in_equations: equations.Equations, /, ) -> NoReturn:
+    def _populate_equations(self, in_equations: eq_.Equations, /, ) -> NoReturn:
         """
         """
-        eids = list(equations.generate_eids_by_kind(in_equations, equations.EquationKind.STEADY_EVALUATOR))
+        eids = list(eq_.generate_eids_by_kind(in_equations, eq_.EquationKind.STEADY_EVALUATOR))
         self._equations = [ eqn for eqn in in_equations if eqn.id in eids ]
 
-    def _populate_quantities(self, model: core.Model, /, ) -> NoReturn:
+    def _populate_quantities(self, model: mf_.Model, /, ) -> NoReturn:
         """
         """
-        qids = list(quantities.generate_qids_by_kind(model._quantities, quantities.QuantityKind.STEADY_EVALUATOR))
+        qids = list(qu_.generate_qids_by_kind(model._quantities, qu_.QuantityKind.STEADY_EVALUATOR))
         self._quantities = [ qty for qty in model._quantities if qty.id in qids ]
 
     def _create_evaluator_function(self, /, ) -> NoReturn:
@@ -160,15 +158,15 @@ class PlainEvaluator:
     @classmethod
     def for_model(
         cls,
-        in_model: core.Model,
-        in_equations: equations.Equations,
+        in_model: mf_.Model,
+        in_equations: eq_.Equations,
         /,
     ) -> Self:
         self = cls()
         self._equations = []
         self._populate_equations(in_equations)
-        self.min_shift = equations.get_min_shift_from_equations(self._equations)
-        self.max_shift = equations.get_max_shift_from_equations(self._equations)
+        self.min_shift = eq_.get_min_shift_from_equations(self._equations)
+        self.max_shift = eq_.get_max_shift_from_equations(self._equations)
         self._create_evaluator_function()
         return self
 
@@ -186,10 +184,10 @@ class PlainEvaluator:
         L = None
         return self._func(dataslab, column_slice, L, )
 
-    def _populate_equations(self, in_equations: equations.Equations, /, ) -> NoReturn:
+    def _populate_equations(self, in_equations: eq_.Equations, /, ) -> NoReturn:
         """
         """
-        eids = list(equations.generate_eids_by_kind(in_equations, equations.EquationKind.PLAIN_EVALUATOR))
+        eids = list(eq_.generate_eids_by_kind(in_equations, eq_.EquationKind.PLAIN_EVALUATOR))
         self._equations = [ eqn for eqn in in_equations if eqn.id in eids ]
 
     def _create_evaluator_function(self, /, ) -> NoReturn:

@@ -6,7 +6,7 @@ import re as re_
 import datetime as dt_
 import enum as en_
 import functools as ft_
-from typing import NoReturn, Union, Self, Any, Protocol, runtime_checkable
+from typing import (NoReturn, Union, Self, Any, Protocol, runtime_checkable, )
 from collections.abc import Iterable, Callable
 from numbers import Number
 #]

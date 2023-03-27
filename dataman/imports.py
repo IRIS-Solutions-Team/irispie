@@ -66,11 +66,12 @@ class DatabankImportMixin:
         descript_row: bool = False,
         delimiter: str = ",",
         csv_reader_settings: dict = {},
-        numpy_reader_settings: dict = {}
+        numpy_reader_settings: dict = {},
+        **kwargs,
     ) -> Self:
         """
         """
-        self = cls()
+        self = cls(**kwargs)
         num_header_lines = 1 + int(descript_row)
         csv_lines = _read_csv_lines(file_name, num_header_lines, **csv_reader_settings, )
         header_lines = csv_lines[0:num_header_lines]

@@ -15,10 +15,11 @@ import itertools as it_
 import copy as co_
 
 from ..dataman.dates import (Dater, Ranger, date_index, ResolvableProtocol, )
-from ..dataman import views as vi_
-from ..dataman import dates as da_
-from ..dataman import filters as fi_
-from ..dataman import plotly as pl_
+from ..dataman import (views as vi_, )
+from ..dataman import (dates as da_, )
+from ..dataman import (filters as fi_, )
+from ..dataman import (plotly as pl_, )
+from ..mixins import (userdata as ud_, )
 #]
 
 
@@ -26,7 +27,7 @@ underscore_functions = ["log", "exp", "sqrt", "max", "min", "mean", "median", "c
 
 
 __all__ = [
-    "Series", "diff", "pct", "roc",
+    "Series", "shift", "diff", "difflog", "pct", "roc",
 ]
 
 
@@ -52,36 +53,39 @@ def _trim_decorate(func):
     return wrapper
 
 
-class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, vi_.SeriesViewMixin):
+class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.SeriesViewMixin):
     """
     """
     __slots__ = [
         "start_date", "data", "data_type",
-        "_descript", "_column_titles", "_user_data",
+        "_descript_", "_column_titles", "_user_data",
     ]
     _numeric_format: str = "15g"
     _short_str_format: str = ">15"
     _date_str_format: str = ">12"
-    _nan_str: str = "·"
+    _missing = np_.nan
+    _missing_str: str = "·"
+    _test_missing_period = staticmethod(lambda x: np_.all(np_.isnan(x)))
 
-    def __init__(self, /, num_columns=1, data_type=float, descript="", ):
-        self.data_type = data_type
-        self._descript = descript
-        self.reset(num_columns, data_type, descript, )
+    def __init__(self, /, *args, **kwargs):
+        num_columns = kwargs.get("num_columns", 1)
+        self.data_type = kwargs.get("data_type", np_.float64)
+        self._descript_ = kwargs.get("descript", "")
+        self.reset(num_columns)
 
     def reset(self, /, num_columns=None, data_type=None, descript=None, ):
         num_columns = num_columns if num_columns else self.num_columns
         data_type = data_type if data_type else self.data_type
-        descript = descript if descript else self._descript
+        descript = descript if descript else self._descript_
         self.start_date = None
-        self.data = np_.full((0, num_columns), np_.nan, dtype=data_type)
-        self._descript = str(descript)
+        self.data = np_.full((0, num_columns), self._missing, dtype=data_type)
+        self._descript_ = str(descript)
         self._column_titles = [""] * num_columns
         self._user_data = {}
         return self
 
-    def _create_rows_of_nans(self, num_rows=0):
-        return np_.full((num_rows, self.shape[1]), np_.nan, dtype=self.data_type)
+    def _create_periods_of_missing_values(self, num_rows=0):
+        return np_.full((num_rows, self.shape[1]), self._missing, dtype=self.data_type)
 
     @property
     def shape(self):
@@ -93,7 +97,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, vi_.SeriesViewMixin):
 
     @property
     def range(self):
-        return Ranger(self.start_date, self.end_date) if self.start_date else None
+        return Ranger(self.start_date, self.end_date) if self.start_date else []
 
     @property
     def end_date(self):
@@ -150,7 +154,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, vi_.SeriesViewMixin):
     def set_data(
         self,
         dates: Dates,
-        data: Data,
+        data: Data | Series,
         columns: Columns = None,
         /,
     ) -> Self:
@@ -158,11 +162,13 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, vi_.SeriesViewMixin):
         columns = self._resolve_columns(columns)
         if not self.start_date:
             self.start_date = next(iter(dates))
-            self.data = self._create_rows_of_nans(1)
+            self.data = self._create_periods_of_missing_values(1)
         pos, add_before, add_after = _get_date_positions(dates, self.start_date, self.shape[0]-1)
         self.data = self._create_expanded_data(add_before, add_after)
         if add_before:
             self.start_date -= add_before
+        if isinstance(data, Series):
+            data = data.get_data(dates)
         if isinstance(data, np_.ndarray):
             self.data[pos, :] = data
             return
@@ -172,7 +178,19 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, vi_.SeriesViewMixin):
             self.data[pos, c] = d
         return self
 
-    def get_data(
+    def _get_data_and_recreate(
+        self,
+        *args,
+    ) -> np_.ndarray:
+        """
+        """
+        data, dates = self.get_data_and_resolved_dates(*args)
+        num_columns = data.shape[1]
+        new = Series(num_columns=num_columns, data_type=self.data_type)
+        new.set_data(dates, data)
+        return new
+
+    def get_data_and_resolved_dates(
         self,
         dates: Dates,
         columns: Columns = None,
@@ -185,12 +203,18 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, vi_.SeriesViewMixin):
         base_date = self.start_date
         if not dates or not base_date:
             num_dates = len(set(dates))
-            return self._create_rows_of_nans(num_dates)[:, columns]
+            return self._create_periods_of_missing_values(num_dates)[:, columns], dates
         pos, add_before, add_after = _get_date_positions(dates, self.start_date, self.shape[0]-1)
         data = self._create_expanded_data(add_before, add_after)
         if not isinstance(pos, Iterable):
             pos = (pos, )
-        return data[np_.ix_(pos, columns)]
+        return data[np_.ix_(pos, columns)], dates
+
+    def get_data(
+        self,
+        *args,
+    ) -> np_.ndarray:
+        return self.get_data_and_resolved_dates(*args)[0]
 
     def get_data_column(
         self,
@@ -240,17 +264,32 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, vi_.SeriesViewMixin):
             columns = (columns, )
         return columns
 
-    def __call__(self, shift):
-        new = co_.deepcopy(self)
-        new.start_date = (new.start_date - shift) if new.start_date is not None else None
-        return new
+    def __call__(self, *args):
+        """
+        Get data self[dates] or self[dates, columns]
+        """
+        return self.get_data(*args)
+
+    def _shift(self, shift_by) -> NoReturn:
+        """
+        Shift (lag, lead) start date
+        """
+        self.start_date = self.start_date - shift_by if self.start_date else self.start_date
 
     def __getitem__(self, index):
+        """
+        Create a new time series based on date retrieved by self[dates] or self[dates, columns]
+        """
+        if isinstance(index, int):
+            return co_.deepcopy(self)._shift(index)
         if not isinstance(index, tuple):
             index = (index, None, )
-        return self.get_data(index[0], index[1])
+        return self._get_data_and_recreate(*index)
 
     def __setitem__(self, index, data):
+        """
+        Set data self[dates] = ... or self[dates, columns] = ...
+        """
         if not isinstance(index, tuple):
             index = (index, None, )
         return self.set_data(index[0], data, index[1])
@@ -348,10 +387,10 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, vi_.SeriesViewMixin):
     def _trim(self):
         if self.data.size==0:
             return self.reset()
-        num_leading = _get_num_leading_nan_rows(self.data)
+        num_leading = _get_num_leading_missing_rows(self.data, self._test_missing_period)
         if num_leading == self.data.shape[0]:
             return self.reset()
-        num_trailing = _get_num_leading_nan_rows(self.data[::-1])
+        num_trailing = _get_num_leading_missing_rows(self.data[::-1], self._test_missing_period)
         if not num_leading and not num_trailing:
             return self
         slice_from = num_leading if num_leading else None
@@ -362,12 +401,10 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, vi_.SeriesViewMixin):
         return self
 
     def _create_expanded_data(self, add_before, add_after):
-        data = np_.copy(self.data)
-        if add_before:
-            data = np_.vstack((self._create_rows_of_nans(add_before), data))
-        if add_after:
-            data = np_.vstack((data, self._create_rows_of_nans(add_after)))
-        return data
+        return np_.pad(
+            self.data, ((add_before, add_after), (0, 0)),
+            mode="constant", constant_values=self._missing
+        )
 
     def _check_data_shape(self, data, /, ):
         if data.shape[1] != self.data.shape[1]:
@@ -525,9 +562,12 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, vi_.SeriesViewMixin):
         exec(f"def _{n}_(self, *args, **kwargs): return self._unop(np_.{n}, *args, **kwargs, )")
 
 
-def _get_num_leading_nan_rows(data):
+def _get_num_leading_missing_rows(data, test_missing_period, /, ):
     try:
-        num = next(x[0] for x in enumerate(data) if not np_.all(np_.isnan(x[1])))
+        num = next(
+            i for i, period_data in enumerate(data) 
+            if not test_missing_period(period_data)
+        )
     except StopIteration:
         num = data.shape[0]
     return num
@@ -553,16 +593,25 @@ def _create_data_from_number(
     return np_.full((len(range), 1), number, dtype=data_type)
 
 
-def diff(x, shift=-1):
-    return x - x(shift)
+def shift(x, by):
+    new = co_.deepcopy(x)
+    new._shift(by)
+    return new
 
-def difflog(x, shift=-1):
-    return log(x) - log(x(shift))
+
+def diff(x, by=-1):
+    return x - shift(x, by)
+
+
+def difflog(x, by=-1):
+    return log(x) - log(shift(x, by))
+
 
 def pct(x, shift=-1):
-    return 100*(x/x(shift) - 1)
+    return 100*(x/shift(x, by) - 1)
+
 
 def roc(x, shift=-1):
-    return x/x(shift)
+    return x/shift(x, by)
 
 

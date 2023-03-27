@@ -9,8 +9,8 @@ from IPython import embed
 from typing import (Self, TypeAlias, NoReturn, Literal, )
 import numpy as np_
 
-from ..models import (core as co_, )
-from ..dataman import (databanks as db_, dataslabs as ds_, )
+from ..dataman import (databanks as db_, )
+from ..dataman import (dataslabs as ds_, )
 from ..fords import (simulators as sr_, )
 #]
 

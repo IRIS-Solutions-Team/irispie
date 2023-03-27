@@ -83,7 +83,7 @@ class DatabankExportMixin:
         num_data_rows = len(range)
         #
         names = self._get_series_names_by_frequency(frequency)
-        descripts = [ getattr(self, n)._descript for n in names ]
+        descripts = [ getattr(self, n)._descript_ for n in names ]
         #
         num_series_columns = [ getattr(self, n).shape[1] for n in names ]
         data_array = np_.hstack([ getattr(self, n).get_data(range) for n in names ])

@@ -41,7 +41,7 @@ class Token(NamedTuple):
     ) -> str:
         s = qid_to_name[self.qid]
         if self.shift:
-            s += "{shift:+g}".format(shift=self.shift)
+            s += f"{{{self.shift:+g}}}"
         return s
     #]
 
@@ -86,10 +86,10 @@ def sort_tokens(tokens: Iterable[Token]) -> Iterable[Token]:
 
 def print_tokens(
     tokens: Tokens,
-    id_to_name: dict[int, str]
+    qid_to_name: dict[int, str]
 ) -> Iterable[str]:
     """
     Create list of printed tokens
     """
-    return [ t.print(id_to_name) for t in tokens ]
+    return [ t.print(qid_to_name) for t in tokens ]
 

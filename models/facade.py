@@ -379,6 +379,14 @@ class Model(si_.SimulationMixin, ge_.GetterMixin):
             # self._systemize(v, model_flags)
         # return self
 
+    def systemize(self, /, ) -> Iterable[sy_.System]:
+        """
+        Unsolved first-order systems one for each variant
+        """
+        return [ 
+            self._systemize(variant, self._dynamic_descriptor) 
+            for variant in self._variants
+        ]
 
     def _systemize(
         self,
@@ -387,22 +395,12 @@ class Model(si_.SimulationMixin, ge_.GetterMixin):
         /,
     ) -> sy_.System:
         """
-        Evaluatoe 
+        Unsolved first-order system for one variant
         """
         num_columns = descriptor.system_differn_context.shape_data[1]
         logly_context = self.create_qid_to_logly()
         value_context = self.create_zero_array(variant, num_columns=num_columns)
         return sy_.System.for_descriptor(descriptor, logly_context, value_context)
-
-    #def _get_steady_something(
-    #    self,
-    #    /,
-    #    extractor_from_variant: Callable,
-    #) -> dict[str, Number|np_.ndarray]:
-    #    """
-    #    """
-    #    return db_.Databank._from_dict({ name: extractor(qid) for qid, name in qid_to_name.items() })
-
 
     def solve(
         self,
@@ -439,6 +437,10 @@ class Model(si_.SimulationMixin, ge_.GetterMixin):
         tolerance: float = 1e-12,
         details: bool = False,
     ) -> tuple[bool, Iterable[bool], Iterable[Number], Iterable[np_.ndarray]]:
+        """
+        Verify steady state against dynamic or steady equations
+        """
+        # FIXME: Evaluate at two different times
         evaluator = self._steady_evaluator_for_dynamic_equations
         dis = [ evaluator.update_steady_array(self, v).eval() for v in self._variants ]
         max_abs_dis = [ np_.max(np_.abs(d)) for d in dis ]
@@ -448,7 +450,7 @@ class Model(si_.SimulationMixin, ge_.GetterMixin):
             raise Exception("Invalid steady state")
         return (all_status, status, max_abs_dis, dis) if details else all_status
 
-    def _apply_delog(
+    def _apply_delog_on_vector(
         self,
         vector: np_.ndarray,
         qids: Iterable[int],
@@ -462,7 +464,6 @@ class Model(si_.SimulationMixin, ge_.GetterMixin):
             vector[logly_index] = np_.exp(vector[logly_index])
         return vector
 
-
     def _steady_linear(
         self, 
         variant: Variant,
@@ -473,50 +474,55 @@ class Model(si_.SimulationMixin, ge_.GetterMixin):
         """
         #
         # Calculate first-order system for steady equations for this variant
-        #
         sys = self._systemize(variant, self._steady_descriptor)
         #
         # Calculate steady state for this variant
-        #
         Xi, Y, dXi, dY = algorithm(sys)
         levels = np_.hstack(( Xi.flat, Y.flat ))
         changes = np_.hstack(( dXi.flat, dY.flat ))
         #
         # Extract only tokens with zero shift
-        #
         tokens = list(itertools.chain(
             self._steady_descriptor.system_vectors.transition_variables,
             self._steady_descriptor.system_vectors.measurement_variables,
         ))
+        #
+        # [True, False, True, ... ] True for tokens with zero shift
         zero_shift_index = [ not t.shift for t in tokens ]
+        #
+        # List of qids with zero shifts only
         qids = [ t.qid for t in itertools.compress(tokens, zero_shift_index) ]
+        #
+        # Extract steady levels for quantities with zero shift
         levels = levels[zero_shift_index]
-        levels = self._apply_delog(levels, qids)
-        changes = self._apply_delog(changes, qids)
+        levels = self._apply_delog_on_vector(levels, qids)
+        #
+        # Extract steady changes for quantities with zero shift
+        changes = self._apply_delog_on_vector(changes, qids)
         changes = changes[zero_shift_index]
         #
         return levels, qids, changes, qids
 
-
     _steady_linear_flat = functools.partialmethod(_steady_linear, algorithm=_solve_steady_linear_flat)
     _steady_linear_nonflat = functools.partialmethod(_steady_linear, algorithm=_solve_steady_linear_nonflat)
-
 
     def _steady_nonlinear_flat(
         self,
         variant: Variant,
         /,
     ) -> SteadySolverReturn:
+        """
+        """
         return None, None, None, None
-
 
     def _steady_nonlinear_nonflat(
         self,
         variant: Variant,
         /,
     ) -> SteadySolverReturn:
+        """
+        """
         return None, None, None, None
-
 
     def _choose_steady_solver(
         self,
@@ -549,7 +555,7 @@ class Model(si_.SimulationMixin, ge_.GetterMixin):
             self._dynamic_equations + self._steady_equations
         )
 
-    def get_min_max_shifts_in_dynamic(self) -> tuple[int, int]:
+    def _get_min_max_shifts(self) -> tuple[int, int]:
         return self._min_shift, self._max_shift
 
     def get_extended_range_from_base_range(
@@ -648,4 +654,5 @@ def resolve_variant(self, variants, /, ) -> Iterable[int]:
     else:
         return [v for v in variants]
     #]
+
 

@@ -41,8 +41,10 @@ def simulate_flat(
         for t in vec.transition_variables
     ], dtype=float).reshape(-1, 1)
 
-    # FIXME
-    curr_state[np_.isnan(curr_state)] = 0
+    missing_initials = np_.isnan(curr_state)
+    unnecessary_initials = ~np_.array(vec.initial_conditions).reshape(-1, 1)
+    missing_unnecessary_initials = missing_initials & unnecessary_initials
+    curr_state[missing_unnecessary_initials] = 0
 
     no_shift_state_to_slab_lhs = [
         t.qid
