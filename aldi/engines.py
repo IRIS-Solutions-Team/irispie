@@ -5,8 +5,8 @@ Algorithmic differentiator
 
 #[
 from __future__ import annotations
+# from IPython import embed
 
-from IPython import embed
 import numpy
 import math
 

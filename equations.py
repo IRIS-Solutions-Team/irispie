@@ -4,8 +4,8 @@ Model equations
 
 #[
 from __future__ import annotations
+# from IPython import embed
 
-from IPython import embed
 import enum
 import re
 import dataclasses 

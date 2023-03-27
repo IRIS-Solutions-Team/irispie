@@ -5,7 +5,7 @@ Model source
 #[
 from __future__ import annotations
 
-from IPython import embed
+# from IPython import embed
 import re
 import collections
 from typing import NoReturn, TypeAlias, Literal

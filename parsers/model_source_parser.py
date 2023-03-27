@@ -3,8 +3,8 @@
 
 
 from __future__ import annotations
+# from IPython import embed
 
-from IPython import embed
 import parsimonious
 import functools
 import re

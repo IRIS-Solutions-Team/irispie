@@ -4,7 +4,7 @@ Time series
 
 #[
 from __future__ import annotations
-from IPython import embed
+# from IPython import embed
 
 from numbers import Number
 from collections.abc import Iterable, Callable

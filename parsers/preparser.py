@@ -1,7 +1,7 @@
 
 from __future__ import annotations
+# from IPython import embed
 
-from IPython import embed
 import re
 import parsimonious
 import functools

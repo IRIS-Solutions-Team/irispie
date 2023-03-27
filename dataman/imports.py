@@ -5,7 +5,7 @@ Databank imports
 
 #[
 from __future__ import annotations
-from IPython import embed
+# from IPython import embed
 
 from typing import (Self, NoReturn, )
 from collections.abc import (Iterable, Callable, )

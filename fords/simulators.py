@@ -4,7 +4,7 @@ First-order system simulators
 
 #[
 from __future__ import annotations
-from IPython import embed
+# from IPython import embed
 
 from typing import (Self, TypeAlias, NoReturn, Literal, )
 import numpy as np_

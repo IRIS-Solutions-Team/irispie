@@ -3,7 +3,8 @@
 
 #[
 from __future__ import annotations
-from IPython import embed
+# from IPython import embed
+
 import warnings
 import numpy
 from numbers import Number
