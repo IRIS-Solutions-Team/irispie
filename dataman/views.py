@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from numbers import (Number, )
 import numpy as np_
+import re as re_
 
 from ..dataman import dates as da_
 #]
