@@ -397,7 +397,7 @@ class Model(si_.SimulationMixin, ge_.GetterMixin):
         """
         Unsolved first-order system for one variant
         """
-        num_columns = descriptor.system_differn_context.shape_data[1]
+        num_columns = descriptor.aldi_context.shape_data[1]
         logly_context = self.create_qid_to_logly()
         value_context = self.create_zero_array(variant, num_columns=num_columns)
         return sy_.System.for_descriptor(descriptor, logly_context, value_context)

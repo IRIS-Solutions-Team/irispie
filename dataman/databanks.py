@@ -230,6 +230,20 @@ class Databank(
         remove_names = set(context_names).difference(keep_names)
         return self._remove(remove_names)
 
+    def _apply(
+        self,
+        func: Callable,
+        /,
+        source_names: SourceNames = None,
+        target_names: TargetNames = None,
+    ) -> Self:
+        context_names = self._get_names()
+        source_names, target_names = _resolve_source_target_names(source_names, target_names, context_names)
+        for s, t in zip(source_names, target_names):
+            setattr(self, t, func(getattr(self, s)))
+        return self
+
+
     def _filter(
         self,
         name_test: Callable | None = None,
@@ -355,15 +369,17 @@ def _resolve_source_target_names(
     if source_names is None:
         source_names = context_names
     if isinstance(source_names, str):
-        source_names = [source_names]
+        source_names = [ source_names ]
     if callable(source_names):
-        source_names = (n for n in existing_names if source_names(n))
+        func = source_names
+        source_names = [ n for n in context_names if func(n) ]
     if target_names is None:
         target_names = source_names
     if isinstance(target_names, str):
-        target_names = [target_names]
+        target_names = [ target_names ]
     if callable(target_names):
-        target_names = (target_names(n) for n in source_names)
+        func = target_names
+        target_names = [ func(n) for n in source_names ]
     return source_names, target_names
 
 

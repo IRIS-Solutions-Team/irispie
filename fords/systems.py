@@ -53,9 +53,7 @@ class System:
         """
         """
         # Differentiate and evaluate constant
-        tt = descriptor.system_differn_context.eval(value_context, logly_context)
-        td = np_.vstack([x.diff for x in tt])
-        tc = np_.vstack([x.value for x in tt])
+        td, tc = descriptor.aldi_context.eval_to_arrays(value_context, logly_context)
 
         smap = descriptor.system_map
         svec = descriptor.system_vectors
