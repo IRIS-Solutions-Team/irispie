@@ -71,24 +71,34 @@ wcwidth==0.2.6
 
 2. Install Git
 
-3. Create a virtual environoment in a folder of your choice
+3. Create a virtual environment in a folder of your choice
 
-```
-python3.11 -m venv env_irispie
-```
-
+- Linux/macOS:
+    ```
+    python3.11 -m venv env_irispie
+    ```
+- Windows:
+    ```
+    py -3.11 -m venv env_irispie
+    ```
 4. Activate the virtual environment
 
-```
-source env_irispie/bin/activiate
-```
+- Linux/macOS:
+    ```
+    source env_irispie/bin/activate
+    ```
+- Windows:
+    ```
+    env_irispie\Scripts\activate.bat
+    ```
+
 
 5. Save the above list of dependencies to the current folder as `requirements`
 
 6. Install dependency packages
 
 ```
-python -m pip install requirements
+python -m pip install -r requirements
 ```
 
 7. Clone the Iris Pie repository to the current folder
