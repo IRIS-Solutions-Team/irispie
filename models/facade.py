@@ -6,31 +6,19 @@ from __future__ import annotations
 # from IPython import embed
 
 from typing import (Self, NoReturn, TypeAlias, Literal, )
-from numbers import Number
-from collections.abc import Iterable, Callable
-
-import enum
-import copy
-import scipy
+from collections.abc import (Iterable, Callable, )
+from numbers import (Number, )
+import enum as en_
+import copy as co_
 import numpy as np_
-import itertools
-import functools
-import operator
+import itertools as it_
+import functools as ft_
 
-from . import (variants as va_, )
-from .. import (sources as so_, )
-from .. import (parsers as pa_, )
-
-from .. import (equations as eq_, )
-from .. import (quantities as qu_, )
-from ..fords import (descriptors as de_, )
-from ..fords import (systems as sy_, )
-from .. import (exceptions as ex_, )
+from .. import (equations as eq_, quantities as qu_, exceptions as ex_, sources as so_, evaluators as ev_, )
+from ..parsers import (common as pc_, )
 from ..dataman import (databanks as db_, dates as da_)
-from .. import (evaluators as ev_, )
-from . import (getters as ge_, )
-from ..models import (simulations as si_, evaluators as me_, )
-from ..fords import (solutions as sl_, steadiers as fs_, )
+from ..models import (simulations as si_, evaluators as me_, getters as ge_, variants as va_, )
+from ..fords import (solutions as sl_, steadiers as fs_, descriptors as de_, systems as sy_, )
 #]
 
 
@@ -51,12 +39,12 @@ SteadySolverReturn: TypeAlias = tuple[
 EquationSwitch: TypeAlias = Literal["dynamic"] | Literal["steady"]
 
 
-class ModelFlags(enum.IntFlag, ):
+class ModelFlags(en_.IntFlag, ):
     """
     """
     #[
-    LINEAR = enum.auto()
-    FLAT = enum.auto()
+    LINEAR = en_.auto()
+    FLAT = en_.auto()
     DEFAULT = 0
 
     @property
@@ -120,11 +108,11 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
 
     @property
     def copy(self) -> Self:
-        return copy.deepcopy(self)
+        return co_.deepcopy(self)
 
     def __getitem__(self, variants):
         variants = resolve_variant(self, variants)
-        self_copy = copy.copy(self)
+        self_copy = co_.deepopy(self)
         self_copy._variants = [ self._variants[i] for i in variants ]
         return self_copy
 
@@ -251,7 +239,7 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
 
     def _expand_num_variants(self, new_num: int, /, ) -> NoReturn:
         for i in range(self.num_variants, new_num):
-            self._variants.append(copy.deepcopy(self._variants[-1]))
+            self._variants.append(co_.deepcopy(self._variants[-1]))
 
 
     # def systemize(
@@ -388,7 +376,7 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         changes = np_.hstack(( dXi.flat, dY.flat ))
         #
         # Extract only tokens with zero shift
-        tokens = list(itertools.chain(
+        tokens = list(it_.chain(
             self._steady_descriptor.system_vectors.transition_variables,
             self._steady_descriptor.system_vectors.measurement_variables,
         ))
@@ -397,7 +385,7 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         zero_shift_index = [ not t.shift for t in tokens ]
         #
         # List of qids with zero shifts only
-        qids = [ t.qid for t in itertools.compress(tokens, zero_shift_index) ]
+        qids = [ t.qid for t in it_.compress(tokens, zero_shift_index) ]
         #
         # Extract steady levels for quantities with zero shift
         levels = levels[zero_shift_index]
@@ -409,8 +397,8 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         #
         return levels, qids, changes, qids
 
-    _steady_linear_flat = functools.partialmethod(_steady_linear, algorithm=fs_.solve_steady_linear_flat)
-    _steady_linear_nonflat = functools.partialmethod(_steady_linear, algorithm=fs_.solve_steady_linear_nonflat)
+    _steady_linear_flat = ft_.partialmethod(_steady_linear, algorithm=fs_.solve_steady_linear_flat)
+    _steady_linear_nonflat = ft_.partialmethod(_steady_linear, algorithm=fs_.solve_steady_linear_nonflat)
 
     def _steady_nonlinear_flat(
         self,
@@ -541,7 +529,7 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
     ) -> Self:
         """
         """
-        source_string = pa_.common.combine_source_files(source_files)
+        source_string = pc_.common.combine_source_files(source_files)
         return Model.from_string(source_string, **kwargs, )
     #]
 
