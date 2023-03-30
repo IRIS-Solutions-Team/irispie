@@ -220,6 +220,13 @@ def _postprocess_xtring(equation: str) -> str:
     #]
 
 
+def generate_all_eids(
+    equations: Equations,
+    /,
+) -> Iterable[int]:
+    return (eqn.id for eqn in equations)
+
+
 def generate_eids_by_kind(
     equations: Equations,
     kind: EquationKind,

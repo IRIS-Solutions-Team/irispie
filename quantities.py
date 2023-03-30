@@ -86,6 +86,10 @@ def create_qid_to_kind(quantities: Quantities) -> dict[int, str]:
     return { qty.id: qty.kind for qty in quantities }
 
 
+def generate_quantities_of_kind(quantities: Quantities, kind: QuantityKind) -> list[int]:
+    return ( qty for qty in quantities if qty.kind in kind )
+
+
 def generate_qids_by_kind(quantities: Quantities, kind: QuantityKind) -> list[int]:
     return ( qty.id for qty in quantities if qty.kind in kind )
 
