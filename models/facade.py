@@ -92,14 +92,6 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
     """
     """
     #[
-    def __init__(self):
-        self._quantities: list[qu_.Quantity] = []
-        self._dynamic_equations: eq_.Equations = []
-        self._steady_equations: eq_.Equations = []
-        self._variants: list[va_.Variant] = []
-        self._min_shift: int|None = None
-        self._max_shift: int|None = None
-
     def assign(
         self: Self,
         /,
