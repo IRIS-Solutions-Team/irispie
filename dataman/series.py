@@ -351,8 +351,10 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.S
         other._trim()
         self_range = self.range
         self_data = self.data
+        #
         self.start_date = other.start_date
-        self.data = other.data
+        enforce_columns = np_.zeros((1, self.data.shape[1]), dtype=self.data_type)
+        self.data = enforce_columns + other.data
         self.set_data(self_range, self_data, )
         return self
 

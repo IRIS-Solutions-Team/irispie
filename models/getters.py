@@ -1,15 +1,19 @@
+"""
+"""
+
 
 #[
 from __future__ import annotations
 # from IPython import embed
 
+from typing import (Literal, )
 import functools as ft_
 import json as js_
-from typing import (Literal, )
 
 from .. import (quantities as qu_, incidence as in_, )
 from ..dataman import (databanks as db_, )
 #]
+
 
 def _decorate_output_format(func):
     """
@@ -35,7 +39,7 @@ class GetterMixin:
         kind: qu_.QuantityKind,
     ) -> dict[str, Number]:
         qid_to_name = self.create_qid_to_name()
-        qids = list(qu_.generate_qids_by_kind(self._quantities, kind))
+        qids = list(qu_.generate_qids_by_kind(self._invariant._quantities, kind))
         x = self._variants[0].retrieve_values(variant_attr, qids)
         return db_.Databank._from_dict({ qid_to_name[q]: float(x[i, 0]) for i, q in enumerate(qids) })
 
@@ -87,7 +91,7 @@ class GetterMixin:
     ) -> dict[str, bool]:
         return {
             qty.human: qty.logly
-            for qty in self._quantities if qty.kind in QuantityKind.LOGLY_VARIABLE
+            for qty in self._invariant._quantities if qty.kind in QuantityKind.LOGLY_VARIABLE
         }
 
     def get_initials(
@@ -102,7 +106,7 @@ class GetterMixin:
         # model, and lag them by one period to get initial conditions
         initial_tokens = [
             in_.Token(t.qid, t.shift-1)
-            for t in self._dynamic_descriptor.solution_vectors.get_initials(kind, )
+            for t in self._invariant._dynamic_descriptor.solution_vectors.get_initials(kind, )
         ]
         return in_.print_tokens(initial_tokens, self.create_qid_to_name(), )
 

@@ -14,24 +14,21 @@ from . import series as se_
 
 
 class Dataslab:
+    """
+    """
+    #[
     data: np_.ndarray | None = None
     row_names: Iterable[str] | None = None,
     missing_names: Iterable[str] | None = None,
     column_dates: Iterable[Dater] | None = None
 
-    def to_databank(self, /, ) -> da_.Databank:
+    def to_databank(self, *args, **kwargs, ) -> da_.Databank:
         """
         """
-        out_databank = db_.Databank()
-        for row, n in enumerate(self.row_names):
-            x = se_.Series()
-            x.set_data(self.column_dates, self.data[(row,), :].T)
-            setattr(out_databank, n, x)
-        return out_databank
+        return multiple_to_databank((self,), *args, **kwargs, )
 
-    @classmethod
-    def from_databank(
-        cls,
+    def add_from_databank(
+        self,
         in_databank: db_.Databank,
         names: Iterable[str],
         ext_range: Ranger,
@@ -39,9 +36,8 @@ class Dataslab:
         column: int = 0,
     ) -> Self:
         """
+        Add data from a databank to this dataslab
         """
-        self = cls()
-        #
         missing_names = [
             n for n in names
             if not hasattr(in_databank, n)
@@ -66,6 +62,8 @@ class Dataslab:
         remove: int,
         /,
     ) -> NoReturn:
+        """
+        """
         if remove > 0:
             self.data = self.data[:, remove:]
             self.column_dates = self.column_dates[remove:]
@@ -73,6 +71,19 @@ class Dataslab:
             self.data = self.data[:, :remove]
             self.column_dates = self.column_dates[:remove]
 
+    @classmethod
+    def from_databank(
+        cls,
+        *args,
+        **kwargs,
+    ) -> Self:
+        """
+        Create a new dataslab from a databank
+        """
+        self = cls();
+        self.add_from_databank(*args, **kwargs)
+        return self
+    #]
 
 
 def _extract_data_from_record(record, ext_range, column, /, ):
@@ -83,4 +94,23 @@ def _extract_data_from_record(record, ext_range, column, /, ):
         if hasattr(record, "get_data")
         else np_.full((1, len(ext_range)), float(record), dtype=float)
     )
+
+
+def multiple_to_databank(
+    selves,
+    /,
+    target_databank: db_.Databank | None = None,
+) -> db_.Databank:
+    """
+    Add data from a dataslab to a new or existing databank
+    """
+    out_databank = target_databank if target_databank is not None else db_.Databank()
+    self = selves[0]
+    num_columns = len(selves)
+    for row, n in enumerate(self.row_names):
+        data = np_.hstack(tuple(ds.data[(row,), :].T for ds in selves))
+        x = se_.Series(num_columns=num_columns)
+        x.set_data(self.column_dates, data)
+        setattr(out_databank, n, x)
+    return out_databank
 

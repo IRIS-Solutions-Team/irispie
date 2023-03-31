@@ -17,7 +17,7 @@ import functools as ft_
 from .. import (equations as eq_, quantities as qu_, exceptions as ex_, sources as so_, evaluators as ev_, )
 from ..parsers import (common as pc_, )
 from ..dataman import (databanks as db_, dates as da_)
-from ..models import (simulations as si_, evaluators as me_, getters as ge_, variants as va_, )
+from ..models import (simulations as si_, evaluators as me_, getters as ge_, variants as va_, invariants as in_)
 from ..fords import (solutions as sl_, steadiers as fs_, descriptors as de_, systems as sy_, )
 #]
 
@@ -80,6 +80,8 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
     """
     """
     #[
+    __slots__ = ["_invariant", "_variants"]
+
     def assign(
         self: Self,
         /,
@@ -88,7 +90,7 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         """
         """
         try:
-            qid_to_value = _rekey_dict(kwargs, qu_.create_name_to_qid(self._quantities))
+            qid_to_value = _rekey_dict(kwargs, qu_.create_name_to_qid(self._invariant._quantities))
         except KeyError as _KeyError:
             raise ex_.UnknownName(_KeyError.args[0])
         for v in self._variants:
@@ -106,23 +108,22 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         """
         return self.assign(**databank.__dict__)
 
-    @property
     def copy(self) -> Self:
         return co_.deepcopy(self)
 
     def __getitem__(self, variants):
-        variants = resolve_variant(self, variants)
-        self_copy = co_.deepopy(self)
-        self_copy._variants = [ self._variants[i] for i in variants ]
-        return self_copy
+        new = self.from_self()
+        index_variants = resolve_variant(self, variants)
+        new._variants = [ self._variants[i] for i in index_variants ]
+        return new
 
-    def change_num_variants(self, new_num: int, /, ) -> Self:
+    def alter_num_variants(self, new_num: int, /, ) -> Self:
         """
-        Change number of alternative parameter variants in model object
+        Alter (expand, shrink) the number of alternative parameter variants in this model object
         """
-        if new_num<self.num_variants:
+        if new_num < self.num_variants:
             self._shrink_num_variants(new_num, )
-        elif new_num>self.num_variants:
+        elif new_num > self.num_variants:
             self._expand_num_variants(new_num, )
         return self
 
@@ -135,10 +136,10 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         names = set(names) if names else None
         qids = [ 
             qty.id 
-            for qty in self._quantities 
+            for qty in self._invariant._quantities 
             if qty.logly is not None and (names is None or qty.human in names)
         ]
-        self._quantities = qu_.change_logly(self._quantities, new_logly, qids)
+        self._invariant._quantities = qu_.change_logly(self._invariant._quantities, new_logly, qids)
 
     @property
     def num_variants(self, /, ) -> int:
@@ -146,33 +147,33 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
 
     @property
     def is_linear(self, /, ) -> bool:
-        return self._flags.is_linear
+        return self._invariant._flags.is_linear
 
     @property
     def is_flat(self, /, ) -> bool:
-        return self._flags.is_flat
+        return self._invariant._flags.is_flat
 
     def create_steady_evaluator(self, /, ) -> ev_.SteadyEvaluator:
         """
         """
-        equations = eq_.generate_equations_of_kind(self._steady_equations, eq_.EquationKind.STEADY_EVALUATOR)
-        quantities = qu_.generate_quantities_of_kind(self._quantities, qu_.QuantityKind.STEADY_EVALUATOR)
+        equations = eq_.generate_equations_of_kind(self._invariant._steady_equations, eq_.EquationKind.STEADY_EVALUATOR)
+        quantities = qu_.generate_quantities_of_kind(self._invariant._quantities, qu_.QuantityKind.STEADY_EVALUATOR)
         return self._create_steady_evaluator(self._variants[0], equations, quantities)
 
     def create_name_to_qid(self, /, ) -> dict[str, int]:
-        return qu_.create_name_to_qid(self._quantities)
+        return qu_.create_name_to_qid(self._invariant._quantities)
 
     def create_qid_to_name(self, /, ) -> dict[int, str]:
-        return qu_.create_qid_to_name(self._quantities)
+        return qu_.create_qid_to_name(self._invariant._quantities)
 
     def create_qid_to_kind(self, /, ) -> dict[int, str]:
-        return qu_.create_qid_to_kind(self._quantities)
+        return qu_.create_qid_to_kind(self._invariant._quantities)
 
     def create_qid_to_descript(self, /, ) -> dict[int, str]:
-        return qu_.create_qid_to_descript(self._quantities)
+        return qu_.create_qid_to_descript(self._invariant._quantities)
 
     def create_qid_to_logly(self, /, ) -> dict[int, bool]:
-        return qu_.create_qid_to_logly(self._quantities)
+        return qu_.create_qid_to_logly(self._invariant._quantities)
 
     def get_ordered_names(self, /, ) -> list[str]:
         qid_to_name = self.create_qid_to_name()
@@ -220,7 +221,7 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         #
         assign_shocks = { 
             qid: (0, np_.nan) 
-            for qid in qu_.generate_qids_by_kind(self._quantities, qu_.QuantityKind.SHOCK)
+            for qid in qu_.generate_qids_by_kind(self._invariant._quantities, qu_.QuantityKind.SHOCK)
         }
         self._variants[0].update_values_from_dict(assign_shocks)
         #
@@ -228,7 +229,7 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         #
         assign_non_logly = { 
             qid: (..., np_.nan) 
-            for qid in  qu_.generate_qids_by_kind(self._quantities, ~qu_.QuantityKind.LOGLY_VARIABLE)
+            for qid in  qu_.generate_qids_by_kind(self._invariant._quantities, ~qu_.QuantityKind.LOGLY_VARIABLE)
         }
         self._variants[0].update_values_from_dict(assign_non_logly)
 
@@ -261,7 +262,7 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         Unsolved first-order systems one for each variant
         """
         return [ 
-            self._systemize(variant, self._dynamic_descriptor) 
+            self._systemize(variant, self._invariant._dynamic_descriptor) 
             for variant in self._variants
         ]
 
@@ -291,8 +292,8 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         variant: va_.Variant,
         /,
     ) -> NoReturn:
-        system = self._systemize(variant, self._dynamic_descriptor)
-        variant.solution = sl_.Solution.for_model(self._dynamic_descriptor, system, )
+        system = self._systemize(variant, self._invariant._dynamic_descriptor)
+        variant.solution = sl_.Solution.for_model(self._invariant._dynamic_descriptor, system, )
 
     def steady(
         self,
@@ -320,8 +321,8 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         # FIXME: Evaluate at two different times
         qid_to_logly = self.create_qid_to_logly()
         evaluator = {
-            "dynamic": self._plain_evaluator_for_dynamic_equations,
-            "steady": self._plain_evaluator_for_steady_equations,
+            "dynamic": self._invariant._plain_evaluator_for_dynamic_equations,
+            "steady": self._invariant._plain_evaluator_for_steady_equations,
         }[equation_switch]
         steady_arrays = (
             v.create_steady_array(
@@ -368,7 +369,7 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         """
         #
         # Calculate first-order system for steady equations for this variant
-        sys = self._systemize(variant, self._steady_descriptor)
+        sys = self._systemize(variant, self._invariant._steady_descriptor)
         #
         # Calculate steady state for this variant
         Xi, Y, dXi, dY = algorithm(sys)
@@ -377,8 +378,8 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         #
         # Extract only tokens with zero shift
         tokens = list(it_.chain(
-            self._steady_descriptor.system_vectors.transition_variables,
-            self._steady_descriptor.system_vectors.measurement_variables,
+            self._invariant._steady_descriptor.system_vectors.transition_variables,
+            self._invariant._steady_descriptor.system_vectors.measurement_variables,
         ))
         #
         # [True, False, True, ... ] True for tokens with zero shift
@@ -431,26 +432,18 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
             ModelFlags.LINEAR: self._steady_linear_nonflat,
             ModelFlags.LINEAR | ModelFlags.FLAT: self._steady_linear_flat,
         }
-        model_flags = ModelFlags.update_from_kwargs(self._flags, **kwargs)
+        model_flags = ModelFlags.update_from_kwargs(self._invariant._flags, **kwargs)
         return STEADY_SOLVER[model_flags]
 
 
     def _assign_default_stds(self, default_std, /, ):
         if default_std is None:
-            default_std = _DEFAULT_STD_LINEAR if ModelFlags.LINEAR in self._flags else _DEFAULT_STD_NONLINEAR
-        self.assign(**{ k: default_std for k in qu_.generate_quantity_names_by_kind(self._quantities, qu_.QuantityKind.STD) })
+            default_std = _DEFAULT_STD_LINEAR if ModelFlags.LINEAR in self._invariant._flags else _DEFAULT_STD_NONLINEAR
+        self.assign(**{ k: default_std for k in qu_.generate_quantity_names_by_kind(self._invariant._quantities, qu_.QuantityKind.STD) })
 
-
-    def _populate_min_max_shifts(self) -> NoReturn:
-        self._min_shift = eq_.get_min_shift_from_equations(
-            self._dynamic_equations + self._steady_equations
-        )
-        self._max_shift = eq_.get_max_shift_from_equations(
-            self._dynamic_equations + self._steady_equations
-        )
 
     def _get_min_max_shifts(self) -> tuple[int, int]:
-        return self._min_shift, self._max_shift
+        return self._invariant._min_shift, self._invariant._max_shift
 
     def get_extended_range_from_base_range(
         self,
@@ -458,14 +451,14 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
     ) -> Iterable[Dater]:
         base_range = [ t for t in base_range ]
         num_base_periods = len(base_range)
-        start_date = base_range[0] + self._min_shift
-        end_date = base_range[-1] + self._max_shift
-        base_columns = [ c for c in range(-self._min_shift, -self._min_shift+num_base_periods) ]
+        start_date = base_range[0] + self._invariant._min_shift
+        end_date = base_range[-1] + self._invariant._max_shift
+        base_columns = [ c for c in range(-self._invariant._min_shift, -self._invariant._min_shift+num_base_periods) ]
         return [ t for t in da_.Ranger(start_date, end_date) ], base_columns
 
     @classmethod
     def from_source(
-        cls: type,
+        cls,
         model_source: so_.ModelSource,
         /,
         default_std: int|None = None,
@@ -474,32 +467,18 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         """
         """
         self = cls()
-        self._flags = ModelFlags.from_kwargs(**kwargs, )
-
-        self._quantities = model_source.quantities[:]
-        self._dynamic_equations = model_source.dynamic_equations[:]
-        self._steady_equations = model_source.steady_equations[:]
-
-        name_to_qid = qu_.create_name_to_qid(self._quantities)
-        eq_.finalize_dynamic_equations(self._dynamic_equations, name_to_qid)
-        eq_.finalize_steady_equations(self._steady_equations, name_to_qid)
-
-        self._variants = [ va_.Variant(self._quantities) ]
+        #
+        self._invariant = in_.Invariant(
+            model_source,
+            default_std=default_std,
+            **kwargs
+        )
+        #
+        self._variants = [ va_.Variant(self._invariant._quantities) ]
+        #
         self._enforce_auto_values()
-        self._dynamic_descriptor = de_.Descriptor(self._dynamic_equations, self._quantities)
-        self._steady_descriptor = de_.Descriptor(self._steady_equations, self._quantities)
-
-        self._plain_evaluator_for_dynamic_equations = ev_.PlainEvaluator(
-            eq_.generate_equations_of_kind(self._dynamic_equations, eq_.EquationKind.STEADY_EVALUATOR),
-        )
-
-        self._plain_evaluator_for_steady_equations = ev_.PlainEvaluator(
-            eq_.generate_equations_of_kind(self._steady_equations, eq_.EquationKind.STEADY_EVALUATOR),
-        )
-
-        self._populate_min_max_shifts()
         self._assign_default_stds(default_std)
-
+        #
         return self
 
 
@@ -519,7 +498,6 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         )
         return Model.from_source(model_source, **kwargs, )
 
-
     @classmethod
     def from_file(
         cls,
@@ -529,8 +507,17 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
     ) -> Self:
         """
         """
-        source_string = pc_.common.combine_source_files(source_files)
+        source_string = pc_.combine_source_files(source_files)
         return Model.from_string(source_string, **kwargs, )
+
+    def from_self(self, ) -> Self:
+        """
+        Create a new Model object with pointers to invariant and variants of this Model object
+        """
+        new = type(self)()
+        new._invariant = self._invariant
+        new._variants = self._variants
+        return new
     #]
 
 

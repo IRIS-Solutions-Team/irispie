@@ -3,15 +3,14 @@
 
 #[
 from __future__ import annotations
+# from IPython import embed
 
 from typing import (Self, NoReturn, )
 from collections.abc import (Iterable, Callable, )
 import numpy as np_
 
-from . import (variants as va_, )
-from .. import (equations as eq_, )
-from .. import (quantities as qu_, )
-from .. import (evaluators as ev_, )
+from .. import (equations as eq_, quantities as qu_, evaluators as ev_, )
+from ..models import (variants as va_, )
 #]
 
 

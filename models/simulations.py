@@ -2,6 +2,7 @@
 First-order system simulators
 """
 
+
 #[
 from __future__ import annotations
 # from IPython import embed
@@ -9,8 +10,7 @@ from __future__ import annotations
 from typing import (Self, TypeAlias, NoReturn, Literal, )
 import numpy as np_
 
-from ..dataman import (databanks as db_, )
-from ..dataman import (dataslabs as ds_, )
+from ..dataman import (databanks as db_, dataslabs as ds_, )
 from ..fords import (simulators as sr_, )
 #]
 
@@ -33,18 +33,20 @@ class SimulationMixin:
         ext_range, base_columns = self.get_extended_range_from_base_range(base_range)
         names = self.get_ordered_names()
 
-        v = 0
-
-        dataslab = ds_.Dataslab.from_databank(in_databank, names, ext_range, column=v)
-        variant = self._variants[v]
-
-        new_data = sr_.simulate_flat(
-            variant.solution, self._dynamic_descriptor.solution_vectors,
-            np_.copy(dataslab.data), base_columns, deviation, anticipate,
+        dataslabs = tuple(
+            ds_.Dataslab.from_databank(in_databank, names, ext_range, column=i) 
+            for i in range(self.num_variants)
         )
-        dataslab.data = new_data
-        dataslab.remove_columns(base_columns[-1] - len(ext_range) + 1)
-        out_databank = dataslab.to_databank()
+
+        for variant, dataslab in zip(self._variants, dataslabs):
+            new_data = sr_.simulate_flat(
+                variant.solution, self._invariant._dynamic_descriptor.solution_vectors,
+                np_.copy(dataslab.data), base_columns, deviation, anticipate,
+            )
+            dataslab.data = new_data
+            dataslab.remove_columns(base_columns[-1] - len(ext_range) + 1)
+
+        out_databank = ds_.multiple_to_databank(dataslabs)
         if prepend_input:
             under_databank = in_databank._copy()
             under_databank._clip(None, base_range[0]-1)
