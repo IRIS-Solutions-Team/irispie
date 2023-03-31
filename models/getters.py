@@ -12,6 +12,7 @@ import json as js_
 
 from .. import (quantities as qu_, incidence as in_, )
 from ..dataman import (databanks as db_, )
+from ..fords import (descriptors as de_, )
 #]
 
 
@@ -142,5 +143,8 @@ class GetterMixin:
             interpret_dates="start_date",
             qid_to_descript=qid_to_descript,
         )
+
+    def get_solution_vectors(self, ) -> de_.SolutionVectors:
+        return self._invariant._dynamic_descriptor.solution_vectors
     #]
 

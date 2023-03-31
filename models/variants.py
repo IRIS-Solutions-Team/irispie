@@ -89,7 +89,6 @@ class Variant:
         #
         return steady_array
 
-
     def create_zero_array(
         self,
         qid_to_logly: dict[int, bool],

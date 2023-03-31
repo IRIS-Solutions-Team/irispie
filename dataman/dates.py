@@ -7,8 +7,8 @@ import datetime as dt_
 import enum as en_
 import functools as ft_
 from typing import (NoReturn, Union, Self, Any, Protocol, runtime_checkable, )
-from collections.abc import Iterable, Callable
-from numbers import Number
+from collections.abc import (Iterable, Callable, )
+from numbers import (Number, )
 #]
 
 
@@ -82,8 +82,8 @@ class ResolutionContextProtocol(Protocol):
     """
     Context protocol for contextual date resolution
     """
-    start_date: Any
-    end_date: Any
+    start_date = ...
+    end_date = ...
 
 
 @runtime_checkable
@@ -91,7 +91,7 @@ class ResolvableProtocol(Protocol):
     """
     Contextual date protocol
     """
-    needs_resolve: bool
+    needs_resolve = ...
     def resolve(self, context: ResolutionContextProtocol) -> Any: ...
 
 

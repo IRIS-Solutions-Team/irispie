@@ -7,7 +7,8 @@ First-order system simulators
 from __future__ import annotations
 # from IPython import embed
 
-from typing import (Self, TypeAlias, NoReturn, Literal, )
+from typing import (Self, TypeAlias, NoReturn, Literal, Protocol, runtime_checkable)
+from collections.abc import (Iterable, )
 import numpy as np_
 
 from ..dataman import (databanks as db_, dataslabs as ds_, )
@@ -15,12 +16,21 @@ from ..fords import (simulators as sr_, )
 #]
 
 
+@runtime_checkable
+class SimulatableProtocol(Protocol):
+    num_variants: int
+    _variants: Iterable
+    def get_extended_range_from_base_range(): ...
+    def get_ordered_names(): ...
+    def get_solution_vectors(): ...
+
+
 class SimulationMixin:
     """
     """
     #[
     def simulate(
-        self,
+        self: SimulatableProtocol,
         in_databank: db_.Databank,
         base_range: Iterable[Dater],
         /,
@@ -40,7 +50,7 @@ class SimulationMixin:
 
         for variant, dataslab in zip(self._variants, dataslabs):
             new_data = sr_.simulate_flat(
-                variant.solution, self._invariant._dynamic_descriptor.solution_vectors,
+                variant.solution, self.get_solution_vectors(),
                 np_.copy(dataslab.data), base_columns, deviation, anticipate,
             )
             dataslab.data = new_data
