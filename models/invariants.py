@@ -21,7 +21,7 @@ class Invariant:
         self._quantities = model_source.quantities[:]
         self._dynamic_equations = model_source.dynamic_equations[:]
         self._steady_equations = model_source.steady_equations[:]
-
+        #
         name_to_qid = qu_.create_name_to_qid(self._quantities)
         eq_.finalize_dynamic_equations(self._dynamic_equations, name_to_qid)
         eq_.finalize_steady_equations(self._steady_equations, name_to_qid)

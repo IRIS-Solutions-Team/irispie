@@ -7,9 +7,9 @@ Algorithmic differentiator
 from __future__ import annotations
 # from IPython import embed
 
-from typing import (Self, NoReturn, )
+from typing import (Self, NoReturn, Callable, )
 from numbers import (Number, )
-from collections.abc import Iterable, Sequence
+from collections.abc import (Iterable, Sequence, )
 
 import numpy as np_
 
@@ -68,7 +68,8 @@ class Atom(ValueMixin, LoglyMixin):
         cls: type,
         value: Number,
         diff: Number,
-        logly: bool,
+        /,
+        logly: bool = False,
     ) -> Self:
         """
         Create atom with self-contained data and logly contexts
@@ -81,11 +82,12 @@ class Atom(ValueMixin, LoglyMixin):
 
     @classmethod
     def in_context(
-            cls: type,
-            diff: np_.ndarray,
-            token: Token, 
-            columns_to_eval: tuple[int, int],
-        ):
+        cls: type,
+        diff: np_.ndarray,
+        token: Token, 
+        columns_to_eval: tuple[int, int],
+        /,
+    ) -> Self:
         """
         Create atom with pointers to data and logly contexts
         """
@@ -273,13 +275,18 @@ class Context:
             self._columns_to_eval,
         )
 
-        xtrings = [ 
-            _create_aldi_xtring(eqn, eid_to_wrt_tokens[eqn.id]) 
-           for eqn in equations 
-        ]
+        for k in range(len(equations)):
+            xtrings = [ 
+                _create_aldi_xtring(eqn, eid_to_wrt_tokens[eqn.id]) 
+                       for eqn in equations[0:k+1]
+            ]
 
-        self._func_string = create_evaluator_func_string(xtrings)
-        self._func = eval(self._func_string)
+            self._func_string = create_evaluator_func_string(xtrings)
+            try:
+                self._func = eval(self._func_string)
+            except:
+                print(k)
+                from IPython import embed; embed()
 
         return self
 

@@ -24,10 +24,13 @@ from .exceptions import UndeclaredName
 _EVALUATOR_FORMAT = "lambda x, t: [{equations}]"
 X_REF_PATTERN = "{qid},t{shift:+g},{eid}"
 
-_QUANTITY_NAME_PATTERN = re.compile(r"\b([a-zA-Z]\w*)\b({[-+\d]+})?(?!\()")
+_QUANTITY_NAME_PATTERN = re.compile(r"\b([a-zA-Z]\w*)\b(\[[-+\d]+\])?(?!\()")
 _EQUATION_REF = "..."
 _REPLACE_NAME = "x[" + X_REF_PATTERN +"]"
-_TRANSLATE_REF_TO_KEY = { "[": "['", "]": "]'" }
+_TRANSLATE_REF_TO_KEY = {
+    "[": "['",
+    "]": "]'",
+}
 _REPLACE_UKNOWN = "?"
 
 
@@ -206,14 +209,14 @@ def _xtring_from_human(
 
 
 def _resolve_shift_str(shift_str: str) -> int:
-    return int(shift_str.replace("{", "",).replace("}", "")) if shift_str is not None else 0
+    return int(shift_str.replace("[", "",).replace("]", "")) if shift_str is not None else 0
 
 
 def _postprocess_xtring(equation: str) -> str:
     #[
     equation = equation.replace("^", "**")
     equation = equation.replace(" ", "")
-    lhs_rhs = equation.split("=")
+    lhs_rhs = equation.split("=", maxsplit=1)
     if len(lhs_rhs)==2:
         equation = "-(" + lhs_rhs[0] + ")+" + lhs_rhs[1]
     return equation
