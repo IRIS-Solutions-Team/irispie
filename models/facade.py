@@ -1,6 +1,7 @@
 """
 """
 
+
 #[
 from __future__ import annotations
 # from IPython import embed
@@ -35,6 +36,7 @@ SteadySolverReturn: TypeAlias = tuple[
     np_.ndarray|None, Iterable[int]|None, 
     np_.ndarray|None, Iterable[int]|None,
 ]
+
 
 EquationSwitch: TypeAlias = Literal["dynamic"] | Literal["steady"]
 
@@ -314,11 +316,11 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         equation_switch: EquationSwitch = "dynamic",
         tolerance: float = 1e-12,
         details: bool = False,
+        when_fails: str = "error",
     ) -> tuple[bool, Iterable[bool], Iterable[Number], Iterable[np_.ndarray]]:
         """
         Verify steady state against dynamic or steady equations
         """
-        # FIXME: Evaluate at two different times
         qid_to_logly = self.create_qid_to_logly()
         evaluator = {
             "dynamic": self._invariant._plain_evaluator_for_dynamic_equations,
@@ -341,7 +343,7 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         max_abs_dis = [ np_.max(np_.abs(d)) for d in dis ]
         status = [ d < tolerance for d in max_abs_dis ]
         all_status = all(status)
-        if not all_status:
+        if not all_status and when_fails == "error":
             raise Exception("Invalid steady state")
         return (all_status, status, max_abs_dis, dis) if details else all_status
 
@@ -461,8 +463,9 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         cls,
         model_source: so_.ModelSource,
         /,
-        default_std: int|None = None,
-        **kwargs, 
+        default_std: int | None = None,
+        context: dict | None = None,
+        **kwargs,
     ) -> Self:
         """
         """
@@ -470,8 +473,8 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         #
         self._invariant = in_.Invariant(
             model_source,
-            default_std=default_std,
-            **kwargs
+            context=context,
+            **kwargs,
         )
         #
         self._variants = [ va_.Variant(self._invariant._quantities) ]
@@ -480,7 +483,6 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         self._assign_default_stds(default_std)
         #
         return self
-
 
     @classmethod
     def from_string(
@@ -496,16 +498,17 @@ class Model(si_.SimulationMixin, me_.SteadyEvaluatorMixin, ge_.GetterMixin):
         model_source, info = so_.ModelSource.from_string(
             source_string, context=context, save_preparsed=save_preparsed,
         )
-        return Model.from_source(model_source, **kwargs, )
+        return Model.from_source(model_source, context=context, **kwargs, )
 
     @classmethod
     def from_file(
         cls,
-        source_files: str|Iterable[str],
+        source_files: str | Iterable[str],
         /,
         **kwargs,
     ) -> Self:
         """
+        Create a new Model object from model source files
         """
         source_string = pc_.combine_source_files(source_files)
         return Model.from_string(source_string, **kwargs, )

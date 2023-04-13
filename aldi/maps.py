@@ -1,3 +1,5 @@
+"""
+"""
 
 
 #[
@@ -7,7 +9,6 @@ from typing import (Self, NoReturn, )
 from collections.abc import (Iterable, )
 import itertools as it_
 import dataclasses as dc_
-
 #]
 
 

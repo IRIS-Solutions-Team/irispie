@@ -26,8 +26,13 @@ from ..equations import (
     create_evaluator_func_string,
 )
 
-from ..functions import *
+from ..aldi import (finite_differentiators as af_, adaptations as aa_, )
 #]
+
+
+FUNCTION_ADAPTATIONS = [
+    "log", "exp", "sqrt", "maximum", "minimum"
+]
 
 
 class ValueMixin:
@@ -209,21 +214,71 @@ class Atom(ValueMixin, LoglyMixin):
 
     __radd__ = __add__
 
-    def __rsub__(self, other):
+    def __rsub__(self, other, /, ) -> Self:
         """
         Differenatiate other - self
         """
         return self.__neg__().__add__(other)
 
-    def _log_(self):
+    def _log_(self, /, ) -> Self:
+        """
+        Differentiate log(self)
+        """
         new_value = np_.log(self.value)
         new_diff = 1 / self.value * self.diff
         return Atom.no_context(new_value, new_diff, False)
 
-    def _exp_(self):
+    def _exp_(self, /, ) -> Self:
+        """
+        Differentiate exp(self)
+        """
         new_value = np_.exp(self.value)
         new_diff = new_value * self.diff
         return Atom.no_context(new_value, new_diff, False)
+
+    def _sqrt_(self, /, ) -> Self:
+        """
+        Differentiate sqrt(self)
+        """
+        new_value = np_.sqrt(self.value)
+        new_diff = 0.5 / np_.sqrt(self.diff)
+        return Atom.no_context(new_value, new_diff, False)
+
+    def _maximum_(
+        self,
+        floor: Number = 0,
+        /, 
+    ) -> Self:
+        """
+        Differenatiate maximum(self, floor)
+        """
+        orig_value = self.value
+        orig_diff = self.diff
+        if isinstance(orig_value, Number) and isinstance(orig_diff, Number):
+            orig_value = np_.array(orig_value, dtype=float)
+            orig_diff = np_.array(orig_diff, dtype=float)
+        new_value = np_.copy(orig_value)
+        inx_floor = orig_value == floor
+        inx_below = orig_value < floor
+        inx_above = orig_value > floor
+        new_value[inx_below] = floor
+        new_diff = np_.copy(orig_diff)
+        multiplier = np_.copy(orig_value)
+        multiplier[inx_floor] = 0.5
+        multiplier[inx_above] = 1
+        multiplier[inx_below] = 0
+        new_diff = orig_diff * multiplier
+        return Atom.no_context(new_value, new_diff, False)
+
+    def _mininum_(
+        self,
+        ceiling: Number = 0,
+        /,
+    ) -> Self:
+        """
+        Differenatiate minimum(self, ceiling)
+        """
+        return (-self)._max_(-ceiling)
     #]
 
 
@@ -250,7 +305,8 @@ class Context:
         atom_class: type,
         equations: Equations,
         eid_to_wrt_tokens: dict[int, Tokens],
-        num_columns_to_eval: int = 1,
+        num_columns_to_eval: int,
+        custom_functions: dict | None,
         /,
     ) -> Self:
         """
@@ -275,18 +331,19 @@ class Context:
             self._columns_to_eval,
         )
 
-        for k in range(len(equations)):
-            xtrings = [ 
-                _create_aldi_xtring(eqn, eid_to_wrt_tokens[eqn.id]) 
-                       for eqn in equations[0:k+1]
-            ]
+        xtrings = [ 
+            _create_aldi_xtring(eqn, eid_to_wrt_tokens[eqn.id]) 
+            for eqn in equations
+        ]
+        self._func_string = create_evaluator_func_string(xtrings)
 
-            self._func_string = create_evaluator_func_string(xtrings)
-            try:
-                self._func = eval(self._func_string)
-            except:
-                print(k)
-                from IPython import embed; embed()
+        custom_functions = { 
+            k: af_.finite_differentiator(v) 
+            for k, v in custom_functions.items()
+        } if custom_functions else None
+        custom_functions = aa_.add_function_adaptations_to_custom_functions(custom_functions)
+
+        self._func = eval(self._func_string, custom_functions, )
 
         return self
 

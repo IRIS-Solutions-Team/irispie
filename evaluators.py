@@ -1,5 +1,6 @@
+"""m = 
 """
-"""
+
 
 #[
 from __future__ import annotations
@@ -13,7 +14,7 @@ from collections.abc import (Iterable, )
 
 from . import (quantities as qu_, )
 from . import (equations as eq_, )
-from .functions import *
+from .aldi import (adaptations as aa_, )
 #]
 
 
@@ -22,7 +23,42 @@ __all__ = [
 ]
 
 
-class SteadyEvaluator:
+class _EvaluatorMixin:
+    """
+    """
+    #[
+    @property
+    def equations_human(self, /, ) -> Iterable[str]:
+        return [ eqn.human for eqn in self._equations ]
+
+    @property
+    def num_equations(self, /, ) -> int:
+        """
+        """
+        return len(self._equations)
+
+    def _create_evaluator_function(
+        self,
+        /,
+        custom_functions: dict | None = None,
+    ) -> NoReturn:
+        """
+        """
+        custom_functions = aa_.add_function_adaptations_to_custom_functions(custom_functions)
+        custom_functions["_array"] = np_.array
+        xtrings = [ eqn.remove_equation_ref_from_xtring() for eqn in self._equations ]
+        func_string = ",".join(xtrings)
+        self._func = eval(f"lambda x, t, L: _array([{func_string}], dtype=float)", custom_functions)
+
+    def _populate_min_max_shifts(self) -> NoReturn:
+        """
+        """
+        self.min_shift = eq_.get_min_shift_from_equations(self._equations)
+        self.max_shift = eq_.get_max_shift_from_equations(self._equations)
+    #]
+
+
+class SteadyEvaluator(_EvaluatorMixin):
     """
     """
     #[
@@ -35,18 +71,19 @@ class SteadyEvaluator:
         z0: np_.ndarray,
         updater: Callable,
         /,
+        context: dir | None = None,
     ) -> NoReturn:
+        """ """
         self._t_zero = t_zero
         self._equations = list(equations)
         self._quantities = list(quantities)
         self._eids = list(eq_.generate_all_eids(self._equations))
-        self._create_evaluator_function()
+        self._create_evaluator_function(context)
         self._create_incidence_matrix()
         self._x = steady_array
         self._z0 = z0.reshape(-1,) if z0 is not None else None
         self._steady_array_updater = updater
-        self.min_shift = eq_.get_min_shift_from_equations(self._equations)
-        self.max_shift = eq_.get_max_shift_from_equations(self._equations)
+        self._populate_min_max_shifts()
 
     @property
     def initial_guess(self, /, ) -> np_.ndarray:
@@ -59,10 +96,6 @@ class SteadyEvaluator:
     @property
     def quantities_human(self, /, ) -> Iterable[str]:
         return [ qty.human for qty in self._quantities ]
-
-    @property
-    def equations_human(self, /, ) -> Iterable[str]:
-        return [ eqn.human for eqn in self._equations ]
 
     @property
     def num_equations(self, /, ) -> int:
@@ -79,13 +112,6 @@ class SteadyEvaluator:
         x = self._steady_array_updater(self._x, current)
         return self._func(x, self._t_zero, x)
 
-    def _create_evaluator_function(self, /, ) -> NoReturn:
-        """
-        """
-        xtrings = [ eqn.remove_equation_ref_from_xtring() for eqn in self._equations ]
-        func_string = ",".join(xtrings)
-        self._func = eval(f"lambda x, t, L: np_.array([{func_string}], dtype=float)")
-
     def _create_incidence_matrix(self, /, ) -> NoReturn:
         """
         """
@@ -99,10 +125,10 @@ class SteadyEvaluator:
             ))
             matrix[row_index, column_indices] = True
         self.incidence_matrix = matrix
-#]
+    #]
 
 
-class PlainEvaluator:
+class PlainEvaluator(_EvaluatorMixin):
     """
     """
     #[
@@ -113,36 +139,21 @@ class PlainEvaluator:
     def __init__(
         self,
         equations: eq_.Equations,
+        context: dir | None = None,
         /,
     ) -> NoReturn:
         self._equations = list(equations)
-        self.min_shift = eq_.get_min_shift_from_equations(self._equations)
-        self.max_shift = eq_.get_max_shift_from_equations(self._equations)
-        self._create_evaluator_function()
-
-    @property
-    def equations_human(self, /, ) -> Iterable[str]:
-        return [ eqn.human for eqn in self._equations ]
+        self._create_evaluator_function(context)
+        self._populate_min_max_shifts()
 
     @property
     def min_num_columns(self, /, ) -> int:
         return -self.min_shift + 1 + self.max_shift
 
-    @property
-    def num_equations(self, /, ) -> int:
-        return len(self._equations)
-
     def eval(self, data_array: np_.ndarray, columns, steady_array, /, ) -> np_.ndarray:
         """
         """
         return self._func(data_array, columns, steady_array, ).reshape(self.num_equations, -1)
-
-    def _create_evaluator_function(self, /, ) -> NoReturn:
-        """
-        """
-        xtrings = [ eqn.remove_equation_ref_from_xtring() for eqn in self._equations ]
-        func_string = ",".join(xtrings)
-        self._func = eval(f"lambda x, t, L: np_.array([{func_string}], dtype=float)")
-#]
+    #]
 
 

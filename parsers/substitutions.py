@@ -16,8 +16,11 @@ def resolve_substitutions(
     where_substitute: list[str],
     /,
 ) -> dict[str, tuple]:
+    source = parsed.get("substitutions", None)
+    if not source:
+        return parsed
+    definitions = _define_substitutions(source, )
     where_substitute = set(where_substitute).intersection(parsed.keys())
-    definitions = _define_substitutions(parsed["substitutions"], )
     subs_pattern = re_.compile(r"\$(" + "|".join(lhs for lhs in definitions.keys()) + r")\$")
     replace = lambda match: definitions[match.group(1)]
     make_substitutions = lambda source: re_.sub(subs_pattern, replace, source)

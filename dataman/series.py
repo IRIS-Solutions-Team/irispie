@@ -23,12 +23,19 @@ from ..mixins import (userdata as ud_, )
 #]
 
 
-underscore_functions = ["log", "exp", "sqrt", "max", "min", "mean", "median", "cumsum"]
+FUNCTION_ADAPTATIONS = ["log", "exp", "sqrt"] + ["cumsum"] + ["max", "min", "mean", "median"]
 
 
 __all__ = [
     "Series", "shift", "diff", "difflog", "pct", "roc",
-]
+] + FUNCTION_ADAPTATIONS
+
+
+for n in FUNCTION_ADAPTATIONS:
+    exec(
+        f"def {n}(x, *args, **kwargs): "
+        f"return x._{n}_(*args, **kwargs) if hasattr(x, '_{n}_') else np_.{n}(x, *args, **kwargs)"
+    )
 
 
 Dates: TypeAlias = Dater | Iterable[Dater] | Ranger | EllipsisType | None
@@ -552,7 +559,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.S
         return self._trim()
 
     def copy(self, /, ) -> Self:
-        return co_.deepcopy(self)
+        return co_.deepcopy(self, )
 
     for n in ["log", "exp", "sqrt"]:
         exec(f"def {n}(self): return self._replace_data(np_.{n}(self.data, ), )")
@@ -560,7 +567,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.S
     for n in ["cumsum"]:
         exec(f"def {n}(self): return self._replace_data(np_.{n}(self.data, axis=0, ), )")
 
-    for n in underscore_functions:
+    for n in ["max", "min", "mean", "median"]:
         exec(f"def _{n}_(self, *args, **kwargs): return self._unop(np_.{n}, *args, **kwargs, )")
 
 

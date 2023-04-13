@@ -44,14 +44,23 @@ class Descriptor:
     system_map: SystemMap | None = None
     aldi_context: ad_.Context | None = None
 
-    def __init__(self, equations, quantities, /,) -> NoReturn:
+    def __init__(
+        self,
+        equations: eq_.Equations,
+        quantities: qu_.Quantities,
+        custom_functions: dict | None,
+        /,
+    ) -> NoReturn:
         self.system_vectors = SystemVectors(equations, quantities)
         self.solution_vectors = SolutionVectors(self.system_vectors)
         self.system_map = SystemMap(self.system_vectors)
+        num_columns = 1
         self.aldi_context = ad_.Context.for_equations(
            ad_.Atom, 
            self.system_vectors.generate_system_equations_from_equations(equations),
            self.system_vectors.eid_to_wrt_tokens,
+           num_columns,
+           custom_functions,
         )
 
     def get_num_backwards(self: Self) -> int:
