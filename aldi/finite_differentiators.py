@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import (NoReturn, Callable, )
 import numpy as np_
+import copy as co_
 
 from ..aldi import (differentiators as ad_, )
 #]
@@ -77,8 +78,8 @@ def _plus_epsilon(arg_values, k, epsilon, ):
     """
     Create a copy of function arguments and increase k-th argument by epsilon
     """
-    arg_values_plus = arg_values[:]
-    arg_values_plus[k] = epsilon
+    arg_values_plus = co_.deepcopy(arg_values)
+    arg_values_plus[k] += epsilon
     return arg_values_plus
 
 
@@ -94,7 +95,7 @@ def _collect_arg_values(*args, ):
     """
     """
     return [
-        a.value if hasattr(a, "_is_atom", ) else a
+        co_.deepcopy(a.value) if hasattr(a, "_is_atom", ) else a
         for a in args
     ]
 
@@ -103,7 +104,7 @@ def _collect_arg_diffs(*args, ):
     """
     """
     return [
-        a.diff if hasattr(a, "_is_atom", ) else None
+        co_.deepcopy(a.diff) if hasattr(a, "_is_atom", ) else None
         for a in args
     ]
 

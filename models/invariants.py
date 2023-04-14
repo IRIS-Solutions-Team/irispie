@@ -8,7 +8,7 @@ from __future__ import (annotations, )
 from typing import (Self, NoReturn, Callable, )
 
 from .. import (equations as eq_, quantities as qu_, evaluators as ev_, )
-from ..models import (facade as mf_, )
+from ..models import (flags as mg_, )
 from ..fords import (descriptors as fd_, )
 #]
 
@@ -27,7 +27,7 @@ class Invariant:
     ) -> Self:
         """
         """
-        self._flags = mf_.ModelFlags.from_kwargs(**kwargs, )
+        self._flags = mg_.ModelFlags.from_kwargs(**kwargs, )
         self._populate_function_context(context)
         #
         self._quantities = model_source.quantities[:]
@@ -59,7 +59,11 @@ class Invariant:
             self._dynamic_equations + self._steady_equations,
         )
 
-    def _populate_function_context(self, context: dict | None, /, ) -> NoReturn:
+    def _populate_function_context(
+        self,
+        context: dict | None,
+        /,
+    ) -> NoReturn:
         """
         """
         self._function_context = {

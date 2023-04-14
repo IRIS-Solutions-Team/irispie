@@ -11,8 +11,8 @@ import numpy as np_
 import scipy as sp_
 import dataclasses as dc_
 
-from ..fords import systems as sy_
-from ..fords import descriptors as de_
+from ..fords import (systems as sy_, descriptors as de_, )
+from ..models import (flags as mg_, )
 #]
 
 
@@ -68,6 +68,7 @@ class Solution:
         cls, 
         descriptor: de_.Descriptor,
         system: sy_.System,
+        model_flags: mg_.ModelFlags,
         /,
         tolerance: float = 1e-12,
     ) -> Self:

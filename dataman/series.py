@@ -23,7 +23,9 @@ from ..mixins import (userdata as ud_, )
 #]
 
 
-FUNCTION_ADAPTATIONS = ["log", "exp", "sqrt"] + ["cumsum"] + ["max", "min", "mean", "median"]
+FUNCTION_ADAPTATIONS = ["log", "exp", "sqrt"] + ["cumsum"] + ["maxi", "mini", "mean", "median"]
+np_.maxi = np_.max
+np_.mini = np_.min
 
 
 __all__ = [
@@ -277,18 +279,23 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.S
         """
         return self.get_data(*args)
 
-    def _shift(self, shift_by) -> NoReturn:
+    def _shift(self, shift_by) -> Self:
         """
         Shift (lag, lead) start date
         """
-        self.start_date = self.start_date - shift_by if self.start_date else self.start_date
+        self.start_date = (
+            self.start_date - shift_by 
+            if self.start_date else self.start_date
+        )
 
     def __getitem__(self, index):
         """
         Create a new time series based on date retrieved by self[dates] or self[dates, columns]
         """
         if isinstance(index, int):
-            return co_.deepcopy(self)._shift(index)
+            new = co_.deepcopy(self)
+            new._shift(index)
+            return new
         if not isinstance(index, tuple):
             index = (index, None, )
         return self._get_data_and_recreate(*index)
@@ -567,7 +574,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.S
     for n in ["cumsum"]:
         exec(f"def {n}(self): return self._replace_data(np_.{n}(self.data, axis=0, ), )")
 
-    for n in ["max", "min", "mean", "median"]:
+    for n in ["maxi", "mini", "mean", "median"]:
         exec(f"def _{n}_(self, *args, **kwargs): return self._unop(np_.{n}, *args, **kwargs, )")
 
 
