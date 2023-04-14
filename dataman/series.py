@@ -23,7 +23,7 @@ from ..mixins import (userdata as ud_, )
 #]
 
 
-FUNCTION_ADAPTATIONS = ["log", "exp", "sqrt"] + ["cumsum"] + ["maxi", "mini", "mean", "median"]
+FUNCTION_ADAPTATIONS = ["log", "exp", "sqrt", "maximum", "minimum"] + ["cumsum"] + ["maxi", "mini", "mean", "median"]
 np_.maxi = np_.max
 np_.mini = np_.min
 
@@ -123,7 +123,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.S
         data: np_.ndarray,
         /,
     ) -> Self:
-        num_columns = data.shape[1]
+        num_columns = data.shape[1] if hasattr(data, "shape") else 1
         self = cls(num_columns=num_columns)
         self.set_data(dates, data)
         return self
@@ -568,8 +568,9 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.S
     def copy(self, /, ) -> Self:
         return co_.deepcopy(self, )
 
-    for n in ["log", "exp", "sqrt"]:
-        exec(f"def {n}(self): return self._replace_data(np_.{n}(self.data, ), )")
+    for n in ["log", "exp", "sqrt", "maximum", "minimum"]:
+        exec(f"def {n}(self, *args, **kwargs, ): return self._replace_data(np_.{n}(self.data, *args, **kwargs, ), )")
+        exec(f"def _{n}_(self, *args, **kwargs, ): return self._unop(np_.{n}, *args, **kwargs, )")
 
     for n in ["cumsum"]:
         exec(f"def {n}(self): return self._replace_data(np_.{n}(self.data, axis=0, ), )")

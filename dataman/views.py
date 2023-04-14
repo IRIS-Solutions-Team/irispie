@@ -73,12 +73,16 @@ class ViewMixin:
             "", 
         ]
 
+    def _get_footer_view_(self, /, ):
+        return ["", ]
+
     def _get_view_(self, /, ):
         """
         """
         header_view = self._get_header_view_()
         content_view = self._get_content_view_()
-        return header_view + content_view
+        footer_view = self._get_footer_view_()
+        return header_view + content_view + footer_view
 
     def __invert__(self):
         """
