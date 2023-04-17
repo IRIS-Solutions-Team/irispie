@@ -15,6 +15,7 @@ from collections.abc import (Iterable, )
 from . import (quantities as qu_, )
 from . import (equations as eq_, )
 from .aldi import (adaptations as aa_, )
+from .jacobians import (descriptors as jd_, )
 #]
 
 
@@ -40,15 +41,15 @@ class _EvaluatorMixin:
     def _create_evaluator_function(
         self,
         /,
-        custom_functions: dict | None = None,
+        function_context: dict | None = None,
     ) -> NoReturn:
         """
         """
-        custom_functions = aa_.add_function_adaptations_to_custom_functions(custom_functions)
-        custom_functions["_array"] = np_.array
-        xtrings = [ eqn.remove_equation_ref_from_xtring() for eqn in self._equations ]
-        func_string = ",".join(xtrings)
-        self._func = eval(f"lambda x, t, L: _array([{func_string}], dtype=float)", custom_functions)
+        function_context = aa_.add_function_adaptations_to_custom_functions(function_context)
+        function_context["_array"] = np_.array
+        self._xtrings = [ eqn.remove_equation_ref_from_xtring() for eqn in self._equations ]
+        func_string = " , ".join(self._xtrings)
+        self._func = eval(eq_.EVALUATOR_PREAMBLE + f"_array([{func_string}], dtype=float)", function_context)
 
     def _populate_min_max_shifts(self) -> NoReturn:
         """
@@ -70,19 +71,20 @@ class SteadyEvaluator(_EvaluatorMixin):
         steady_array: np_.ndarray,
         z0: np_.ndarray,
         updater: Callable,
-        /,
-        context: dir | None = None,
+        jacobian_descriptor: Callable | None,
+        function_context: dir | None,
     ) -> NoReturn:
         """ """
         self._t_zero = t_zero
         self._equations = list(equations)
         self._quantities = list(quantities)
         self._eids = list(eq_.generate_all_eids(self._equations))
-        self._create_evaluator_function(context)
+        self._create_evaluator_function(function_context)
         self._create_incidence_matrix()
         self._x = steady_array
         self._z0 = z0.reshape(-1,) if z0 is not None else None
         self._steady_array_updater = updater
+        self._jacobian_descriptor = jacobian_descriptor
         self._populate_min_max_shifts()
 
     @property
@@ -99,18 +101,57 @@ class SteadyEvaluator(_EvaluatorMixin):
 
     @property
     def num_equations(self, /, ) -> int:
-        return len(self._equations)
+        return len(self._equations, )
 
     @property
     def num_quantities(self, /, ) -> int:
-        return len(self._quantities)
+        return len(self._quantities, )
 
-    def eval(self, current: np_.ndarray | None = None, /, ):
+    def update(
+        self,
+        current: np_.ndarray | None = None,
+        /,
+    ) -> np_.ndarray:
+        """
+        """
+        current = current if current is not None else self._z0.reshape(-1, 1, )
+        return self._steady_array_updater(self._x, current, )
+
+    def eval(
+        self,
+        current: np_.ndarray | None = None,
+        /,
+    ) -> np_.ndarray:
+        """
+        """
+        current = current if current is not None else self._z0.reshape(-1, 1, )
+        x = self._steady_array_updater(self._x, current, )
+        return self._func(x, self._t_zero, None, )
+
+    def eval_with_jacobian(
+        self,
+        current: np_.ndarray | None = None,
+        /,
+    ) -> np_.ndarray:
+        """
+        """
+        current = current if current is not None else self._z0.reshape(-1, 1, )
+        x = self._steady_array_updater(self._x, current, )
+        return (
+            self._func(x, self._t_zero, None, ),
+            self._jacobian_descriptor.eval(x, None, ),
+        )
+
+    def eval_jacobian(
+        self,
+        current: np_.ndarray | None = None,
+        /,
+    ) -> np_.ndarray:
         """
         """
         current = current if current is not None else self._z0.reshape(-1, 1)
         x = self._steady_array_updater(self._x, current)
-        return self._func(x, self._t_zero, x)
+        return self._jacobian_descriptor.eval(x, None, )
 
     def _create_incidence_matrix(self, /, ) -> NoReturn:
         """
@@ -139,18 +180,24 @@ class PlainEvaluator(_EvaluatorMixin):
     def __init__(
         self,
         equations: eq_.Equations,
-        context: dir | None = None,
+        function_context: dir | None = None,
         /,
     ) -> NoReturn:
-        self._equations = list(equations)
-        self._create_evaluator_function(context)
+        self._equations = list(equations, )
+        self._create_evaluator_function(function_context, )
         self._populate_min_max_shifts()
 
     @property
     def min_num_columns(self, /, ) -> int:
         return -self.min_shift + 1 + self.max_shift
 
-    def eval(self, data_array: np_.ndarray, columns, steady_array, /, ) -> np_.ndarray:
+    def eval(
+        self,
+        data_array: np_.ndarray,
+        columns: int | Iterable[int],
+        steady_array: np_.ndarray,
+        /,
+    ) -> np_.ndarray:
         """
         """
         return self._func(data_array, columns, steady_array, ).reshape(self.num_equations, -1)

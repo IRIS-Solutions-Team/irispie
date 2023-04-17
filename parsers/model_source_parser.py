@@ -4,7 +4,6 @@
 
 #[
 from __future__ import annotations
-# from IPython import embed
 
 import parsimonious as pa_
 import functools as ft_

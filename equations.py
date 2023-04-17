@@ -21,7 +21,8 @@ from .exceptions import UndeclaredName
 #]
 
 
-_EVALUATOR_FORMAT = "lambda x, t: [{equations}]"
+EVALUATOR_PREAMBLE = "lambda x, t, L: "
+_EVALUATOR_FORMAT = EVALUATOR_PREAMBLE + "[{joined_xtrings}]"
 X_REF_PATTERN = "{qid},t{shift:+g},{eid}"
 
 _QUANTITY_NAME_PATTERN = re.compile(r"\b([a-zA-Z]\w*)\b(\[[-+\d]+\])?(?!\()")
@@ -83,9 +84,6 @@ class Equation:
 Equations: TypeAlias = Iterable[Equation]
 
 
-STEADY_REF_PATTERN = re.compile(r"&x\b")
-
-
 def generate_all_tokens_from_equations(equations: Equations) -> Iterable[Token]:
     return itertools.chain.from_iterable(eqn.incidence for eqn in equations)
 
@@ -107,11 +105,13 @@ def finalize_steady_equations(
 
 
 def _replace_steady_ref(equations: Equations) -> NoReturn:
+    STEADY_REF_PATTERN = re.compile(r"&x\[([^,\]]+),[^\]]+\]")
     for eqn in equations:
-        eqn.xtring = re.sub(STEADY_REF_PATTERN, "L", eqn.xtring)
+        eqn.xtring = re.sub(STEADY_REF_PATTERN, lambda match: "L["+match.group(1)+"]", eqn.xtring)
 
 
 def _remove_steady_ref(equations: Equations) -> NoReturn:
+    STEADY_REF_PATTERN = re.compile(r"&x\b")
     for eqn in equations:
         eqn.xtring = re.sub(STEADY_REF_PATTERN, "x", eqn.xtring)
 
@@ -153,10 +153,10 @@ def create_name_to_qid_from_equations(equations: Equations) -> dict[str, int]:
     return { name: qid for qid, name in enumerate(all_names) }
 
 
-def create_evaluator_func_string(equations: Iterable[str]) -> str:
+def create_evaluator_func_string(xtrings: str) -> str:
     """
     """
-    return _EVALUATOR_FORMAT.format(equations=" , ".join(equations))
+    return _EVALUATOR_FORMAT.format(joined_xtrings=" , ".join(xtrings))
 
 
 def create_eid_to_wrt_tokens(
@@ -169,7 +169,8 @@ def create_eid_to_wrt_tokens(
     eid_to_wrt_tokens = {}
     for eqn in equations:
         eid_to_wrt_tokens[eqn.id] = sort_tokens(
-            wrt for wrt in all_wrt_tokens if wrt in eqn.incidence
+            wrt for wrt in all_wrt_tokens
+            if wrt in eqn.incidence
         )
     return eid_to_wrt_tokens
     #]

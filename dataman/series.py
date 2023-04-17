@@ -451,7 +451,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.S
         """
         other + self
         """
-        return self._unop(lambda data: data.__radd__(other))
+        return self.apply(lambda data: data.__radd__(other))
 
     def __mul__(self, other) -> Self|np_.ndarray:
         """
@@ -464,7 +464,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.S
         """
         other + self
         """
-        return self._unop(lambda data: data.__rmul__(other))
+        return self.apply(lambda data: data.__rmul__(other))
 
     def __sub__(self, other):
         """
@@ -477,7 +477,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.S
         """
         other - self
         """
-        return self._unop(lambda data: data.__rsub__(other))
+        return self.apply(lambda data: data.__rsub__(other))
 
     def __pow__(self, other):
         """
@@ -491,7 +491,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.S
         """
         other ** self
         """
-        return self._unop(lambda data: data.__rpow__(other))
+        return self.apply(lambda data: data.__rpow__(other))
 
     def __truediv__(self, other):
         """
@@ -504,7 +504,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.S
         """
         other - self
         """
-        return self._unop(lambda data: data.__rtruediv__(other))
+        return self.apply(lambda data: data.__rtruediv__(other))
 
     def __floordiv__(self, other):
         """
@@ -516,7 +516,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.S
         """
         other // self
         """
-        return self._unop(lambda data: data.__rfloordiv__(other))
+        return self.apply(lambda data: data.__rfloordiv__(other))
 
     def __mod__(self, other):
         """
@@ -528,9 +528,9 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.S
         """
         other % self
         """
-        return self._unop(lambda data: data.__rmod__(other))
+        return self.apply(lambda data: data.__rmod__(other))
 
-    def _unop(self, func, /, *args, **kwargs):
+    def apply(self, func, /, *args, **kwargs):
         new_data = func(self.data, *args, **kwargs)
         axis = kwargs.get("axis")
         if new_data.shape==self.data.shape:
@@ -546,12 +546,12 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.S
         elif axis==0 and new_data.shape==(self.data.shape[1],):
             return new_data
         else:
-            raise Exception("Unary operation on a time series resulted in a data array with an unexpected shape")
+            raise Exception("Function applied on a time series resulted in a data array with an unexpected shape")
 
     def _binop(self, other, func, /, ):
         if not isinstance(other, type(self)):
             unop_func = lambda data: func(data, other)
-            return _unop(self, unop_func)
+            return apply(self, unop_func)
         encompassing_range = self._get_encompassing_range(self, other)
         self_data = self.get_data(encompassing_range)
         other_data = other.get_data(encompassing_range)
@@ -570,13 +570,13 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.S
 
     for n in ["log", "exp", "sqrt", "maximum", "minimum"]:
         exec(f"def {n}(self, *args, **kwargs, ): return self._replace_data(np_.{n}(self.data, *args, **kwargs, ), )")
-        exec(f"def _{n}_(self, *args, **kwargs, ): return self._unop(np_.{n}, *args, **kwargs, )")
+        exec(f"def _{n}_(self, *args, **kwargs, ): return self.apply(np_.{n}, *args, **kwargs, )")
 
     for n in ["cumsum"]:
         exec(f"def {n}(self): return self._replace_data(np_.{n}(self.data, axis=0, ), )")
 
     for n in ["maxi", "mini", "mean", "median"]:
-        exec(f"def _{n}_(self, *args, **kwargs): return self._unop(np_.{n}, *args, **kwargs, )")
+        exec(f"def _{n}_(self, *args, **kwargs): return self.apply(np_.{n}, *args, **kwargs, )")
 
 
 def _get_num_leading_missing_rows(data, test_missing_period, /, ):
@@ -590,11 +590,11 @@ def _get_num_leading_missing_rows(data, test_missing_period, /, ):
     return num
 
 
-def _unop(x, func: Callable, /, *args, **kwargs) -> object:
-    if isinstance(x, Series):
-        return x._unop(func, *args, **kwargs)
-    else:
-        return func(x, *args, **kwargs)
+# def apply(x, func: Callable, /, *args, **kwargs) -> object:
+    # if isinstance(x, Series):
+        # return x.apply(func, *args, **kwargs)
+    # else:
+        # return func(x, *args, **kwargs)
 
 
 def hstack(first, *args) -> Self:

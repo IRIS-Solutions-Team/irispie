@@ -84,6 +84,10 @@ def sort_tokens(tokens: Iterable[Token]) -> Iterable[Token]:
     return sorted(tokens, key=lambda x: (-x.shift, x.qid))
 
 
+def is_qid_in_tokens(tokens: Tokens, qid: int) -> bool:
+    return any(tok.qid == qid for tok in tokens)
+
+
 def print_tokens(
     tokens: Tokens,
     qid_to_name: dict[int, str]

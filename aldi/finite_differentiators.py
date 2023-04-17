@@ -93,6 +93,7 @@ def _get_epsilon(value, ):
 
 def _collect_arg_values(*args, ):
     """
+    Collect the values of input arguments, both Atom values and primitives
     """
     return [
         co_.deepcopy(a.value) if hasattr(a, "_is_atom", ) else a
@@ -102,6 +103,7 @@ def _collect_arg_values(*args, ):
 
 def _collect_arg_diffs(*args, ):
     """
+    Collect the diffs of input arguments for Atoms or Nones for primitives
     """
     return [
         co_.deepcopy(a.diff) if hasattr(a, "_is_atom", ) else None

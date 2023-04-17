@@ -5,7 +5,7 @@
 #[
 from __future__ import annotations
 
-from typing import (Self, NoReturn, )
+from typing import (Self, NoReturn, Any, )
 from collections.abc import (Iterable, )
 import itertools as it_
 import dataclasses as dc_
@@ -48,15 +48,15 @@ class ArrayMap:
         self.lhs = (self.lhs[0]+other.lhs[0], self.lhs[1]+other.lhs[1])
         self.rhs = (self.rhs[0]+other.rhs[0], self.rhs[1]+other.rhs[1])
 
-    def offset(
-        self,
-        lhs_row: int, 
-        rhs_row_offset: int,
-    ) -> NoReturn:
-        """
-        """
-        self.lhs = ([lhs_row if i is not None else None for i in self.lhs[0]], self.lhs[1])
-        self.rhs = ([i+rhs_row_offset if i is not None else None for i in self.rhs[0]], self.rhs[1])
+    #def offset(
+    #    self,
+    #    lhs_row: int, 
+    #    rhs_row_offset: int,
+    #) -> NoReturn:
+    #    """
+    #    """
+    #    self.lhs = ([lhs_row if i is not None else None for i in self.lhs[0]], self.lhs[1])
+    #    self.rhs = ([i+rhs_row_offset if i is not None else None for i in self.rhs[0]], self.rhs[1])
 
     def _remove_nones(self) -> NoReturn:
         """
@@ -71,9 +71,29 @@ class ArrayMap:
         self.lhs = (list(unzipped_pruned[0]), list(unzipped_pruned[1]))
         self.rhs = (list(unzipped_pruned[2]), list(unzipped_pruned[3]))
 
+    @classmethod
+    def for_equations(
+        cls,
+        eids: list[int],
+        eid_to_wrt_tokens: dict[int, Any],
+        tokens_in_columns_on_rhs: list[Any],
+        eid_to_rhs_offset: dict[int, int],
+        /,
+    ) -> Self:
+        """
+        """
+        return merge_array_maps(
+            cls._for_single_equation(
+                eid_to_wrt_tokens[eid],
+                tokens_in_columns_on_rhs,
+                eid_to_rhs_offset[eid],
+                lhs_row,
+            )
+            for lhs_row, eid in enumerate(eids)
+        )
 
     @classmethod
-    def for_equation(
+    def _for_single_equation(
         cls,
         tokens_in_equation_on_rhs: in_.Tokens,
         tokens_in_columns_on_lhs: in_.Tokens,
@@ -100,9 +120,9 @@ class ArrayMap:
         # Equivalent to:
         # self = cls()
         # for rhs_row, t in enumerate(tokens_in_equation_on_rhs, start=rhs_offset):
-            # if t in tokens_in_columns_on_lhs:
-                # lhs_column = tokens_in_columns_on_lhs.index(t)
-                # self.append((lhs_row, lhs_column), (rhs_row, 0))
+        #     if t in tokens_in_columns_on_lhs:
+        #         lhs_column = tokens_in_columns_on_lhs.index(t)
+        #         self.append((lhs_row, lhs_column), (rhs_row, 0))
         return self
 
     @classmethod
@@ -120,7 +140,7 @@ class ArrayMap:
     #]
 
 
-def vstack_array_maps(maps: Iterable[ArrayMap]) -> ArrayMap:
+def merge_array_maps(maps: Iterable[ArrayMap]) -> ArrayMap:
     """
     """
     #[
@@ -133,13 +153,13 @@ def vstack_array_maps(maps: Iterable[ArrayMap]) -> ArrayMap:
 
 def create_eid_to_rhs_offset(
     eids: Iterable[int],
-    eid_to_wrt_tokens: dict[int, in_.Tokens],
+    eid_to_wrt_something: dict[int, in_.Tokens],
 ) -> dict[int, int]:
     """
     Cumulative sum of number of tokens in individual equations, starting with 0
     """
     rhs_offsets = list(it_.accumulate(
-        len(eid_to_wrt_tokens[i]) 
+        len(eid_to_wrt_something[i]) 
         for i in eids
     ))
     # Offset starts from 0 for the first equations

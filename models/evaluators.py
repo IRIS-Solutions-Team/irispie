@@ -8,9 +8,11 @@ from __future__ import annotations
 from typing import (Self, NoReturn, )
 from collections.abc import (Iterable, Callable, )
 import numpy as np_
+import functools as ft_
 
 from .. import (equations as eq_, quantities as qu_, evaluators as ev_, )
 from ..models import (variants as va_, )
+from ..jacobians import (descriptors as jd_, )
 #]
 
 
@@ -29,6 +31,7 @@ class SteadyEvaluatorMixin:
         """
         equations = list(equations, )
         quantities = list(quantities, )
+        function_context = self._invariant._function_context
         #
         shift_vec, t_zero = _prepare_time_shifts(equations, )
         qid_to_logly = self.create_qid_to_logly()
@@ -36,16 +39,20 @@ class SteadyEvaluatorMixin:
         maybelog_levels, maybelog_changes, qids, index_logly = _prepare_maybelog_initial_guesses(quantities, variant, )
         maybelog_guess = maybelog_levels
         #
-        def steady_array_updater(
-            _steady_array: np_.ndarray,
-            _maybelog_guess: np_.ndarray,
-            /,
-        ) -> np_.ndarray:
-            maybelog_levels = maybelog_guess
-            update = maybelog_levels.reshape(-1, 1) + shift_vec * maybelog_changes.reshape(-1, 1)
-            update[index_logly, :] = np_.exp(update[index_logly, :])
-            _steady_array[qids, :] = update
-            return _steady_array
+        steady_array_updater = ft_.partial(
+            _steady_array_updater,
+            maybelog_changes=maybelog_changes,
+            shift_vec=shift_vec,
+            qids=qids,
+            index_logly=index_logly,
+        )
+        #
+        jacobian_descriptor = jd_.Descriptor.for_flat(
+            equations,
+            quantities,
+            qid_to_logly,
+            function_context,
+        )
         #
         return ev_.SteadyEvaluator(
             equations,
@@ -54,8 +61,28 @@ class SteadyEvaluatorMixin:
             steady_array,
             maybelog_guess,
             steady_array_updater,
+            jacobian_descriptor,
+            function_context,
         )
     #]
+
+
+def _steady_array_updater(
+    steady_array: np_.ndarray,
+    maybelog_guess: np_.ndarray,
+    /,
+    maybelog_changes: np_.ndarray,
+    shift_vec: np_.ndarray,
+    qids: Iterable[int],
+    index_logly: Iterable[int],
+) -> np_.ndarray:
+    """
+    """
+    maybelog_levels = maybelog_guess
+    update = maybelog_levels.reshape(-1, 1) + shift_vec * maybelog_changes.reshape(-1, 1)
+    update[index_logly, :] = np_.exp(update[index_logly, :])
+    steady_array[qids, :] = update
+    return steady_array
 
 
 def _prepare_maybelog_initial_guesses(

@@ -50,7 +50,8 @@ class GetterMixin:
         /,
         **kwargs,
     ) -> dict[str, Number]:
-        return self._get_values_from_primary_variant(variant_attr="levels", kind=qu_.QuantityKind.LOGLY_VARIABLE, ) | self.get_parameters_stds()
+        # return self._get_values_from_primary_variant(variant_attr="levels", kind=qu_.QuantityKind.LOGLY_VARIABLE, ) | self.get_parameters_stds()
+        return self._get_values_from_primary_variant(variant_attr="levels", kind=qu_.QuantityKind.LOGLY_VARIABLE, )
 
     @_decorate_output_format
     def get_steady_changes(
@@ -58,7 +59,8 @@ class GetterMixin:
         /,
         **kwargs,
     ) -> dict[str, Number]:
-        return self._get_values_from_primary_variant(variant_attr="changes", kind=qu_.QuantityKind.LOGLY_VARIABLE, ) | self.get_parameters_stds()
+        # return self._get_values_from_primary_variant(variant_attr="changes", kind=qu_.QuantityKind.LOGLY_VARIABLE, ) | self.get_parameters_stds()
+        return self._get_values_from_primary_variant(variant_attr="changes", kind=qu_.QuantityKind.LOGLY_VARIABLE, )
 
     @_decorate_output_format
     def get_parameters(

@@ -5,7 +5,6 @@ Model source
 #[
 from __future__ import annotations
 
-# from IPython import embed
 import re
 import collections
 from typing import NoReturn, TypeAlias, Literal
@@ -237,7 +236,6 @@ class ModelSource:
         #
         return self, preparser_info
     #]
-
 
 
 def _check_unique_names(names: Iterable[str], /) -> NoReturn:

@@ -7,7 +7,7 @@ from __future__ import (annotations, )
 
 from typing import (Self, NoReturn, Callable, )
 
-from .. import (equations as eq_, quantities as qu_, evaluators as ev_, )
+from .. import (equations as eq_, quantities as qu_, evaluators as ev_, wrongdoings as wd_, )
 from ..models import (flags as mg_, )
 from ..fords import (descriptors as fd_, )
 #]
@@ -23,11 +23,13 @@ class Invariant:
         model_source,
         /,
         context: dict | None = None,
+        needs_check_syntax: bool = True,
         **kwargs,
     ) -> Self:
         """
         """
         self._flags = mg_.ModelFlags.from_kwargs(**kwargs, )
+        #
         self._populate_function_context(context)
         #
         self._quantities = model_source.quantities[:]
@@ -37,6 +39,9 @@ class Invariant:
         name_to_qid = qu_.create_name_to_qid(self._quantities, )
         eq_.finalize_dynamic_equations(self._dynamic_equations, name_to_qid, )
         eq_.finalize_steady_equations(self._steady_equations, name_to_qid, )
+        if needs_check_syntax:
+            _check_syntax(self._dynamic_equations, self._function_context, )
+            _check_syntax(self._steady_equations, self._function_context, )
         #
         self._dynamic_descriptor = fd_.Descriptor(self._dynamic_equations, self._quantities, self._function_context, )
         self._steady_descriptor = fd_.Descriptor(self._steady_equations, self._quantities, self._function_context, )
@@ -72,4 +77,42 @@ class Invariant:
         } if context else None
     #]
 
+
+def _check_syntax(equations, function_context, /, ):
+    """
+    Try all equations at once; if this fails, do equation by equation to # catch the troublemakers
+    """
+    try:
+        eval(eq_.create_evaluator_func_string(equations), )
+    except:
+        _catch_troublemakers(equations, function_context, )
+    #]
+
+
+def _catch_troublemakers(equations, function_context, /, ):
+    """
+    Catch the troublemakers
+    """
+    #[
+    fail = [
+        eqn.human for eqn in equations
+        if not _success_creating_lambda(eqn, function_context)
+    ]
+    if fail:
+        message = ["Syntax error in these equations"] + fail
+        wd_.throw("error", message)
+    #]
+
+
+def _success_creating_lambda(equation, function_context):
+    """
+    """
+    #[
+    try:
+        eval(eq_.create_evaluator_func_string([equation.xtring]))
+        return True
+    except Exception as ex:
+        breakpoint()
+        return False
+    #]
 

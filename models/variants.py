@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import warnings
 import numpy as np_
+import operator as op_
 from numbers import Number
-from typing import Self, NoReturn, TypeAlias, Literal
+from typing import (Self, NoReturn, TypeAlias, Literal, Callable, )
 
 from ..quantities import get_max_qid
 #]
@@ -33,8 +34,8 @@ class Variant:
         self.changes = np_.full((size_array,), self._missing, dtype=float, )
 
     def update_values_from_dict(self, update: dict, /, ) -> NoReturn:
-        self.levels = update_levels_from_dict(self.levels, update, )
-        self.changes = update_changes_from_dict(self.changes, update, )
+        self.levels = update_something_from_dict(self.levels, update, op_.itemgetter(0), lambda x: x, )
+        self.changes = update_something_from_dict(self.changes, update, op_.itemgetter(1), lambda x: ..., )
 
     def update_levels_from_array(self, levels: np_.ndarray, qids: Iterable[int], /, ) -> NoReturn:
         self.levels = update_from_array(self.levels, levels, qids, )
@@ -121,30 +122,18 @@ def update_from_array(
     return values
 
 
-def update_levels_from_dict(
-    levels: np_.ndarray,
+def update_something_from_dict(
+    something: np_.ndarray,
     update: dict[int, Number|tuple],
+    when_tuple: Callable,
+    when_not_tuple: Callable,
     /,
 ) -> np_.ndarray:
     """
-    Update variant levels from a dictionary
+    Update variant levels or changes from a dictionary
     """
-    for qid, new_value in update.items():
-        new_value = new_value if isinstance(new_value, Number) else new_value[0]
-        levels[qid] = new_value if new_value is not ... else levels[qid]
-    return levels
-
-
-def update_changes_from_dict(
-    changes: np_.ndarray,
-    update: dict[int, Number|tuple],
-    /,
-) -> np_.ndarray:
-    """
-    Update variant changes from a dictionary
-    """
-    for qid, new_value in update.items():
-        new_value = ... if isinstance(new_value, Number) else new_value[1]
-        changes[qid] = new_value if new_value is not ... else changes[qid]
-    return changes
+    for qid, value in update.items():
+        new_value = when_tuple(value) if isinstance(value, tuple) else when_not_tuple(value)
+        something[qid] = new_value if new_value is not ... else something[qid]
+    return something
 

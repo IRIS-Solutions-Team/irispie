@@ -1,4 +1,5 @@
-""" """
+"""
+"""
 
 
 #[
@@ -46,7 +47,9 @@ class Model(
     me_.SteadyEvaluatorMixin,
     ge_.GetterMixin,
 ):
-    """ """
+    """
+     
+    """
     #[
     __slots__ = ["_invariant", "_variants"]
 
@@ -55,11 +58,10 @@ class Model(
         /,
         **kwargs, 
     ) -> Self:
-        """ """
-        try:
-            qid_to_value = _rekey_dict(kwargs, qu_.create_name_to_qid(self._invariant._quantities))
-        except KeyError as _KeyError:
-            raise ex_.UnknownName(_KeyError.args[0])
+        """
+        """
+        garbage_key = None
+        qid_to_value = _rekey_dict(kwargs, qu_.create_name_to_qid(self._invariant._quantities))
         for v in self._variants:
             v.update_values_from_dict(qid_to_value)
         #
@@ -71,11 +73,14 @@ class Model(
         databank: db_.Databank,
         /,
     ) -> Self:
-        """ """
+        """
+        """
         return self.assign(**databank.__dict__)
 
     def copy(self) -> Self:
-        """Create a deep copy of the Model object"""
+        """
+        Create a deep copy of the Model object
+        """
         return co_.deepcopy(self)
 
     def __getitem__(self, variants):
@@ -89,7 +94,9 @@ class Model(
         new_num: int,
         /,
     ) -> Self:
-        """Alter (expand, shrink) the number of alternative parameter variants in this model object"""
+        """
+        Alter (expand, shrink) the number of alternative parameter variants in this model object
+        """
         if new_num < self.num_variants:
             self._shrink_num_variants(new_num, )
         elif new_num > self.num_variants:
@@ -102,7 +109,9 @@ class Model(
         some_names: Iterable[str] | None = None,
         /
     ) -> NoReturn:
-        """Change the log-status of some Model quantities"""
+        """
+        Change the log-status of some Model quantities
+        """
         some_names = set(some_names) if some_names else None
         qids = [ 
             qty.id 
@@ -113,21 +122,29 @@ class Model(
 
     @property
     def num_variants(self, /, ) -> int:
-        """Number of alternative variants within this Model"""
+        """
+        Number of alternative variants within this Model
+        """
         return len(self._variants)
 
     @property
     def is_linear(self, /, ) -> bool:
-        """True for Models declared as linear"""
+        """
+        True for Models declared as linear
+        """
         return self._invariant._flags.is_linear
 
     @property
     def is_flat(self, /, ) -> bool:
-        """True for Models declared as flat"""
+        """
+        True for Models declared as flat
+        """
         return self._invariant._flags.is_flat
 
     def create_steady_evaluator(self, /, ) -> ev_.SteadyEvaluator:
-        """Create a steady-state Evaluator object for this Model"""
+        """
+        Create a steady-state Evaluator object for this Model
+        """
         equations = eq_.generate_equations_of_kind(self._invariant._steady_equations, eq_.EquationKind.STEADY_EVALUATOR)
         quantities = qu_.generate_quantities_of_kind(self._invariant._quantities, qu_.QuantityKind.STEADY_EVALUATOR)
         return self._create_steady_evaluator(self._variants[0], equations, quantities)
@@ -168,7 +185,8 @@ class Model(
         variant: va_.Variant|None = None,
         **kwargs,
     ) -> np_.ndarray:
-        """ """
+        """
+        """
         qid_to_logly = self.create_qid_to_logly()
         if variant is None:
             variant = self._variants[0]
@@ -185,7 +203,8 @@ class Model(
         }[deviation](**kwargs)
 
     def _enforce_auto_values(self: Self, /, ) -> NoReturn:
-        """ """
+        """
+        """
         #
         # Reset levels of shocks to zero, remove changes
         #
@@ -204,13 +223,15 @@ class Model(
         self._variants[0].update_values_from_dict(assign_non_logly)
 
     def _shrink_num_variants(self, new_num: int, /, ) -> NoReturn:
-        """ """
+        """
+        """
         if new_num<1:
             raise Exception('Number of variants must be one or more')
         self._variants = self._variants[0:new_num]
 
     def _expand_num_variants(self, new_num: int, /, ) -> NoReturn:
-        """ """
+        """
+        """
         for i in range(self.num_variants, new_num):
             self._variants.append(co_.deepcopy(self._variants[-1]))
 
@@ -220,7 +241,7 @@ class Model(
         **kwargs,
     ) -> Iterable[sy_.System]:
         """
-        Unsolved first-order systems one for each variant
+        Create unsolved first-order system for each variant
         """
         model_flags = self._invariant._flags.update_from_kwargs(**kwargs, )
         return [ 
@@ -235,25 +256,28 @@ class Model(
         model_flags: mg_.ModelFlags,
         /,
     ) -> sy_.System:
-        """Unsolved first-order system for one variant"""
-        num_columns = descriptor.aldi_context.shape_data[1]
-        logly_context = self.create_qid_to_logly()
-        array_creator = self._choose_system_array_creator(model_flags, )
-        value_context = array_creator(variant, num_columns=num_columns, )
-        return sy_.System.for_descriptor(descriptor, logly_context, value_context, )
-
-    def _choose_system_array_creator(self, model_flags, ):
-        return (
-            self.create_steady_array
-            if model_flags.is_nonlinear else self.create_zero_array
-        )
+        """
+        Create unsolved first-order system for one variant
+        """
+        ac = descriptor.aldi_context
+        num_columns = ac.shape_data[1]
+        qid_to_logly = self.create_qid_to_logly()
+        if model_flags.is_linear:
+            value_context = variant.create_zero_array(qid_to_logly, num_columns=num_columns, shift_in_first_column=ac.min_shift)
+            L = variant.create_steady_array(qid_to_logly, num_columns=1, ).reshape(-1)
+        else:
+            value_context = variant.create_steady_array(qid_to_logly, num_columns=num_columns, )
+            L = value_context[:, -ac.min_shift]
+        return sy_.System.from_descriptor(descriptor, qid_to_logly, value_context, L, )
 
     def solve(
         self,
         /,
         **kwargs,
     ) -> NoReturn:
-        """Calculate first-order solution for each Variant within this Model"""
+        """
+        Calculate first-order solution for each Variant within this Model
+        """
         model_flags = self._invariant._flags.update_from_kwargs(**kwargs, )
         for variant in self._variants:
             self._solve(variant, model_flags, )
@@ -264,7 +288,9 @@ class Model(
         model_flags: mg_.ModelFlags,
         /,
     ) -> NoReturn:
-        """Calculate first-order solution for one Variant of this Model"""
+        """
+        Calculate first-order solution for one Variant of this Model
+        """
         system = self._systemize(variant, self._invariant._dynamic_descriptor, model_flags, )
         variant.solution = sl_.Solution.for_model(self._invariant._dynamic_descriptor, system, model_flags, )
 
@@ -273,7 +299,9 @@ class Model(
         /,
         **kwargs, 
     ) -> dict:
-        """Calculate steady state for each Variant within this Model"""
+        """
+        Calculate steady state for each Variant within this Model
+        """
         model_flags = mg_.ModelFlags.update_from_kwargs(self._invariant._flags, **kwargs)
         solver = self._choose_steady_solver(model_flags)
         for v in self._variants:
@@ -289,7 +317,9 @@ class Model(
         when_fails: str = "error",
         tolerance: float = 1e-12,
     ) -> tuple[bool, Iterable[bool], Iterable[Number], Iterable[np_.ndarray]] | bool:
-        """Verify currently assigned steady state in dynamic or steady equations for each Variant within this Model"""
+        """
+        Verify currently assigned steady state in dynamic or steady equations for each Variant within this Model
+        """
         qid_to_logly = self.create_qid_to_logly()
         evaluator = self._choose_plain_evaluator(equation_switch)
         steady_arrays = (
@@ -302,7 +332,10 @@ class Model(
         # REFACTOR
         t_zero = -evaluator.min_shift
         dis = [ 
-            np_.hstack((evaluator.eval(x, t_zero, x), evaluator.eval(x, t_zero+1, x)))
+            np_.hstack((
+                evaluator.eval(x, t_zero, x[:, t_zero]),
+                evaluator.eval(x, t_zero+1, x[:, t_zero+1]),
+            ))
             for x in steady_arrays
         ]
         # REFACTOR
@@ -319,7 +352,8 @@ class Model(
         equation_switch: _EquationSwitch,
         /,
     ) -> Callable | None:
-        """ """
+        """
+        """
         match equation_switch:
             case "dynamic":
                 return self._invariant._plain_evaluator_for_dynamic_equations
@@ -333,7 +367,8 @@ class Model(
         /,
         algorithm: Callable,
     ) -> _SteadySolverReturn:
-        """ """
+        """
+        """
         #
         # Calculate first-order system for steady equations for this variant
         sys = self._systemize(variant, self._invariant._steady_descriptor, model_flags, )
@@ -372,7 +407,8 @@ class Model(
         variant: Variant,
         /,
     ) -> _SteadySolverReturn:
-        """ """
+        """
+        """
         return None, None, None, None
 
     def _steady_nonlinear_nonflat(
@@ -380,7 +416,8 @@ class Model(
         variant: Variant,
         /,
     ) -> _SteadySolverReturn:
-        """ """
+        """
+        """
         return None, None, None, None
 
     def _choose_steady_solver(
@@ -402,20 +439,23 @@ class Model(
                 return self._steady_linear_flat
 
     def _assign_default_stds(self, default_std, /, ):
-        """ """
+        """
+        """
         if default_std is None:
             default_std = _DEFAULT_STD_LINEAR if mg_.ModelFlags.LINEAR in self._invariant._flags else _DEFAULT_STD_NONLINEAR
         self.assign(**{ k: default_std for k in qu_.generate_quantity_names_by_kind(self._invariant._quantities, qu_.QuantityKind.STD) })
 
     def _get_min_max_shifts(self) -> tuple[int, int]:
-        """ """
+        """
+        """
         return self._invariant._min_shift, self._invariant._max_shift
 
     def get_extended_range_from_base_range(
         self,
         base_range: Iterable[Dater],
     ) -> Iterable[Dater]:
-        """ """
+        """
+        """
         base_range = [ t for t in base_range ]
         num_base_periods = len(base_range)
         start_date = base_range[0] + self._invariant._min_shift
@@ -432,7 +472,8 @@ class Model(
         context: dict | None = None,
         **kwargs,
     ) -> Self:
-        """ """
+        """
+        """
         self = cls()
         #
         self._invariant = in_.Invariant(
@@ -457,7 +498,8 @@ class Model(
         save_preparsed: str = "",
         **kwargs,
     ) -> Self:
-        """ """
+        """
+        """
         model_source, info = so_.ModelSource.from_string(
             source_string, context=context, save_preparsed=save_preparsed,
         )
@@ -470,12 +512,16 @@ class Model(
         /,
         **kwargs,
     ) -> Self:
-        """Create a new Model object from model source files"""
+        """
+        Create a new Model object from model source files
+        """
         source_string = pc_.combine_source_files(source_files)
         return Model.from_string(source_string, **kwargs, )
 
     def from_self(self, ) -> Self:
-        """Create a new Model object with pointers to invariant and variants of this Model object"""
+        """
+        Create a new Model object with pointers to invariant and variants of this Model object
+        """
         new = type(self)()
         new._invariant = self._invariant
         new._variants = self._variants
@@ -492,11 +538,16 @@ _DEFAULT_STD_LINEAR = 1
 _DEFAULT_STD_NONLINEAR = 0.01
 
 
-def _rekey_dict(dict_to_rekey: dict, old_key_to_new_key: dict, /, ) -> dict:
-    return { 
-        old_key_to_new_key[key]: value 
+def _rekey_dict(dict_to_rekey: dict, old_key_to_new_key: dict, /, garbage_key=None) -> dict:
+    #[
+    new_dict = {
+        old_key_to_new_key.get(key, garbage_key): value 
         for key, value in dict_to_rekey.items()
     }
+    if garbage_key in new_dict:
+        del new_dict[garbage_key]
+    return new_dict
+    #]
 
 
 def resolve_variant(self, variants, /, ) -> Iterable[int]:
@@ -518,7 +569,9 @@ def _apply_delog_on_vector(
     qid_to_logly: dict[int, bool],
     /,
 ) -> np_.ndarray:
-    """Delogarithmize the elements of numpy vector that have True log-status"""
+    """
+    Delogarithmize the elements of numpy vector that have True log-status
+    """
     logly_index = [ qid_to_logly[qid] for qid in qids ]
     if any(logly_index):
         vector[logly_index] = np_.exp(vector[logly_index])

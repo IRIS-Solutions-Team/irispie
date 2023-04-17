@@ -43,17 +43,22 @@ class System:
     J: np_.ndarray | None = None
 
     @classmethod
-    def for_descriptor(
+    def from_descriptor(
         cls,
         descriptor: de_.Descriptor,
         logly_context: dict[int, bool],
         value_context: np_.ndarray,
+        steady_array: np_.ndarray,
         /,
     ) -> NoReturn:
         """
         """
         # Differentiate and evaluate constant
-        td, tc = descriptor.aldi_context.eval_to_arrays(value_context, logly_context)
+        td, tc = descriptor.aldi_context.eval_to_arrays(
+            value_context,
+            logly_context,
+            steady_array,
+        )
 
         smap = descriptor.system_map
         svec = descriptor.system_vectors

@@ -20,13 +20,8 @@ from ..incidence import (
     get_min_shift, get_max_qid,
 )
 
-from ..equations import (
-    X_REF_PATTERN, EquationKind, Equation, Equations,
-    generate_all_tokens_from_equations, 
-    create_evaluator_func_string,
-)
-
 from ..aldi import (finite_differentiators as af_, adaptations as aa_, )
+from .. import (equations as eq_, )
 #]
 
 
@@ -83,26 +78,6 @@ class Atom(ValueMixin, LoglyMixin):
         self._value = value
         self._diff = diff
         self._logly = logly
-        return self
-
-    @classmethod
-    def in_context(
-        cls: type,
-        diff: np_.ndarray,
-        token: Token, 
-        columns_to_eval: tuple[int, int],
-        /,
-    ) -> Self:
-        """
-        Create atom with pointers to data and logly contexts
-        """
-        self = cls()
-        self._diff = diff if np_.any(diff!=0) else 0
-        self._data_index = (
-            slice(token.qid, token.qid+1),
-            slice(columns_to_eval[0]+token.shift, columns_to_eval[1]+token.shift+1),
-        )
-        self._logly_index = token.qid
         return self
 
     @classmethod
@@ -282,6 +257,84 @@ class Atom(ValueMixin, LoglyMixin):
     #]
 
 
+class DynamicAtom(Atom):
+    """
+    """
+    #[
+    @classmethod
+    def in_context(
+        cls: type,
+        diff: np_.ndarray,
+        token: Token, 
+        columns_to_eval: tuple[int, int],
+        /,
+    ) -> Self:
+        """
+        Create atom with pointers to data and logly contexts
+        """
+        self = cls()
+        self._diff = diff if np_.any(diff!=0) else 0
+        self._data_index = (
+            # slice(token.qid, token.qid+1),
+            token.qid,
+            slice(columns_to_eval[0]+token.shift, columns_to_eval[1]+token.shift+1),
+        )
+        self._logly_index = token.qid
+        return self
+
+    @staticmethod
+    def create_diff_from_incidence(
+        token: Token,
+        wrt_tokens: Tokens,
+    ) -> np_.ndarray:
+        """
+        """
+        diff = np_.zeros((len(wrt_tokens), 1))
+        if token in wrt_tokens:
+            diff[wrt_tokens.index(token)] = 1
+        return diff
+    #]
+
+
+class FlatSteadyAtom(Atom):
+    """
+    """
+    #[
+    @classmethod
+    def in_context(
+        cls: type,
+        diff: np_.ndarray,
+        token: Token, 
+        columns_to_eval: tuple[int, int],
+        /,
+    ) -> Self:
+        """
+        Create atom with pointers to data and logly contexts
+        """
+        self = cls()
+        self._diff = diff if np_.any(diff!=0) else 0
+        self._data_index = (
+            # slice(token.qid, token.qid+1),
+            token.qid,
+            slice(columns_to_eval[0], columns_to_eval[1]+1),
+        )
+        self._logly_index = token.qid
+        return self
+
+    @staticmethod
+    def create_diff_from_incidence(
+        token: Token,
+        wrt_qids: Tokens,
+    ) -> np_.ndarray:
+        """
+        """
+        diff = np_.zeros((len(wrt_qids), 1))
+        if token.qid in wrt_qids:
+            diff[wrt_qids.index(token.qid)] = 1
+        return diff
+    #]
+
+
 class Context:
     """
     """
@@ -303,8 +356,8 @@ class Context:
     def for_equations(
         cls: type,
         atom_class: type,
-        equations: Equations,
-        eid_to_wrt_tokens: dict[int, Tokens],
+        equations: eq_.Equations,
+        eid_to_wrt_something: dict[int, Any],
         num_columns_to_eval: int,
         custom_functions: dict | None,
         /,
@@ -312,65 +365,64 @@ class Context:
         """
         """
         self = cls(atom_class)
-
+        #
         equations = list(equations)
-        all_tokens = set(generate_all_tokens_from_equations(equations))
-        min_shift = get_min_shift(all_tokens)
-        max_shift = get_max_shift(all_tokens)
+        all_tokens = set(eq_.generate_all_tokens_from_equations(equations))
+        self.min_shift = get_min_shift(all_tokens)
+        self.max_shift = get_max_shift(all_tokens)
         self.shape_data = (
             1 + (get_max_qid(all_tokens) or 0),
-            -min_shift + num_columns_to_eval + max_shift,
+            -self.min_shift + num_columns_to_eval + self.max_shift,
         )
-
-        t_zero = -min_shift
+        #
+        t_zero = -self.min_shift
         self._columns_to_eval = (t_zero, t_zero + num_columns_to_eval - 1)
-
+        #
         self._populate_atom_array(
             equations,
-            eid_to_wrt_tokens,
+            eid_to_wrt_something,
             self._columns_to_eval,
         )
-
-        xtrings = [ 
-            _create_aldi_xtring(eqn, eid_to_wrt_tokens[eqn.id]) 
-            for eqn in equations
-        ]
-        self._func_string = create_evaluator_func_string(xtrings)
-
+        #
         custom_functions = { 
             k: af_.finite_differentiator(v) 
             for k, v in custom_functions.items()
         } if custom_functions else None
         custom_functions = aa_.add_function_adaptations_to_custom_functions(custom_functions)
-
+        #
+        xtrings = [ _create_aldi_xtring(eqn) for eqn in equations ]
+        self._func_string = eq_.create_evaluator_func_string(xtrings)
+        #
         self._func = eval(self._func_string, custom_functions, )
-
+        #
         return self
 
 
     def _populate_atom_array(
         self,
-        equations: Equations,
-        eid_to_wrt_tokens: dict[int, Tokens],
+        equations: eq_.Equations,
+        eid_to_wrt_something: dict[int, Any],
         columns_to_eval: tuple[int, int],
+        /,
     ) -> NoReturn:
         """
         """
         x = {}
         atom_constructor_in_context = self._atom_class.in_context
+        create_diff_from_incidence = self._atom_class.create_diff_from_incidence
         for eqn in equations:
-            wrt_tokens_here = eid_to_wrt_tokens[eqn.id]
+            wrt_something_here = eid_to_wrt_something[eqn.id]
             for tok in eqn.incidence:
                 key = _create_aldi_key(tok, eqn.id)
-                diff = _diff_value_for_atom_from_incidence(tok, wrt_tokens_here)
+                diff = create_diff_from_incidence(tok, wrt_something_here)
                 x[key] = atom_constructor_in_context(diff, tok, columns_to_eval)
         self._x = x
-
 
     def eval(
         self,
         data_context: np_.ndarray,
         logly_context: dict[int, bool],
+        steady_array: np_.ndarray,
     ) -> Iterable[Atom]:
         """
         Evaluate and return a list of final atoms, one for each equation
@@ -378,7 +430,7 @@ class Context:
         self._verify_data_array_shape(data_context.shape)
         self._atom_class._data_context = data_context
         self._atom_class._logly_context = logly_context
-        output = self._func(self._x, None)
+        output = self._func(self._x, None, steady_array, )
         self._atom_class._data_context = None
         self._atom_class._logly_context = None
         return output
@@ -396,6 +448,16 @@ class Context:
             np_.vstack([x.value for x in output]),
         )
 
+    def eval_diff_to_array(
+        self,
+        *args,
+    ) -> np_.array:
+        """
+        Evaluate and return array of diffs
+        """
+        output = self.eval(*args)
+        return np_.vstack([x.diff for x in output])
+
     def _verify_data_array_shape(self, shape_data: np_.ndarray) -> NoReturn:
         """
         """
@@ -405,23 +467,9 @@ class Context:
     #]
 
 
-def _diff_value_for_atom_from_incidence(
-    token: Token,
-    wrt_tokens: Tokens,
-) -> np_.ndarray:
-    """
-    """
-    #[
-    diff = np_.zeros((len(wrt_tokens), 1))
-    if token in wrt_tokens:
-        diff[wrt_tokens.index(token)] = 1
-    return diff
-    #]
-
-
 def _create_aldi_xtring(
-    equation: Equation,
-    wrt_tokens: Tokens,
+    equation: eq_.Equation,
+    /,
 ) -> str:
     """
     """
@@ -440,7 +488,7 @@ def _create_aldi_key(
     Craete a hashable representation of a token in an Audi expression
     """
     #[
-    return X_REF_PATTERN.format( 
+    return eq_.X_REF_PATTERN.format( 
         qid=token.qid,
         shift=token.shift,
         eid=eid,
