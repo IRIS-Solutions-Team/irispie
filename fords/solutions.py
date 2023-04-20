@@ -9,7 +9,8 @@ from __future__ import annotations
 import enum as en_
 import numpy as np_
 import scipy as sp_
-import dataclasses as dc_
+from typing import (Self, NoReturn, Callable, )
+from numbers import (Number, )
 
 from ..fords import (systems as sy_, descriptors as de_, )
 from ..models import (flags as mg_, )
@@ -22,47 +23,40 @@ class EigenValueKind(en_.Flag):
     UNSTABLE = en_.auto()
 
 
-class StabilityKind(en_.Flag):
+class SystemStabilityKind(en_.Flag):
     STABLE = en_.auto()
     MULTIPLE_STABLE = en_.auto()
     NO_STABLE = en_.auto()
 
 
-@dc_.dataclass
 class Solution:
     """
-    """
-    #[
-    #
-    # Triangular solution
-    #
-    Ta: np_.ndarray | None = None
-    Ra: np_.ndarray | None = None
-    Ka: np_.ndarray | None = None
-    U: np_.ndarray | None = None
-    #
-    # Expansion of triangular solution
-    #
-    Xa: np_.ndarray | None = None
-    J: np_.ndarray | None = None
-    Ru: np_.ndarray | None = None
-    #
-    # Square solution
-    #
-    Tb: np_.ndarray | None = None
-    Rb: np_.ndarray | None = None
-    Kb: np_.ndarray | None = None
-    #
-    # Expansion of square solution
-    #
-    Xb: np_.ndarray | None = None
-    #
-    # Measurement equations
-    Za: np_.ndarray | None = None
-    Zb: np_.ndarray | None = None
-    H: np_.ndarray | None = None
-    D: np_.ndarray | None = None
+    ## Square solution:
+    T: Transition matrix
+    R: Impact matrix of transition shocks
+    K: Intercept in transition equation
+    Z: Measurement matrix
+    H: Impact matrix of measurement shocks
+    D: Intercept in measurement equation
 
+    ## Triangular solution:
+    Ta: Transition matrix in triangular system
+    Ra: Impact matrix of transition shocks in triangular system
+    Ka: Intercept in transition equation in triangular system
+    Za: Measurement matrix in triangular system
+
+    ## Forward expansion of square solution:
+    J: Power matrix
+    Ru: Forward-looking impact matrix of transition shocks
+    X: Impact matrix in square system
+    Xa: Impact matrix in triangular system
+    """
+    __slots__ = (
+        "Ua", "Ta", "Ra", "Ka", "Xa", "J", "Ru",
+        "T", "R", "K", "X",
+        "Za", "Z", "H", "D",
+        "eigen_values", "eigen_values_stability", "system_stability",
+    )
     @classmethod
     def for_model(
         cls, 
@@ -73,37 +67,44 @@ class Solution:
         tolerance: float = 1e-12,
     ) -> Self:
         self = cls()
+        is_alpha_beta_stable_or_unit_root = lambda alpha, beta: abs(beta) < (1 + tolerance)*abs(alpha)
+        is_stable_root = lambda root: abs(root) < (1 - tolerance)
+        is_unit_root = lambda root: abs(root) >= (1 - tolerance) and abs(root) < (1 + tolerance)
         #
-        qz = _solve_ordqz(system, tolerance, )
-        stability = _classify_system_stability(descriptor, qz, tolerance, )
-        #
+        # Detach unstable from (stable + unit) roots and solve out expectations
+        qz, eigen_values, eigen_values_stability = _solve_ordqz(system, is_alpha_beta_stable_or_unit_root, is_stable_root, is_unit_root, )
+        system_stability = _classify_system_stability(descriptor, eigen_values_stability, )
         triangular_solution_prelim = _solve_transition_equations(descriptor, system, qz, )
-        #traingula_solution = _separate_unit_roots(
         #
-        U = triangular_solution_prelim[0]
-        measurement_solution = _solve_measurement_equations(descriptor, system, U)
-        square_solution = _square_from_triangular(triangular_solution_prelim)
+        # Detach unit from stable roots and transform to square form
+        triangular_solution = detach_stable_from_unit_roots(triangular_solution_prelim, is_unit_root, )
+        square_solution = _square_from_triangular(triangular_solution, )
+        self.Ua, self.Ta, self.Ra, self.Ka, self.Xa, self.J, self.Ru = triangular_solution
+        self.T, self.R, self.K, self.X = square_solution
         #
-        self.U, self.Ta, self.Ra, self.Ka, self.Xa, self.J, self.Ru = triangular_solution_prelim
-        self.Tb, self.Rb, self.Kb, self.Xb = square_solution
-        self.Za, self.Zb, self.H, self.D = measurement_solution
+        # Solve measurement equations
+        self.Z, self.H, self.D, self.Za = _solve_measurement_equations(descriptor, system, self.Ua, )
+        self.eigen_values, self.eigen_values_stability = eigen_values, eigen_values_stability
+        self.system_stability = system_stability
         #
         return self
 
-    def expand_square_solution(self, forward, /, ) -> np_.ndarray:
+    def expand_square_solution(self, forward, /, ) -> list[np_.ndarray]:
         """
         Expand R matrices of square solution for t+1...t+forward
         """
-        R, Xb, J, Ru = self.Rb, self.Xb, self.J, self.Ru
-        if (R is None) or (Xb is None) or (J is None) or (Ru is None):
+        R, X, J, Ru = self.R, self.X, self.J, self.Ru
+        if (R is None) or (X is None) or (J is None) or (Ru is None):
             return None
         Jk = np_.eye(J.shape[0])
         #
-        # Rb(t+k) = -Xb J**(k-1) Ru e(t+k)
+        # return [R(t+1), R(t+2), ..., R(t+forward)]
+        #
+        # R(t+k) = -X J**(k-1) Ru e(t+k)
         # k = 1, ..., forward or k-1 = 0, ..., forward-1
         #
         return [
-            -Xb @ np_.linalg.matrix_power(J, k_minus_1) @ Ru 
+            -X @ np_.linalg.matrix_power(J, k_minus_1) @ Ru 
             for k_minus_1 in range(0, forward)
         ]
     #]
@@ -111,7 +112,7 @@ class Solution:
 
 def _left_div(A, B):
     """
-    Solve A\B
+    Solve A \ B
     """
     return np_.linalg.lstsq(A, B, rcond=None)[0]
 
@@ -123,46 +124,68 @@ def _right_div(B, A):
     return np_.linalg.lstsq(A.T, B.T, rcond=None)[0].T
 
 
-def _square_from_triangular(triangular_solution):
-    U, Ta, Ra, Ka, Xa, J, Ru = triangular_solution
-    # T <- U*T/U note that T/U == (U'\T')'
-    # R <- U*R;
-    # K <- U*K;
-    #
-    # xi(t) = ... -Xb J**(k-1) Ru e(t+k)
-    Tb = U @ _right_div(Ta, U)
-    Rb = U @ Ra
-    Kb = U @ Ka
-    Xb = U @ Xa
-    #
-    return Tb, Rb, Kb, Xb
+def _square_from_triangular(
+    triangular_solution: tuple[np_.ndarray, ...],
+    /,
+) -> tuple[np_.ndarray, ...]:
+    """
+    T <- Ua @ Ta/U; note that Ta/U == (U'\Ta')'
+    R <- Ua @ Ra;
+    X <- Xa @ Ra;
+    K <- Ua @ Ka;
+    xi(t) = ... -X J**(k-1) Ru e(t+k)
+    """
+    #[
+    Ua, Ta, Ra, Ka, Xa, *_ = triangular_solution
+    T = Ua @ _right_div(Ta, Ua) # Ua @ Ta / Ua
+    R = Ua @ Ra
+    K = Ua @ Ka
+    X = Ua @ Xa
+    return T, R, K, X
+    #]
 
 
-def _detach_stable_from_unit_roots(T, R, k, Z, H, d, U):
-    num_xib = T.shape[0]
-    U = U if U else n
+def detach_stable_from_unit_roots(
+    transition_solution_prelim: tuple[np_.ndarray, ...],
+    is_unit_root: Callable[[Number], bool],
+    /,
+) -> tuple[np_.ndarray, ...]:
+    """
+    """
+    #[
+    Ug, Tg, Rg, Kg, Xg, J, Ru = transition_solution_prelim
+    num_xib = Tg.shape[0]
+    Ta, u, check_num_unit_roots = sp_.linalg.schur(Tg, sort=is_unit_root, ) # Tg = u @ Ta @ u.T
+    Ua = Ug @ u if Ug is not None else u
+    Ra = u.T @ Rg
+    Ka = u.T @ Kg
+    Xa = u.T @ Xg if Xg is not None else None
+    return Ua, Ta, Ra, Ka, Xa, J, Ru
+    #]
 
 
-def _solve_measurement_equations(descriptor, system, U, ):
+def _solve_measurement_equations(descriptor, system, Ua, ) -> tuple[np_.ndarray, ...]:
+    """
+    """
+    #[
     num_forwards = descriptor.get_num_forwards()
-    F, G, H, J = system.F, system.G, system.H, system.J
-    #
-    Gb = G[:, num_forwards:]
-    Zb = _left_div(-F, Gb)
-    Hb = _left_div(-F, J)
-    Db = _left_div(-F, H)
-    Za = Zb @ U
-    #
-    return Za, Zb, Hb, Db
+    G = system.G[:, num_forwards:]
+    Z = _left_div(-system.F, G) # -F \ G
+    H = _left_div(-system.F, system.J) # -F \ J
+    D = _left_div(-system.F, system.H) # -F \ H
+    Za = Z @ Ua
+    return Z, H, D, Za
+    #]
 
 
-def _solve_transition_equations(descriptor, system, qz, ):
+def _solve_transition_equations(descriptor, system, qz, ) -> tuple[np_.ndarray, ...]:
     """
     """
+    #[
     num_backwards = descriptor.get_num_backwards()
     num_forwards = descriptor.get_num_forwards()
     num_stable = num_backwards
-    S, T, Q, Z, eig_values, eig_stability = qz
+    S, T, Q, Z = qz
     A, B, C, D = system.A, system.B, system.C, system.D
     #
     S11 = S[:num_stable, :num_stable]
@@ -186,64 +209,73 @@ def _solve_transition_equations(descriptor, system, qz, ):
     #
     # Unstable block
     #
-    G = _left_div(-Z21, Z22)
-    Ru = _left_div(-T22, QD2)
-    Ku = _left_div(-(S22 + T22), QC2)
+    G = _left_div(-Z21, Z22) # -Z21 \ Z22
+    Ru = _left_div(-T22, QD2) # -T22 \ QD2
+    Ku = _left_div(-(S22 + T22), QC2) # -(S22+T22) \ QC2
     #
     # Transform stable block==transform backward-looking variables:
-    # alpha(t) = s(t) + G u(t+1)
+    # gamma(t) = s(t) + G u(t+1)
     #
-    Xa0 = _left_div(S11, T11 @ G + T12)
-    Xa1 = G + _left_div(S11, S12)
+    Xg0 = _left_div(S11, T11 @ G + T12)
+    Xg1 = G + _left_div(S11, S12)
     #
-    Ta = _left_div(-S11, T11)
-    Ra = -Xa0 @ Ru - _left_div(S11, QD1)
-    Ka = -(Xa0 + Xa1) @ Ku - _left_div(S11, QC1)
-    U = Z21
+    Tg = _left_div(-S11, T11)
+    Rg = -Xg0 @ Ru - _left_div(S11, QD1)
+    Kg = -(Xg0 + Xg1) @ Ku - _left_div(S11, QC1)
+    Ug = Z21 # xib = Ug @ gamma
     #
     # Forward expansion
-    # a(t) = ... -Xa J**(k-1) Ru e(t+k)
+    # gamma(t) = ... -Xg J**(k-1) Ru e(t+k)
     #
-    J = _left_div(-T22, S22)
-    Xa = Xa1 + Xa0 @ J
+    J = _left_div(-T22, S22) # -T22 \ S22
+    Xg = Xg1 + Xg0 @ J
     #
-    return U, Ta, Ra, Ka, Xa, J, Ru
+    return Ug, Tg, Rg, Kg, Xg, J, Ru
+    #]
 
 
-def _solve_ordqz(system, tolerance, ):
-    _stable_and_unit_first = lambda alpha, beta: abs(beta) < (1 + tolerance)*abs(alpha)
-    S, T, alpha, beta, Q, Z = sp_.linalg.ordqz(system.A, system.B, sort=_stable_and_unit_first, )
+def _solve_ordqz(system, is_alpha_beta_stable_or_unit_root, is_stable_root, is_unit_root, ):
+    #[
+    S, T, alpha, beta, Q, Z = sp_.linalg.ordqz(system.A, system.B, sort=is_alpha_beta_stable_or_unit_root, )
     Q = Q.T
     #
     inx_nonzero_alpha = alpha != 0
-    eig_values = np_.full(beta.shape, np_.inf, dtype=complex, )
-    eig_values[inx_nonzero_alpha] = -beta[inx_nonzero_alpha] / alpha[inx_nonzero_alpha]
+    eigen_values = np_.full(beta.shape, np_.inf, dtype=complex, )
+    eigen_values[inx_nonzero_alpha] = -beta[inx_nonzero_alpha] / alpha[inx_nonzero_alpha]
+    eigen_values = tuple(eigen_values)
     #
-    eig_stability = tuple(_classify_eig_value_stability(v, tolerance) for v in eig_values)
+    eigen_values_stability = tuple(
+        _classify_eig_value_stability(v, is_stable_root, is_unit_root, )
+        for v in eigen_values
+    )
     #
-    return S, T, Q, Z, eig_values, eig_stability
+    return (S, T, Q, Z), eigen_values, eigen_values_stability
+    #]
 
 
-def _classify_eig_value_stability(eig_value, tolerance, ) -> EigenValueKind:
+def _classify_eig_value_stability(eig_value, is_stable_root, is_unit_root, ) -> EigenValueKind:
+    #[
     abs_eig_value = np_.abs(eig_value)
-    if abs_eig_value < 1 - tolerance:
+    if is_stable_root(abs_eig_value):
         return EigenValueKind.STABLE
-    elif abs_eig_value < 1 + tolerance:
+    elif is_unit_root(abs_eig_value):
         return EigenValueKind.UNIT
     else:
         return EigenValueKind.UNSTABLE
+    #]
 
 
-def _classify_system_stability(descriptor, qz, tolerance, ):
-    *_, eig_stability = qz
-    num_unstable = sum(1 for s in eig_stability if s==EigenValueKind.UNSTABLE)
+def _classify_system_stability(descriptor, eigen_values_stability, ):
+    #[
+    num_unstable = sum(1 for s in eigen_values_stability if s==EigenValueKind.UNSTABLE)
     num_forwards = descriptor.get_num_forwards()
     if num_unstable == num_forwards:
-        stability = StabilityKind.STABLE
+        stability = SystemStabilityKind.STABLE
     elif num_unstable > num_forwards:
-        stability = StabilityKind.NO_STABLE
+        stability = SystemStabilityKind.NO_STABLE
     else:
-        stability = StabilityKind.MULTIPLE_STABLE
+        stability = SystemStabilityKind.MULTIPLE_STABLE
     return stability
+    #]
 
 

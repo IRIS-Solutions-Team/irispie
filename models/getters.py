@@ -6,14 +6,22 @@
 from __future__ import annotations
 # from IPython import embed
 
-from typing import (Literal, )
+from typing import (Literal, Callable, )
+from collections.abc import (Iterable, )
 import functools as ft_
 import json as js_
 
-from .. import (quantities as qu_, incidence as in_, )
+from .. import (equations as eq_, quantities as qu_, incidence as in_, )
 from ..dataman import (databanks as db_, )
 from ..fords import (descriptors as de_, )
+from ..models import (sources as ms_, )
 #]
+
+
+"""
+Quantities that are time series in model databanks
+"""
+_TIME_SERIES_QUANTITY = qu_.QuantityKind.VARIABLE | qu_.QuantityKind.SHOCK
 
 
 def _decorate_output_format(func):
@@ -50,8 +58,8 @@ class GetterMixin:
         /,
         **kwargs,
     ) -> dict[str, Number]:
-        # return self._get_values_from_primary_variant(variant_attr="levels", kind=qu_.QuantityKind.LOGLY_VARIABLE, ) | self.get_parameters_stds()
-        return self._get_values_from_primary_variant(variant_attr="levels", kind=qu_.QuantityKind.LOGLY_VARIABLE, )
+        # return self._get_values_from_primary_variant(variant_attr="levels", kind=ms_.LOGLY_VARIABLE, ) | self.get_parameters_stds()
+        return self._get_values_from_primary_variant(variant_attr="levels", kind=ms_.LOGLY_VARIABLE, )
 
     @_decorate_output_format
     def get_steady_changes(
@@ -59,8 +67,8 @@ class GetterMixin:
         /,
         **kwargs,
     ) -> dict[str, Number]:
-        # return self._get_values_from_primary_variant(variant_attr="changes", kind=qu_.QuantityKind.LOGLY_VARIABLE, ) | self.get_parameters_stds()
-        return self._get_values_from_primary_variant(variant_attr="changes", kind=qu_.QuantityKind.LOGLY_VARIABLE, )
+        # return self._get_values_from_primary_variant(variant_attr="changes", kind=ms_.LOGLY_VARIABLE, ) | self.get_parameters_stds()
+        return self._get_values_from_primary_variant(variant_attr="changes", kind=ms_.LOGLY_VARIABLE, )
 
     @_decorate_output_format
     def get_parameters(
@@ -94,7 +102,8 @@ class GetterMixin:
     ) -> dict[str, bool]:
         return {
             qty.human: qty.logly
-            for qty in self._invariant._quantities if qty.kind in QuantityKind.LOGLY_VARIABLE
+            for qty in self._invariant._quantities
+            if qty.kind in QuantityKind.LOGLY_VARIABLE
         }
 
     def get_initials(
@@ -131,10 +140,9 @@ class GetterMixin:
             shift_in_first_column=shift_in_first_column,
         )
         #
-        time_series_kind = qu_.QuantityKind.LOGLY_VARIABLE | qu_.QuantityKind.SHOCK
         qid_to_kind = self.create_qid_to_kind()
         qid_to_name = {
-            qid: (name if qid_to_kind[qid] in time_series_kind else "")
+            qid: (name if qid_to_kind[qid] in _TIME_SERIES_QUANTITY else "")
             for qid, name in self.create_qid_to_name().items()
         }
         qid_to_descript = self.create_qid_to_descript()
@@ -146,7 +154,43 @@ class GetterMixin:
             qid_to_descript=qid_to_descript,
         )
 
-    def get_solution_vectors(self, ) -> de_.SolutionVectors:
+    def get_solution_vectors(self, /, ) -> de_.SolutionVectors:
         return self._invariant._dynamic_descriptor.solution_vectors
+
+    def get_all_solution_matrices(self, /, ):
+        return [ v.solution for v in self._variants ]
+
+    def get_solution_matrices(self, /, ):
+        return self._variants[0].solution
+
+    def _get_dynamic_equations(
+        self,
+        /,
+        kind: eq_.EquationKind | None = None,
+    ) -> eq_.Equations:
+        return list(
+            eq_.generate_equations_of_kind(self._invariant._dynamic_equations, kind)
+            if kind else self._invariant._dynamic_equations
+        )
+
+    def _get_steady_equations(
+        self,
+        /,
+        kind: eq_.EquationKind | None = None,
+    ) -> eq_.Equations:
+        return list(
+            eq_.generate_equations_of_kind(self._invariant._steady_equations, kind)
+            if kind else self._invariant._steady_equations
+        )
+
+    def _get_quantities(
+        self,
+        /,
+        kind: qu_.QuantityKind | None = None,
+    ) -> qu_.Quantities:
+        return list(
+            qu_.generate_quantities_of_kind(self._invariant._quantities, kind)
+            if kind else self._invariant._quantities
+        )
     #]
 

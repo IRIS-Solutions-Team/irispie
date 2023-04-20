@@ -65,10 +65,10 @@ def _trim_decorate(func):
 class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.SeriesViewMixin):
     """
     """
-    __slots__ = [
+    __slots__ = (
         "start_date", "data", "data_type",
         "_descript_", "_column_titles", "_user_data",
-    ]
+    )
     _numeric_format: str = "15g"
     _short_str_format: str = ">15"
     _date_str_format: str = ">12"

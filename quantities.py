@@ -29,20 +29,20 @@ class QuantityKind(enum.Flag):
     TRANSITION_STD = enum.auto()
     MEASUREMENT_STD = enum.auto()
 
-    LOGLY_VARIABLE = TRANSITION_VARIABLE | MEASUREMENT_VARIABLE | EXOGENOUS_VARIABLE
-    SHOCK = TRANSITION_SHOCK | MEASUREMENT_SHOCK
+    ENDOGENOUS_VARIABLE = TRANSITION_VARIABLE | MEASUREMENT_VARIABLE
+    VARIABLE = ENDOGENOUS_VARIABLE | EXOGENOUS_VARIABLE
     STD = TRANSITION_STD | MEASUREMENT_STD
     PARAMETER_OR_STD = PARAMETER | STD
-
-    IN_TRANSITION_EQUATIONS = TRANSITION_VARIABLE | TRANSITION_SHOCK | PARAMETER | TRANSITION_STD
-    IN_MEASUREMENT_EQUATIONS = TRANSITION_VARIABLE | MEASUREMENT_VARIABLE | MEASUREMENT_SHOCK | PARAMETER | MEASUREMENT_STD
-
-    TRANSITION_SYSTEM_QUANTITY = TRANSITION_VARIABLE | TRANSITION_SHOCK
-    MEASUREMENT_SYSTEM_QUANTITY = TRANSITION_VARIABLE | MEASUREMENT_VARIABLE | MEASUREMENT_SHOCK
-    SYSTEM_QUANTITY = TRANSITION_SYSTEM_QUANTITY | MEASUREMENT_SYSTEM_QUANTITY
-
-    STEADY_EVALUATOR = TRANSITION_VARIABLE | MEASUREMENT_VARIABLE
+    SHOCK = TRANSITION_SHOCK | MEASUREMENT_SHOCK
     #]
+
+
+__all__  = [
+    "TRANSITION_VARIABLE", "TRANSITION_SHOCK", "TRANSITION_STD",
+    "MEASUREMENT_VARIABLE", "MEASUREMENT_SHOCK", "MEASUREMENT_STD",
+]
+for n in __all__:
+    exec(f"{n} = QuantityKind.{n}")
 
 
 @dataclasses.dataclass
@@ -64,10 +64,15 @@ class Quantity:
     def set_logly(self, logly: bool) -> Self:
         self.logly = logly
         return self
+
+    def __hash__(self, /, ) -> int:
+        return hash(self.__repr__)
     #]
 
 
 Quantities: TypeAlias = Iterable[Quantity]
+Humans: TypeAlias = Iterable[str]
+HumansNotFound: TypeAlias = Iterable[str]
 
 
 def create_name_to_qid(quantities: Quantities) -> dict[str, int]:
@@ -86,8 +91,9 @@ def create_qid_to_kind(quantities: Quantities) -> dict[int, str]:
     return { qty.id: qty.kind for qty in quantities }
 
 
-def generate_quantities_of_kind(quantities: Quantities, kind: QuantityKind) -> list[int]:
-    return ( qty for qty in quantities if qty.kind in kind )
+def generate_quantities_of_kind(quantities: Quantities, kind: QuantityKind | None) -> Quantities:
+    is_of_kind = (lambda qty: qty.kind in kind) if kind is not None else lambda k: True
+    return ( qty for qty in quantities if is_of_kind(qty) )
 
 
 def generate_qids_by_kind(quantities: Quantities, kind: QuantityKind) -> list[int]:
@@ -98,7 +104,7 @@ def generate_quantity_names_by_kind(quantities: Quantities, kind: QuantityKind) 
     return ( qty.human for qty in quantities if qty.kind in kind )
 
 
-def generate_all_quantity_names(quantities: Quantities) -> Iterable[int]:
+def generate_all_quantity_names(quantities: Quantities) -> Iterable[str]:
     return ( qty.human for qty in quantities )
 
 
@@ -125,4 +131,33 @@ def change_logly(
         qty if qty.id not in qids or qty.logly is None else Quantity(qty.id, qty.human, qty.kind, new_logly)
         for qty in quantities
     ]
+
+
+def validate_selection_of_quantities(
+    allowed_quantities: Quantities,
+    custom_quantities: Quantities | None,
+    /,
+) -> tuple[Quantities, Quantities]:
+    """
+    """
+    invalid_quantities = list(set(custom_quantities) - set(allowed_quantities)) if custom_quantities is not None else []
+    custom_quantities = list(custom_quantities) if custom_quantities is not None else list(allowed_quantities)
+    return custom_quantities, invalid_quantities
+
+
+def lookup_qids_by_name(
+    quantities: Quantities,
+    names: Iterable[str],
+    /,
+) -> tuple[Quantities, list[str]]:
+    """
+    """
+    names = list(names)
+    name_to_qid = create_name_to_qid(quantities, )
+    valid_qids = [ name_to_qid[n] for n in names if n in name_to_qid ]
+    invalid_names = (
+        [ n for n in names if n not in name_to_qid ] 
+        if len(valid_qids) != len(names) else []
+    )
+    return  valid_qids, invalid_names
 

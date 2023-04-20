@@ -63,6 +63,21 @@ class SteadyEvaluator(_EvaluatorMixin):
     """
     """
     #[
+    __slots__ = (
+        "_t_zero", "_equations", "_quantities", "_eids", "_xtrings", "_func",
+        "_incidence_matrix", "_x", "_z0", "_steady_array_updater",
+        "_jacobian_descriptor",
+    )
+    @property
+    def is_jacobian_sparse(self, /, ) -> bool:
+        """
+        True if Jacobian is sparse, False otherwise
+        """
+        return (
+            self._jacobian_descriptor.is_sparse
+            if self._jacobian_descriptor else False
+        )
+
     def __init__(
         self,
         equations: eq_.Equations,
@@ -173,9 +188,9 @@ class PlainEvaluator(_EvaluatorMixin):
     """
     """
     #[
-    __slots__ = [
-        "_equations", "min_shift", "max_shift", "_func"
-    ]
+    __slots__ = (
+        "_equations", "min_shift", "max_shift", "_func",
+    )
 
     def __init__(
         self,

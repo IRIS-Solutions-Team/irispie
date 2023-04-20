@@ -28,11 +28,11 @@ def simulate_flat(
 
     vec = solution_vectors
 
-    T = solution.Tb
-    R = solution.Rb
-    K = solution.Kb if not deviation else 0
+    T = solution.T
+    R = solution.R
+    K = solution.K if not deviation else 0
 
-    Z = solution.Zb
+    Z = solution.Z
     H = solution.H
     D = solution.D if not deviation else 0
 

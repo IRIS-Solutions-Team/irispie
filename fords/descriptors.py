@@ -79,6 +79,34 @@ class Descriptor:
 #••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
 
 
+"""
+Quantity kinds that can be used in the transition part of a first-order system
+"""
+_TRANSITION_SYSTEM_QUANTITY = (
+    qu_.QuantityKind.TRANSITION_VARIABLE
+    | qu_.QuantityKind.TRANSITION_SHOCK
+)
+
+
+"""
+Quantity kinds that can be used in the measurement part of a first-order system
+"""
+_MEASUREMENT_SYSTEM_QUANTITY = (
+    qu_.QuantityKind.MEASUREMENT_VARIABLE
+    | qu_.QuantityKind.TRANSITION_VARIABLE
+    | qu_.QuantityKind.MEASUREMENT_SHOCK
+)
+
+
+"""
+Quantity kinds that can be used in a first-order system
+"""
+_SYSTEM_QUANTITY = (
+    _TRANSITION_SYSTEM_QUANTITY
+    | _MEASUREMENT_SYSTEM_QUANTITY
+)
+
+
 @dc_.dataclass
 class _SystemVectors:
     """
@@ -110,7 +138,7 @@ class _SystemVectors:
         self.measurement_eids = sorted([eqn.id for eqn in equations if eqn.kind in eq_.EquationKind.MEASUREMENT_EQUATION])
         qid_to_kind = qu_.create_qid_to_kind(quantities)
         all_tokens = set(eq_.generate_all_tokens_from_equations(equations))
-        all_wrt_tokens = set(in_.generate_tokens_of_kinds(all_tokens, qid_to_kind, qu_.QuantityKind.SYSTEM_QUANTITY))
+        all_wrt_tokens = set(in_.generate_tokens_of_kinds(all_tokens, qid_to_kind, _SYSTEM_QUANTITY))
         self.eid_to_wrt_tokens = eq_.create_eid_to_wrt_tokens(equations, all_wrt_tokens)
         #
         actual_tokens_transition_variables = set(in_.generate_tokens_of_kinds(all_tokens, qid_to_kind, qu_.QuantityKind.TRANSITION_VARIABLE))

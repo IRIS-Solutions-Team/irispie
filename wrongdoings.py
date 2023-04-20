@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import warnings as wa_
 from typing import (TypeAlias, Literal, NoReturn, )
+from collections.abc import (Iterable, )
 #]
 
 
@@ -15,7 +16,9 @@ _PREFIX = "==> "
 
 
 class IrisPieError(Exception):
-    pass
+    def __init__(self, description):
+        message = prepare_message(description)
+        super().__init__(message)
 
 
 class IrisPieWarning(UserWarning):
@@ -24,15 +27,15 @@ class IrisPieWarning(UserWarning):
 
 def throw(
     how: _How,
-    message: str,
+    message: str | Iterable[str],
     **args,
 ) -> NoReturn:
     #[
-    message = _prepare_message(message)
     match how:
         case "error":
             raise IrisPieError(message)
         case "warning":
+            message = _prepare_message(message)
             message = "\n\nIrisPieWarning: " + message + "\n"
             wa_.warn(message, IrisPieWarning, stacklevel=2, )
         case "silent":
@@ -40,7 +43,7 @@ def throw(
     #]
 
 
-def _prepare_message(message):
+def prepare_message(message):
     #[
     if isinstance(message, str):
         message = _PREFIX + message

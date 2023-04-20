@@ -6,18 +6,17 @@ Model equations
 from __future__ import annotations
 # from IPython import embed
 
-import enum
-import re
-import dataclasses 
-import itertools
-import operator
+import enum as en_
+import re as re_
+import dataclasses as dc_
+import itertools as it_
+import operator as op_
 
-from typing import Self, NoReturn
-from collections.abc import Iterable
+from typing import (Self, NoReturn, )
+from collections.abc import (Iterable, )
 
-from .incidence import Token, Tokens, sort_tokens
-from . import incidence
-from .exceptions import UndeclaredName
+from .incidence import (Token, Tokens, )
+from . import (incidence as in_, wrongdoings as wd_, )
 #]
 
 
@@ -25,7 +24,7 @@ EVALUATOR_PREAMBLE = "lambda x, t, L: "
 _EVALUATOR_FORMAT = EVALUATOR_PREAMBLE + "[{joined_xtrings}]"
 X_REF_PATTERN = "{qid},t{shift:+g},{eid}"
 
-_QUANTITY_NAME_PATTERN = re.compile(r"\b([a-zA-Z]\w*)\b(\[[-+\d]+\])?(?!\()")
+_QUANTITY_NAME_PATTERN = re_.compile(r"\b([a-zA-Z]\w*)\b(\[[-+\d]+\])?(?!\()")
 _EQUATION_REF = "..."
 _REPLACE_NAME = "x[" + X_REF_PATTERN +"]"
 _TRANSLATE_REF_TO_KEY = {
@@ -38,26 +37,23 @@ _REPLACE_UKNOWN = "?"
 ErrorLogType = list[tuple[str, str]]
 
 
-class EquationKind(enum.Flag):
+class EquationKind(en_.Flag):
     """
     Classification of model equations
     """
     #[
-    UNSPECIFIED = enum.auto()
-    TRANSITION_EQUATION = enum.auto()
-    MEASUREMENT_EQUATION = enum.auto()
-    STEADY_EVALUATOR = TRANSITION_EQUATION | MEASUREMENT_EQUATION
-    PLAIN_EVALUATOR = TRANSITION_EQUATION | MEASUREMENT_EQUATION
+    TRANSITION_EQUATION = en_.auto()
+    MEASUREMENT_EQUATION = en_.auto()
     #]
 
 
-@dataclasses.dataclass
+@dc_.dataclass
 class Equation:
     """
     """
     id: int | None = None
     human: str | None = None
-    kind: EquationKind = EquationKind.UNSPECIFIED
+    kind: EquationKind | None = None,
     descript: str | None = None
     xtring: str | None = None
     incidence: Tokens | None = None
@@ -78,14 +74,17 @@ class Equation:
     def set_id(self, qid: int) -> Self:
         self.id = qid
         return self
+
+    def __hash__(self, /, ) -> int:
+        return hash(self.__repr__)
     #]
 
 
 Equations: TypeAlias = Iterable[Equation]
 
 
-def generate_all_tokens_from_equations(equations: Equations) -> Iterable[Token]:
-    return itertools.chain.from_iterable(eqn.incidence for eqn in equations)
+def generate_all_tokens_from_equations(equations: Equations) -> Tokens:
+    return it_.chain.from_iterable(eqn.incidence for eqn in equations)
 
 
 def finalize_dynamic_equations(
@@ -105,15 +104,15 @@ def finalize_steady_equations(
 
 
 def _replace_steady_ref(equations: Equations) -> NoReturn:
-    STEADY_REF_PATTERN = re.compile(r"&x\[([^,\]]+),[^\]]+\]")
+    STEADY_REF_PATTERN = re_.compile(r"&x\[([^,\]]+),[^\]]+\]")
     for eqn in equations:
-        eqn.xtring = re.sub(STEADY_REF_PATTERN, lambda match: "L["+match.group(1)+"]", eqn.xtring)
+        eqn.xtring = re_.sub(STEADY_REF_PATTERN, lambda match: "L["+match.group(1)+"]", eqn.xtring)
 
 
 def _remove_steady_ref(equations: Equations) -> NoReturn:
-    STEADY_REF_PATTERN = re.compile(r"&x\b")
+    STEADY_REF_PATTERN = re_.compile(r"&x\b")
     for eqn in equations:
-        eqn.xtring = re.sub(STEADY_REF_PATTERN, "x", eqn.xtring)
+        eqn.xtring = re_.sub(STEADY_REF_PATTERN, "x", eqn.xtring)
 
 
 def _finalize_equations_from_humans(
@@ -128,7 +127,10 @@ def _finalize_equations_from_humans(
         _, _error_log = eqn.finalize_from_human(name_to_id)
         error_log += _error_log
     if error_log:
-        raise UndeclaredName(error_log)
+        raise wd_.IrisPieError(
+            ["Some names used in equations not declared"]
+            + error_log
+        )
     #]
 
 
@@ -168,12 +170,19 @@ def create_eid_to_wrt_tokens(
     #[
     eid_to_wrt_tokens = {}
     for eqn in equations:
-        eid_to_wrt_tokens[eqn.id] = sort_tokens(
+        eid_to_wrt_tokens[eqn.id] = in_.sort_tokens(
             wrt for wrt in all_wrt_tokens
             if wrt in eqn.incidence
         )
     return eid_to_wrt_tokens
     #]
+
+
+def create_human_to_eid(
+    equations: Equations,
+    /,
+) -> dict[str, int]:
+    return { eqn.human: eqn.id for eqn in equations }
 
 
 def _xtring_from_human( 
@@ -187,7 +196,7 @@ def _xtring_from_human(
     tokens_list: list[Token] = []
     error_log = []
 
-    def _x_from_human(match: re.Match) -> str:
+    def _x_from_human(match: re_.Match) -> str:
         name = match.group(1)
         qid = name_to_id.get(name)
         if qid is not None:
@@ -199,7 +208,7 @@ def _xtring_from_human(
                 eid=_EQUATION_REF,
             )
         else:
-            error_log.append((name, human))
+            error_log.append(name + " in " + human)
             tokens_list.append(Token(None, None))
             return _REPLACE_UKNOWN
 
@@ -249,19 +258,52 @@ def sort_equations(
     equations: Equations,
     /,
 ) -> Equations:
-    return sorted(equations, key=operator.attrgetter("id"))
+    return sorted(equations, key=op_.attrgetter("id"))
 
 
 def get_min_shift_from_equations(
     equations: Equations,
     /,
 ) -> int:
-    return incidence.get_min_shift(generate_all_tokens_from_equations(equations))
+    return in_.get_min_shift(generate_all_tokens_from_equations(equations))
 
 
 def get_max_shift_from_equations(
     equations: Equations,
     /,
 ) -> int:
-    return incidence.get_max_shift(generate_all_tokens_from_equations(equations))
+    return in_.get_max_shift(generate_all_tokens_from_equations(equations))
+
+
+def validate_selection_of_equations(
+    allowed_equations: Equations,
+    custom_equations: Equations | None,
+    /,
+) -> tuple[Equations, Equations]:
+    """
+    """
+    #[
+    invalid_equations = list(set(custom_equations) - set(allowed_equations)) if custom_equations is not None else []
+    custom_equations = list(custom_equations) if custom_equations is not None else list(allowed_equations)
+    #]
+    return custom_equations, invalid_equations
+
+
+def lookup_eids_by_human_starts(
+    equations: Equations,
+    human_starts: Iterable[str],
+    /,
+) -> tuple[Equations, list[str]]:
+    """
+    """
+    #[
+    human_starts = list(human_starts)
+    eids = [
+        next((eqn.id for eqn in equations if eqn.human.startswith(hs)), None)
+        for hs in human_starts
+    ]
+    valid_eids = [ i for i in eids if i is not None ]
+    invalid_human_starts = [ h for h, i in zip(human_starts, eids) if i is None ]
+    #]
+    return valid_eids, invalid_human_starts
 

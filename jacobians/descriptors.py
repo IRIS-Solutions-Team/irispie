@@ -9,6 +9,7 @@ from typing import (Self, NoReturn, )
 from collections.abc import (Iterable, )
 import dataclasses as dc_
 import numpy as np_
+import scipy as sp_
 
 from ..aldi import (differentiators as ad_, maps as am_, )
 from .. import (equations as eq_, quantities as qu_, incidence as in_, )
@@ -20,16 +21,23 @@ from .. import (equations as eq_, quantities as qu_, incidence as in_, )
 #••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
 
 
-@dc_.dataclass
 class Descriptor:
     """
     """
     #[
-    _map: am_.ArrayMap | None = None
-    _qid_to_logly: dict[int, bool] | None = None,
-    _aldi_context: ad_.Context | None = None
-    _num_rows: int | None = None,
-    _num_columns: int | None = None,
+    __slots__ = (
+        "_num_rows", "_num_columns", "_map", "_qid_to_logly", "_aldi_context",
+        "_create_jacobian", "is_sparse",
+    )
+
+    def __init__(self, /, **kwargs, ) -> None:
+        """
+        """
+        self.is_sparse = kwargs.get("sparse_jacobian", False)
+        if self.is_sparse:
+            self._create_jacobian = self._create_sparse_jacobian
+        else:
+            self._create_jacobian = self._create_dense_jacobian
 
     @classmethod
     def for_flat(
@@ -39,10 +47,11 @@ class Descriptor:
         qid_to_logly: dict[int, bool],
         function_context: dict[str, Callable] | None,
         /,
+        **kwargs,
     ) -> NoReturn:
         """
         """
-        self = cls()
+        self = cls(**kwargs, )
         #
         eids = [ eqn.id for eqn in equations ]
         all_wrt_qids = [ qty.id for qty in quantities ]
@@ -81,13 +90,30 @@ class Descriptor:
     ) -> np_.ndarray:
         """
         """
-        J = self._initialize_jacobian()
         diff_array = self._aldi_context.eval_diff_to_array(data_context, self._qid_to_logly, L, )
-        J[self._map.lhs] = diff_array[self._map.rhs]
+        return self._create_jacobian(diff_array, self._map, )
+
+    def _create_dense_jacobian(self, diff_array, map, /, ) -> np_.ndarray:
+        """
+        Create Jacobian as numpy array
+        """
+        J = np_.zeros(
+            (self._num_rows, self._num_columns, ),
+            dtype=float,
+        )
+        J[map.lhs] = diff_array[map.rhs]
         return J
 
-    def _initialize_jacobian(self, /, ) -> np_.ndarray:
-        return np_.zeros((self._num_rows, self._num_columns, ), dtype=float, )
+    def _create_sparse_jacobian(self, diff_array, map, /, ) -> sp_.sparse.coo_matrix:
+        """
+        Create Jacobian as scipy sparse matrix
+        """
+        J = sp_.sparse.coo_matrix(
+            (diff_array[map.rhs], (map.lhs[0], map.lhs[1], )),
+            (self._num_rows, self._num_columns, ),
+            dtype=float,
+        )
+        return J
 
 
 #••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••

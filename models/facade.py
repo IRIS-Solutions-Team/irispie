@@ -13,10 +13,10 @@ import numpy as np_
 import itertools as it_
 import functools as ft_
 
-from .. import (equations as eq_, quantities as qu_, exceptions as ex_, sources as so_, evaluators as ev_, wrongdoings as wd_, )
+from .. import (equations as eq_, quantities as qu_, evaluators as ev_, wrongdoings as wd_, )
 from ..parsers import (common as pc_, )
 from ..dataman import (databanks as db_, dates as da_)
-from ..models import (simulations as si_, evaluators as me_, getters as ge_, variants as va_, invariants as in_, flags as mg_, )
+from ..models import (simulations as si_, evaluators as me_, sources as ms_, getters as ge_, variants as va_, invariants as in_, flags as mg_, )
 from ..fords import (solutions as sl_, steadiers as fs_, descriptors as de_, systems as sy_, )
 #]
 
@@ -51,7 +51,9 @@ class Model(
      
     """
     #[
-    __slots__ = ["_invariant", "_variants"]
+    __slots__ = (
+        "_invariant", "_variants",
+    )
 
     def assign(
         self: Self,
@@ -141,14 +143,6 @@ class Model(
         """
         return self._invariant._flags.is_flat
 
-    def create_steady_evaluator(self, /, ) -> ev_.SteadyEvaluator:
-        """
-        Create a steady-state Evaluator object for this Model
-        """
-        equations = eq_.generate_equations_of_kind(self._invariant._steady_equations, eq_.EquationKind.STEADY_EVALUATOR)
-        quantities = qu_.generate_quantities_of_kind(self._invariant._quantities, qu_.QuantityKind.STEADY_EVALUATOR)
-        return self._create_steady_evaluator(self._variants[0], equations, quantities)
-
     def create_name_to_qid(self, /, ) -> dict[str, int]:
         return qu_.create_name_to_qid(self._invariant._quantities)
 
@@ -218,7 +212,7 @@ class Model(
         #
         assign_non_logly = { 
             qid: (..., np_.nan) 
-            for qid in  qu_.generate_qids_by_kind(self._invariant._quantities, ~qu_.QuantityKind.LOGLY_VARIABLE)
+            for qid in  qu_.generate_qids_by_kind(self._invariant._quantities, ~ms_.LOGLY_VARIABLE)
         }
         self._variants[0].update_values_from_dict(assign_non_logly)
 
@@ -466,7 +460,7 @@ class Model(
     @classmethod
     def from_source(
         cls,
-        model_source: so_.ModelSource,
+        model_source: ms_.ModelSource,
         /,
         default_std: int | None = None,
         context: dict | None = None,
@@ -500,7 +494,7 @@ class Model(
     ) -> Self:
         """
         """
-        model_source, info = so_.ModelSource.from_string(
+        model_source, info = ms_.ModelSource.from_string(
             source_string, context=context, save_preparsed=save_preparsed,
         )
         return Model.from_source(model_source, context=context, **kwargs, )
@@ -535,6 +529,7 @@ class Model(
 
 
 _DEFAULT_STD_LINEAR = 1
+
 _DEFAULT_STD_NONLINEAR = 0.01
 
 

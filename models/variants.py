@@ -20,8 +20,10 @@ class Variant:
     """
     Container for parameter variant specific attributes of a model
     """
+    __slots__ = (
+        "levels", "changes", "solution",
+    )
     _missing = np_.nan
-    __slots__ = ["levels", "changes", "solution"]
     #[
     def __init__(self, quantities:Quantities, /, ) -> NoReturn:
         self._initilize_values(quantities)

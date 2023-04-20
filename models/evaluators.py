@@ -16,18 +16,71 @@ from ..jacobians import (descriptors as jd_, )
 #]
 
 
+"""
+Equation kinds that are allowed in SteadyEvaluator objects
+"""
+STEADY_EVALUATOR_EQUATION = (
+    eq_.EquationKind.TRANSITION_EQUATION
+    | eq_.EquationKind.MEASUREMENT_EQUATION
+)
+
+
+"""
+Quantity kinds that are allowed in SteadyEvaluator objects
+"""
+STEADY_EVALUATOR_QUANTITY = (
+    qu_.QuantityKind.TRANSITION_VARIABLE
+    | qu_.QuantityKind.MEASUREMENT_VARIABLE
+)
+
+
 class SteadyEvaluatorMixin:
     """
     """
     #[
+    def create_steady_evaluator(
+        self,
+        /,
+        equations: eq_.Equations | None = None,
+        quantities: qu_.Quantities | None = None,
+        **kwargs,
+    ) -> ev_.SteadyEvaluator:
+        """
+        Create a steady-state Evaluator object for the primary variant of this Model
+        """
+        allowed_equations = eq_.generate_equations_of_kind(self._invariant._steady_equations, STEADY_EVALUATOR_EQUATION)
+        equations, invalid_equations = eq_.validate_selection_of_equations(allowed_equations, equations)
+        if invalid_equations:
+            raise wd_.IrisPieError(
+                ["Expecting measurement and/or transition equations, getting"]
+                + [ eqn.human for eqn in invalid_equations ]
+            )
+        #
+        allowed_quantities = qu_.generate_quantities_of_kind(self._invariant._quantities, STEADY_EVALUATOR_QUANTITY)
+        quantities, invalid_quantities = qu_.validate_selection_of_quantities(allowed_quantities, quantities)
+        if invalid_quantities:
+            raise wd_.IrisPieError(
+                ["Expecting names of measurement and/or transition variables, getting"]
+                + [ qty.human for qty in invalid_quantities ]
+            )
+        #
+        return self._create_steady_evaluator(
+            self._variants[0],
+            equations,
+            quantities,
+            **kwargs,
+        )
+
     def _create_steady_evaluator(
         self,
         variant: va_.Variant,
         equations: eq_.Equations,
         quantities : qu_.Quantities,
         /,
+        **kwargs,
     ) -> Callable:
         """
+        Create steady evaluator for the a given variant of this Model
         """
         equations = list(equations, )
         quantities = list(quantities, )
@@ -52,6 +105,7 @@ class SteadyEvaluatorMixin:
             quantities,
             qid_to_logly,
             function_context,
+            **kwargs,
         )
         #
         return ev_.SteadyEvaluator(
