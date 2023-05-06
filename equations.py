@@ -47,6 +47,13 @@ class EquationKind(en_.Flag):
     #]
 
 
+__all__  = [
+    "TRANSITION_EQUATION", "MEASUREMENT_EQUATION",
+]
+for n in __all__:
+    exec(f"{n} = EquationKind.{n}")
+
+
 @dc_.dataclass
 class Equation:
     """
@@ -54,7 +61,7 @@ class Equation:
     id: int | None = None
     human: str | None = None
     kind: EquationKind | None = None,
-    descript: str | None = None
+    descriptor: str | None = None
     xtring: str | None = None
     incidence: Tokens | None = None
     entry: int | None = None

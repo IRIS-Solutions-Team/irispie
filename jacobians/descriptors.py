@@ -23,6 +23,15 @@ from .. import (equations as eq_, quantities as qu_, incidence as in_, )
 
 class Descriptor:
     """
+    Describe the Jacobian matrix of a steady-state system
+    -----------------------------------------------------
+    * _num_rows -- number of rows in the Jacobian matrix
+    * _num_columns -- number of columns in the Jacobian matrix
+    * _map -- mapping from (row, column) to (equation, quantity)
+    * _qid_to_logly -- mapping from quantity ID to whether it is logarithmic
+    * _aldi_context -- context for algorithmic differentiator
+    * _create_jacobian -- function to create a dense or sparse Jacobian matrix
+    * is_sparse -- whether the Jacobian matrix is sparse
     """
     #[
     __slots__ = (
@@ -53,12 +62,21 @@ class Descriptor:
         """
         self = cls(**kwargs, )
         #
+        # Extract eids from equations
         eids = [ eqn.id for eqn in equations ]
+        #
+        # Extract the qids from quantities w.r.t. which the equations are
+        # to be differentiated
         all_wrt_qids = [ qty.id for qty in quantities ]
+        #
+        # Collect the qids w.r.t. which each equation is to be differentiated
         eid_to_wrt_qids = {
             eqn.id: list(_generate_flat_wrt_qids_in_equation(eqn, all_wrt_qids, ))
             for eqn in equations
         }
+        #
+        # Create the map from eids to rhs offsets; the offset is the number
+        # of rows in the Jacobian matrix that precede the equation
         eid_to_rhs_offset = am_.create_eid_to_rhs_offset(eids, eid_to_wrt_qids, )
         #
         self._num_rows = len(eids)
@@ -72,12 +90,10 @@ class Descriptor:
             eid_to_rhs_offset,
         )
         #
+        num_columns = 1
         self._aldi_context = ad_.Context.for_equations(
-            ad_.FlatSteadyAtom,
-            equations,
-            eid_to_wrt_qids,
-            1,
-            function_context,
+            AtomFactory, equations, eid_to_wrt_qids,
+            num_columns, function_context,
         )
         #
         return self
@@ -130,4 +146,43 @@ def _generate_flat_wrt_qids_in_equation(equation, all_wrt_qids):
         if in_.is_qid_in_tokens(equation.incidence, qid)
     )
 
+
+class AtomFactory():
+    """
+    """
+    #[
+    @staticmethod
+    def create_diff_from_token(
+        token: Token,
+        wrt_qids: Tokens,
+    ) -> np_.ndarray:
+        """
+        """
+        if token.qid in wrt_qids:
+            diff = np_.zeros((len(wrt_qids), 1))
+            diff[wrt_qids.index(token.qid)] = 1
+        else:
+            diff = 0
+        return diff
+
+    @staticmethod
+    def create_data_index_from_token(
+        token: Token,
+        columns_to_eval: tuple[int, int],
+    ) -> tuple[int, slice]:
+        """
+        """
+        return (
+            token.qid,
+            slice(columns_to_eval[0], columns_to_eval[1]+1),
+        )
+
+    @staticmethod
+    def create_logly_index_from_token(
+        token: Token,
+    ) -> int:
+        """
+        """
+        return token.qid
+    #]
 

@@ -17,7 +17,7 @@ from ..fords import (simulators as sr_, )
 
 
 @runtime_checkable
-class SimulatableProtocol(Protocol):
+class SimulatableProtocol(Protocol, ):
     num_variants: int
     _variants: Iterable
     def get_extended_range_from_base_range(): ...

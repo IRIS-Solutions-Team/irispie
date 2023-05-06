@@ -57,13 +57,18 @@ class Descriptor:
         self.system_vectors = _SystemVectors(equations, quantities)
         self.solution_vectors = _SolutionVectors(self.system_vectors)
         self.system_map = SystemMap(self.system_vectors)
+        #
+        # Create the context for the algorithmic differentiator
+        system_equations = _select_system_equations_from_equations(
+            equations,
+            self.system_vectors.transition_eids,
+            self.system_vectors.measurement_eids,
+        )
+        #
         num_columns = 1
         self.aldi_context = ad_.Context.for_equations(
-           ad_.DynamicAtom, 
-           self.system_vectors.generate_system_equations_from_equations(equations),
-           self.system_vectors.eid_to_wrt_tokens,
-           num_columns,
-           custom_functions,
+            AtomFactory, system_equations,
+            self.system_vectors.eid_to_wrt_tokens, num_columns, custom_functions,
         )
 
     def get_num_backwards(self: Self) -> int:
@@ -170,15 +175,6 @@ class _SystemVectors:
 
     def get_num_forwards(self) -> int:
         return _get_num_forwards(self.transition_variables)
-
-    def generate_system_equations_from_equations(
-        self,
-        equations: eq_.Equations,
-        /
-    ) -> eq_.Equations:
-        eid_to_equation = { eqn.id:eqn for eqn in equations }
-        system_eids = self.transition_eids + self.measurement_eids
-        return ( eid_to_equation[eid] for eid in system_eids )
     #]
 
 
@@ -284,6 +280,9 @@ class SystemMap:
         """
         """
         system_eids = system_vectors.transition_eids + system_vectors.measurement_eids
+        #
+        # Create the map from equation ids to rhs offset; the offset is the
+        # number of rows in the Jacobian matrix that precede the equation
         eid_to_rhs_offset = am_.create_eid_to_rhs_offset(system_eids, system_vectors.eid_to_wrt_tokens)
         #
         # Transition equations
@@ -394,6 +393,57 @@ def _adjust_for_measurement_equations(
         if qid_to_kind[t.qid] in qu_.QuantityKind.TRANSITION_VARIABLE
     ]
     return set(tokens_transition_variables).union(pretend_needed)
+    #]
+
+
+def _select_system_equations_from_equations(
+    equations: eq_.Equations,
+    transition_eids: list[int],
+    measurement_eids: list[int],
+    /
+) -> eq_.Equations:
+    eid_to_equation = { eqn.id:eqn for eqn in equations }
+    system_eids = transition_eids + measurement_eids
+    return ( eid_to_equation[eid] for eid in system_eids )
+
+
+class AtomFactory:
+    """
+    """
+    #[
+    @staticmethod
+    def create_diff_from_token(
+        token: Token,
+        wrt_tokens: Tokens,
+    ) -> np_.ndarray:
+        """
+        """
+        if token in wrt_tokens:
+            diff = np_.zeros((len(wrt_tokens), 1))
+            diff[wrt_tokens.index(token)] = 1
+        else:
+            diff = 0
+        return diff
+
+    @staticmethod
+    def create_data_index_from_token(
+        token: Token,
+        columns_to_eval: tuple[int, slice],
+    ) -> tuple[int, slice]:
+        """
+        """
+        return (
+            token.qid,
+            slice(columns_to_eval[0]+token.shift, columns_to_eval[1]+token.shift+1),
+        )
+
+    @staticmethod
+    def create_logly_index_from_token(
+        token: Token,
+    ) -> int:
+        """
+        """
+        return token.qid
     #]
 
 

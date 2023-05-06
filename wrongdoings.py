@@ -10,14 +10,16 @@ from collections.abc import (Iterable, )
 #]
 
 
-_How: TypeAlias = Literal["error"] | Literal["warning"] | Literal["silent"]
+HOW: TypeAlias = Literal["error"] | Literal["warning"] | Literal["silent"]
 
-_PREFIX = "==> "
 
+_LIST_PREFIX = "--> "
+
+_LIST_PREFIX = "××× "
 
 class IrisPieError(Exception):
     def __init__(self, description):
-        message = prepare_message(description)
+        message = _prepare_message(description)
         super().__init__(message)
 
 
@@ -26,7 +28,7 @@ class IrisPieWarning(UserWarning):
 
 
 def throw(
-    how: _How,
+    how: HOW,
     message: str | Iterable[str],
     **args,
 ) -> NoReturn:
@@ -43,12 +45,12 @@ def throw(
     #]
 
 
-def prepare_message(message):
+def _prepare_message(message):
     #[
     if isinstance(message, str):
-        message = _PREFIX + message
+        message = _LIST_PREFIX + message
     else:
-        message = ("\n"+_PREFIX).join(message)
+        message = ("\n"+_LIST_PREFIX).join(message)
     return message
     #]
 

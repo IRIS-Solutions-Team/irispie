@@ -62,12 +62,12 @@ def _trim_decorate(func):
     return wrapper
 
 
-class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.SeriesViewMixin):
+class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptorMixin, vi_.SeriesViewMixin):
     """
     """
     __slots__ = (
         "start_date", "data", "data_type",
-        "_descript_", "_column_titles", "_user_data",
+        "_descriptor_", "_column_titles", "_user_data",
     )
     _numeric_format: str = "15g"
     _short_str_format: str = ">15"
@@ -79,16 +79,16 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptMixin, vi_.S
     def __init__(self, /, *args, **kwargs):
         num_columns = kwargs.get("num_columns", 1)
         self.data_type = kwargs.get("data_type", np_.float64)
-        self._descript_ = kwargs.get("descript", "")
+        self._descriptor_ = kwargs.get("descriptor", "")
         self.reset(num_columns)
 
-    def reset(self, /, num_columns=None, data_type=None, descript=None, ):
+    def reset(self, /, num_columns=None, data_type=None, descriptor=None, ):
         num_columns = num_columns if num_columns else self.num_columns
         data_type = data_type if data_type else self.data_type
-        descript = descript if descript else self._descript_
+        descriptor = descriptor if descriptor else self._descriptor_
         self.start_date = None
         self.data = np_.full((0, num_columns), self._missing, dtype=data_type)
-        self._descript_ = str(descript)
+        self._descriptor_ = str(descriptor)
         self._column_titles = [""] * num_columns
         self._user_data = {}
         return self

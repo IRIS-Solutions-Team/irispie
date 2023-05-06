@@ -99,19 +99,20 @@ _ARRAY_TRANSPOSER_RESOLUTION = {
 class Databank(
     im_.DatabankImportMixin,
     ex_.DatabankExportMixin,
-    ud_.DescriptMixin,
+    ud_.DescriptorMixin,
     vi_.DatabankViewMixin,
     ty_.SimpleNamespace,
 ):
     """
+    Create a databank object as a simple namespace with utility functions
     """
     #[
     def __init__(
         self,
         /,
-        descript: str = "",
+        descriptor: str = "",
     ) -> NoReturn:
-        self.set_descript(descript)
+        self.set_descriptor(descriptor)
 
     @classmethod
     def _from_dict(
@@ -134,7 +135,7 @@ class Databank(
         dates: da_.Dater,
         /,
         add_to_databank: Self | None = None,
-        qid_to_descript: dict[int, str] | None = None,
+        qid_to_descriptor: dict[int, str] | None = None,
         array_orientation: Literal["vertical"] | Literal["horizontal"] = "vertical",
         interpret_dates: Literal["start_date"] | Literal["range"] = "start_date",
     ) -> Self:
@@ -147,8 +148,8 @@ class Databank(
             name = qid_to_name.get(qid, None)
             if not name:
                 continue
-            descript = qid_to_descript[qid] if qid_to_descript else ""
-            series = constructor(dates, data.reshape(-1, 1), descript=descript)
+            descriptor = qid_to_descriptor[qid] if qid_to_descriptor else ""
+            series = constructor(dates, data.reshape(-1, 1), descriptor=descriptor)
             setattr(self, name, series)
         return self
 

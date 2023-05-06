@@ -145,16 +145,19 @@ class GetterMixin:
             qid: (name if qid_to_kind[qid] in _TIME_SERIES_QUANTITY else "")
             for qid, name in self.create_qid_to_name().items()
         }
-        qid_to_descript = self.create_qid_to_descript()
+        qid_to_descriptor = self.create_qid_to_descriptor()
         #
         return db_.Databank._from_array(
             array, qid_to_name, start_date, 
             array_orientation="horizontal",
             interpret_dates="start_date",
-            qid_to_descript=qid_to_descript,
+            qid_to_descriptor=qid_to_descriptor,
         )
 
     def get_solution_vectors(self, /, ) -> de_.SolutionVectors:
+        """
+        Get the solution vectors of the model
+        """
         return self._invariant._dynamic_descriptor.solution_vectors
 
     def get_all_solution_matrices(self, /, ):

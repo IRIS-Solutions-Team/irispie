@@ -54,7 +54,7 @@ class Quantity:
     human: str | None = None
     kind: QuantityKind = QuantityKind.UNSPECIFIED
     logly: bool | None = None
-    descript: str | None = None
+    descriptor: str | None = None
     entry: int | None = None
 
     def set_id(self, qid: int) -> Self:
@@ -64,6 +64,9 @@ class Quantity:
     def set_logly(self, logly: bool) -> Self:
         self.logly = logly
         return self
+
+    def print_name_maybe_log(self, /, ) -> str:
+        return f"log({self.human})" if self.logly else self.human
 
     def __hash__(self, /, ) -> int:
         return hash(self.__repr__)
@@ -83,8 +86,8 @@ def create_qid_to_name(quantities: Quantities) -> dict[int, str]:
     return { qty.id: qty.human for qty in quantities }
 
 
-def create_qid_to_descript(quantities: Quantities) -> dict[int, str]:
-    return { qty.id: qty.descript for qty in quantities }
+def create_qid_to_descriptor(quantities: Quantities) -> dict[int, str]:
+    return { qty.id: qty.descriptor for qty in quantities }
 
 
 def create_qid_to_kind(quantities: Quantities) -> dict[int, str]:
@@ -145,19 +148,24 @@ def validate_selection_of_quantities(
     return custom_quantities, invalid_quantities
 
 
-def lookup_qids_by_name(
+def lookup_quantities_by_name(
     quantities: Quantities,
-    names: Iterable[str],
+    custom_names: Iterable[str],
     /,
 ) -> tuple[Quantities, list[str]]:
     """
+    Lookup quantities by name, and return a list of quantities and a list
+    of invalid names
     """
-    names = list(names)
-    name_to_qid = create_name_to_qid(quantities, )
-    valid_qids = [ name_to_qid[n] for n in names if n in name_to_qid ]
+    custom_names = list(custom_names)
+    quantity_names = list(generate_all_quantity_names(quantities))
+    custom_quantities = [
+        quantities[quantity_names.index(n)]
+        for n in custom_names if n in quantity_names
+    ]
     invalid_names = (
-        [ n for n in names if n not in name_to_qid ] 
-        if len(valid_qids) != len(names) else []
+        [ n for n in custom_names if n not in quantity_names ]
+        if len(custom_quantities) != len(custom_names) else []
     )
-    return  valid_qids, invalid_names
+    return custom_quantities, invalid_names
 

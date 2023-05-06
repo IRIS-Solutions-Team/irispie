@@ -4,22 +4,21 @@ General mixins
 
 #[
 from __future__ import annotations
-# from IPython import embed
 
 from typing import Self, NoReturn
 #]
 
 
-class DescriptMixin:
+class DescriptorMixin:
     """
     """
     #[
-    _descript_: str = ""
+    _descriptor_: str = ""
 
-    def set_descript(self, descript: str) -> NoReturn:
-        self._descript_ = str(descript)
+    def set_descriptor(self, descriptor: str) -> NoReturn:
+        self._descriptor_ = str(descriptor)
 
-    def get_descript(self) -> str:
-        return str(self._descript_)
+    def get_descriptor(self) -> str:
+        return str(self._descriptor_)
     #]
 

@@ -13,11 +13,12 @@ import numpy as np_
 import itertools as it_
 import functools as ft_
 
-from .. import (equations as eq_, quantities as qu_, evaluators as ev_, wrongdoings as wd_, )
+from .. import (equations as eq_, quantities as qu_, wrongdoings as wd_, )
 from ..parsers import (common as pc_, )
 from ..dataman import (databanks as db_, dates as da_)
-from ..models import (simulations as si_, evaluators as me_, sources as ms_, getters as ge_, variants as va_, invariants as in_, flags as mg_, )
 from ..fords import (solutions as sl_, steadiers as fs_, descriptors as de_, systems as sy_, )
+
+from . import (simulations as si_, evaluators as me_, sources as ms_, getters as ge_, variants as va_, invariants as in_, flags as mg_, )
 #]
 
 
@@ -152,10 +153,16 @@ class Model(
     def create_qid_to_kind(self, /, ) -> dict[int, str]:
         return qu_.create_qid_to_kind(self._invariant._quantities)
 
-    def create_qid_to_descript(self, /, ) -> dict[int, str]:
-        return qu_.create_qid_to_descript(self._invariant._quantities)
+    def create_qid_to_descriptor(self, /, ) -> dict[int, str]:
+        """
+        Create a dictionary mapping from quantity id to quantity descriptor
+        """
+        return qu_.create_qid_to_descriptor(self._invariant._quantities)
 
     def create_qid_to_logly(self, /, ) -> dict[int, bool]:
+        """
+        Create a dictionary mapping from quantity id to quantity log-status
+        """
         return qu_.create_qid_to_logly(self._invariant._quantities)
 
     def get_ordered_names(self, /, ) -> list[str]:
@@ -308,7 +315,7 @@ class Model(
         /,
         equation_switch: _EquationSwitch = "dynamic",
         details: bool = False,
-        when_fails: str = "error",
+        when_fails: wd_.HOW = "error",
         tolerance: float = 1e-12,
     ) -> tuple[bool, Iterable[bool], Iterable[Number], Iterable[np_.ndarray]] | bool:
         """

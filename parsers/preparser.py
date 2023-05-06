@@ -11,7 +11,7 @@ import parsimonious
 import functools
 import itertools
 from collections.abc import Iterable
-from typing import TypeAlias, Protocol
+from typing import (TypeAlias, Protocol, )
 
 from ..parsers import (common as co_, pseudofunctions as pf_, shifts as sh_, )
 #]

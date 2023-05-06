@@ -28,28 +28,28 @@ class _ImportBlockDescriptor:
     column_start: int | None = None,
     num_columns: int | None = None,
     names: Iterable[str] | None = None,
-    descripts: Iterable[str] | None = None,
+    descriptors: Iterable[str] | None = None,
 
     def column_iterator(self, /, ):
         """
         """
         status = False
         names = self.names + [""]
-        descripts = self.descripts + [""]
+        descriptors = self.descriptors + [""]
         current_columns = None
         current_name = None
-        current_descript = None
-        for i, (n, d) in enumerate(zip(names, descripts, )):
+        current_descriptor = None
+        for i, (n, d) in enumerate(zip(names, descriptors, )):
             if status and n!="*":
                 status = False
-                yield current_columns, current_name, current_descript
+                yield current_columns, current_name, current_descriptor
             if status and n=="*":
                 current_columns.append(i, )
             if not status and n and n!="*":
                 status = True
                 current_columns = [i]
                 current_name = n
-                current_descript = d
+                current_descriptor = d
     #]
 
 
@@ -63,7 +63,7 @@ class DatabankImportMixin:
         file_name: str,
         /,
         start_date_only: bool = False,
-        descript_row: bool = False,
+        descriptor_row: bool = False,
         delimiter: str = ",",
         csv_reader_settings: dict = {},
         numpy_reader_settings: dict = {},
@@ -72,14 +72,14 @@ class DatabankImportMixin:
         """
         """
         self = cls(**kwargs)
-        num_header_lines = 1 + int(descript_row)
+        num_header_lines = 1 + int(descriptor_row)
         csv_lines = _read_csv_lines(file_name, num_header_lines, **csv_reader_settings, )
         header_lines = csv_lines[0:num_header_lines]
         data_lines = csv_lines[num_header_lines:]
         name_line = header_lines[0]
-        descript_row = header_lines[1] if descript_row else [""] * len(name_line)
+        descriptor_row = header_lines[1] if descriptor_row else [""] * len(name_line)
         #
-        for b in _block_iterator(name_line, descript_row, data_lines, start_date_only, ):
+        for b in _block_iterator(name_line, descriptor_row, data_lines, start_date_only, ):
             array = _read_array_for_block(file_name, b, num_header_lines, delimiter=delimiter, **numpy_reader_settings, )
             _add_series_for_block(self, b, array, )
         #
@@ -100,7 +100,7 @@ def _read_csv_lines(file_name, num_header_lines, /, delimiter=",", **kwargs, ):
     #]
 
 
-def _block_iterator(name_line, descript_row, data_lines, start_date_only, /, ):
+def _block_iterator(name_line, descriptor_row, data_lines, start_date_only, /, ):
     """
     """
     #[
@@ -118,9 +118,9 @@ def _block_iterator(name_line, descript_row, data_lines, start_date_only, /, ):
             status = False
             num_columns = column - current_start
             names = name_line[current_start:column]
-            descripts = descript_row[current_start:column]
+            descriptors = descriptor_row[current_start:column]
             row_index, dates = _extract_dates_from_data_lines(data_lines, current_frequency, current_date_column, start_date_only, )
-            yield _ImportBlockDescriptor(row_index, dates, current_start, num_columns, names, descripts)
+            yield _ImportBlockDescriptor(row_index, dates, current_start, num_columns, names, descriptors)
         if not status and _is_start(cell):
             status = True
             current_date_column = column
@@ -160,8 +160,8 @@ def _add_series_for_block(self, block, array, /, ):
     """
     #[
     array = array[block.row_index, :]
-    for columns, name, descript in block.column_iterator():
-        series = se_.Series(num_columns=len(columns), descript=descript)
+    for columns, name, descriptor in block.column_iterator():
+        series = se_.Series(num_columns=len(columns), descriptor=descriptor)
         series.set_data(block.dates, array[:, columns])
         setattr(self, name, series)
     #]

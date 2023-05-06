@@ -109,7 +109,7 @@ class ModelSource:
             return
         offset = self.quantities[-1].entry + 1 if self.quantities else 0
         self.quantities = self.quantities + [
-            qu_.Quantity(id=None, human=q[1].strip(), kind=kind, logly=None, descript=q[0].strip(), entry=i)
+            qu_.Quantity(id=None, human=q[1].strip(), kind=kind, logly=None, descriptor=q[0].strip(), entry=i)
             for i, q in enumerate(quantity_inputs, start=offset)
         ]
 
@@ -119,20 +119,20 @@ class ModelSource:
             return
         offset = self.dynamic_equations[-1].entry + 1 if self.dynamic_equations else 0
         self.dynamic_equations = self.dynamic_equations + [
-            eq_.Equation(id=None, human=_handle_white_spaces(ein[1][0]), kind=kind, descript=ein[0].strip(), entry=i)
+            eq_.Equation(id=None, human=_handle_white_spaces(ein[1][0]), kind=kind, descriptor=ein[0].strip(), entry=i)
             for i, ein in enumerate(equation_inputs, start=offset)
         ]
         self.steady_equations = self.steady_equations + [
-            eq_.Equation(id=None, human=_handle_white_spaces(ein[1][1] if ein[1][1] else ein[1][0]), kind=kind, descript=ein[0].strip(), entry=i)
+            eq_.Equation(id=None, human=_handle_white_spaces(ein[1][1] if ein[1][1] else ein[1][0]), kind=kind, descriptor=ein[0].strip(), entry=i)
             for i, ein in enumerate(equation_inputs, start=offset)
         ]
 
 
     def _add_stds(self) -> NoReturn:
         def _create_std_input_from_shock(shock):
-            descript = _STD_DESCRIPT + (shock.descript if shock.descript else shock.human)
+            descriptor = _STD_DESCRIPT + (shock.descriptor if shock.descriptor else shock.human)
             human = STD_PREFIX + shock.human
-            return(descript, human)
+            return(descriptor, human)
         #
         transition_shocks = (q for q in self.quantities if q.kind in qu_.QuantityKind.TRANSITION_SHOCK)
         transition_std_inputs = (_create_std_input_from_shock(i) for i in transition_shocks)

@@ -1,65 +1,25 @@
-"""m = 
+"""
 """
 
 
 #[
 from __future__ import annotations
-# from IPython import embed
 
 import enum as en_
 import numpy as np_
+import scipy as sp_
 import copy as co_
 from typing import (Self, NoReturn, Callable, )
 from collections.abc import (Iterable, )
 
-from . import (quantities as qu_, )
-from . import (equations as eq_, )
-from .aldi import (adaptations as aa_, )
-from .jacobians import (descriptors as jd_, )
+from .. import (quantities as qu_, equations as eq_, )
+from ..aldi import (adaptations as aa_, )
+from ..jacobians import (descriptors as jd_, )
+from . import (accessories as ea_, )
 #]
 
 
-__all__ = [
-    "SteadyEvaluator", "PlainEvaluator"
-]
-
-
-class _EvaluatorMixin:
-    """
-    """
-    #[
-    @property
-    def equations_human(self, /, ) -> Iterable[str]:
-        return [ eqn.human for eqn in self._equations ]
-
-    @property
-    def num_equations(self, /, ) -> int:
-        """
-        """
-        return len(self._equations)
-
-    def _create_evaluator_function(
-        self,
-        /,
-        function_context: dict | None = None,
-    ) -> NoReturn:
-        """
-        """
-        function_context = aa_.add_function_adaptations_to_custom_functions(function_context)
-        function_context["_array"] = np_.array
-        self._xtrings = [ eqn.remove_equation_ref_from_xtring() for eqn in self._equations ]
-        func_string = " , ".join(self._xtrings)
-        self._func = eval(eq_.EVALUATOR_PREAMBLE + f"_array([{func_string}], dtype=float)", function_context)
-
-    def _populate_min_max_shifts(self) -> NoReturn:
-        """
-        """
-        self.min_shift = eq_.get_min_shift_from_equations(self._equations)
-        self.max_shift = eq_.get_max_shift_from_equations(self._equations)
-    #]
-
-
-class SteadyEvaluator(_EvaluatorMixin):
+class SteadyEvaluator(ea_.EvaluatorMixin):
     """
     """
     #[
@@ -67,6 +27,7 @@ class SteadyEvaluator(_EvaluatorMixin):
         "_t_zero", "_equations", "_quantities", "_eids", "_xtrings", "_func",
         "_incidence_matrix", "_x", "_z0", "_steady_array_updater",
         "_jacobian_descriptor",
+        "_x_store",
     )
     @property
     def is_jacobian_sparse(self, /, ) -> bool:
@@ -88,6 +49,9 @@ class SteadyEvaluator(_EvaluatorMixin):
         updater: Callable,
         jacobian_descriptor: Callable | None,
         function_context: dir | None,
+        /,
+        print_iter: bool | Number = True,
+        **kwargs,
     ) -> NoReturn:
         """ """
         self._t_zero = t_zero
@@ -101,6 +65,11 @@ class SteadyEvaluator(_EvaluatorMixin):
         self._steady_array_updater = updater
         self._jacobian_descriptor = jacobian_descriptor
         self._populate_min_max_shifts()
+        self._iter_printer = (
+            ea_.IterPrinter(self._equations, self._quantities, every=int(print_iter), )
+            if print_iter else None
+        )
+        self._x_store = []
 
     @property
     def initial_guess(self, /, ) -> np_.ndarray:
@@ -139,9 +108,27 @@ class SteadyEvaluator(_EvaluatorMixin):
     ) -> np_.ndarray:
         """
         """
+        #current = current[:-1] if current is not None else self._z0.reshape(-1, 1, )
         current = current if current is not None else self._z0.reshape(-1, 1, )
-        x = self._steady_array_updater(self._x, current, )
-        return self._func(x, self._t_zero, None, )
+        self._steady_array_updater(self._x, current, )
+        f = self._func(self._x, self._t_zero, None, )
+        j_done = False
+        if self._iter_printer:
+            self._iter_printer.next(current, f, j_done, )
+        return f
+
+    def eval_sum_of_squares(
+        self,
+        /,
+        *args,
+    ) -> tuple[float, np_.ndarray]:
+        """
+        """
+        f, j = self.eval_with_jacobian(*args)
+        sum_of_squares = np_.sum(f ** 2)
+        j_sum_of_squares = 2 * f.reshape(-1, 1) * j
+        j_sum_of_squares = np_.sum(j_sum_of_squares, axis=0)
+        return sum_of_squares, j_sum_of_squares
 
     def eval_with_jacobian(
         self,
@@ -150,12 +137,19 @@ class SteadyEvaluator(_EvaluatorMixin):
     ) -> np_.ndarray:
         """
         """
+        #current = current[:-1] if current is not None else self._z0.reshape(-1, 1, )
         current = current if current is not None else self._z0.reshape(-1, 1, )
-        x = self._steady_array_updater(self._x, current, )
-        return (
-            self._func(x, self._t_zero, None, ),
-            self._jacobian_descriptor.eval(x, None, ),
-        )
+        self._steady_array_updater(self._x, current, )
+        f = self._func(self._x, self._t_zero, None, )
+        j = self._jacobian_descriptor.eval(self._x, None, )
+        #j = np_.hstack((j, np_.zeros((self.num_equations, 1), dtype=float)))
+        j_done = True
+        if self._iter_printer:
+            self._iter_printer.next(current, f, j_done, )
+        return f, j
+
+    def reset(self, /, ) -> NoReturn:
+        self._iter_printer.reset() if self._iter_printer else None
 
     def eval_jacobian(
         self,
@@ -181,41 +175,6 @@ class SteadyEvaluator(_EvaluatorMixin):
             ))
             matrix[row_index, column_indices] = True
         self.incidence_matrix = matrix
-    #]
-
-
-class PlainEvaluator(_EvaluatorMixin):
-    """
-    """
-    #[
-    __slots__ = (
-        "_equations", "min_shift", "max_shift", "_func",
-    )
-
-    def __init__(
-        self,
-        equations: eq_.Equations,
-        function_context: dir | None = None,
-        /,
-    ) -> NoReturn:
-        self._equations = list(equations, )
-        self._create_evaluator_function(function_context, )
-        self._populate_min_max_shifts()
-
-    @property
-    def min_num_columns(self, /, ) -> int:
-        return -self.min_shift + 1 + self.max_shift
-
-    def eval(
-        self,
-        data_array: np_.ndarray,
-        columns: int | Iterable[int],
-        steady_array: np_.ndarray,
-        /,
-    ) -> np_.ndarray:
-        """
-        """
-        return self._func(data_array, columns, steady_array, ).reshape(self.num_equations, -1)
     #]
 
 

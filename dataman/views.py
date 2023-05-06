@@ -69,7 +69,7 @@ class ViewMixin:
         return [ 
             "", 
             self._get_first_line_view_(),
-            f"Description: \"{self.get_descript()}\"",
+            f"Description: \"{self.get_descriptor()}\"",
             "", 
         ]
 

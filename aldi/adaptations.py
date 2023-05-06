@@ -6,12 +6,12 @@
 from __future__ import annotations
 
 import numpy as np_
-
-from ..aldi import (differentiators as ad_, )
 #]
 
 
-FUNCTION_ADAPTATIONS = ad_.FUNCTION_ADAPTATIONS
+FUNCTION_ADAPTATIONS = [
+    "log", "exp", "sqrt", "maximum", "minimum"
+]
 
 
 for n in FUNCTION_ADAPTATIONS:

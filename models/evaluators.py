@@ -3,16 +3,18 @@
 
 #[
 from __future__ import annotations
-# from IPython import embed
 
 from typing import (Self, NoReturn, )
 from collections.abc import (Iterable, Callable, )
+from numbers import (Number, )
 import numpy as np_
 import functools as ft_
 
-from .. import (equations as eq_, quantities as qu_, evaluators as ev_, )
-from ..models import (variants as va_, )
+from .. import (equations as eq_, quantities as qu_, wrongdoings as wd_, )
 from ..jacobians import (descriptors as jd_, )
+from ..evaluators import (steadies as es_, )
+
+from . import (variants as va_, )
 #]
 
 
@@ -44,7 +46,7 @@ class SteadyEvaluatorMixin:
         equations: eq_.Equations | None = None,
         quantities: qu_.Quantities | None = None,
         **kwargs,
-    ) -> ev_.SteadyEvaluator:
+    ) -> es_.SteadyEvaluator:
         """
         Create a steady-state Evaluator object for the primary variant of this Model
         """
@@ -89,41 +91,30 @@ class SteadyEvaluatorMixin:
         shift_vec, t_zero = _prepare_time_shifts(equations, )
         qid_to_logly = self.create_qid_to_logly()
         steady_array = variant.create_steady_array(qid_to_logly, num_columns=shift_vec.shape[1], shift_in_first_column=-t_zero, )
-        maybelog_levels, maybelog_changes, qids, index_logly = _prepare_maybelog_initial_guesses(quantities, variant, )
-        maybelog_guess = maybelog_levels
+        maybelog_levels, maybelog_changes, qids, index_logly = _prepare_maybelog_initial_guesses(quantities, variant, **kwargs, )
+        maybelog_initial_guess = maybelog_levels
         #
         steady_array_updater = ft_.partial(
-            _steady_array_updater,
-            maybelog_changes=maybelog_changes,
-            shift_vec=shift_vec,
-            qids=qids,
-            index_logly=index_logly,
+            _steady_array_updater, maybelog_changes=maybelog_changes,
+            shift_vec=shift_vec, qids=qids, index_logly=index_logly,
         )
         #
         jacobian_descriptor = jd_.Descriptor.for_flat(
-            equations,
-            quantities,
-            qid_to_logly,
-            function_context,
-            **kwargs,
+            equations, quantities, qid_to_logly, function_context, **kwargs,
         )
         #
-        return ev_.SteadyEvaluator(
-            equations,
-            quantities,
-            t_zero,
-            steady_array,
-            maybelog_guess,
-            steady_array_updater,
-            jacobian_descriptor,
-            function_context,
+        return es_.SteadyEvaluator(
+            equations, quantities,
+            t_zero, steady_array, maybelog_initial_guess,
+            steady_array_updater, jacobian_descriptor, function_context, 
+            **kwargs,
         )
     #]
 
 
 def _steady_array_updater(
     steady_array: np_.ndarray,
-    maybelog_guess: np_.ndarray,
+    maybelog_initial_guess: np_.ndarray,
     /,
     maybelog_changes: np_.ndarray,
     shift_vec: np_.ndarray,
@@ -132,29 +123,52 @@ def _steady_array_updater(
 ) -> np_.ndarray:
     """
     """
-    maybelog_levels = maybelog_guess
+    maybelog_levels = np_.copy(maybelog_initial_guess)
     update = maybelog_levels.reshape(-1, 1) + shift_vec * maybelog_changes.reshape(-1, 1)
     update[index_logly, :] = np_.exp(update[index_logly, :])
     steady_array[qids, :] = update
-    return steady_array
+    #return steady_array
 
 
 def _prepare_maybelog_initial_guesses(
     quantities,
     variant,
     /,
+    **kwargs,
 ) -> tuple[np_.ndarray, np_.ndarray, list[int], list[int]]:
     """
     """
     #[
     qids = list(qu_.generate_all_qids(quantities, ))
     index_logly = [ i for i, qty in enumerate(quantities, ) if qty.logly ]
+    #
+    # Extract initial guesses for levels and changes
     maybelog_levels = variant.levels[qids]
     maybelog_changes = variant.changes[qids]
+    #
+    # Logarithmize
     maybelog_levels[index_logly] = np_.log(maybelog_levels[index_logly])
     maybelog_changes[index_logly] = np_.log(maybelog_changes[index_logly])
-    maybelog_changes[np_.isnan(maybelog_changes)] = 0
+    #
+    # Fill missing initial guesses
+    _fill_missing_maybelog_initial_guesses(maybelog_levels, maybelog_changes, **kwargs, )
+    #
     return maybelog_levels, maybelog_changes, qids, index_logly
+    #]
+
+
+def _fill_missing_maybelog_initial_guesses(
+    maybelog_levels: np_.ndarray,
+    maybelog_changes: np_.ndarray,
+    /,
+    default_level: Number = 1/9,
+    **kwargs,
+) -> tuple[np_.ndarray, np_.ndarray]:
+    """
+    """
+    #[
+    maybelog_levels[np_.isnan(maybelog_levels)] = default_level
+    maybelog_changes[np_.isnan(maybelog_changes)] = 0
     #]
 
 
