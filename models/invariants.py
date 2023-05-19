@@ -114,6 +114,7 @@ def _success_creating_lambda(equation, function_context):
         eval(eq_.create_evaluator_func_string([equation.xtring]))
         return True
     except Exception as ex:
+        print(ex)
         breakpoint()
         return False
     #]

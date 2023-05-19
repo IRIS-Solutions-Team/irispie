@@ -80,7 +80,7 @@ class SteadyEvaluatorMixin:
         quantities : qu_.Quantities,
         /,
         **kwargs,
-    ) -> Callable:
+    ) -> es_.SteadyEvaluator:
         """
         Create steady evaluator for the a given variant of this Model
         """

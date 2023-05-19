@@ -103,14 +103,13 @@ class IterPrinter:
         worst_equation = _clip_string_exactly(worst_equation, self._MAX_LEN_EQUATION_STRING)
         return f"{worst_f:.5e}", worst_equation
 
-    def find_worst_diff_x(self, x, /, ) -> tuple[str, str]:
+    def find_worst_diff_x(self, diff_x, /, ) -> tuple[str, str]:
         """
         Find the largest change in x and the corresponding quantity
         """
         if self._prev_x is None:
             return f"{self._NAN_STRING:>11}", f"{self._NAN_STRING:{self._MAX_LEN_NAME_STRING}}"
         #
-        diff_x = np_.abs(x - self._prev_x)
         index = np_.argmax(diff_x)
         worst_diff_x = diff_x[index]
         worst_name = self._quantities[index].print_name_maybe_log() if self._quantities is not None else ' '

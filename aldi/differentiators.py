@@ -173,22 +173,25 @@ class Atom(ValueMixin, LoglyMixin):
             new_value, new_diff = self._power(other)
         return type(self).no_context(new_value, new_diff, False)
 
-    def _exponential(self, other):
+    def _exponential(self, other_value):
         """
-        Differenatiate exponential function other**self(x)
+        Differenatiate exponential function other_value**self(x)
         """
-        new_value = other**self.value
-        new_diff = other**self.value * np_.log(other) * self.diff
+        new_value = other_value**self.value
+        new_diff = (
+            other_value**self.value * np_.log(other_value) * self.diff 
+            if other_value != 0 else 0
+        )
         return new_value, new_diff
 
-    def _power(self, other):
+    def _power(self, other_value):
         """
-        Differenatiate power function self(x)**other
+        Differenatiate power function self(x)**other_value
         """
         self_value = self.value
         self_diff = self.diff
-        new_value = self_value ** other
-        new_diff = other * (self_value**(other-1)) * self_diff
+        new_value = self_value ** other_value
+        new_diff = other_value * (self_value**(other_value-1)) * self_diff
         return new_value, new_diff
 
     __rmul__ = __mul__
@@ -403,8 +406,10 @@ class Context:
         """
         Evaluate and return array of diffs
         """
-        output = self.eval(*args)
-        return np_.vstack([x.diff for x in output if x is not 0])
+        return np_.vstack([
+            x.diff for x in self.eval(*args)
+            if hasattr(x, "diff")
+        ])
 
     def _verify_data_array_shape(self, shape_data: np_.ndarray) -> NoReturn:
         """

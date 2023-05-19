@@ -37,12 +37,15 @@ class QuantityKind(enum.Flag):
     #]
 
 
-__all__  = [
+_export_kinds  = [
     "TRANSITION_VARIABLE", "TRANSITION_SHOCK", "TRANSITION_STD",
     "MEASUREMENT_VARIABLE", "MEASUREMENT_SHOCK", "MEASUREMENT_STD",
 ]
-for n in __all__:
+
+for n in _export_kinds:
     exec(f"{n} = QuantityKind.{n}")
+
+__all__ = ["filter_quantities_by_name", ] + _export_kinds
 
 
 @dataclasses.dataclass
@@ -168,4 +171,19 @@ def lookup_quantities_by_name(
         if len(custom_quantities) != len(custom_names) else []
     )
     return custom_quantities, invalid_names
+
+
+def filter_quantities_by_name(
+    quantities: Quantities,
+    /,
+    include_names: Iterable[str] | None = None,
+    exclude_names: Iterable[str] | None = None,
+) -> Quantities:
+    """
+    """
+    include_names = set(include_names) if include_names is not None else None
+    exclude_names = set(exclude_names) if exclude_names is not None else None
+    inclusion_test = lambda name: include_names is None or name in include_names
+    exclusion_test = lambda name: exclude_names is None or name not in exclude_names
+    return [ qty for qty in quantities if inclusion_test(qty.human) and exclusion_test(qty.human) ]
 

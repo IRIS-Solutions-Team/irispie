@@ -142,7 +142,6 @@ class SteadyEvaluator(ea_.EvaluatorMixin):
         self._steady_array_updater(self._x, current, )
         f = self._func(self._x, self._t_zero, None, )
         j = self._jacobian_descriptor.eval(self._x, None, )
-        #j = np_.hstack((j, np_.zeros((self.num_equations, 1), dtype=float)))
         j_done = True
         if self._iter_printer:
             self._iter_printer.next(current, f, j_done, )

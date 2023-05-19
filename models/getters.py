@@ -103,7 +103,7 @@ class GetterMixin:
         return {
             qty.human: qty.logly
             for qty in self._invariant._quantities
-            if qty.kind in QuantityKind.LOGLY_VARIABLE
+            if qty.kind in ms_.LOGLY_VARIABLE
         }
 
     def get_initials(

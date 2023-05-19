@@ -51,6 +51,7 @@ def from_string(
 
     preparsed_source = _run_preparser_on_source_string(source, context, ) if info["preparser_needed"] else source
 
+    # Resolve pseudofunctions
     preparsed_source = pf_.resolve_pseudofunctions(preparsed_source)
 
     if save_preparsed:
