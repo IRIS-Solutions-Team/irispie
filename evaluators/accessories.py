@@ -61,7 +61,8 @@ class IterPrinter:
     _MAX_LEN_NAME_STRING = 10
     #
     __slots__ = (
-        "_equations", "_quantities", "_every", "_iter_count", "_prev_x", "_prev_f", "_last_iter_string", "_divider_line",
+        "_equations", "_quantities", "_every", "_iter_count",
+        "_curr_f", "_curr_x", "_prev_x", "_prev_f", "_last_iter_string", "_divider_line",
     )
     def __init__(
         self, 
@@ -73,6 +74,8 @@ class IterPrinter:
         self._equations = equations
         self._quantities = quantities
         self._iter_count = 0
+        self._curr_f = None
+        self._curr_x = None
         self._prev_x = None
         self._prev_f = None
         self._every = every
@@ -81,35 +84,38 @@ class IterPrinter:
         """
         Handle next iteration
         """
-        f_norm = sp_.linalg.norm(f, 2)
-        diff_x = x - self._prev_x if self._prev_x is not None else None
+        self._curr_f = f.flatten()
+        self._curr_x = x.flatten()
+        f_norm = sp_.linalg.norm(self._curr_f, 2)
         if self._iter_count == 0:
-            dimension = (f.size, x.size, )
+            dimension = (self._curr_f.size, self._curr_x.size, )
             self.print_header(dimension, )
-        self._last_iter_string = self.get_iter_string(f_norm, j_done, *self.find_worst_diff_x(diff_x, ), *self.find_worst_equation(f, ), )
+        self._last_iter_string = self.get_iter_string(f_norm, j_done, *self.find_worst_diff_x(), *self.find_worst_equation(), )
         if self._iter_count % self._every == 0:
             print(self._last_iter_string)
-        self._prev_x = np_.copy(x)
-        self._prev_f = np_.copy(f)
+        self._prev_x = self._curr_x
+        self._prev_f = self._curr_f
+        self._curr_f = None
+        self._curr_x = None
         self._iter_count += 1
 
-    def find_worst_equation(self, f, /, ) -> tuple[Number, str]:
+    def find_worst_equation(self, /, ) -> tuple[Number, str]:
         """
         Find the largest function residual and the corresponding equation
         """
-        index = np_.argmax(np_.abs(f))
-        worst_f = np_.abs(f[index])
+        index = np_.argmax(np_.abs(self._curr_f))
+        worst_f = np_.abs(self._curr_f[index])
         worst_equation = self._equations[index].human if self._equations is not None else ""
         worst_equation = _clip_string_exactly(worst_equation, self._MAX_LEN_EQUATION_STRING)
         return f"{worst_f:.5e}", worst_equation
 
-    def find_worst_diff_x(self, diff_x, /, ) -> tuple[str, str]:
+    def find_worst_diff_x(self, /, ) -> tuple[str, str]:
         """
         Find the largest change in x and the corresponding quantity
         """
         if self._prev_x is None:
             return f"{self._NAN_STRING:>11}", f"{self._NAN_STRING:{self._MAX_LEN_NAME_STRING}}"
-        #
+        diff_x = self._curr_x - self._prev_x if self._prev_x is not None else None
         index = np_.argmax(diff_x)
         worst_diff_x = diff_x[index]
         worst_name = self._quantities[index].print_name_maybe_log() if self._quantities is not None else ' '
