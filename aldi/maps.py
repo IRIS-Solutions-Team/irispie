@@ -1,4 +1,6 @@
 """
+Create a map from one column of a stacked Jacobian to a full (dense or
+sparse) Jacobian matrix
 """
 
 
@@ -48,18 +50,9 @@ class ArrayMap:
         self.lhs = (self.lhs[0]+other.lhs[0], self.lhs[1]+other.lhs[1])
         self.rhs = (self.rhs[0]+other.rhs[0], self.rhs[1]+other.rhs[1])
 
-    #def offset(
-    #    self,
-    #    lhs_row: int, 
-    #    rhs_row_offset: int,
-    #) -> NoReturn:
-    #    """
-    #    """
-    #    self.lhs = ([lhs_row if i is not None else None for i in self.lhs[0]], self.lhs[1])
-    #    self.rhs = ([i+rhs_row_offset if i is not None else None for i in self.rhs[0]], self.rhs[1])
-
-    def _remove_nones(self) -> NoReturn:
+    def remove_nones(self) -> NoReturn:
         """
+        Remove any map entry that has a None for the row index on the LHS
         """
         if not self.lhs[0]:
             return
@@ -79,6 +72,7 @@ class ArrayMap:
         tokens_in_columns_on_rhs: list[Any],
         eid_to_rhs_offset: dict[int, int],
         /,
+        **kwargs,
     ) -> Self:
         """
         """
@@ -88,6 +82,7 @@ class ArrayMap:
                 tokens_in_columns_on_rhs,
                 eid_to_rhs_offset[eid],
                 lhs_row,
+                **kwargs,
             )
             for lhs_row, eid in enumerate(eids)
         )
@@ -99,12 +94,15 @@ class ArrayMap:
         tokens_in_columns_on_lhs: in_.Tokens,
         rhs_offset: int,
         lhs_row: int,
+        /,
+        rhs_column: int,
+        lhs_column_offset: int,
     ) -> Self:
         """
         """
-        index = tokens_in_columns_on_lhs.index
+        index_func = lambda t: lhs_column_offset + tokens_in_columns_on_lhs.index(t)
         raw_map = (
-            (lhs_row, index(t), rhs_row, 0) 
+            (lhs_row, index_func(t), rhs_row, rhs_column) 
             for rhs_row, t in enumerate(tokens_in_equation_on_rhs, start=rhs_offset)
             if t in tokens_in_columns_on_lhs
         )
@@ -121,7 +119,7 @@ class ArrayMap:
         # self = cls()
         # for rhs_row, t in enumerate(tokens_in_equation_on_rhs, start=rhs_offset):
         #     if t in tokens_in_columns_on_lhs:
-        #         lhs_column = tokens_in_columns_on_lhs.index(t)
+        #         lhs_column = tokens_in_columns_on_lhs.index_func(t)
         #         self.append((lhs_row, lhs_column), (rhs_row, 0))
         return self
 

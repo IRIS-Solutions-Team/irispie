@@ -17,7 +17,7 @@ from .. import (equations as eq_, quantities as qu_, incidence as in_, )
 
 
 #••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
-# Frontend
+# Exposure
 #••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
 
 
@@ -84,10 +84,10 @@ class Descriptor:
         self._qid_to_logly = qid_to_logly
         #
         self._map = am_.ArrayMap.for_equations(
-            eids,
-            eid_to_wrt_qids,
-            all_wrt_qids,
-            eid_to_rhs_offset,
+            eids, eid_to_wrt_qids,
+            all_wrt_qids, eid_to_rhs_offset,
+            #
+            rhs_column=0, lhs_column_offset=0,
         )
         #
         num_columns = 1
@@ -133,7 +133,7 @@ class Descriptor:
 
 
 #••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
-# Backend
+# Implementation
 #••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
 
 
@@ -155,6 +155,7 @@ class AtomFactory():
     def create_diff_from_token(
         token: Token,
         wrt_qids: Tokens,
+        /,
     ) -> np_.ndarray:
         """
         """
@@ -169,6 +170,7 @@ class AtomFactory():
     def create_data_index_from_token(
         token: Token,
         columns_to_eval: tuple[int, int],
+        /,
     ) -> tuple[int, slice]:
         """
         """
@@ -180,6 +182,7 @@ class AtomFactory():
     @staticmethod
     def create_logly_index_from_token(
         token: Token,
+        /,
     ) -> int:
         """
         """

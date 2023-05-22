@@ -12,15 +12,33 @@ from ..parsers import (shifts as sh_, )
 #]
 
 
+#••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+# Exposure
+#••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+
+
 def resolve_pseudofunctions(source: str, /, ) -> str:
-    return re_.sub(_PSEUDOFUNC_PATTERN, _replace, source, )
+    """
+    Substitute expanded pseudofunctions in source string
+    """
+    return re_.sub(_PSEUDOFUNC_PATTERN, _expand_pseudofunction, source, )
 
 
-def _replace(match, /, ) -> str:
+#••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+# Implementation
+#••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+
+
+def _expand_pseudofunction(match, /, ) -> str:
     func_name, expression, shift = match.group(1), match.group(2), match.group(3)
     func, default_shift = _PSEUDOFUNC_RESOLUTION[func_name]
     shift = _resolve_shift(shift, default_shift)
     return func(expression, shift)
+
+
+def _resolve_shift(shift: str, default_shift: int, /, ) -> int:
+    shift = shift.strip() if shift else ""
+    return int(shift) if shift else default_shift
 
 
 _NAME_MAYBE_WITH_SHIFT = re_.compile(
@@ -99,14 +117,22 @@ def _pseudo_movprod(code, shift, /, ) -> str:
 
 
 _PSEUDOFUNC_RESOLUTION = {
-    "shift": (_pseudo_shift, -1),
-    "diff": (_pseudo_diff, -1),
-    "difflog": (_pseudo_difflog, -1),
-    "pct": (_pseudo_pct, -1),
-    "roc": (_pseudo_roc, -1),
-    "movsum": (_pseudo_movsum, -4),
-    "movavg": (_pseudo_movavg, -4),
-    "movprod": (_pseudo_movprod, -4),
+    "shift":
+        (_pseudo_shift, -1),
+    "diff":
+        (_pseudo_diff, -1),
+    "difflog":
+        (_pseudo_difflog, -1),
+    "pct": 
+        (_pseudo_pct, -1),
+    "roc": 
+        (_pseudo_roc, -1),
+    "movsum":
+        (_pseudo_movsum, -4),
+    "movavg":
+        (_pseudo_movavg, -4),
+    "movprod":
+        (_pseudo_movprod, -4),
 }
 
 
@@ -124,10 +150,4 @@ _PSEUDOFUNC_BODY_PATTERN = r"\(" + _PSEUDOFUNC_EXPRESSION_PATTERN + _PSEUDOFUNC_
 
 # Full pseudofunction pattern
 _PSEUDOFUNC_PATTERN = re_.compile(_PSEUDOFUNC_NAME_PATTERN + _PSEUDOFUNC_BODY_PATTERN)
-
-
-def _resolve_shift(shift: str, default_shift: int, /, ) -> int:
-    shift = shift.strip() if shift else ""
-    return int(shift) if shift else default_shift
-
 

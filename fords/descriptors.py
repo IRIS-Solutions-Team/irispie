@@ -4,15 +4,15 @@
 ## Unsolved system
 
 $$
-A E[x_t] + B E[x_{t-1}] + C + D v_t = 0 \\
-F y_t + G x_t + H + J w_t = 0
+A E[x_{t}] + B E[x_{t-1}] + C + D v_{t} = 0 \\
+F y_{t} + G x_{t} + H + J w_{t} = 0
 $$
 
 ## State-space solution
 
 $$
-x_t = T x{t-1} + K + R v_t \\
-y_t = Z x_t + D + H w_t
+x_{t} = T x_{t-1} + K + R v_{t} \\
+y_{t} = Z x_{t} + D + H w_{t}
 $$
 """
 
@@ -286,11 +286,15 @@ class SystemMap:
         eid_to_rhs_offset = am_.create_eid_to_rhs_offset(system_eids, system_vectors.eid_to_wrt_tokens)
         #
         # Transition equations
+        #
         self.A = am_.ArrayMap.for_equations(
             system_vectors.transition_eids,
             system_vectors.eid_to_wrt_tokens,
             system_vectors.transition_variables,
             eid_to_rhs_offset,
+            #
+            rhs_column=0,
+            lhs_column_offset=0,
         )
         #
         lagged_transition_variables = [ t.shifted(-1) for t in system_vectors.transition_variables ]
@@ -298,15 +302,19 @@ class SystemMap:
             t if t not in system_vectors.transition_variables else None 
             for t in lagged_transition_variables 
         ]
+        #
         self.B = am_.ArrayMap.for_equations(
             system_vectors.transition_eids,
             system_vectors.eid_to_wrt_tokens,
             lagged_transition_variables, 
             eid_to_rhs_offset,
+            #
+            rhs_column=0,
+            lhs_column_offset=0,
         )
         #
-        self.A._remove_nones()
-        self.B._remove_nones()
+        self.A.remove_nones()
+        self.B.remove_nones()
         #
         self.C = am_.ArrayMap.constant_vector(system_vectors.transition_eids)
         #
@@ -315,6 +323,9 @@ class SystemMap:
             system_vectors.eid_to_wrt_tokens,
             system_vectors.transition_shocks,
             eid_to_rhs_offset,
+            #
+            rhs_column=0,
+            lhs_column_offset=0,
         )
         #
         num_dynid_rows = len(system_vectors.transition_variables) - len(system_vectors.transition_eids)
@@ -329,6 +340,9 @@ class SystemMap:
             system_vectors.eid_to_wrt_tokens,
             system_vectors.measurement_variables, 
             eid_to_rhs_offset,
+            #
+            rhs_column=0,
+            lhs_column_offset=0,
         )
         #
         self.G = am_.ArrayMap.for_equations(
@@ -336,6 +350,9 @@ class SystemMap:
             system_vectors.eid_to_wrt_tokens,
             system_vectors.transition_variables, 
             eid_to_rhs_offset,
+            #
+            rhs_column=0,
+            lhs_column_offset=0,
         )
         #
         self.H = am_.ArrayMap.constant_vector(system_vectors.measurement_eids)
@@ -345,6 +362,9 @@ class SystemMap:
             system_vectors.eid_to_wrt_tokens,
             system_vectors.measurement_shocks, 
             eid_to_rhs_offset,
+            #
+            rhs_column=0,
+            lhs_column_offset=0,
         )
     #]
 
