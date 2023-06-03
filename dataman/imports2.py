@@ -1,12 +1,14 @@
 """
+Import time series data from a CSV file
 """
 
 
 #[
 from __future__ import annotations
 
-from typing import (TypeAlias, Self, Protocol, )
-from collections.abc import (Iterable, Iterator, Generator, Callable, )
+from typing import (TypeAlias, )
+from collections.abc import (Iterator, Generator, )
+
 import csv as cs_
 import numpy as np_
 import itertools as it_
@@ -27,12 +29,13 @@ def read_csv(
     Read a CSV file
     """
     #[
+    factory = _ColumnwiseFactory()
     with open(file_path, newline="", ) as file:
         reader = cs_.reader(file, )
-        header_iterator = _create_header_iterator(reader, **kwargs, )
-        indexed_column_generator = _IndexedDataColumnGenerator(reader, )
+        header_iterator = factory.create_header_iterator(reader, **kwargs, )
+        data_iterator = factory.create_data_iterator(reader, )
     return [
-        b for b in _generate_blocks(header_iterator, indexed_column_generator, **kwargs, )
+        b for b in _generate_blocks(header_iterator, data_iterator, **kwargs, )
         if len(b.headers) > 0
     ]
     #]
@@ -40,7 +43,7 @@ def read_csv(
 
 def _generate_blocks(
     header_iterator: Iterator[tuple[str, str]],
-    indexed_column_generator: _IndexedDataColumnGenerator,
+    data_iterator: Iterator[tuple[str, ...]],
     /,
     **kwargs,
 ) -> Generator[_Block, None, None]:
@@ -49,9 +52,9 @@ def _generate_blocks(
     """
     #[
     current_block = _Block(None, None, None, )
-    for column_index, header in enumerate(header_iterator, ):
+    for column_index, (header, data) in enumerate(zip(header_iterator, data_iterator), ):
         current_block, to_yield = current_block.handle_next_column(
-            column_index, header, indexed_column_generator, **kwargs,
+            column_index, header, data, **kwargs,
         )
         if to_yield is not None:
             yield to_yield
@@ -83,7 +86,7 @@ class _Block:
         self,
         column_index: int,
         header: tuple[str, str],
-        indexed_column_generator: _IndexedDataColumnGenerator,
+        data: tuple[str, ...],
         /,
         **kwargs,
     ) -> tuple[_Block | None, _Block | None]:
@@ -93,7 +96,7 @@ class _Block:
         if _is_end_of_file(header, ):
             return (None, self, )
         elif _is_start_of_block(header, ):
-            new_block = _Block(column_index, header, indexed_column_generator[column_index], **kwargs, )
+            new_block = _Block(column_index, header, data, **kwargs, )
             return (new_block, self, )
         else:
             self._add_column(header, )
@@ -134,51 +137,39 @@ def _is_end_of_file(
     return header[0] == _END_OF_FILE
 
 
-def _create_header_iterator(
-    reader: Reader,
-    /,
-    skip_rows: int = 0,
-    has_comment_row: bool = False,
-    **kwargs,
-) -> Iterator[tuple[str, str]]:
+class _ColumnwiseFactory:
     """
-    Create an iterator over the headers
+    Iterator factory for columnwise data
     """
     #[
-    for _ in range(skip_rows):
-        next(reader, )
-    name_row = next(reader, )
-    comment_row = next(reader, ) if has_comment_row else it_.repeat("")
-    return zip(name_row, comment_row, )
-    #]
-
-class _IndexedDataColumnGenerator:
-    """
-    A class of objects that contain a column generator, keep track of the number of columns already generated, and returns a specific column
-    """
-    #[
-    def __init__(
-        self,
+    @staticmethod
+    def create_header_iterator(
         reader: Reader,
         /,
-    ) -> None:
-        self._column_generator = it_.zip_longest(*reader, fillvalue="", )
-        self._column_count = 0
+        skip_rows: int = 0,
+        has_comment_row: bool = False,
+        **kwargs,
+    ) -> Iterator[tuple[str, str]]:
+        """
+        Create an iterator over the headers
+        """
+        #[
+        for _ in range(skip_rows):
+            next(reader, )
+        name_row = next(reader, )
+        comment_row = next(reader, ) if has_comment_row else it_.repeat("")
+        return zip(name_row, comment_row, )
+        #]
 
-    def __getitem__(
-        self,
-        index: int,
+    @staticmethod
+    def create_data_iterator(
+        reader: Reader,
         /,
-    ) -> tuple:
+    ) -> Iterator[tuple[str, ...]]:
         """
-        Return the column at the specified index
+        Create an iterator over the individual data series or dates
         """
-        if index < self._column_count:
-            raise ValueError("Index must be greater than the column count")
-        for _ in range(index - self._column_count):
-            next(self._column_generator, )
-        self._column_count = index + 1
-        return next(self._column_generator, )
+        return it_.zip_longest(*reader, fillvalue="", )
     #]
 
 
