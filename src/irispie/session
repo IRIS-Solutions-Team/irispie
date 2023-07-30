@@ -1,0 +1,415 @@
+let SessionLoad = 1
+let s:so_save = &g:so | let s:siso_save = &g:siso | setg so=0 siso=0 | setl so=-1 siso=-1
+let v:this_session=expand("<sfile>:p")
+silent only
+silent tabonly
+cd ~/iris-pie/irispie
+if expand('%') == '' && !&modified && line('$') <= 1 && getline(1) == ''
+  let s:wipebuf = bufnr('%')
+endif
+let s:shortmess_save = &shortmess
+if &shortmess =~ 'A'
+  set shortmess=aoOA
+else
+  set shortmess=aoO
+endif
+badd +0 equators/steadies.py
+badd +75 jacobians/steadies.py
+badd +47 fords/systems.py
+badd +16 fords/solutions.py
+badd +273 models/facade.py
+badd +31 fords/descriptors.py
+badd +0 quantities.py
+badd +0 models/equators.py
+badd +9 aldi/differentiators.py
+badd +53 aldi/finite_differentiators.py
+badd +46 aldi/invariators.py
+badd +46 fords/steadiers.py
+badd +4 fords/__init__.py
+badd +38 tags
+argglobal
+%argdel
+set stal=2
+tabnew +setlocal\ bufhidden=wipe
+tabnew +setlocal\ bufhidden=wipe
+tabnew +setlocal\ bufhidden=wipe
+tabnew +setlocal\ bufhidden=wipe
+tabnew +setlocal\ bufhidden=wipe
+tabrewind
+edit equators/steadies.py
+let s:save_splitbelow = &splitbelow
+let s:save_splitright = &splitright
+set splitbelow splitright
+wincmd _ | wincmd |
+vsplit
+1wincmd h
+wincmd w
+let &splitbelow = s:save_splitbelow
+let &splitright = s:save_splitright
+wincmd t
+let s:save_winminheight = &winminheight
+let s:save_winminwidth = &winminwidth
+set winminheight=0
+set winheight=1
+set winminwidth=0
+set winwidth=1
+exe 'vert 1resize ' . ((&columns * 93 + 93) / 187)
+exe 'vert 2resize ' . ((&columns * 93 + 93) / 187)
+argglobal
+setlocal fdm=syntax
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=2
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+23
+normal! zo
+106
+normal! zo
+122
+normal! zo
+let s:l = 122 - ((9 * winheight(0) + 20) / 40)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 122
+normal! 0
+lcd ~/iris-pie/irispie
+wincmd w
+argglobal
+if bufexists(fnamemodify("~/iris-pie/irispie/equators/steadies.py", ":p")) | buffer ~/iris-pie/irispie/equators/steadies.py | else | edit ~/iris-pie/irispie/equators/steadies.py | endif
+if &buftype ==# 'terminal'
+  silent file ~/iris-pie/irispie/equators/steadies.py
+endif
+setlocal fdm=syntax
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=2
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+23
+normal! zo
+106
+normal! zo
+122
+normal! zo
+let s:l = 37 - ((36 * winheight(0) + 20) / 40)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 37
+normal! 020|
+lcd ~/iris-pie/irispie
+wincmd w
+exe 'vert 1resize ' . ((&columns * 93 + 93) / 187)
+exe 'vert 2resize ' . ((&columns * 93 + 93) / 187)
+tabnext
+edit ~/iris-pie/irispie/aldi/differentiators.py
+let s:save_splitbelow = &splitbelow
+let s:save_splitright = &splitright
+set splitbelow splitright
+wincmd _ | wincmd |
+vsplit
+1wincmd h
+wincmd w
+let &splitbelow = s:save_splitbelow
+let &splitright = s:save_splitright
+wincmd t
+let s:save_winminheight = &winminheight
+let s:save_winminwidth = &winminwidth
+set winminheight=0
+set winheight=1
+set winminwidth=0
+set winwidth=1
+exe 'vert 1resize ' . ((&columns * 93 + 93) / 187)
+exe 'vert 2resize ' . ((&columns * 93 + 93) / 187)
+argglobal
+balt ~/iris-pie/irispie/fords/descriptors.py
+setlocal fdm=syntax
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=0
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+6
+normal! zo
+35
+normal! zo
+52
+normal! zo
+264
+normal! zo
+323
+normal! zo
+400
+normal! zo
+441
+normal! zo
+444
+normal! zo
+451
+normal! zo
+460
+normal! zo
+470
+normal! zo
+479
+normal! zo
+let s:l = 9 - ((8 * winheight(0) + 20) / 40)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 9
+normal! 028|
+lcd ~/iris-pie/irispie
+wincmd w
+argglobal
+if bufexists(fnamemodify("~/iris-pie/irispie/jacobians/steadies.py", ":p")) | buffer ~/iris-pie/irispie/jacobians/steadies.py | else | edit ~/iris-pie/irispie/jacobians/steadies.py | endif
+if &buftype ==# 'terminal'
+  silent file ~/iris-pie/irispie/jacobians/steadies.py
+endif
+balt ~/iris-pie/irispie/fords/descriptors.py
+setlocal fdm=syntax
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=0
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+21
+normal! zo
+30
+normal! zo
+93
+normal! zo
+101
+normal! zo
+111
+normal! zo
+116
+normal! zo
+126
+normal! zo
+151
+normal! zo
+154
+normal! zo
+173
+normal! zo
+176
+normal! zo
+189
+normal! zo
+191
+normal! zo
+200
+normal! zo
+208
+normal! zo
+210
+normal! zo
+let s:l = 29 - ((28 * winheight(0) + 20) / 40)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 29
+normal! 07|
+lcd ~/iris-pie/irispie
+wincmd w
+exe 'vert 1resize ' . ((&columns * 93 + 93) / 187)
+exe 'vert 2resize ' . ((&columns * 93 + 93) / 187)
+tabnext
+edit ~/iris-pie/irispie/fords/descriptors.py
+argglobal
+balt ~/iris-pie/irispie/aldi/differentiators.py
+setlocal fdm=syntax
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=0
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+1
+normal! zo
+38
+normal! zo
+53
+normal! zo
+99
+normal! zo
+let s:l = 128 - ((22 * winheight(0) + 20) / 40)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 128
+normal! 09|
+lcd ~/iris-pie/irispie
+tabnext
+edit ~/iris-pie/irispie/models/equators.py
+argglobal
+setlocal fdm=syntax
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=0
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+41
+normal! zo
+let s:l = 92 - ((13 * winheight(0) + 20) / 40)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 92
+normal! 052|
+lcd ~/iris-pie/irispie
+tabnext
+edit ~/iris-pie/irispie/models/facade.py
+let s:save_splitbelow = &splitbelow
+let s:save_splitright = &splitright
+set splitbelow splitright
+wincmd _ | wincmd |
+vsplit
+wincmd _ | wincmd |
+vsplit
+2wincmd h
+wincmd w
+wincmd w
+let &splitbelow = s:save_splitbelow
+let &splitright = s:save_splitright
+wincmd t
+let s:save_winminheight = &winminheight
+let s:save_winminwidth = &winminwidth
+set winminheight=0
+set winheight=1
+set winminwidth=0
+set winwidth=1
+exe 'vert 1resize ' . ((&columns * 62 + 93) / 187)
+exe 'vert 2resize ' . ((&columns * 61 + 93) / 187)
+exe 'vert 3resize ' . ((&columns * 62 + 93) / 187)
+argglobal
+balt ~/iris-pie/irispie/fords/systems.py
+setlocal fdm=syntax
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=0
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+54
+normal! zo
+let s:l = 269 - ((18 * winheight(0) + 20) / 40)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 269
+normal! 09|
+lcd ~/iris-pie/irispie
+wincmd w
+argglobal
+if bufexists(fnamemodify("~/iris-pie/irispie/fords/systems.py", ":p")) | buffer ~/iris-pie/irispie/fords/systems.py | else | edit ~/iris-pie/irispie/fords/systems.py | endif
+if &buftype ==# 'terminal'
+  silent file ~/iris-pie/irispie/fords/systems.py
+endif
+setlocal fdm=syntax
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=0
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+1
+normal! zo
+13
+normal! zo
+let s:l = 46 - ((18 * winheight(0) + 20) / 40)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 46
+normal! 0
+lcd ~/iris-pie/irispie
+wincmd w
+argglobal
+if bufexists(fnamemodify("~/iris-pie/irispie/fords/descriptors.py", ":p")) | buffer ~/iris-pie/irispie/fords/descriptors.py | else | edit ~/iris-pie/irispie/fords/descriptors.py | endif
+if &buftype ==# 'terminal'
+  silent file ~/iris-pie/irispie/fords/descriptors.py
+endif
+setlocal fdm=syntax
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=0
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+let s:l = 256 - ((87 * winheight(0) + 20) / 40)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 256
+let s:c = 7 - ((0 * winwidth(0) + 31) / 62)
+if s:c > 0
+  exe 'normal! ' . s:c . '|zs' . 7 . '|'
+else
+  normal! 07|
+endif
+lcd ~/iris-pie/irispie
+wincmd w
+exe 'vert 1resize ' . ((&columns * 62 + 93) / 187)
+exe 'vert 2resize ' . ((&columns * 61 + 93) / 187)
+exe 'vert 3resize ' . ((&columns * 62 + 93) / 187)
+tabnext
+edit ~/iris-pie/irispie/quantities.py
+argglobal
+balt ~/iris-pie/irispie/jacobians/steadies.py
+setlocal fdm=syntax
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=0
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+6
+normal! zo
+21
+normal! zo
+55
+normal! zo
+let s:l = 125 - ((19 * winheight(0) + 20) / 40)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 125
+normal! 013|
+lcd ~/iris-pie/irispie
+tabnext 2
+set stal=1
+if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0 && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'
+  silent exe 'bwipe ' . s:wipebuf
+endif
+unlet! s:wipebuf
+set winheight=1 winwidth=20
+let &shortmess = s:shortmess_save
+let s:sx = expand("<sfile>:p:r")."x.vim"
+if filereadable(s:sx)
+  exe "source " . fnameescape(s:sx)
+endif
+let &g:so = s:so_save | let &g:siso = s:siso_save
+set hlsearch
+nohlsearch
+doautoall SessionLoadPost
+unlet SessionLoad
+" vim: set ft=vim :
