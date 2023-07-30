@@ -43,7 +43,7 @@ jobs:
           python -m twine upload dist/* -r pypi -u __token__ -p ${{ secrets.PYPI_API_TOKEN }}
           
       - name: Create artifacts
-        uses: actions/upload-artifacts@master
+        uses: actions/upload-artifact@master
         with: 
           name: dist-${{ steps.captureversion.version }}
           path: dist/*
