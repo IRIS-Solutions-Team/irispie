@@ -32,10 +32,8 @@ jobs:
       - name: Capture version from pyproject.toml
         id: captureversion
         run: |
-          ls
-          grep -m 1 version pyproject.toml
-          grep -m 1 version pyproject.toml | tr -d '[a-z=" ]'
-          echo "version=${grep -m 1 version pyproject.toml | tr -d '[a-z=" ]'}" >> "$GITHUB_OUTPUT"
+          version=$(grep -m 1 version pyproject.toml | tr -d '[a-z=" ]')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Build dist files
         run: |
