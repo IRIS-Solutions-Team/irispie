@@ -10,13 +10,6 @@ jobs:
     name: Create and upload dist to PYPI
     runs-on: ubuntu-latest
     steps:
-      - name: Capture version from pyproject.toml
-        id: captureversion
-        run: |
-          ls
-          grep -m 1 version pyproject.toml
-          grep -m 1 version pyproject.toml | tr -d '[a-z=" ]'
-          echo "version=${grep -m 1 version pyproject.toml | tr -d '[a-z=" ]'}" >> "$GITHUB_OUTPUT"
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -35,6 +28,14 @@ jobs:
           fetch-depth: 0
           ref: master
           path: .
+
+      - name: Capture version from pyproject.toml
+        id: captureversion
+        run: |
+          ls
+          grep -m 1 version pyproject.toml
+          grep -m 1 version pyproject.toml | tr -d '[a-z=" ]'
+          echo "version=${grep -m 1 version pyproject.toml | tr -d '[a-z=" ]'}" >> "$GITHUB_OUTPUT"
 
       - name: Build dist files
         run: |
