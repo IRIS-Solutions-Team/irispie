@@ -40,7 +40,7 @@ jobs:
 
       - name: Build dist files
         run: |
-          echo "Building version ${{ steps.captureversion.version }}"
+          echo "Building version ${{ steps.captureversion.outputs.version }}"
           python -m build
     
       - name: Upload
