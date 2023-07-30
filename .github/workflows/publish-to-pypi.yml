@@ -50,5 +50,5 @@ jobs:
       - name: Create artifacts
         uses: actions/upload-artifact@master
         with: 
-          name: dist-${{ steps.captureversion.version }}
+          name: dist-${{ steps.captureversion.outputs.version }}
           path: dist/*
