@@ -32,7 +32,10 @@ jobs:
       - name: Capture version from pyproject.toml
         id: captureversion
         run: |
+          grep -m 1 version pyproject.toml
+          grep -m 1 version pyproject.toml | tr -d '[a-z=" ]'
           version=$(grep -m 1 version pyproject.toml | tr -d '[a-z=" ]')
+          echo $version
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Build dist files
@@ -42,7 +45,7 @@ jobs:
     
       - name: Upload
         run: |
-          python -m twine upload dist/* -r pypi -u __token__ -p ${{ secrets.PYPI_API_TOKEN }}
+          # python -m twine upload dist/* -r pypi -u __token__ -p ${{ secrets.PYPI_API_TOKEN }}
           
       - name: Create artifacts
         uses: actions/upload-artifact@master
