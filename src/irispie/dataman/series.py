@@ -127,6 +127,8 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptionMixin, vi
         self.set_data(dates, data)
         return self
 
+    from_dates_and_values = from_dates_and_data
+
     @classmethod
     def from_start_date_and_data(
         cls,
