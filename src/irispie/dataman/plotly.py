@@ -6,11 +6,11 @@ Plotly interface to time series objects
 #[
 from __future__ import annotations
 
-import plotly.graph_objects as pg
-import plotly.subplots as ps
+import plotly.graph_objects as _pg
+import plotly.subplots as _ps
 from types import (EllipsisType, )
 
-from ..dataman import (dates as da_, )
+from ..dataman import (dates as _da, )
 #]
 
 
@@ -31,6 +31,7 @@ _COLOR_ORDER = [
   "rgb(162,    20,    47)",
 ]
 
+
 class PlotlyMixin:
     """
     """
@@ -38,7 +39,7 @@ class PlotlyMixin:
     def plot(
         self,
         /,
-        range: Iterable[da_.Dater] | EllipsisType = ...,
+        range: Iterable[_da.Dater] | EllipsisType = ...,
         title: str | None = None,
         legend: Iterable[str] | None = None,
         show_legend: bool | None = None,
@@ -52,9 +53,9 @@ class PlotlyMixin:
         num_columns = data.shape[1]
         date_str = [ t.to_plotly_date() for t in range ]
         date_format = range[0].frequency.plotly_format
-        figure = pg.Figure() if figure is None else figure
+        figure = _pg.Figure() if figure is None else figure
         for i in builtin_range(num_columns):
-            figure.add_trace(pg.Scatter(
+            figure.add_trace(_pg.Scatter(
                 x=date_str, y=data[:, i], name=legend[i] if legend else None,
                 line={"color": _COLOR_ORDER[i % len(_COLOR_ORDER)]},
             ), row=subplot[0], col=subplot[1])
@@ -67,6 +68,6 @@ class PlotlyMixin:
     #]
 
 
-make_subplots = ps.make_subplots
+make_subplots = _ps.make_subplots
 
 
