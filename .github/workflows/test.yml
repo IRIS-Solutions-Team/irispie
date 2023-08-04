@@ -1,7 +1,6 @@
 on:
   workflow_dispatch:
     
-    
 jobs:
   test:
      runs-on: ubuntu-latest
@@ -11,4 +10,4 @@ jobs:
            python-version: "3.11"
        - run: |
            pip install irispie
-           python -c "import numpy as np; print(np.zeros((3,3)))"
+           python -c "from irispie.dataman import dates; print(qq(2000,1))"
