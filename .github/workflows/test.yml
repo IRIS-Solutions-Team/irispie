@@ -1,17 +1,5 @@
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        type: choice
-        description: Abcd
-        options:
-          - aaa
-          - bbb
-          - ccc
-      another:
-        type: string
-        default: $(echo "a")
-        required: true
     
 jobs:
   test:
@@ -22,4 +10,4 @@ jobs:
            python-version: "3.11"
        - run: |
            pip install irispie
-           python -c "import numpy as np; print(np.zeros((3,3)))"
+           python -c "from irispie.dataman import dates; print(qq(2000,1))"
