@@ -1,6 +1,17 @@
 on:
   workflow_dispatch:
-    
+    inputs:
+      version:
+        type: choice
+        description: Abcd
+        options:
+          - aaa
+          - bbb
+          - ccc
+      another:
+        type: string
+        default: $(echo "a")
+        required: true
     
 jobs:
   test:
