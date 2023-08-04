@@ -24,6 +24,10 @@
         "forecasting",
         "dsge",
     ]
+    dependencies = [
+        "numpy >= 1.25",
+        "scipy >= 1.11",
+    ]
 
 [project.urls]
     "Homepage" = "https://github.com/iris-solutions-team/irispie"

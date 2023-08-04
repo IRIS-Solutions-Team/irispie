@@ -1,12 +1,10 @@
 
 #[
-from __future__ import annotations
-
-import re as re_
-import datetime as dt_
-import enum as en_
-import functools as ft_
-from typing import (NoReturn, Union, Self, Any, Protocol, runtime_checkable, )
+import re as _re
+import datetime as _dt
+import enum as _en
+import functools as _ft
+from typing import (Union, Self, Any, Protocol, runtime_checkable, )
 from collections.abc import (Iterable, Callable, )
 from numbers import (Number, )
 #]
@@ -21,7 +19,7 @@ __all__ = [
 ]
 
 
-class Frequency(en_.IntEnum):
+class Frequency(_en.IntEnum):
     """
     Enumeration of date frequencies
     """
@@ -155,7 +153,7 @@ class IsoMixin:
         year, month, day = iso_string.split("-", )
         return cls.from_ymd(int(year), int(month), int(day), )
 
-    to_plotly_date = ft_.partialmethod(to_iso_string, position="center")
+    to_plotly_date = _ft.partialmethod(to_iso_string, position="center")
     #]
 
 
@@ -166,7 +164,7 @@ class Dater(RangeableMixin, ):
     frequency = None
     needs_resolve = False
 
-    def __init__(self, serial=0) -> NoReturn:
+    def __init__(self, serial=0) -> None:
         self.serial = int(serial)
 
     def get_distance_from_origin(self) -> int:
@@ -273,16 +271,16 @@ class DailyDater(Dater, IsoMixin):
     #[
     frequency: Frequency = Frequency.DAILY
     needs_resolve = False
-    origin = dt_.date(BASE_YEAR, 1, 1).toordinal()
+    origin = _dt.date(BASE_YEAR, 1, 1).toordinal()
 
     @classmethod
     def from_ymd(cls: type, year: int, month: int=1, day: int=1) -> Self:
-        serial = dt_.date(year, month, day).toordinal()
+        serial = _dt.date(year, month, day).toordinal()
         return cls(serial)
 
     @classmethod
     def from_year_period(cls, year: int, period: int) -> Self:
-        boy_serial = dt_.date(year, 1, 1).toordinal()
+        boy_serial = _dt.date(year, 1, 1).toordinal()
         serial = boy_serial + int(period) - 1
         return cls(serial)
 
@@ -292,13 +290,13 @@ class DailyDater(Dater, IsoMixin):
         return cls.from_ymd(int(year), int(month), int(day))
 
     def to_year_period(self: Self) -> tuple[int, int]:
-        boy_serial = dt_.date(dt_.date.fromordinal(self.serial).year, 1, 1)
+        boy_serial = _dt.date(_dt.date.fromordinal(self.serial).year, 1, 1)
         per = self.serial - boy_serial + 1
-        year = dt_.date.fromordinal(self.serial).year
+        year = _dt.date.fromordinal(self.serial).year
         return year, per
 
     def to_ymd(self: Self, /, **kwargs) -> tuple[int, int, int]:
-        py_date = dt_.date.fromordinal(self.serial)
+        py_date = _dt.date.fromordinal(self.serial)
         return py_date.year, py_date.month, py_date.day
 
     def __str__(self) -> str:
@@ -501,7 +499,7 @@ class Ranger():
         end_date: Dater|None =None,
         step: int=1,
         /
-    ) -> NoReturn:
+    ) -> None:
         """
         Date range constructor
         """
@@ -691,7 +689,7 @@ _FREQUENCY_FROM_STRING_RESOLUTION = {
 def frequency_from_string(text: str) -> Frequency:
     """
     """
-    first_letter_match = re_.search("[A-Z]", text.upper() + "X")
+    first_letter_match = _re.search("[A-Z]", text.upper() + "X")
     return _FREQUENCY_FROM_STRING_RESOLUTION.get(first_letter_match.group(0), Frequency.UNKNOWN)
 
 

@@ -10,7 +10,7 @@ jobs:
     name: Create and upload dist to PYPI
     runs-on: ubuntu-latest
     steps:
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -30,7 +30,7 @@ jobs:
           path: .
 
       - name: Capture version from pyproject.toml
-        id: captureversion
+        id: capture-version
         run: |
           grep -m 1 version pyproject.toml
           grep -m 1 version pyproject.toml | tr -d '[a-z=" ]'
@@ -40,15 +40,16 @@ jobs:
 
       - name: Build dist files
         run: |
-          echo "Building version ${{ steps.captureversion.outputs.version }}"
+          echo "Building version ${{ steps.capture-version.outputs.version }}"
           python -m build
-    
+
       - name: Upload
         run: |
           # python -m twine upload dist/* -r pypi -u __token__ -p ${{ secrets.PYPI_API_TOKEN }}
-          
+
       - name: Create artifacts
         uses: actions/upload-artifact@master
-        with: 
-          name: dist-${{ steps.captureversion.outputs.version }}
+        with:
+          name: dist-${{ steps.capture-version.outputs.version }}
           path: dist/*
+
