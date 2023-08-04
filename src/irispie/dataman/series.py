@@ -7,16 +7,16 @@ from __future__ import annotations
 # from IPython import embed
 
 from numbers import Number
-from collections.abc import Iterable, Callable
-from typing import Self, TypeAlias, NoReturn
-from types import EllipsisType
+from collections.abc import (Iterable, Callable, )
+from typing import (Self, TypeAlias, )
+from types import (EllipsisType, )
 import numpy as np_
 import itertools as it_
 import copy as co_
 
 from ..dataman.dates import (Dater, Ranger, date_index, ResolvableProtocol, )
 from ..dataman import (views as vi_, )
-from ..dataman import (dates as da_, )
+from ..dataman import (dates as _da, )
 from ..dataman import (filters as fi_, )
 from ..dataman import (plotly as pl_, )
 from ..mixins import (userdata as ud_, )
@@ -114,7 +114,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptionMixin, vi
 
     @property
     def frequency(self):
-        return self.start_date.frequency if self.start_date is not None else da_.Frequency.UNKNOWN
+        return self.start_date.frequency if self.start_date is not None else _da.Frequency.UNKNOWN
 
     @classmethod
     def from_dates_and_data(
@@ -136,7 +136,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptionMixin, vi
         /,
         **kwargs,
     ) -> Self:
-        num_columns = data.shape[1]
+        num_columns = data.shape[1] if hasattr(data, "shape") else 1
         self = cls(num_columns=num_columns, **kwargs)
         self.start_date = start_date
         self.data = data
@@ -240,7 +240,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptionMixin, vi
         self,
         columns,
         /,
-    ) -> NoReturn:
+    ) -> None:
         if not isinstance(columns, Iterable):
             columns = (columns, )
         columns = [ c for c in columns ]
@@ -311,7 +311,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptionMixin, vi
     def hstack(self, *args):
         if not args:
             return co_.deepcopy(self)
-        encompassing_range = self._get_encompassing_range(*args)
+        encompassing_range = _da.get_encompassing_range(self, *args)
         new_data = self.get_data(encompassing_range)
         add_data = (
             x.get_data(encompassing_range) if hasattr(x, "get_data") else _create_data_from_number(x, encompassing_range, self.data_type)
@@ -326,7 +326,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptionMixin, vi
         self,
         new_start_date: Dater | None,
         new_end_date: Dater | None,
-    ) -> NoReturn:
+    ) -> None:
         if new_start_date is None or new_start_date < self.start_date:
             new_start_date = self.start_date
         if new_end_date is None or new_end_date > self.end_date:
@@ -392,13 +392,6 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptionMixin, vi
 
     def __rshift__(self, other):
         return co_.deepcopy(other).overlay_by_range(self, )
-
-    def _get_encompassing_range(*args) -> Ranger:
-        start_dates = [x.start_date for x in args if hasattr(x, "start_date") and x.start_date]
-        end_dates = [x.end_date for x in args if hasattr(x, "end_date") and x.end_date]
-        start_date = min(start_dates) if start_dates else None
-        end_date = max(end_dates) if end_dates else None
-        return Ranger(start_date, end_date)
 
     def _trim(self):
         if self.data.size==0:
@@ -552,7 +545,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptionMixin, vi
         if not isinstance(other, type(self)):
             unop_func = lambda data: func(data, other)
             return apply(self, unop_func)
-        encompassing_range = self._get_encompassing_range(self, other)
+        encompassing_range = _da.get_encompassing_range(self, other)
         self_data = self.get_data(encompassing_range)
         other_data = other.get_data(encompassing_range)
         new = Series()
@@ -595,7 +588,6 @@ def _get_num_leading_missing_rows(data, test_missing_period, /, ):
         # return x.apply(func, *args, **kwargs)
     # else:
         # return func(x, *args, **kwargs)
-
 
 def hstack(first, *args) -> Self:
     return first.hstack(*args)

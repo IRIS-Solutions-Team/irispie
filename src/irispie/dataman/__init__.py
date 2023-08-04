@@ -15,7 +15,11 @@ from .series import __all__ as series_all
 from .plotly import *
 from .plotly import __all__ as plotly_all
 
-
-__all__ = dates_all + databanks_all + series_all + plotly_all
-
+__all__ = ( 
+    []
+    + dates_all 
+    + databanks_all
+    + series_all
+    + plotly_all
+)
 

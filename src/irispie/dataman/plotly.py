@@ -69,3 +69,4 @@ class PlotlyMixin:
 
 make_subplots = ps.make_subplots
 
+

@@ -16,6 +16,14 @@
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ]
+    keywords = [
+        "macroeconomics",
+        "economics",
+        "modeling",
+        "simulation",
+        "forecasting",
+        "dsge",
+    ]
 
 [project.urls]
     "Homepage" = "https://github.com/iris-solutions-team/irispie"

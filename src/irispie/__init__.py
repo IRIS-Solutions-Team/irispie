@@ -14,7 +14,6 @@ from .quantities import __all__ as quantities_all
 from .equations import *
 from .equations import __all__ as equations_all
 
-
 __all__ = (
     []
     + dataman_all 

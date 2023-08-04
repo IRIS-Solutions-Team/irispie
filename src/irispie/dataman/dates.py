@@ -17,6 +17,7 @@ __all__ = [
     "yy", "hh", "qq", "mm", "dd", "ii",
     "Ranger", "start", "end",
     "dater_from_sdmx_string",
+    "dater_from_iso_string",
 ]
 
 
@@ -78,7 +79,7 @@ BASE_YEAR = 2020
 
 
 @runtime_checkable
-class ResolutionContextProtocol(Protocol):
+class ResolutionContextProtocol(Protocol, ):
     """
     Context protocol for contextual date resolution
     """
@@ -87,7 +88,7 @@ class ResolutionContextProtocol(Protocol):
 
 
 @runtime_checkable
-class ResolvableProtocol(Protocol):
+class ResolvableProtocol(Protocol, ):
     """
     Contextual date protocol
     """
@@ -100,15 +101,15 @@ def _check_daters(first, second) -> None:
         raise Exception("Dates must be the same date frequency")
 
 
-def _check_daters_decorate(func: Callable) -> Callable:
+def _check_daters_decorate(func: Callable, ) -> Callable:
     def wrapper(*args, **kwargs):
-        _check_daters(args[0], args[1])
-        return func(*args, **kwargs)
+        _check_daters(args[0], args[1], )
+        return func(*args, **kwargs, )
     return wrapper
 
 
-def _check_offset(offset) -> None:
-    if not isinstance(offset, int):
+def _check_offset(offset, ) -> None:
+    if not isinstance(offset, int, ):
         raise Exception("Date offset must be an integer")
 
 
@@ -119,9 +120,9 @@ def _check_offset_decorator(func: Callable) -> Callable:
     return wrapper
 
 
-def _remove_blanks_decorate(func: Callable) -> Callable:
-    def wrapper(*args, **kwargs):
-        return func(*args, **kwargs).replace(" ","")
+def _remove_blanks_decorate(func: Callable,) -> Callable:
+    def wrapper(*args, **kwargs, ):
+        return func(*args, **kwargs, ).replace(" ", "", )
     return wrapper
 
 
@@ -149,11 +150,16 @@ class IsoMixin:
         year, month, day = self.to_ymd()
         return f"{year:04g}-{month:02g}-{day:02g}"
 
+    @classmethod
+    def from_iso_string(cls: type, iso_string: str, ) -> Self:
+        year, month, day = iso_string.split("-", )
+        return cls.from_ymd(int(year), int(month), int(day), )
+
     to_plotly_date = ft_.partialmethod(to_iso_string, position="center")
     #]
 
 
-class Dater(RangeableMixin):
+class Dater(RangeableMixin, ):
     """
     """
     #[
@@ -310,7 +316,7 @@ def _serial_from_ypf(year: int, per: int, freq: int) -> int:
     return int(year)*int(freq) + int(per) - 1
 
 
-class RegularDaterMixin:
+class RegularDaterMixin(IsoMixin, ):
     #[
     @classmethod
     def from_year_period(
@@ -322,6 +328,10 @@ class RegularDaterMixin:
             per = cls.frequency.value
         new_serial = _serial_from_ypf(year, per, cls.frequency.value)
         return cls(new_serial)
+
+    @classmethod
+    def from_ymd(cls, year: int, month: int=1, day: int=1, ) -> YearlyDater:
+        return cls.from_year_period(year, cls.month_to_period(month, ), )
 
     def to_year_period(self) -> tuple[int, int]:
         return self.serial//self.frequency.value, self.serial%self.frequency.value+1
@@ -345,7 +355,7 @@ class RegularDaterMixin:
     #]
 
 
-class YearlyDater(Dater, RegularDaterMixin, IsoMixin): 
+class YearlyDater(Dater, RegularDaterMixin, ): 
     #[
     frequency: Frequency = Frequency.YEARLY
     needs_resolve: bool = False
@@ -362,10 +372,14 @@ class YearlyDater(Dater, RegularDaterMixin, IsoMixin):
 
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"yy({self.get_year()})"
+
+    @staticmethod
+    def month_to_period(month: int, ) -> int:
+        return 1
     #]
 
 
-class HalfyearlyDater(Dater, RegularDaterMixin, IsoMixin):
+class HalfyearlyDater(Dater, RegularDaterMixin, ):
     #[
     frequency: Frequency = Frequency.HALFYEARLY
     needs_resolve: bool = False
@@ -403,10 +417,14 @@ class HalfyearlyDater(Dater, RegularDaterMixin, IsoMixin):
     ) -> int:
         _, per = self.to_year_period()
         return month_resolution[position][per]
+
+    @staticmethod
+    def month_to_period(month: int, ) -> int:
+        return 1+((month-1)//6)
     #]
 
 
-class QuarterlyDater(Dater, RegularDaterMixin, IsoMixin):
+class QuarterlyDater(Dater, RegularDaterMixin, ):
     frequency: Frequency = Frequency.QUARTERLY
     needs_resolve: bool = False
     origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.QUARTERLY)
@@ -425,8 +443,12 @@ class QuarterlyDater(Dater, RegularDaterMixin, IsoMixin):
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"qq{self.to_year_period()}"
 
+    @staticmethod
+    def month_to_period(month: int, ) -> int:
+        return 1+((month-1)//3)
 
-class MonthlyDater(Dater, RegularDaterMixin, IsoMixin):
+
+class MonthlyDater(Dater, RegularDaterMixin, ):
     #[
     frequency: Frequency = Frequency.MONTHLY
     needs_resolve: bool = False
@@ -444,6 +466,10 @@ class MonthlyDater(Dater, RegularDaterMixin, IsoMixin):
 
     @_remove_blanks_decorate
     def __repr__(self) -> str: return f"mm{self.to_year_period()}"
+
+    @staticmethod
+    def month_to_period(month: int, ) -> int:
+        return month
     #]
 
 
@@ -639,10 +665,16 @@ _DATER_CLASS_FROM_FREQUENCY_RESOLUTION = {
 }
 
 
-def dater_from_sdmx_string(freq: Frequency, sdmx_string: str) -> Dater:
+def dater_from_sdmx_string(freq: Frequency, sdmx_string: str, ) -> Dater:
     """
     """
     return _DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_sdmx_string(sdmx_string)
+
+
+def dater_from_iso_string(freq: Frequency, iso_string: str, ) -> Dater:
+    """
+    """
+    return _DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_iso_string(iso_string)
 
 
 _FREQUENCY_FROM_STRING_RESOLUTION = {
@@ -661,5 +693,13 @@ def frequency_from_string(text: str) -> Frequency:
     """
     first_letter_match = re_.search("[A-Z]", text.upper() + "X")
     return _FREQUENCY_FROM_STRING_RESOLUTION.get(first_letter_match.group(0), Frequency.UNKNOWN)
+
+
+def get_encompassing_range(*args: ResolutionContextProtocol, ) -> Ranger:
+    start_dates = [x.start_date for x in args if hasattr(x, "start_date") and x.start_date]
+    end_dates = [x.end_date for x in args if hasattr(x, "end_date") and x.end_date]
+    start_date = min(start_dates) if start_dates else None
+    end_date = max(end_dates) if end_dates else None
+    return Ranger(start_date, end_date)
 
 
