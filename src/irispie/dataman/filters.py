@@ -4,6 +4,8 @@ Univariate time series filters
 
 
 #[
+from __future__ import annotations
+
 from numbers import (Number, )
 from collections.abc import (Iterable, Callable, )
 from types import (EllipsisType, )

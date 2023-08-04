@@ -1,5 +1,11 @@
+"""
+Dates, date ranges, and date frequencies
+"""
+
 
 #[
+from __future__ import annotations
+
 import re as _re
 import datetime as _dt
 import enum as _en
