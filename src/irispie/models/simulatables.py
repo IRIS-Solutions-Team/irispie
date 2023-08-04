@@ -5,9 +5,8 @@ First-order system simulators
 
 #[
 from __future__ import annotations
-# from IPython import embed
 
-from typing import (Self, TypeAlias, NoReturn, Literal, Protocol, runtime_checkable)
+from typing import (Self, TypeAlias, Literal, Protocol, runtime_checkable)
 from collections.abc import (Iterable, )
 import numpy as _np
 

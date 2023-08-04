@@ -7,7 +7,7 @@
 import enum as en_
 import numpy as np_
 import scipy as sp_
-from typing import (Self, NoReturn, Callable, )
+from typing import (Self, Callable, )
 from numbers import (Number, )
 import dataclasses as _dc
 

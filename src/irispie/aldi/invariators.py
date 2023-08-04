@@ -5,7 +5,7 @@
 #[
 from __future__ import annotations
 
-from typing import (Self, NoReturn, )
+from typing import (Self, )
 from numbers import (Number, )
 import numpy as np_
 
@@ -22,7 +22,7 @@ class Atom(ad_.LoglyMixin):
     _logly_context: dict[int, bool] | None = None
     _is_atom: bool = True
     #[
-    def __init__(self) -> NoReturn:
+    def __init__(self) -> None:
         """
         """
         self._diff = None

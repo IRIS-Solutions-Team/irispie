@@ -4,7 +4,6 @@
 
 #[
 from __future__ import annotations
-from IPython import embed
 
 import re as re_
 import parsimonious
@@ -284,7 +283,7 @@ def _is_preparser_needed(source: str, /, ) -> bool:
     return _KEYWORD_PREFIX in source
 
 
-def _save_preparsed_source(source: str, file_name: str, /, ) -> NoReturn:
+def _save_preparsed_source(source: str, file_name: str, /, ) -> None:
     if file_name:
         with open(file_name, "wt+") as fid:
             fid.write(source)

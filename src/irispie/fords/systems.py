@@ -47,7 +47,7 @@ class System:
         data_array: np_.ndarray,
         steady_array: np_.ndarray,
         /,
-    ) -> NoReturn:
+    ) -> None:
         """
         """
         # Differentiate and evaluate constant

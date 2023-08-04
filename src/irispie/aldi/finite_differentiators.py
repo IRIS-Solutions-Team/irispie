@@ -6,7 +6,7 @@ Calculate first derivatives of a custom function using finite approximation
 #[
 from __future__ import annotations
 
-from typing import (NoReturn, Callable, )
+from typing import (Callable, )
 import numpy as np_
 import copy as co_
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import numpy as np_
-from typing import (Self, NoReturn, )
+from typing import (Self, )
 from collections.abc import (Iterable, )
 
 from . import databanks as db_
@@ -60,7 +60,7 @@ class Dataslab:
         self,
         remove: int,
         /,
-    ) -> NoReturn:
+    ) -> None:
         """
         """
         if remove > 0:

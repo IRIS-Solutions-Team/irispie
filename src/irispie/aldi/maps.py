@@ -7,7 +7,7 @@ sparse) Jacobian matrix
 #[
 from __future__ import annotations
 
-from typing import (Self, NoReturn, Any, )
+from typing import (Self, Any, )
 from collections.abc import (Iterable, )
 import itertools as it_
 import dataclasses as dc_
@@ -21,7 +21,7 @@ class ArrayMap:
     lhs: tuple[list[int], list[int]] | None = None
     rhs: tuple[list[int], list[int]] | None = None
     #[
-    def __init__(self, /, ) -> NoReturn:
+    def __init__(self, /, ) -> None:
         self.lhs = ([], [])
         self.rhs = ([], [])
 
@@ -33,7 +33,7 @@ class ArrayMap:
         lhs: tuple[int, int], 
         rhs: tuple[int, int],
         /
-    ) -> NoReturn:
+    ) -> None:
         """
         """
         self.lhs[0].append(lhs[0])
@@ -44,13 +44,13 @@ class ArrayMap:
     def merge_with(
         self,
         other: Self,
-    ) -> NoReturn:
+    ) -> None:
         """
         """
         self.lhs = (self.lhs[0]+other.lhs[0], self.lhs[1]+other.lhs[1])
         self.rhs = (self.rhs[0]+other.rhs[0], self.rhs[1]+other.rhs[1])
 
-    def remove_nones(self) -> NoReturn:
+    def remove_nones(self) -> None:
         """
         Remove any map entry that has a None for the row index on the LHS
         """

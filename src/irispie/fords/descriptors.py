@@ -20,7 +20,7 @@ $$
 #[
 from __future__ import annotations
 
-from typing import (Self, NoReturn, )
+from typing import (Self, )
 from collections.abc import (Iterable, )
 import itertools as it_
 import dataclasses as _dc
@@ -82,7 +82,7 @@ class Descriptor:
         quantities: qu_.Quantities,
         custom_functions: dict | None,
         /,
-    ) -> NoReturn:
+    ) -> None:
         self.system_vectors = SystemVectors(equations, quantities)
         self.solution_vectors = SolutionVectors(self.system_vectors)
         self.system_map = SystemMap(self.system_vectors)
@@ -165,7 +165,7 @@ class SystemVectors:
     shape_H: tuple[int, int] | None = None
     shape_J: tuple[int, int] | None = None
 
-    def __init__(self, equations: eq_.Equations, quantities: qu_.Quantities) -> NoReturn:
+    def __init__(self, equations: eq_.Equations, quantities: qu_.Quantities) -> None:
         """
         Construct system vectors from a list of equations and a list of quantities
         """
@@ -221,7 +221,7 @@ class SolutionVectors:
     measurement_variables: in_.Tokens | None = None
     measurement_shocks: in_.Tokens | None = None 
 
-    def __init__(self, system_vectors: SystemVectors, /, ) -> NoReturn:
+    def __init__(self, system_vectors: SystemVectors, /, ) -> None:
         """
         Construct solution vectors and initial conditions indicator
         """
@@ -307,7 +307,7 @@ class SystemMap:
     def __init__(
         self,
         system_vectors: SystemVectors,
-    ) -> NoReturn:
+    ) -> None:
         """
         """
         system_eids = system_vectors.transition_eids + system_vectors.measurement_eids
