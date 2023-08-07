@@ -7,12 +7,14 @@ Import time series data from a CSV file
 from typing import (TypeAlias, Protocol, Callable, )
 from collections.abc import (Iterator, Iterable, Generator, )
 
-import csv as cs_
-import numpy as np_
-import itertools as it_
-import functools as ft_
+import csv as _cs
+import numpy as _np
+import itertools as _it
+import functools as _ft
 
-from . import (dates as dd_, series as ds_, databanks as _da, )
+from ..series import facade as _sf
+from . import dates as _dd
+from . import databanks as _da
 #]
 
 
@@ -20,7 +22,7 @@ _Header: TypeAlias = tuple[str, str]
 _DataVector: TypeAlias = tuple[str, ...]
 _HeaderIterator: TypeAlias = Iterator[_Header, ]
 _DataIterator: TypeAlias = Iterator[_DataVector, ]
-_DataArrayReader: TypeAlias = Callable[[Iterable[int], ], np_.ndarray]
+_DataArrayReader: TypeAlias = Callable[[Iterable[int], ], _np.ndarray]
 
 
 _GENFROMTXT_SETTINGS = dict(
@@ -105,7 +107,7 @@ class _Block:
     ) -> None:
         self._start_index = start_index
         self._headers = []
-        freq = dd_.frequency_from_string(header[0]) if header is not None else None
+        freq = _dd.frequency_from_string(header[0]) if header is not None else None
         self._dates = _create_dates_for_block(freq, date_str_vector, **kwargs, )
         self._data_array = None
 
@@ -135,7 +137,7 @@ class _Block:
         self,
         data_array_reader: _DataArrayReader,
         /,
-    ) -> np_.ndarray:
+    ) -> _np.ndarray:
         """
         Load block data as a numpy array
         """
@@ -209,7 +211,7 @@ class _ColumnwiseFileFactory(_FileFactory):
         /,
     ) -> tuple[Iterator[_Header], Iterator[_DataVector], ]:
         with open(self._file_path, newline="", ) as file:
-            csv_reader = cs_.reader(file, )
+            csv_reader = _cs.reader(file, )
             header_iterator = self._create_header_iterator(csv_reader, )
             data_iterator = self._create_data_iterator(csv_reader, )
         return header_iterator, data_iterator, 
@@ -217,13 +219,13 @@ class _ColumnwiseFileFactory(_FileFactory):
     def create_data_array_reader(
         self,
         /,
-    ) -> Callable[[Iterable[int], ], np_.ndarray]:
+    ) -> Callable[[Iterable[int], ], _np.ndarray]:
         """
         Create a reader for the data array
         """
         skip_rows = self._skip_rows + 1 + int(self._has_description_row)
-        return ft_.partial(
-            np_.genfromtxt,
+        return _ft.partial(
+            _np.genfromtxt,
             self._file_path,
             skip_header=skip_rows,
             **_GENFROMTXT_SETTINGS,
@@ -240,7 +242,7 @@ class _ColumnwiseFileFactory(_FileFactory):
         for _ in range(self._skip_rows):
             next(csv_reader, )
         name_row = next(csv_reader, )
-        description_row = next(csv_reader, ) if self._has_description_row else it_.repeat("", )
+        description_row = next(csv_reader, ) if self._has_description_row else _it.repeat("", )
         return zip(name_row, description_row, )
 
     def _create_data_iterator(
@@ -251,11 +253,11 @@ class _ColumnwiseFileFactory(_FileFactory):
         """
         Create an iterator over individual data series or dates
         """
-        return it_.zip_longest(*csv_reader, fillvalue="", )
+        return _it.zip_longest(*csv_reader, fillvalue="", )
 
 
 def _create_dates_for_block(
-    freq: dd_.Frequency | None,
+    freq: _dd.Frequency | None,
     date_str_vector: _DataVector | None,
     /,
     start_date_only: bool = False,
@@ -274,7 +276,7 @@ def _create_dates_for_block(
 
 
 def _create_dates_from_start_date(
-    freq: dd_.Frequency | None,
+    freq: _dd.Frequency | None,
     date_str_vector: _DataVector | None,
 ) -> tuple[Dater]:
     """
@@ -282,13 +284,13 @@ def _create_dates_from_start_date(
     """
     #[
     num_dates = len(date_str_vector)
-    start_date = dd_.from_sdmx_string(freq, date_str_vector[0], )
-    return tuple(dd_.Ranger(start_date, num_dates, ))
+    start_date = _dd.from_sdmx_string(freq, date_str_vector[0], )
+    return tuple(_dd.Ranger(start_date, num_dates, ))
     #]
 
 
 def _create_dates_from_date_column(
-    freq: dd_.Frequency | None,
+    freq: _dd.Frequency | None,
     date_str_vector: _DataVector | None,
 ) -> tuple[Dater]:
     """
@@ -296,7 +298,7 @@ def _create_dates_from_date_column(
     """
     #[
     return tuple(
-        dd_.dater_from_sdmx_string(freq, s, ) if s else None
+        _dd.dater_from_sdmx_string(freq, s, ) if s else None
         for s in date_str_vector
     )
     #]

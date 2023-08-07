@@ -8,21 +8,22 @@ from __future__ import annotations
 
 from typing import (Self, )
 from collections.abc import (Iterable, Callable, )
-import csv as cs_
-import numpy as np_
-import dataclasses as dc_
+import csv as _cs
+import numpy as _np
+import dataclasses as _dc
 
-from ..dataman import (dates as dd_, series as ds_, )
+from . import dates as _dd
+from ..series import facade as _sf
 #]
 
 
-@dc_.dataclass
+@_dc.dataclass
 class _ImportBlockDescriptor:
     """
     """
     #[
     row_index: Iterable[int] | None = None,
-    dates: Iterable[dd_.Dater] | None = None,
+    dates: Iterable[_dd.Dater] | None = None,
     column_start: int | None = None,
     num_columns: int | None = None,
     names: Iterable[str] | None = None,
@@ -90,7 +91,7 @@ def _read_csv_lines(file_name, num_header_lines, /, delimiter=",", **kwargs, ):
     """
     #[
     with open(file_name, "r") as fid:
-        reader = cs_.reader(fid, **kwargs, )
+        reader = _cs.reader(fid, **kwargs, )
         all_lines = [ line for line in reader ]
     if all_lines:
         all_lines[0][0] = all_lines[0][0].replace("\ufeff", "", )
@@ -103,7 +104,7 @@ def _block_iterator(name_line, description_row, data_lines, start_date_only, /, 
     """
     #[
     _is_end = lambda cell: cell.startswith("__")
-    _is_start = lambda cell: cell.startswith("__") and dd_.frequency_from_string(cell) is not dd_.Frequency.UNKNOWN
+    _is_start = lambda cell: cell.startswith("__") and _dd.frequency_from_string(cell) is not _dd.Frequency.UNKNOWN
     name_line += ["__"]
     status = False
     blocks = []
@@ -123,7 +124,7 @@ def _block_iterator(name_line, description_row, data_lines, start_date_only, /, 
             status = True
             current_date_column = column
             current_start = column + 1
-            current_frequency = dd_.frequency_from_string(cell)
+            current_frequency = _dd.frequency_from_string(cell)
     #]
 
 
@@ -133,14 +134,14 @@ def _extract_dates_from_data_lines(
     column,
     start_date_only,
     /,
-) -> tuple[tuple[int], tuple[dd_.Dater]]:
+) -> tuple[tuple[int], tuple[_dd.Dater]]:
     """
     """
     #[
-    start_date = dd_.dater_from_sdmx_string(frequency, data_lines[0][column])
+    start_date = _dd.dater_from_sdmx_string(frequency, data_lines[0][column])
     date_extractor = {
         True: lambda i, line: start_date + i,
-        False: lambda i, line: dd_.dater_from_sdmx_string(frequency, line[column]),
+        False: lambda i, line: _dd.dater_from_sdmx_string(frequency, line[column]),
     }[start_date_only]
     row_index_and_dates = [ 
         (i, date_extractor(i, line))
@@ -155,7 +156,7 @@ def _read_array_for_block(file_name, block, num_header_lines, /, delimiter=",", 
     #[
     skip_header = num_header_lines
     usecols = [ c for c in range(block.column_start, block.column_start+block.num_columns) ]
-    return np_.genfromtxt(file_name, skip_header=skip_header, usecols=usecols, delimiter=delimiter, ndmin=2, **kwargs)
+    return _np.genfromtxt(file_name, skip_header=skip_header, usecols=usecols, delimiter=delimiter, ndmin=2, **kwargs)
     #]
 
 
@@ -165,7 +166,7 @@ def _add_series_for_block(self, block, array, /, ):
     #[
     array = array[block.row_index, :]
     for columns, name, description in block.column_iterator():
-        series = ds_.Series(num_columns=len(columns), description=description)
+        series = _sf.Series(num_columns=len(columns), description=description)
         series.set_data(block.dates, array[:, columns])
         setattr(self, name, series)
     #]

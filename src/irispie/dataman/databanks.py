@@ -5,24 +5,23 @@
 #[
 from __future__ import annotations
 
-import json as js_
-import copy as co_
-import types as ty_
-import numpy as np_
-import re as re_
-import operator as op_
-import functools as ft_
+import json as _js
+import copy as _co
+import types as _ty
+import numpy as _np
+import re as _re
+import operator as _op
+import functools as _ft
 from typing import (Self, TypeAlias, Literal, Sequence, Protocol, Any, )
 from collections.abc import (Iterable, Callable, )
 from numbers import (Number, )
 
-from ..dataman import (dates as da_, )
-from ..dataman import (series as se_, )
-from ..dataman import (views as vi_, )
-from ..dataman import (imports as im_, )
-from ..dataman import (exports as ex_, )
-from .. import (quantities as qu_, )
-from ..mixins import (userdata as ud_, )
+from ..user import views as _vi
+from ..user import description as _ud
+from ..series import facade as _sf
+from . import dates as _da
+from . import imports as _im
+from . import exports as _ex
 #]
 
 
@@ -75,23 +74,23 @@ _EXTENDED_RANGE_TUPLE_RESOLUTION = {
 
 
 _SERIES_CONSTRUCTOR_RESOLUTION = {
-    "start_date": se_.Series.from_start_date_and_data,
-    "range": se_.Series.from_dates_and_data,
+    "start_date": _sf.Series.from_start_date_and_data,
+    "range": _sf.Series.from_dates_and_data,
 }
 
 
 _ARRAY_TRANSPOSER_RESOLUTION = {
-    "vertical": np_.transpose,
+    "vertical": _np.transpose,
     "horizontal": lambda x: x,
 }
 
 
 class Databank(
-    im_.DatabankImportMixin,
-    ex_.DatabankExportMixin,
-    ud_.DescriptionMixin,
-    vi_.DatabankViewMixin,
-    ty_.SimpleNamespace,
+    _im.DatabankImportMixin,
+    _ex.DatabankExportMixin,
+    _ud.DescriptionMixin,
+    _vi.DatabankViewMixin,
+    _ty.SimpleNamespace,
 ):
     """
     Create a databank object as a simple namespace with utility functions
@@ -103,6 +102,7 @@ class Databank(
         description: str = "",
     ) -> None:
         self.set_description(description)
+
 
     @classmethod
     def _from_dict(
@@ -120,9 +120,9 @@ class Databank(
     @classmethod
     def _from_array(
         cls,
-        array: np_.ndarray,
+        array: _np.ndarray,
         qid_to_name: Sequence[str] | dict[int, str],
-        dates: da_.Dater,
+        dates: _da.Dater,
         /,
         add_to_databank: Self | None = None,
         qid_to_description: dict[int, str] | None = None,
@@ -171,7 +171,7 @@ class Databank(
     ) -> Self:
         """
         """
-        new_databank = co_.deepcopy(self)
+        new_databank = _co.deepcopy(self)
         new_databank = new_databank._rename(source_names, target_names)
         new_databank._keep(target_names)
         return new_databank
@@ -251,31 +251,31 @@ class Databank(
 
     def _get_series_names_by_frequency(
         self,
-        frequency: da_.Frequency,
+        frequency: _da.Frequency,
     ) -> Iterable[str]:
         """
         """
-        return self._filter(value_test=lambda x: isinstance(x, se_.Series) and x.frequency==frequency)
+        return self._filter(value_test=lambda x: isinstance(x, _sf.Series) and x.frequency==frequency)
 
     def _get_range_by_frequency(
         self,
-        frequency: da_.Frequency,
+        frequency: _da.Frequency,
     ) -> Ranger:
         names = self._get_series_names_by_frequency(frequency)
         if not names:
             return Ranger(None, None)
-        min_start_date = min((getattr(self, n).start_date for n in names), key=op_.attrgetter("serial"))
-        max_end_date = max((getattr(self, n).end_date for n in names), key=op_.attrgetter("serial"))
-        return da_.Ranger(min_start_date, max_end_date)
+        min_start_date = min((getattr(self, n).start_date for n in names), key=_op.attrgetter("serial"))
+        max_end_date = max((getattr(self, n).end_date for n in names), key=_op.attrgetter("serial"))
+        return _da.Ranger(min_start_date, max_end_date)
 
     def _to_json(self, **kwargs):
-        return js_.dumps(vars(self), **kwargs)
+        return _js.dumps(vars(self), **kwargs)
 
     def _underlay(self, other) -> None:
         """"
         """
-        self_names = self._filter(value_test=lambda x: isinstance(x, se_.Series))
-        other_names = other._filter(value_test=lambda x: isinstance(x, se_.Series))
+        self_names = self._filter(value_test=lambda x: isinstance(x, _sf.Series))
+        other_names = other._filter(value_test=lambda x: isinstance(x, _sf.Series))
         names = set(self_names).intersection(other_names)
         for n in names:
             self_n = getattr(self, n)
@@ -285,13 +285,13 @@ class Databank(
 
     def _clip(
         self,
-        new_start_date: da_.Dater | None = None,
-        new_end_date: da_.Dater | None = None,
+        new_start_date: _da.Dater | None = None,
+        new_end_date: _da.Dater | None = None,
     ) -> None:
         if new_start_date is None and new_end_date is None:
             return
         frequency = new_start_date.frequency if new_start_date is not None else new_end_date.frequency
-        names = self._filter(value_test=lambda x: isinstance(x, se_.Series) and x.frequency == frequency)
+        names = self._filter(value_test=lambda x: isinstance(x, _sf.Series) and x.frequency == frequency)
         for n in names:
             x = getattr(self, n)
             x.clip(new_start_date, new_end_date)
@@ -299,7 +299,7 @@ class Databank(
     def _add_steady(
         self,
         steady_databankable: SteadyDatabankableProtocol,
-        input_range: Iterable[da_.Dater],
+        input_range: Iterable[_da.Dater],
         /,
         deviation: bool = False,
         interpret_range: InterpretRange = "base",
@@ -314,7 +314,7 @@ class Databank(
         steady_databank = steady_databankable._get_steady_databank(start_date, end_date, deviation=deviation)
         self._update(steady_databank)
 
-    _add_zero = ft_.partialmethod(_add_steady, deviation=True)
+    _add_zero = _ft.partialmethod(_add_steady, deviation=True)
 
     def __getitem__(self, name):
         return self.__dict__[name]
@@ -323,7 +323,7 @@ class Databank(
         self.__dict__[name] = value
 
     def __or__(self, other) -> Self:
-        new = co_.deepcopy(self)
+        new = _co.deepcopy(self)
         new.__dict__.update(other.__dict__)
         return new
 
@@ -342,12 +342,13 @@ class Databank(
 #
 # Add databank methods without the leading underscore
 #
+exceptions = ["_description", ]
 single_underscore_names = [
     n for n in dir(Databank) 
-    if n.startswith("_") and not n.startswith("__") and not n.endswith("_")
+    if n.startswith("_") and not n.startswith("__") and not n.endswith("_") and n not in exceptions
 ]
 for n in single_underscore_names:
-    setattr(Databank, n[1:], getattr(Databank, n))
+    setattr(Databank, n.removeprefix("_"), getattr(Databank, n))
 
 
 def _resolve_source_target_names(
@@ -376,7 +377,7 @@ def _resolve_source_target_names(
 
 
 def _resolve_input_range(
-    input_range: Iterable[da_.Dater],
+    input_range: Iterable[_da.Dater],
     min_shift: int,
     max_shift: int,
     interpret_range: InterpretRange,

@@ -1,5 +1,5 @@
 """
-Time series
+Time series facade
 """
 
 #[
@@ -13,12 +13,12 @@ import numpy as np_
 import itertools as it_
 import copy as co_
 
-from ..dataman.dates import (Dater, Ranger, date_index, ResolvableProtocol, )
-from ..dataman import (views as vi_, )
-from ..dataman import (dates as _da, )
-from ..dataman import (filters as fi_, )
-from ..dataman import (plotly as pl_, )
-from ..mixins import (userdata as ud_, )
+from ..user import views as _vi
+from ..user import description as _ud
+from ..dataman import dates as _da
+from . import filters as _sg
+from . import plotly as _sp
+from . import conversion as _sc
 #]
 
 
@@ -39,13 +39,13 @@ for n in FUNCTION_ADAPTATIONS:
     )
 
 
-Dates: TypeAlias = Dater | Iterable[Dater] | Ranger | EllipsisType | None
+Dates: TypeAlias = _da.Dater | Iterable[_da.Dater] | _da.Ranger | EllipsisType | None
 Columns: TypeAlias = int | Iterable[int] | slice
 Data: TypeAlias = Number | Iterable[Number] | tuple | np_.ndarray
 
 
 def _get_date_positions(dates, base, num_periods):
-    pos = list(date_index(dates, base))
+    pos = list(_da.date_index(dates, base))
     min_pos = min(pos)
     max_pos = max(pos)
     add_before = max(-min_pos, 0)
@@ -61,7 +61,13 @@ def _trim_decorate(func):
     return wrapper
 
 
-class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptionMixin, vi_.SeriesViewMixin):
+class Series(
+    _sg.HodrickPrescottMixin,
+    _ud.DescriptionMixin,
+    _sc.ConversionMixin,
+    _vi.SeriesViewMixin,
+    _sp.PlotlyMixin,
+):
     """
     """
     __slots__ = (
@@ -105,7 +111,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptionMixin, vi
 
     @property
     def range(self):
-        return Ranger(self.start_date, self.end_date) if self.start_date else []
+        return _da.Ranger(self.start_date, self.end_date) if self.start_date else []
 
     @property
     def end_date(self):
@@ -118,7 +124,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptionMixin, vi
     @classmethod
     def from_dates_and_data(
         cls,
-        dates: Iterable[Dater],
+        dates: Iterable[_da.Dater],
         data: np_.ndarray,
         /,
     ) -> Self:
@@ -132,7 +138,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptionMixin, vi
     @classmethod
     def from_start_date_and_data(
         cls,
-        start_date: Dater,
+        start_date: _da.Dater,
         data: np_.ndarray,
         /,
         **kwargs,
@@ -141,12 +147,12 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptionMixin, vi
         self = cls(num_columns=num_columns, **kwargs)
         self.start_date = start_date
         self.data = data
-        return self
+        return self._trim()
 
     @classmethod
     def from_func(
         cls,
-        dates: Iterable[Dater],
+        dates: Iterable[_da.Dater],
         func: Callable,
         /,
         **kwargs,
@@ -250,7 +256,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptionMixin, vi
 
     def set_start_date(
         self,
-        new_start_date: Dater,
+        new_start_date: _da.Dater,
         /,
     ) -> Self:
         self.start_date = new_start_date
@@ -260,8 +266,8 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptionMixin, vi
         if dates is None:
             return []
         if dates is Ellipsis:
-            dates = Ranger(None, None)
-        if isinstance(dates, ResolvableProtocol) and dates.needs_resolve:
+            dates = _da.Ranger(None, None)
+        if isinstance(dates, _da.ResolvableProtocol) and dates.needs_resolve:
             dates = dates.resolve(self)
         return dates
 
@@ -325,8 +331,8 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptionMixin, vi
 
     def clip(
         self,
-        new_start_date: Dater | None,
-        new_end_date: Dater | None,
+        new_start_date: _da.Dater | None,
+        new_end_date: _da.Dater | None,
     ) -> None:
         if new_start_date is None or new_start_date < self.start_date:
             new_start_date = self.start_date
@@ -335,7 +341,7 @@ class Series(fi_.HodrickPrescottMixin, pl_.PlotlyMixin, ud_.DescriptionMixin, vi
         if new_start_date == self.start_date and new_end_date == self.end_date:
             return
         self.start_date = new_start_date
-        self.data = self.get_data(Ranger(new_start_date, new_end_date))
+        self.data = self.get_data(_da.Ranger(new_start_date, new_end_date))
 
     def overlay_by_range(
         self,
@@ -596,7 +602,7 @@ def hstack(first, *args) -> Self:
 
 def _create_data_from_number(
     number: Number,
-    range: Ranger,
+    range: _da.Ranger,
     data_type: type,
     /,
 ) -> np_.ndarray:

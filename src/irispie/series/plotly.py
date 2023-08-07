@@ -10,7 +10,7 @@ import plotly.graph_objects as _pg
 import plotly.subplots as _ps
 from types import (EllipsisType, )
 
-from ..dataman import (dates as _da, )
+from ..dataman import dates as _da
 #]
 
 

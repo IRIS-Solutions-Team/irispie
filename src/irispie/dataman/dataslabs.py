@@ -6,9 +6,9 @@ import numpy as np_
 from typing import (Self, )
 from collections.abc import (Iterable, )
 
+from ..series import facade as _sf
 from . import databanks as db_
 from . import dates as da_
-from . import series as se_
 #]
 
 
@@ -108,7 +108,7 @@ def multiple_to_databank(
     num_columns = len(selves)
     for row, n in enumerate(self.row_names):
         data = np_.hstack(tuple(ds.data[(row,), :].T for ds in selves))
-        x = se_.Series(num_columns=num_columns)
+        x = _sf.Series(num_columns=num_columns)
         x.set_data(self.column_dates, data)
         setattr(out_databank, n, x)
     return out_databank

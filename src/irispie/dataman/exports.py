@@ -11,8 +11,7 @@ import numpy as np_
 import dataclasses as dc_
 import itertools as it_
 
-from ..dataman import dates as da_
-from ..dataman import series as se_
+from . import dates as _da
 #]
 
 
@@ -25,7 +24,7 @@ class _ExportBlockDescriptor:
     """
     """
     #[
-    frequency: da_.Frequency | None = None
+    frequency: _da.Frequency | None = None
     names: Iterable[str] | None = None
     descriptors: Iterable[str] | None = None
     descriptor_row: bool | None = None
@@ -66,7 +65,7 @@ class DatabankExportMixin:
         /,
         descriptor_row: bool = False,
         range: Iterable[Dater] | None = None,
-        frequency: da_.Frequency | None = None,
+        frequency: _da.Frequency | None = None,
         delimiter: str = ",",
         numeric_format: str = "g",
         nan_str: str = "",
@@ -76,7 +75,7 @@ class DatabankExportMixin:
         """
         if not frequency:
             raise NotImplementedYet("frequency=None")
-        frequency = da_.Frequency(frequency)
+        frequency = _da.Frequency(frequency)
         range = range if range else self._get_range_by_frequency(frequency)
         range = [ t for t in range ]
         num_data_rows = len(range)

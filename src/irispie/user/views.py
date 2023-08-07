@@ -9,8 +9,6 @@ from __future__ import annotations
 from numbers import (Number, )
 import numpy as np_
 import re as re_
-
-from ..dataman import dates as da_
 #]
 
 
@@ -40,18 +38,20 @@ def _databank_repr(x, /, ) -> str:
     String representing one record in a databank
     """
     #[
-    if x is None:
+    if hasattr(x, "_databank_repr"):
+        s = x._databank_repr()
+    elif x is None:
         s = "None"
     elif x is ...:
         s = "..."
-    elif isinstance(x, Number) or isinstance(x, da_.Dater):
+    elif isinstance(x, Number):
         s = str(x)
     elif isinstance(x, str):
         s = f'"{x}"'
     elif isinstance(x, np_.ndarray) or isinstance(x, list) or isinstance(x, tuple):
         s = re_.sub("\n + ", " ", repr(x))
-    elif hasattr(x, "_get_first_line_view_"):
-        s = x._get_first_line_view_()
+    elif hasattr(x, "_get_first_line_view"):
+        s = x._get_first_line_view()
     else:
         s = repr(type(x))
     return s if len(s)<_REPR_MAX_LEN else s[0:_REPR_MAX_LEN] + _REPR_CONT
@@ -68,7 +68,7 @@ class ViewMixin:
         """
         return [ 
             "", 
-            self._get_first_line_view_(),
+            self._get_first_line_view(),
             f"Description: \"{self.get_description()}\"",
             "", 
         ]
@@ -110,7 +110,7 @@ class SeriesViewMixin(ViewMixin):
     """
     """
     #[
-    def _get_first_line_view_(self, /, ):
+    def _get_first_line_view(self, /, ):
         """
         """
         shape = self.data.shape
@@ -140,7 +140,7 @@ class DatabankViewMixin(ViewMixin):
     """
     """
     #[
-    def _get_first_line_view_(self, /, ):
+    def _get_first_line_view(self, /, ):
         """
         """
         return f"Databank with {self._get_num_records():g} record(s)"
