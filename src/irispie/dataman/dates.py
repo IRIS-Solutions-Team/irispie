@@ -5,7 +5,6 @@ Dates, date ranges, and date frequencies
 
 #[
 from __future__ import annotations
-
 import re as _re
 import datetime as _dt
 import enum as _en
@@ -13,6 +12,8 @@ import functools as _ft
 from typing import (Union, Self, Any, Protocol, TypeAlias, runtime_checkable, )
 from collections.abc import (Iterable, Callable, )
 from numbers import (Number, )
+
+from ..user import copy as _cp
 #]
 
 
@@ -153,7 +154,10 @@ class IsoMixin:
     #]
 
 
-class Dater(RangeableMixin, ):
+class Dater(
+    RangeableMixin,
+    _cp.CopyMixin,
+):
     """
     """
     #[

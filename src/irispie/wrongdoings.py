@@ -68,7 +68,7 @@ def _throw_as_warning(
     """
     #[
     message = _prepare_message(message)
-    message = "\n\nIrisPieWarning: " + message + "\n"
+    message = "\nIrisPieWarning: " + message
     wa_.warn(message, IrisPieWarning, stacklevel=4, )
     #]
 

@@ -2,6 +2,7 @@
 Time series facade
 """
 
+
 #[
 from __future__ import annotations
 
@@ -19,6 +20,7 @@ from ..dataman import dates as _da
 from . import filters as _sg
 from . import plotly as _sp
 from . import conversion as _sc
+from . import x13 as _sx
 #]
 
 
@@ -65,6 +67,7 @@ class Series(
     _sg.HodrickPrescottMixin,
     _ud.DescriptionMixin,
     _sc.ConversionMixin,
+    _sx.EggsThirteenMixin,
     _vi.SeriesViewMixin,
     _sp.PlotlyMixin,
 ):

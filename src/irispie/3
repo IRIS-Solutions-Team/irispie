@@ -1,0 +1,131 @@
+"""
+Interface to X13-ARIMA-TRAMO-SEATS
+"""
+
+
+#[
+from __future__ import annotations
+from types import (EllipsisType, )
+import os as _os
+import numpy as _np
+
+from .. import executables as _ex
+from ..dataman import dates as _da
+#]
+
+
+class EggsThirteenMixin:
+    """
+    """
+    #[
+    def x13(
+        self,
+        /,
+        range: _da.Ranger | EllipsisType = ...,
+        output: str = "sa",
+        mode: Literal["mult"] | Literal["add"] | Literal["pseudoadd"] | Literal["logadd"] = "mult",
+        **kwargs,
+    ) -> tuple:
+        """
+        """
+        range = tuple(self._resolve_dates(range))
+        base_start_date = range[0]
+        settings = _create_settings(base_start_date, output, mode, **kwargs, )
+        spc = _create_spc_file(_TEMPLATE_SPC, settings, )
+        #
+        for column_data in self.data.T:
+            _x13(spc, base_start_date, column_data, )
+
+
+def _x13(
+    spc: str,
+    base_start_date: _da.Date,
+    column_data: _np.ndarray,
+    /,
+):
+    start_date, column_data = _remove_leading_trailing_nans(base_start_date, column_data, )
+    year, period = start_date.to_year_period()
+    spc = spc.replace("$(series_start)", _X13_DATE_FORMAT_RESOLUTION[start_date.frequency].format(year=year, period=period, ), )
+    spc = spc.replace("$(series_data)", _print_series_data(column_data, ), )
+    print(spc)
+
+
+def _print_series_data(
+    column_data: _np.ndarray,
+    /,
+) -> str:
+    """
+    """
+    return "\n".join(f"        {v:g}" for v in column_data)
+    )
+
+
+def _remove_leading_trailing_nans(
+    base_start_date: _da.Date,
+    column_data: _np.ndarray,
+    /,
+) -> tuple[_da.Date, _np.ndarray]:
+    """
+    """
+    #[
+    start_date = base_start_date.copy()
+    while _np.isnan(column_data[0]):
+        start_date += 1
+        column_data = column_data[1:]
+    while _np.isnan(column_data[-1]):
+        column_data = column_data[:-1]
+    return start_date, column_data
+    #]
+
+
+def _create_settings(
+    base_start_date: _da.Date,
+    output: str,
+    mode: Literal["mult"] | Literal["add"] | Literal["pseudoadd"] | Literal["logadd"],
+    /,
+    transform_function: str = "none",
+) ->  dict[str, str]:
+    """
+    """
+    if str(mode) == "mult" and str(transform_function) == "none":
+        transform_function = "log"
+    settings = {
+        "series_period": str(base_start_date.frequency.value),
+        "x11_mode": str(mode),
+        "x11_save": _X11_OUTPUT_RESOLUTION.get(output, output, )
+        "transform_function": str(transform_function),
+    }
+    return settings
+
+
+def _create_spc_file(
+    spc: str,
+    settings: dict[str, str],
+    /,
+) -> str:
+    for k, v in settings.items():
+        spc = spc.replace(f"$({k})", v, )
+    return spc
+
+
+_EXECUTABLES_PATH = _os.path.dirname(_ex.__file__)
+_TEMPLATE_SPC_PATH = _os.path.join(_EXECUTABLES_PATH, "template.spc", )
+
+
+with open(_TEMPLATE_SPC_PATH, "rt", ) as fid:
+    _TEMPLATE_SPC = fid.read()
+
+
+_X11_OUTPUT_RESOLUTION = {
+    "sf": "d10",
+    "sa": "d11",
+    "tc": "d12",
+    "irr": "d13",
+}
+
+
+_X13_DATE_FORMAT_RESOLUTION = {
+    _da.Frequency.MONTHLY: "{year:04d}.{period:02d}",
+    _da.Frequency.QUARTERLY: "{year:04d}.{period:1d}",
+}
+
