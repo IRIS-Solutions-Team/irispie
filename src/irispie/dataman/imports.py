@@ -12,7 +12,7 @@ import csv as _cs
 import numpy as _np
 import dataclasses as _dc
 
-from . import dates as _dd
+from . import dates as _da
 from ..series import facade as _sf
 #]
 
@@ -23,7 +23,7 @@ class _ImportBlockDescriptor:
     """
     #[
     row_index: Iterable[int] | None = None,
-    dates: Iterable[_dd.Dater] | None = None,
+    dates: Iterable[_da.Dater] | None = None,
     column_start: int | None = None,
     num_columns: int | None = None,
     names: Iterable[str] | None = None,
@@ -104,7 +104,7 @@ def _block_iterator(name_line, description_row, data_lines, start_date_only, /, 
     """
     #[
     _is_end = lambda cell: cell.startswith("__")
-    _is_start = lambda cell: cell.startswith("__") and _dd.frequency_from_string(cell) is not _dd.Frequency.UNKNOWN
+    _is_start = lambda cell: cell.startswith("__") and _da.frequency_from_string(cell) is not _da.Frequency.UNKNOWN
     name_line += ["__"]
     status = False
     blocks = []
@@ -124,7 +124,7 @@ def _block_iterator(name_line, description_row, data_lines, start_date_only, /, 
             status = True
             current_date_column = column
             current_start = column + 1
-            current_frequency = _dd.frequency_from_string(cell)
+            current_frequency = _da.Frequency.from_string(cell)
     #]
 
 
@@ -134,14 +134,14 @@ def _extract_dates_from_data_lines(
     column,
     start_date_only,
     /,
-) -> tuple[tuple[int], tuple[_dd.Dater]]:
+) -> tuple[tuple[int], tuple[_da.Dater]]:
     """
     """
     #[
-    start_date = _dd.dater_from_sdmx_string(frequency, data_lines[0][column])
+    start_date = _da.Dater.from_sdmx_string(frequency, data_lines[0][column])
     date_extractor = {
         True: lambda i, line: start_date + i,
-        False: lambda i, line: _dd.dater_from_sdmx_string(frequency, line[column]),
+        False: lambda i, line: _da.Dater.from_sdmx_string(frequency, line[column]),
     }[start_date_only]
     row_index_and_dates = [ 
         (i, date_extractor(i, line))

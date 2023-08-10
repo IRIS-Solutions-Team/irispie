@@ -13,8 +13,8 @@ import itertools as _it
 import functools as _ft
 
 from ..series import facade as _sf
-from . import dates as _dd
-from . import databanks as _da
+from . import dates as _da
+from . import databanks as _db
 #]
 
 
@@ -47,7 +47,7 @@ def read_csv(
     file_path: str,
     /,
     **kwargs,
-) -> Iterable[_da.Databank]:
+) -> Iterable[_db.Databank]:
     """
     Read a CSV file
     """
@@ -107,7 +107,7 @@ class _Block:
     ) -> None:
         self._start_index = start_index
         self._headers = []
-        freq = _dd.frequency_from_string(header[0]) if header is not None else None
+        freq = _da.Frequency.from_letter(header[0]) if header is not None else None
         self._dates = _create_dates_for_block(freq, date_str_vector, **kwargs, )
         self._data_array = None
 
@@ -126,7 +126,7 @@ class _Block:
         data_array_reader: _DataArrayReader,
         /,
         **kwargs,
-    ) -> _da.Databank:
+    ) -> _db.Databank:
         """
         Create a databank from the block
         """
@@ -257,7 +257,7 @@ class _ColumnwiseFileFactory(_FileFactory):
 
 
 def _create_dates_for_block(
-    freq: _dd.Frequency | None,
+    freq: _da.Frequency | None,
     date_str_vector: _DataVector | None,
     /,
     start_date_only: bool = False,
@@ -276,7 +276,7 @@ def _create_dates_for_block(
 
 
 def _create_dates_from_start_date(
-    freq: _dd.Frequency | None,
+    freq: _da.Frequency | None,
     date_str_vector: _DataVector | None,
 ) -> tuple[Dater]:
     """
@@ -284,13 +284,13 @@ def _create_dates_from_start_date(
     """
     #[
     num_dates = len(date_str_vector)
-    start_date = _dd.from_sdmx_string(freq, date_str_vector[0], )
-    return tuple(_dd.Ranger(start_date, num_dates, ))
+    start_date = _da.Dater.from_sdmx_string(freq, date_str_vector[0], )
+    return tuple(_da.Ranger(start_date, num_dates, ))
     #]
 
 
 def _create_dates_from_date_column(
-    freq: _dd.Frequency | None,
+    freq: _da.Frequency | None,
     date_str_vector: _DataVector | None,
 ) -> tuple[Dater]:
     """
@@ -298,7 +298,7 @@ def _create_dates_from_date_column(
     """
     #[
     return tuple(
-        _dd.dater_from_sdmx_string(freq, s, ) if s else None
+        _da.Dater.from_sdmx_string(freq, s, ) if s else None
         for s in date_str_vector
     )
     #]

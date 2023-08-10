@@ -21,10 +21,7 @@ __all__ = [
     "Frequency",
     "yy", "hh", "qq", "mm", "dd", "ii",
     "Ranger", "start", "end",
-    "dater_from_sdmx_string",
-    "daters_from_sdmx_strings",
-    "dater_from_iso_string",
-    "daters_from_iso_strings",
+    "Dater", "daters_from_sdmx_strings", "daters_from_iso_strings",
 ]
 
 
@@ -48,7 +45,7 @@ class Frequency(_en.IntEnum):
         """
         return next(
             x for x in cls
-            if x.name.startswith(letter.upper()) and x is not cls.UNKNOWN
+            if x.name.startswith(letter[0].upper()) and x is not cls.UNKNOWN
         )
 
     @property
@@ -101,7 +98,7 @@ class ResolvableProtocol(Protocol, ):
 
 
 def _check_daters(first, second) -> None:
-    if type(first) is not type(second):
+    if type(first) != type(second):
         raise Exception("Dates must be the same date frequency")
 
 
@@ -144,25 +141,6 @@ class RangeableMixin:
     #]
 
 
-class IsoMixin:
-    #[
-    def to_iso_string(
-        self,
-        /,
-        position: Literal["start"] | Literal["center"] | Literal["end"] = "start",
-    ) -> str:
-        year, month, day = self.to_ymd(position=position, )
-        return f"{year:04g}-{month:02g}-{day:02g}"
-
-    @classmethod
-    def from_iso_string(cls: type, iso_string: str, ) -> Self:
-        year, month, day = iso_string.split("-", )
-        return cls.from_ymd(int(year), int(month), int(day), )
-
-    to_plotly_date = _ft.partialmethod(to_iso_string, position="center")
-    #]
-
-
 class Dater(
     RangeableMixin,
     _cp.CopyMixin,
@@ -172,6 +150,35 @@ class Dater(
     #[
     frequency = None
     needs_resolve = False
+
+    @staticmethod
+    def from_iso_string(freq: Frequency, iso_string: str, ) -> Dater:
+        """
+        """
+        year, month, day = iso_string.split("-", )
+        return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_ymd(int(year), int(month), int(day), )
+
+    @staticmethod
+    def from_sdmx_string(freq: Frequency, sdmx_string: str, ) -> Dater:
+        """
+        """
+        return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_sdmx_string(sdmx_string)
+
+    @staticmethod
+    def dater_from_ymd(freq: Frequency, *args, ) -> Dater:
+        """
+        """
+        return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_ymd(*args, )
+
+    def to_iso_string(
+        self,
+        /,
+        position: Literal["start"] | Literal["center"] | Literal["end"] = "start",
+    ) -> str:
+        year, month, day = self.to_ymd(position=position, )
+        return f"{year:04g}-{month:02g}-{day:02g}"
+
+    to_plotly_date = _ft.partialmethod(to_iso_string, position="center")
 
     def __init__(self, serial=0) -> None:
         self.serial = int(serial)
@@ -279,7 +286,7 @@ class IntegerDater(Dater, ):
     #]
 
 
-class DailyDater(Dater, IsoMixin):
+class DailyDater(Dater, ):
     #[
     frequency: Frequency = Frequency.DAILY
     needs_resolve = False
@@ -346,7 +353,7 @@ def _serial_from_ypf(year: int, per: int, freq: int) -> int:
     return int(year)*int(freq) + int(per) - 1
 
 
-class RegularDaterMixin(IsoMixin, ):
+class RegularDaterMixin:
     #[
     @classmethod
     def from_year_period(
@@ -724,53 +731,16 @@ DATER_CLASS_FROM_FREQUENCY_RESOLUTION = {
     Frequency.DAILY: DailyDater,
 }
 
-
-def dater_from_sdmx_string(freq: Frequency, sdmx_string: str, ) -> Dater:
-    """
-    """
-    return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_sdmx_string(sdmx_string)
-
-
 def daters_from_sdmx_strings(freq: Frequency, sdmx_strings: Iterable[str], ) -> Iterable[Dater]:
     """
     """
     return (DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_sdmx_string(x) for x in sdmx_strings)
 
 
-def dater_from_iso_string(freq: Frequency, iso_string: str, ) -> Dater:
-    """
-    """
-    return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_iso_string(iso_string)
-
-
 def daters_from_iso_strings(freq: Frequency, iso_strings: Iterable[str], ) -> Iterable[Dater]:
     """
     """
     return (DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_iso_string(x) for x in iso_strings)
-
-
-def dater_from_ymd(freq: Frequency, *args, ) -> Dater:
-    """
-    """
-    return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_ymd(*args, )
-
-
-_FREQUENCY_FROM_STRING_RESOLUTION = {
-    "I": Frequency.INTEGER,
-    "Y": Frequency.YEARLY,
-    "H": Frequency.HALFYEARLY,
-    "Q": Frequency.QUARTERLY,
-    "M": Frequency.MONTHLY,
-    "W": Frequency.WEEKLY,
-    "D": Frequency.DAILY,
-}
-
-
-def frequency_from_string(text: str) -> Frequency:
-    """
-    """
-    first_letter_match = _re.search("[A-Z]", text.upper() + "X")
-    return _FREQUENCY_FROM_STRING_RESOLUTION.get(first_letter_match.group(0), Frequency.UNKNOWN)
 
 
 def get_encompassing_range(*args: ResolutionContextProtocol, ) -> Ranger:
