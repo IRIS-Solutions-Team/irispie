@@ -42,6 +42,15 @@ class Frequency(_en.IntEnum):
     DAILY = 365
     UNKNOWN = -1
 
+    @classmethod
+    def from_letter(cls, letter: str, /, ) -> Frequency:
+        """
+        """
+        return next(
+            x for x in cls
+            if x.name.startswith(letter.upper()) and x is not cls.UNKNOWN
+        )
+
     @property
     def letter(self, /, ) -> str:
         return self.name[0] if self is not self.UNKNOWN else "?"
