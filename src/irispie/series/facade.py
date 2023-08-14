@@ -11,11 +11,11 @@ from collections.abc import (Iterable, Callable, )
 from typing import (Self, TypeAlias, )
 from types import (EllipsisType, )
 import numpy as _np
-import itertools as it_
-import copy as _co
+import itertools as _it
 
 from ..user import views as _vi
 from ..user import description as _ud
+from ..user import copy as _uc
 from ..dataman import dates as _da
 from . import filters as _sg
 from . import plotly as _sp
@@ -75,6 +75,7 @@ class Series(
     _sx.EggsThirteenMixin,
     _vi.SeriesViewMixin,
     _sp.PlotlyMixin,
+    _uc.CopyMixin,
 ):
     """
     """
@@ -159,6 +160,8 @@ class Series(
         self.data = data
         return self._trim()
 
+    from_start_date_and_values = from_start_date_and_data
+
     @classmethod
     def from_func(
         cls,
@@ -175,6 +178,8 @@ class Series(
         data = _np.array(data, dtype=self.data_type)
         self.set_data(dates, data)
         return self
+
+    from_dates_and_func = from_func
 
     @_trim_decorate
     def set_data(
@@ -199,7 +204,7 @@ class Series(
             self.data[pos, :] = data
             return
         if not isinstance(data, tuple):
-            data = it_.repeat(data)
+            data = _it.repeat(data)
         for c, d in zip(columns, data):
             self.data[pos, c] = d
         return self
@@ -347,7 +352,7 @@ class Series(
         Create a new time series based on date retrieved by self[dates] or self[dates, columns]
         """
         if isinstance(index, int):
-            new = _co.deepcopy(self)
+            new = self.copy()
             new._shift(index)
             return new
         if not isinstance(index, tuple):
@@ -364,7 +369,7 @@ class Series(
 
     def hstack(self, *args):
         if not args:
-            return _co.deepcopy(self)
+            return self.copy()
         encompassing_range = _da.get_encompassing_range(self, *args)
         new_data = self.get_data(encompassing_range)
         add_data = (
@@ -448,10 +453,10 @@ class Series(
         return self.hstack(other)
 
     def __lshift__(self, other):
-        return _co.deepcopy(self).overlay_by_range(other, )
+        return self.copy().overlay_by_range(other, )
 
     def __rshift__(self, other):
-        return _co.deepcopy(other).overlay_by_range(self, )
+        return self.copy().overlay_by_range(self, )
 
     def _trim(self):
         if self.data.size==0:
@@ -483,7 +488,7 @@ class Series(
         """
         -self
         """
-        output = _co.deepcopy(self)
+        output = self.copy()
         output.data = -output.data
         return output
 
@@ -491,7 +496,7 @@ class Series(
         """
         +self
         """
-        return _co.deepcopy(self.copy)
+        return self.copy()
 
     def __add__(self, other) -> Self|_np.ndarray:
         """
@@ -583,20 +588,20 @@ class Series(
         """
         return self.apply(lambda data: data.__rmod__(other))
 
-    def apply(self, func, /, *args, **kwargs):
-        new_data = func(self.data, *args, **kwargs)
-        axis = kwargs.get("axis")
-        if new_data.shape==self.data.shape:
-            new = _co.deepcopy(self)
+    def apply(self, func, /, *args, **kwargs, ):
+        new_data = func(self.data, *args, **kwargs, )
+        axis = kwargs.get("axis", )
+        if new_data.shape == self.data.shape:
+            new = self.copy()
             new.data = new_data
             return new._trim()
-        elif (axis is None or axis==1) and new_data.shape==(self.data.shape[0],):
-            new = _co.deepcopy(self)
-            new.data = new_data.reshape(self.data.shape[0], 1)
+        elif (axis is None or axis == 1) and new_data.shape == (self.data.shape[0], ):
+            new = self.copy()
+            new.data = new_data.reshape(self.data.shape[0], 1, )
             return new._trim()
-        elif axis is None and new_data.shape==():
+        elif axis is None and new_data.shape == ():
             return new_data
-        elif axis==0 and new_data.shape==(self.data.shape[1],):
+        elif axis == 0 and new_data.shape == (self.data.shape[1], ):
             return new_data
         else:
             raise Exception("Function applied on a time series resulted in a data array with an unexpected shape")
@@ -604,7 +609,7 @@ class Series(
     def _binop(self, other, func, /, ):
         if not isinstance(other, type(self)):
             unop_func = lambda data: func(data, other)
-            return apply(self, unop_func)
+            return self.apply(unop_func)
         encompassing_range = _da.get_encompassing_range(self, other)
         self_data = self.get_data(encompassing_range)
         other_data = other.get_data(encompassing_range)
@@ -617,9 +622,6 @@ class Series(
     def _replace_data(self, new_data, /, ) -> None:
         self.data = new_data
         self._trim()
-
-    def copy(self, /, ) -> Self:
-        return _co.deepcopy(self, )
 
     for n in ["log", "exp", "sqrt", "maximum", "minimum"]:
         exec(f"def {n}(self, *args, **kwargs, ): return self._replace_data(_np.{n}(self.data, *args, **kwargs, ), )")
@@ -663,9 +665,13 @@ def _create_data_from_number(
 
 
 def shift(x, by=-1, ) -> Series:
-    new = _co.deepcopy(x)
+    """
+    """
+    #[
+    new = x.copy()
     new._shift(by)
     return new
+    #]
 
 
 def _negative_by_decorator(func):
@@ -699,7 +705,7 @@ def cum_difflog(dx, by=-1, /, initial=1, range=_da.Ranger(), ) -> Series:
 
 
 @_negative_by_decorator
-def pct(x, shift=-1, /, ) -> Series:
+def pct(x, by=-1, /, ) -> Series:
     return 100*(x/shift(x, by) - 1)
 
 
@@ -709,7 +715,7 @@ def cum_pct(dx, by=-1, /, initial=1, range=_da.Ranger(), ) -> Series:
 
 
 @_negative_by_decorator
-def roc(x, shift=-1, /, ) -> Series:
+def roc(x, by=-1, /, ) -> Series:
     return x/shift(x, by)
 
 
@@ -739,6 +745,9 @@ _CUMULATIVE_FUNCTIONS = {
 
 
 def _cumulate(dx, by, func, initial, range, /, ) -> Series:
+    """
+    """
+    #[
     direction = range.direction
     cum_func = _CUMULATIVE_FUNCTIONS[func][direction]
     new = Series(num_columns=dx.num_columns, data_type=dx.data_type, )
@@ -748,9 +757,13 @@ def _cumulate(dx, by, func, initial, range, /, ) -> Series:
         case "backward":
             _cumulate_backward(new, dx, by, cum_func, initial, range, )
     return new._trim()
+    #]
 
 
 def _cumulate_forward(new, dx, by, cum_func, initial, range, /, ) -> None:
+    """
+    """
+    #[
     range = range.resolve(dx)
     shifted_range = tuple(t.shift(by) for t in range)
     initial_range = _da.Ranger(min(shifted_range), range.end_date, )
@@ -758,9 +771,13 @@ def _cumulate_forward(new, dx, by, cum_func, initial, range, /, ) -> None:
     for t, sh in zip(range, shifted_range):
         new_data = cum_func(new.get_data(sh, ), dx.get_data(t, ), )
         new.set_data(t, new_data)
+    #]
 
 
 def _cumulate_backward(new, dx, by, cum_func, initial, shifted_backward_range, /, ) -> None:
+    """
+    """
+    #[
     dx_range_shifted = _da.Ranger(dx.start_date, dx.end_date, -1, )
     dx_range_shifted.shift(by)
     shifted_backward_range = shifted_backward_range.resolve(dx_range_shifted)
@@ -771,10 +788,14 @@ def _cumulate_backward(new, dx, by, cum_func, initial, shifted_backward_range, /
     for t, sh in zip(backward_range, shifted_backward_range):
         new_data = cum_func(new.get_data(t, ), dx.get_data(t, ), )
         new.set_data(sh, new_data)
+    #]
 
 
 def _conform_data(data, /, ) -> _np.ndarray:
+    """
+    """
+    #[
     if not isinstance(data, _np.ndarray, ):
         data = _np.array(data, dtype=float, ndmin=2, ).T
     return data
-
+    #]

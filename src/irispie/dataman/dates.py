@@ -171,6 +171,13 @@ class Dater(
         """
         return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_ymd(*args, )
 
+    @staticmethod
+    def today(freq: Frequency, ) -> Dater:
+        """
+        """
+        t = _dt.date.today()
+        return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_ymd(t.year, t.month, t.day, )
+
     def to_iso_string(
         self,
         /,
@@ -325,6 +332,22 @@ class DailyDater(Dater, ):
         year, month, day, *_ = sdmx_string.split("-")
         return cls.from_ymd(int(year), int(month), int(day))
 
+    @property
+    def year(self, /, ) -> int:
+        return _dt.date.fromordinal(self.serial).year
+
+    @property
+    def month(self, /, ) -> int:
+        return _dt.date.fromordinal(self.serial).month
+
+    @property
+    def day(self, /, ) -> int:
+        return _dt.date.fromordinal(self.serial).day
+
+    @property
+    def period(self, /, ) -> int:
+        return self.to_year_period()[1]
+
     def to_sdmx_string(self, /, **kwargs) -> str:
         year, month, day = self.to_ymd()
         return f"{year:04g}-{month:02g}-{day:02g}"
@@ -398,6 +421,14 @@ class RegularDaterMixin:
     def from_ymd(cls, year: int, month: int=1, day: int=1, ) -> YearlyDater:
         return cls.from_year_period(year, cls.month_to_period(month, ), )
 
+    @property
+    def year(self, ) -> int:
+        return self.to_year_period()[0]
+
+    @property
+    def period(self, ) -> int:
+        return self.to_year_period()[1]
+
     def to_year_period(self) -> tuple[int, int]:
         return self.serial//self.frequency.value, self.serial%self.frequency.value+1
 
@@ -440,7 +471,10 @@ class RegularDaterMixin:
         /,
         position: Literal["start"] | Literal["middle"] | Literal["end"] = "middle"
     ) -> DailyDater:
-        return DailyDater.from_ymd(*self.to_ymd(position=position, ), )
+        try:
+            return DailyDater.from_ymd(*self.to_ymd(position=position, ), )
+        except:
+            from IPython import embed; embed()
     #]
 
 
@@ -526,7 +560,7 @@ class QuarterlyDater(Dater, RegularDaterMixin, ):
     month_day_resolution = {
         "start": {1: (1, 1), 2: (4, 1), 3: (7, 1), 4: (10, 1)},
         "middle": {1: (2, 15), 2: (5, 15), 3: (8, 15), 4: (11, 15)},
-        "end": {1: (3, 30), 2: (6, 31), 3: (9, 31), 4: (12, 31)},
+        "end": {1: (3, 31), 2: (6, 30), 3: (9, 30), 4: (12, 31)},
     }
 
     @classmethod
