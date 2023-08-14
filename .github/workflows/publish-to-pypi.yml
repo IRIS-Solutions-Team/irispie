@@ -3,7 +3,9 @@ name: Upload new release to PYPI
 
 on:
   workflow_dispatch:
-
+  push:
+    branches: 
+      - main
 
 jobs:
   deploy:
