@@ -174,12 +174,12 @@ class Dater(
     def to_iso_string(
         self,
         /,
-        position: Literal["start"] | Literal["center"] | Literal["end"] = "start",
+        position: Literal["start"] | Literal["middle"] | Literal["end"] = "start",
     ) -> str:
         year, month, day = self.to_ymd(position=position, )
         return f"{year:04g}-{month:02g}-{day:02g}"
 
-    to_plotly_date = _ft.partialmethod(to_iso_string, position="center")
+    to_plotly_date = _ft.partialmethod(to_iso_string, position="middle")
 
     def __init__(self, serial=0) -> None:
         self.serial = int(serial)
@@ -407,7 +407,7 @@ class RegularDaterMixin:
     def to_ymd(
         self, 
         /,
-        position: Literal["start"] | Literal["center"] | Literal["end"] = "center",
+        position: Literal["start"] | Literal["middle"] | Literal["end"] = "middle",
     ) -> tuple[int, int, int]:
         year, per = self.to_year_period()
         return year, *self.month_day_resolution[position][per]
@@ -438,9 +438,9 @@ class RegularDaterMixin:
     def to_daily(
         self,
         /,
-        position: Literal["start"] | Literal["center"] | Literal["end"] = "center"
+        position: Literal["start"] | Literal["middle"] | Literal["end"] = "middle"
     ) -> DailyDater:
-        return DailyDater.from_ymd(*self.to_ymd(position=position))
+        return DailyDater.from_ymd(*self.to_ymd(position=position, ), )
     #]
 
 
@@ -451,7 +451,7 @@ class YearlyDater(Dater, RegularDaterMixin, ):
     origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.YEARLY)
     month_day_resolution = {
         "start": {1: (1, 1)},
-        "center": {1: (6, 30)},
+        "middle": {1: (6, 30)},
         "end": {1: (12, 31)},
     }
 
@@ -478,7 +478,7 @@ class HalfyearlyDater(Dater, RegularDaterMixin, ):
     origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.HALFYEARLY)
     month_day_resolution = {
         "start": {1: (1, 1), 2: (7, 1)},
-        "center": {1: (3, 15), 2: (9, 15)},
+        "middle": {1: (3, 15), 2: (9, 15)},
         "end": {1: (6, 30), 2: (12, 31)}
     }
 
@@ -497,18 +497,18 @@ class HalfyearlyDater(Dater, RegularDaterMixin, ):
     def to_ymd(
         self, 
         /,
-        position: Literal["start"] | Literal["center"] | Literal["end"] = "center",
+        position: Literal["start"] | Literal["middle"] | Literal["end"] = "middle",
     ) -> tuple[int, int, int]:
         year, per = self.to_year_period()
         return (
             year,
-            *{"start": (1, 1), "center": (6, 3), "end": (12, 31)}[position],
+            *{"start": (1, 1), "middle": (6, 3), "end": (12, 31)}[position],
         )
 
     def get_month(
         self,
         /,
-        position: Literal["start"] | Literal["center"] | Literal["end"] = "center",
+        position: Literal["start"] | Literal["middle"] | Literal["end"] = "middle",
     ) -> int:
         _, per = self.to_year_period()
         return month_resolution[position][per]
@@ -525,7 +525,7 @@ class QuarterlyDater(Dater, RegularDaterMixin, ):
     origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.QUARTERLY)
     month_day_resolution = {
         "start": {1: (1, 1), 2: (4, 1), 3: (7, 1), 4: (10, 1)},
-        "center": {1: (2, 15), 2: (5, 15), 3: (8, 15), 4: (11, 15)},
+        "middle": {1: (2, 15), 2: (5, 15), 3: (8, 15), 4: (11, 15)},
         "end": {1: (3, 30), 2: (6, 31), 3: (9, 31), 4: (12, 31)},
     }
 
@@ -553,8 +553,8 @@ class MonthlyDater(Dater, RegularDaterMixin, ):
     origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.MONTHLY)
     month_day_resolution = {
         "start": {1: (1, 1), 2: (2, 1), 3: (2, 1), 4: (4, 1), 5: (5, 1), 6: (6, 1), 7: (7, 1), 8: (8, 1), 9: (9, 1), 10: (10, 1), 11: (11, 1), 12: (12, 1)},
-        "center": {1: (1, 15), 2: (2, 15), 3: (2, 15), 4: (4, 15), 5: (5, 15), 6: (6, 15), 7: (7, 15), 8: (8, 15), 9: (9, 15), 10: (10, 15), 11: (11, 15), 12: (12, 15)},
-        "end": {1: (1, 31), 2: (2, 28), 3: (2, 31), 4: (4, 30), 5: (5, 31), 6: (6, 30), 7: (7, 31), 8: (8, 31), 9: (9, 30), 10: (10, 31), 11: (11, 30), 12: (12, 31)},
+        "middle": {1: (1, 15), 2: (2, 15), 3: (2, 15), 4: (4, 15), 5: (5, 15), 6: (6, 15), 7: (7, 15), 8: (8, 15), 9: (9, 15), 10: (10, 15), 11: (11, 15), 12: (12, 15)},
+        "end": {1: (1, 31), 2: (2, 28), 3: (3, 31), 4: (4, 30), 5: (5, 31), 6: (6, 30), 7: (7, 31), 8: (8, 31), 9: (9, 30), 10: (10, 31), 11: (11, 30), 12: (12, 31)},
     }
 
     @classmethod
