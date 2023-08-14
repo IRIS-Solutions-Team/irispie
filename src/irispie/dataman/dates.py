@@ -351,6 +351,11 @@ class DailyDater(Dater, ):
         serial = _dt.date(year, 1, 1).toordinal()
         return type(self)(serial)
 
+    def create_som(self, ) -> Self:
+        year, month, _ = self.to_ymd()
+        serial = _dt.date(year, month, 1).toordinal()
+        return type(self)(serial)
+
     def create_eoy(self, ) -> Self:
         year = self.get_year()
         serial = _dt.date(year, 12, 31).toordinal()
@@ -360,6 +365,9 @@ class DailyDater(Dater, ):
         year = self.get_year()
         serial = _dt.date(year-1, 12, 31).toordinal()
         return type(self)(serial)
+
+    def create_eopm(self, ) -> Self:
+        return self.create_som() - 1
 
     def create_tty(self, ) -> Self | None:
         year, per = self.to_year_period()
