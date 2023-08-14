@@ -2,7 +2,6 @@
 
 import sys
 sys.path.append("../../../src")
-
 import irispie as _ip
 
 db = _ip.Databank()

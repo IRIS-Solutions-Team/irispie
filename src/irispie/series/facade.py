@@ -10,9 +10,9 @@ from numbers import Number
 from collections.abc import (Iterable, Callable, )
 from typing import (Self, TypeAlias, )
 from types import (EllipsisType, )
-import numpy as np_
+import numpy as _np
 import itertools as it_
-import copy as co_
+import copy as _co
 
 from ..user import views as _vi
 from ..user import description as _ud
@@ -24,35 +24,40 @@ from . import x13 as _sx
 #]
 
 
-FUNCTION_ADAPTATIONS = ["log", "exp", "sqrt", "maximum", "minimum"] + ["cumsum"] + ["maxi", "mini", "mean", "median"]
-np_.maxi = np_.max
-np_.mini = np_.min
+FUNCTION_ADAPTATIONS = ["log", "exp", "sqrt", "maximum", "minimum"] + ["cumsum"] + ["maxi", "mini", "mean", "median"] + ["grow"]
+_np.maxi = _np.max
+_np.mini = _np.min
 
 
 __all__ = [
-    "Series", "shift", "diff", "difflog", "pct", "roc",
+    "Series", "shift",
+    "diff", "difflog", "pct", "roc",
+    "cum_diff", "cum_difflog", "cum_pct", "cum_roc",
 ] + FUNCTION_ADAPTATIONS
 
 
 for n in FUNCTION_ADAPTATIONS:
     exec(
         f"def {n}(x, *args, **kwargs): "
-        f"return x._{n}_(*args, **kwargs) if hasattr(x, '_{n}_') else np_.{n}(x, *args, **kwargs)"
+        f"return x._{n}_(*args, **kwargs) if hasattr(x, '_{n}_') else _np.{n}(x, *args, **kwargs)"
     )
-
+sum
 
 Dates: TypeAlias = _da.Dater | Iterable[_da.Dater] | _da.Ranger | EllipsisType | None
 Columns: TypeAlias = int | Iterable[int] | slice
-Data: TypeAlias = Number | Iterable[Number] | tuple | np_.ndarray
+Data: TypeAlias = Number | Iterable[Number] | tuple | _np.ndarray
 
 
 def _get_date_positions(dates, base, num_periods):
     pos = list(_da.date_index(dates, base))
-    min_pos = min(pos)
-    max_pos = max(pos)
+    min_pos = min((x for x in pos if x is not None), default=0)
+    max_pos = max((x for x in pos if x is not None), default=0)
     add_before = max(-min_pos, 0)
     add_after = max(max_pos - num_periods, 0)
-    pos_adjusted = [p + add_before for p in pos]
+    pos_adjusted = [
+        p + add_before if p is not None else None
+        for p in pos
+    ]
     return pos_adjusted, add_before, add_after
 
 
@@ -80,13 +85,13 @@ class Series(
     _numeric_format: str = "15g"
     _short_str_format: str = ">15"
     _date_str_format: str = ">12"
-    _missing = np_.nan
+    _missing = _np.nan
     _missing_str: str = "·"
-    _test_missing_period = staticmethod(lambda x: np_.all(np_.isnan(x)))
+    _test_missing_period = staticmethod(lambda x: _np.all(_np.isnan(x)))
 
     def __init__(self, /, *args, **kwargs):
         num_columns = kwargs.get("num_columns", 1)
-        self.data_type = kwargs.get("data_type", np_.float64)
+        self.data_type = kwargs.get("data_type", _np.float64)
         self._description = kwargs.get("description", "")
         self.reset(num_columns)
 
@@ -95,14 +100,14 @@ class Series(
         data_type = data_type if data_type else self.data_type
         description = description if description else self._description
         self.start_date = None
-        self.data = np_.full((0, num_columns), self._missing, dtype=data_type)
+        self.data = _np.full((0, num_columns), self._missing, dtype=data_type)
         self._description = str(description)
         self._column_titles = [""] * num_columns
         self._user_data = {}
         return self
 
     def _create_periods_of_missing_values(self, num_rows=0):
-        return np_.full((num_rows, self.shape[1]), self._missing, dtype=self.data_type)
+        return _np.full((num_rows, self.shape[1]), self._missing, dtype=self.data_type)
 
     @property
     def shape(self):
@@ -128,9 +133,10 @@ class Series(
     def from_dates_and_data(
         cls,
         dates: Iterable[_da.Dater],
-        data: np_.ndarray,
+        data: _np.ndarray | Iterable,
         /,
     ) -> Self:
+        data = _conform_data(data)
         num_columns = data.shape[1] if hasattr(data, "shape") else 1
         self = cls(num_columns=num_columns)
         self.set_data(dates, data)
@@ -142,10 +148,11 @@ class Series(
     def from_start_date_and_data(
         cls,
         start_date: _da.Dater,
-        data: np_.ndarray,
+        data: _np.ndarray | Iterable,
         /,
         **kwargs,
     ) -> Self:
+        data = _conform_data(data, )
         num_columns = data.shape[1] if hasattr(data, "shape") else 1
         self = cls(num_columns=num_columns, **kwargs)
         self.start_date = start_date
@@ -165,7 +172,7 @@ class Series(
         self = cls(**kwargs)
         dates = [ t for t in dates ]
         data = [ [ func() for j in range(self.num_columns) ] for i in range(len(dates)) ]
-        data = np_.array(data, dtype=self.data_type)
+        data = _np.array(data, dtype=self.data_type)
         self.set_data(dates, data)
         return self
 
@@ -186,9 +193,9 @@ class Series(
         self.data = self._create_expanded_data(add_before, add_after)
         if add_before:
             self.start_date -= add_before
-        if isinstance(data, Series):
+        if hasattr(data, "get_data"):
             data = data.get_data(dates)
-        if isinstance(data, np_.ndarray):
+        if isinstance(data, _np.ndarray):
             self.data[pos, :] = data
             return
         if not isinstance(data, tuple):
@@ -200,7 +207,7 @@ class Series(
     def _get_data_and_recreate(
         self,
         *args,
-    ) -> np_.ndarray:
+    ) -> _np.ndarray:
         """
         """
         data, dates = self.get_data_and_resolved_dates(*args)
@@ -214,7 +221,7 @@ class Series(
         dates: Dates,
         columns: Columns = None,
         /,
-    ) -> np_.ndarray:
+    ) -> _np.ndarray:
         """
         """
         dates = [ t for t in self._resolve_dates(dates) ]
@@ -227,12 +234,12 @@ class Series(
         data = self._create_expanded_data(add_before, add_after)
         if not isinstance(pos, Iterable):
             pos = (pos, )
-        return data[np_.ix_(pos, columns)], dates
+        return data[_np.ix_(pos, columns)], dates
 
     def get_data(
         self,
         *args,
-    ) -> np_.ndarray:
+    ) -> _np.ndarray:
         return self.get_data_and_resolved_dates(*args)[0]
 
     def get_data_column(
@@ -240,7 +247,7 @@ class Series(
         dates: Dates,
         column: Number | None = None,
         /,
-    ) -> np_.ndarray:
+    ) -> _np.ndarray:
         """
         """
         column = column if column and column<self.data.shape[1] else 0
@@ -289,21 +296,58 @@ class Series(
         """
         return self.get_data(*args)
 
-    def _shift(self, shift_by) -> Self:
+    def _shift(
+        self,
+        shift_by: int | str,
+    ) -> None:
+        match shift_by:
+            case "yoy":
+                self._shift_by_number(-self.frequency.value, )
+            case "boy" | "soy":
+                self._shift_to_soy()
+            case "eopy":
+                self._shift_to_eopy()
+            case "tty":
+                self._shift_to_tty()
+            case _:
+                self._shift_by_number(shift_by, )
+
+    def _shift_by_number(self, shift_by: int, ) -> None:
         """
-        Shift (lag, lead) start date
+        Shift (lag, lead) start date by a number of periods
         """
         self.start_date = (
             self.start_date - shift_by 
             if self.start_date else self.start_date
         )
 
+    def _shift_to_soy(self, ) -> None:
+        new_data = self.get_data(
+            t.create_soy()
+            for t in self.range
+        )
+        self._replace_data(new_data, )
+
+    def _shift_to_tty(self, ) -> None:
+        new_data = self.get_data(
+            t.create_tty()
+            for t in self.range
+        )
+        self._replace_data(new_data, )
+
+    def _shift_to_eopy(self, ) -> Self:
+        new_data = self.get_data(
+            t.create_eopy()
+            for t in self.range
+        )
+        self._replace_data(new_data, )
+
     def __getitem__(self, index):
         """
         Create a new time series based on date retrieved by self[dates] or self[dates, columns]
         """
         if isinstance(index, int):
-            new = co_.deepcopy(self)
+            new = _co.deepcopy(self)
             new._shift(index)
             return new
         if not isinstance(index, tuple):
@@ -320,14 +364,14 @@ class Series(
 
     def hstack(self, *args):
         if not args:
-            return co_.deepcopy(self)
+            return _co.deepcopy(self)
         encompassing_range = _da.get_encompassing_range(self, *args)
         new_data = self.get_data(encompassing_range)
         add_data = (
             x.get_data(encompassing_range) if hasattr(x, "get_data") else _create_data_from_number(x, encompassing_range, self.data_type)
             for x in args
         )
-        new_data = np_.hstack((new_data, *add_data))
+        new_data = _np.hstack((new_data, *add_data))
         new = Series(num_columns=new_data.shape[1]);
         new.set_data(encompassing_range, new_data)
         return new
@@ -345,6 +389,12 @@ class Series(
             return
         self.start_date = new_start_date
         self.data = self.get_data(_da.Ranger(new_start_date, new_end_date))
+
+    def is_empty(self, ) -> bool:
+        return not self.data.size
+
+    def empty(self, ) -> None:
+        self.data = _np.empty((0, self.num_columns), dtype=self.data_type)
 
     def overlay_by_range(
         self,
@@ -377,7 +427,7 @@ class Series(
         self_data = self.data
         #
         self.start_date = other.start_date
-        enforce_columns = np_.zeros((1, self.data.shape[1]), dtype=self.data_type)
+        enforce_columns = _np.zeros((1, self.data.shape[1]), dtype=self.data_type)
         self.data = enforce_columns + other.data
         self.set_data(self_range, self_data, )
         return self
@@ -398,10 +448,10 @@ class Series(
         return self.hstack(other)
 
     def __lshift__(self, other):
-        return co_.deepcopy(self).overlay_by_range(other, )
+        return _co.deepcopy(self).overlay_by_range(other, )
 
     def __rshift__(self, other):
-        return co_.deepcopy(other).overlay_by_range(self, )
+        return _co.deepcopy(other).overlay_by_range(self, )
 
     def _trim(self):
         if self.data.size==0:
@@ -420,7 +470,7 @@ class Series(
         return self
 
     def _create_expanded_data(self, add_before, add_after):
-        return np_.pad(
+        return _np.pad(
             self.data, ((add_before, add_after), (0, 0)),
             mode="constant", constant_values=self._missing
         )
@@ -433,7 +483,7 @@ class Series(
         """
         -self
         """
-        output = co_.deepcopy(self)
+        output = _co.deepcopy(self)
         output.data = -output.data
         return output
 
@@ -441,9 +491,9 @@ class Series(
         """
         +self
         """
-        return co_.deepcopy(self.copy)
+        return _co.deepcopy(self.copy)
 
-    def __add__(self, other) -> Self|np_.ndarray:
+    def __add__(self, other) -> Self|_np.ndarray:
         """
         self + other
         """
@@ -456,7 +506,7 @@ class Series(
         """
         return self.apply(lambda data: data.__radd__(other))
 
-    def __mul__(self, other) -> Self|np_.ndarray:
+    def __mul__(self, other) -> Self|_np.ndarray:
         """
         self + other
         """
@@ -537,11 +587,11 @@ class Series(
         new_data = func(self.data, *args, **kwargs)
         axis = kwargs.get("axis")
         if new_data.shape==self.data.shape:
-            new = co_.deepcopy(self)
+            new = _co.deepcopy(self)
             new.data = new_data
             return new._trim()
         elif (axis is None or axis==1) and new_data.shape==(self.data.shape[0],):
-            new = co_.deepcopy(self)
+            new = _co.deepcopy(self)
             new.data = new_data.reshape(self.data.shape[0], 1)
             return new._trim()
         elif axis is None and new_data.shape==():
@@ -564,22 +614,22 @@ class Series(
         new._trim()
         return new
 
-    def _replace_data(self, new_data, /, ):
+    def _replace_data(self, new_data, /, ) -> None:
         self.data = new_data
-        return self._trim()
+        self._trim()
 
     def copy(self, /, ) -> Self:
-        return co_.deepcopy(self, )
+        return _co.deepcopy(self, )
 
     for n in ["log", "exp", "sqrt", "maximum", "minimum"]:
-        exec(f"def {n}(self, *args, **kwargs, ): return self._replace_data(np_.{n}(self.data, *args, **kwargs, ), )")
-        exec(f"def _{n}_(self, *args, **kwargs, ): return self.apply(np_.{n}, *args, **kwargs, )")
+        exec(f"def {n}(self, *args, **kwargs, ): return self._replace_data(_np.{n}(self.data, *args, **kwargs, ), )")
+        exec(f"def _{n}_(self, *args, **kwargs, ): return self.apply(_np.{n}, *args, **kwargs, )")
 
     for n in ["cumsum"]:
-        exec(f"def {n}(self): return self._replace_data(np_.{n}(self.data, axis=0, ), )")
+        exec(f"def {n}(self): return self._replace_data(_np.{n}(self.data, axis=0, ), )")
 
     for n in ["maxi", "mini", "mean", "median"]:
-        exec(f"def _{n}_(self, *args, **kwargs): return self.apply(np_.{n}, *args, **kwargs, )")
+        exec(f"def _{n}_(self, *args, **kwargs): return self.apply(_np.{n}, *args, **kwargs, )")
 
 
 def _get_num_leading_missing_rows(data, test_missing_period, /, ):
@@ -608,29 +658,123 @@ def _create_data_from_number(
     range: _da.Ranger,
     data_type: type,
     /,
-) -> np_.ndarray:
-    return np_.full((len(range), 1), number, dtype=data_type)
+) -> _np.ndarray:
+    return _np.full((len(range), 1), number, dtype=data_type)
 
 
-def shift(x, by):
-    new = co_.deepcopy(x)
+def shift(x, by=-1, ) -> Series:
+    new = _co.deepcopy(x)
     new._shift(by)
     return new
 
 
-def diff(x, by=-1):
+def _negative_by_decorator(func):
+    def wrapper(x, *args, **kwargs, ):
+        if len(args) > 0:
+            by = args[0]
+            if not isinstance(by, str) and (int(by) != by or by >= 0):
+                raise Exception("Time shift must be a negative integer")
+        return func(x, *args, **kwargs, )
+    return wrapper
+
+
+@_negative_by_decorator
+def diff(x, by=-1, /, ) -> Series:
     return x - shift(x, by)
 
 
-def difflog(x, by=-1):
+@_negative_by_decorator
+def cum_diff(dx, by=-1, /, initial=0, range=_da.Ranger(), ) -> Series:
+    return _cumulate(dx, by, "diff", initial, range, )
+
+
+@_negative_by_decorator
+def difflog(x, by=-1, /, ) -> Series:
     return log(x) - log(shift(x, by))
 
 
-def pct(x, shift=-1):
+@_negative_by_decorator
+def cum_difflog(dx, by=-1, /, initial=1, range=_da.Ranger(), ) -> Series:
+    return _cumulate(dx, by, "difflog", initial, range, )
+
+
+@_negative_by_decorator
+def pct(x, shift=-1, /, ) -> Series:
     return 100*(x/shift(x, by) - 1)
 
 
-def roc(x, shift=-1):
+@_negative_by_decorator
+def cum_pct(dx, by=-1, /, initial=1, range=_da.Ranger(), ) -> Series:
+    return _cumulate(dx, by, "pct", initial, range, )
+
+
+@_negative_by_decorator
+def roc(x, shift=-1, /, ) -> Series:
     return x/shift(x, by)
 
+
+@_negative_by_decorator
+def cum_roc(roc, by=-1, /, initial=1, range=_da.Ranger(), ) -> Series | None:
+    return _cumulate(roc, by, "roc", initial, range, )
+
+
+_CUMULATIVE_FUNCTIONS = {
+    "diff": {
+        "forward": lambda x_past, change_curr: x_past + change_curr,
+        "backward": lambda x_future, change_future: x_future - change_future,
+    },
+    "difflog": {
+        "forward": lambda x_past, change_curr: x_past * exp(change_curr),
+        "backward": lambda x_future, change_future: x_future / exp(change_future),
+    },
+    "pct": {
+        "forward": lambda x_past, change_curr: x_past * (1 + change_curr/100),
+        "backward": lambda x_future, change_future: x_future / (1 + change_future/100),
+    },
+    "roc": {
+        "forward": lambda x_past, change_curr: x_past * change_curr,
+        "backward": lambda x_future, change_future: x_future / change_future,
+    },
+}
+
+
+def _cumulate(dx, by, func, initial, range, /, ) -> Series:
+    direction = range.direction
+    cum_func = _CUMULATIVE_FUNCTIONS[func][direction]
+    new = Series(num_columns=dx.num_columns, data_type=dx.data_type, )
+    match direction:
+        case "forward":
+            _cumulate_forward(new, dx, by, cum_func, initial, range, )
+        case "backward":
+            _cumulate_backward(new, dx, by, cum_func, initial, range, )
+    return new._trim()
+
+
+def _cumulate_forward(new, dx, by, cum_func, initial, range, /, ) -> None:
+    range = range.resolve(dx)
+    shifted_range = tuple(t.shift(by) for t in range)
+    initial_range = _da.Ranger(min(shifted_range), range.end_date, )
+    new.set_data(initial_range, initial)
+    for t, sh in zip(range, shifted_range):
+        new_data = cum_func(new.get_data(sh, ), dx.get_data(t, ), )
+        new.set_data(t, new_data)
+
+
+def _cumulate_backward(new, dx, by, cum_func, initial, shifted_backward_range, /, ) -> None:
+    dx_range_shifted = _da.Ranger(dx.start_date, dx.end_date, -1, )
+    dx_range_shifted.shift(by)
+    shifted_backward_range = shifted_backward_range.resolve(dx_range_shifted)
+    backward_range = shifted_backward_range.copy()
+    backward_range.shift(-by)
+    initial_range = _da.Ranger(min(shifted_backward_range), backward_range.start_date)
+    new.set_data(initial_range, initial)
+    for t, sh in zip(backward_range, shifted_backward_range):
+        new_data = cum_func(new.get_data(t, ), dx.get_data(t, ), )
+        new.set_data(sh, new_data)
+
+
+def _conform_data(data, /, ) -> _np.ndarray:
+    if not isinstance(data, _np.ndarray, ):
+        data = _np.array(data, dtype=float, ndmin=2, ).T
+    return data
 

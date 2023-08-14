@@ -9,6 +9,7 @@ import re as _re
 import datetime as _dt
 import enum as _en
 import functools as _ft
+import copy as _co
 from typing import (Union, Self, Any, Protocol, TypeAlias, runtime_checkable, )
 from collections.abc import (Iterable, Callable, )
 from numbers import (Number, )
@@ -258,6 +259,22 @@ class Dater(
     @_check_daters_decorate
     def __ge__(self, other) -> bool:
         return self.serial >= other.serial
+
+    def shift(
+        self,
+        by: int | str = -1,
+    ) -> None:
+        match by:
+            case "yoy":
+                return self - self.frequency.value
+            case "boy" | "soy":
+                return self.create_soy()
+            case "eopy":
+                return self.create_eopy()
+            case "tty":
+                return self.create_tty()
+            case _:
+                return self + by
     #]
 
 
@@ -329,20 +346,24 @@ class DailyDater(Dater, ):
     def __repr__(self) -> str:
         return f"dd{self.to_ymd()}"
 
-    def to_start_of_year(self, ) -> Self:
+    def create_soy(self, ) -> Self:
         year = self.get_year()
         serial = _dt.date(year, 1, 1).toordinal()
         return type(self)(serial)
 
-    def to_end_of_year(self, ) -> Self:
+    def create_eoy(self, ) -> Self:
         year = self.get_year()
         serial = _dt.date(year, 12, 31).toordinal()
         return type(self)(serial)
 
-    def to_end_of_previous_year(self, ) -> Self:
+    def create_eopy(self, ) -> Self:
         year = self.get_year()
         serial = _dt.date(year-1, 12, 31).toordinal()
         return type(self)(serial)
+
+    def create_tty(self, ) -> Self | None:
+        year, per = self.to_year_period()
+        return self.from_year_period(year, 1) if per != 1 else None
 
     def to_daily(self, /, **kwargs, ) -> Self:
         return self
@@ -388,17 +409,23 @@ class RegularDaterMixin:
         letter = self.frequency.letter
         return self.frequency.sdmx_format.format(year=year, per=per, letter=letter)
 
-    def to_start_of_year(self, ) -> Self:
+    def create_soy(self, ) -> Self:
         year, *_ = self.to_year_period()
         return self.from_year_period(year, 1)
 
-    def to_end_of_year(self, ) -> Self:
-        year, *_ = self.to_year_period()
-        return self.from_year_period(year, self.frequency.value)
+    create_boy = create_soy
 
-    def to_end_of_previous_year(self, ) -> Self:
+    def create_eoy(self, ) -> Self:
+        year, *_ = self.to_year_period()
+        return self.from_year_period(year, "end")
+
+    def create_eopy(self, ) -> Self:
         year, *_ = self.to_year_period()
         return self.from_year_period(year-1, self.frequency.value)
+
+    def create_tty(self, ) -> Self:
+        year, per = self.to_year_period()
+        return self.from_year_period(year, 1) if per != 1 else None
 
     def to_daily(
         self,
@@ -560,26 +587,31 @@ def dd(year: int, month: int | ellipsis, day: int) -> DailyDater:
         return DailyDater.from_ymd(year, month, day)
 
 
-class Ranger():
+class Ranger(_cp.CopyMixin, ):
     #[
     def __init__(
         self, 
-        start_date: Dater|None =None,
-        end_date: Dater|None =None,
-        step: int=1,
-        /
+        from_date: Dater | None = None,
+        until_date: Dater | None = None,
+        step: int = 1,
     ) -> None:
         """
         Date range constructor
         """
-        start_date = resolve_dater_or_integer(start_date)
-        end_date = resolve_dater_or_integer(end_date)
-        self._start_date = start_date if start_date is not None else start
-        self._end_date = end_date if end_date is not None else end
+        from_date = resolve_dater_or_integer(from_date)
+        until_date = resolve_dater_or_integer(until_date)
+        if step > 0:
+            default_from_date = start
+            default_until_date = end
+        else:
+            default_from_date = end
+            default_until_date = start
+        self._start_date = from_date if from_date is not None else default_from_date
+        self._end_date = until_date if until_date is not None else default_until_date
         self._step = step
         self.needs_resolve = self._start_date.needs_resolve or self._end_date.needs_resolve
         if not self.needs_resolve:
-            _check_daters(start_date, end_date)
+            _check_daters(from_date, until_date)
 
     @property
     def start_date(self):
@@ -598,7 +630,11 @@ class Ranger():
         return type(self._start_date) if not self.needs_resolve else None
 
     @property
-    def _serials(self) -> range|None:
+    def direction(self, ) -> Literal["forward"] | Literal["backward"]:
+        return "forward" if self._step > 0 else "backward"
+
+    @property
+    def _serials(self) -> range | None:
         return range(self._start_date.serial, self._end_date.serial+_sign(self._step), self._step) if not self.needs_resolve else None
 
     # @property
@@ -655,6 +691,10 @@ class Ranger():
         resolved_end_date = self._end_date if self._end_date else self._end_date.resolve(context)
         return Ranger(resolved_start_date, resolved_end_date, self._step)
 
+    def shift(self, by: int) -> None:
+        self._start_date += by
+        self._end_date += by
+
     def __enter__(self):
         return self
 
@@ -669,13 +709,19 @@ class Ranger():
     #]
 
 
-def _sign(x: Number) -> int:
+def _sign(x: Number, ) -> int:
     return 1 if x>0 else (0 if x==0 else -1)
 
 
-def date_index(dates: Iterable[Dater], base: Dater) -> Iterable[int]:
-    return (x-base for x in dates)
-
+def date_index(dates: Iterable[Dater | None], base: Dater) -> Iterable[int]:
+    """
+    """
+    #[
+    return (
+        x-base if x is not None else None
+        for x in dates
+    )
+    #]
 
 
 class ContextualDater(Dater, RangeableMixin):
