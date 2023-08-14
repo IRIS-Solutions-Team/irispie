@@ -84,8 +84,8 @@ def _aggregate_daily_to_regular(
     """
     """
     #[
-    start_date = self.start_date.create_start_of_year()
-    end_date = self.end_date.create_end_of_year()
+    start_date = self.start_date.create_soy()
+    end_date = self.end_date.create_eoy()
     all_self_data = self.get_data(_da.Ranger(start_date, end_date))
     start_year = self.start_date.get_year()
     end_year = self.end_date.get_year()
@@ -118,8 +118,8 @@ def _aggregate_regular_to_regular(
     """
     #[
     start_year = self.start_date.get_year()
-    start_date = self.start_date.create_start_of_year()
-    end_date = self.end_date.create_end_of_year()
+    start_date = self.start_date.create_soy()
+    end_date = self.end_date.create_eoy()
     new_start_date = new_dater_class.from_year_period(start_year, 1)
     new_freq = new_dater_class.frequency
     self_data = self.get_data(_da.Ranger(start_date, end_date))
