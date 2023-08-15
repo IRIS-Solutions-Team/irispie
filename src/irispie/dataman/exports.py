@@ -62,7 +62,7 @@ class DatabankExportMixin:
     def _to_sheet(
         self,
         file_name: str,
-        /,
+        *,
         descriptor_row: bool = False,
         range: Iterable[Dater] | None = None,
         frequency: _da.Frequency | None = None,

@@ -165,20 +165,22 @@ class Databank(
 
     def _copy(
         self: Self,
-        /,
+        *,
         source_names: SourceNames = None,
         target_names: TargetNames = None,
     ) -> Self:
         """
         """
         new_databank = _co.deepcopy(self)
+        context_names = new_databank._get_names()
+        source_names, target_names = _resolve_source_target_names(source_names, target_names, context_names)
         new_databank = new_databank._rename(source_names, target_names)
         new_databank._keep(target_names)
         return new_databank
 
     def _rename(
         self: Self,
-        /,
+        *,
         source_names: SourceNames = None,
         target_names: TargetNames = None,
     ) -> Self:

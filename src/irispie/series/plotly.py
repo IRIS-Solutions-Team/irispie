@@ -38,7 +38,7 @@ class PlotlyMixin:
     #[
     def plot(
         self,
-        /,
+        *,
         range: Iterable[_da.Dater] | EllipsisType = ...,
         title: str | None = None,
         legend: Iterable[str] | None = None,
@@ -46,7 +46,7 @@ class PlotlyMixin:
         figure = None,
         subplot: tuple[int|None, int|None] = (None, None),
         xline = None,
-    ):
+    ) -> _pg.Figure:
         range = self._resolve_dates(range)
         range = [ t for t in range ]
         data = self.get_data(range)
