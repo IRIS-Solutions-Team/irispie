@@ -25,7 +25,7 @@ class EggsThirteenMixin:
     #[
     def x13(
         self,
-        /,
+        *,
         range: _da.Ranger | EllipsisType = ...,
         when_error: _wd.HOW = "warning",
         clean_up: bool = True,

@@ -139,10 +139,10 @@ class HodrickPrescottMixin:
     #[
     def hpf(
         self,
+        *,
         range: Iterable[_da.Dater] | EllipsisType = ...,
         smooth: Number | None = None,
         log: bool = False,
-        /,
         level: Self | None = None,
         change: Self | None = None,
     ) -> tuple[Self, Self, ]:
