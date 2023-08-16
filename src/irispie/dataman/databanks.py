@@ -165,7 +165,7 @@ class Databank(
 
     def _copy(
         self: Self,
-        *,
+        /,
         source_names: SourceNames = None,
         target_names: TargetNames = None,
     ) -> Self:
@@ -180,7 +180,7 @@ class Databank(
 
     def _rename(
         self: Self,
-        *,
+        /,
         source_names: SourceNames = None,
         target_names: TargetNames = None,
     ) -> Self:
