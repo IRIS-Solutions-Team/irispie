@@ -62,12 +62,13 @@ class _ConstrainedHodrickPrescottFilter:
     ) -> tuple[_np.ndarray, _np.ndarray]:
         """
         """
+        F = self._add_eye_for_observations(data, )
         extended_data = self._extend_data(data, level_data, change_data, )
         if self._log:
             extended_data = _np.log(extended_data, )
         enforced_zeros_where = _np.where(_np.isnan(data, ))
         extended_data[enforced_zeros_where] = 0
-        trend_data = _np.linalg.solve(self._F, extended_data, )
+        trend_data = _np.linalg.solve(F, extended_data, )
         extended_data[enforced_zeros_where] = _np.nan
         gap_data = extended_data - trend_data
         if self._num_extra_rows > 0:
@@ -77,6 +78,21 @@ class _ConstrainedHodrickPrescottFilter:
             trend_data = _np.exp(trend_data, )
             gap_data = _np.exp(gap_data, )
         return trend_data, gap_data
+
+    def _add_eye_for_observations(
+        self,
+        data: _np.ndarray,
+        /,
+    ) -> None:
+        """
+        Add 1 to the F diagonal for each row where an observation is available
+        """
+        #[
+        F = _np.copy(self._F)
+        quasi_eye = _np.diag(_np.float64(~_np.isnan(data.flatten(), )))
+        F[:self._num_periods, :self._num_periods] += quasi_eye
+        return F
+        #]
 
     def _extend_data(
         self,
@@ -95,6 +111,8 @@ class _ConstrainedHodrickPrescottFilter:
         return extended_data
 
     def _create_plain_filter_matrix(self, ) -> None:
+        """
+        """
         I = _np.eye(self._num_periods, dtype=float)
         K = _np.zeros((self._num_periods-2, self._num_periods), dtype=float)
         for i in range(self._num_periods-2):
@@ -102,7 +120,7 @@ class _ConstrainedHodrickPrescottFilter:
             K[i,i+2] = 1
         for i in range(self._num_periods-2):
             K[i,i+1] = -2
-        self._F = I + self._smooth * (K.T @ K)
+        self._F = self._smooth * (K.T @ K)
 
     def _add_level_constraints(self, level_where: list[int], /, ):
         if not level_where:
@@ -152,8 +170,9 @@ class HodrickPrescottMixin:
         if smooth is None:
             smooth = _get_default_smooth(self.frequency)
         #
-        encompassing_range = _da.get_encompassing_range(self, level, change, )
-        range = [ t for t in encompassing_range.resolve(range) ]
+        range = self._resolve_dates(range)
+        encompassing_range = _da.get_encompassing_range(self, level, change, range, )
+        range = [ t for t in encompassing_range ]
         data = self.get_data(range)
         num_periods, num_columns = data.shape
         level_data, level_where = _prepare_constraints(level, range, )
