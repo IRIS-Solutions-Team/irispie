@@ -12,6 +12,7 @@ from collections.abc import (Iterable, )
 
 from .parsers import preparser as _preparser
 from .parsers import algebraic as _algebraic
+from .parsers import algebraic as _common
 from . import equations as _equations
 from . import quantities as _quantities
 #]
@@ -63,7 +64,7 @@ class SourceMixin:
         """
         Create a new object from algebraic source files
         """
-        source_string = _pc.combine_source_files(source_files)
+        source_string = _common.combine_source_files(source_files, )
         return cls.from_string(source_string, **kwargs, )
     #]
 
