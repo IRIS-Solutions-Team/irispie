@@ -28,6 +28,8 @@ class SimulateMixin:
             self, in_databank, base_range, column=0,
         )
         #
+        ds.fill_missing_in_base_columns(self.res_names, )
+        #
         columns_to_simulate = ds.base_columns
         new_data = ds.copy_data()
         new_data = self._simulate(new_data, columns_to_simulate, )

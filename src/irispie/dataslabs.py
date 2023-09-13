@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import numpy as np_
 from typing import (Self, Protocol, )
+from numbers import (Number, )
 from collections.abc import (Iterable, )
 
 from .series import main as _series
@@ -127,6 +128,18 @@ class Dataslab:
         """
         return self.data.copy()
 
+    def fill_missing_in_base_columns(
+        self,
+        names,
+        /,
+        value: Number = 0,
+    ) -> None:
+        """
+        """
+        for i, n in enumerate(self.row_names):
+            if n not in names:
+                continue
+            self.data[i, self.base_columns[0]:self.base_column_data[-1]+1] = value
 
 def _extract_data_from_record(record, ext_range, column, /, ):
     """
