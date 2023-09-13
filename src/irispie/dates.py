@@ -23,7 +23,6 @@ __all__ = [
     "yy", "hh", "qq", "mm", "dd", "ii",
     "Ranger", "start", "end",
     "Dater", "daters_from_sdmx_strings", "daters_from_iso_strings",
-    "frequency_from_string"
 ]
 
 
