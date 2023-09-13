@@ -95,11 +95,32 @@ class TransformDiffLog:
     #]
 
 
+class TransformRoc:
+    """
+    """
+    #[
+    _LHS_PATTERN = _re.compile(r"\(\((\w+)\)/\(\1\[-1\]\)\)")
+
+    def create_eval_level_str(
+        self,
+        lhs_token: _incidence.Token,
+        rhs_xtring: str,
+        /,
+    ) -> str:
+        lhs_token_lag_printed = lhs_token.shifted(-1, ).print_xtring()
+        return f"{lhs_token_lag_printed}*({rhs_xtring})"
+
+    def __str__(self, /, ) -> str:
+        return "roc"
+    #]
+
+
 _ALL_TRANSFORMS = (
     TransformNone,
     TransformLog,
     TransformDiff,
     TransformDiffLog,
+    TransformRoc,
 )
 
 
