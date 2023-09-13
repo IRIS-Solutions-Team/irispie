@@ -6,7 +6,7 @@ Data arrays with row and column names
 #[
 from __future__ import annotations
 
-import numpy as np_
+import numpy as _np
 from typing import (Self, Protocol, )
 from numbers import (Number, )
 from collections.abc import (Iterable, )
@@ -31,7 +31,7 @@ class Dataslab:
     """
     """
     #[
-    data: np_.ndarray | None = None
+    data: _np.ndarray | None = None
     row_names: Iterable[str] | None = None
     missing_names: tuple[str, ...] | None = None
     column_dates: tuple[Dater, ...] | None = None
@@ -61,14 +61,14 @@ class Dataslab:
         ]
         #
         num_periods = len(ext_range)
-        nan_row = np_.full((1, num_periods), np_.nan, dtype=float)
+        nan_row = _np.full((1, num_periods), _np.nan, dtype=float)
         generate_data = tuple(
             _extract_data_from_record(databank[n], ext_range, column, )
             if n not in missing_names else nan_row
             for n in names
         )
         #
-        self.data = np_.vstack(generate_data)
+        self.data = _np.vstack(generate_data)
         self.row_names = tuple(names)
         self.column_dates = tuple(ext_range)
         self.missing_names = missing_names
@@ -132,15 +132,16 @@ class Dataslab:
         self,
         names,
         /,
-        value: Number = 0,
+        fill: Number = 0,
     ) -> None:
         """
         """
         base_slice = slice(self.base_columns[0], self.base_columns[-1]+1)
         for i, n in enumerate(self.row_names):
-            if n not in names:
+            if names is not Ellipsis and n not in names:
                 continue
-            self.data[i, base_slice] = value
+            values = self.data[i, base_slice]
+            values[_np.isnan(values)] = fill
 
 def _extract_data_from_record(record, ext_range, column, /, ):
     """
@@ -148,7 +149,7 @@ def _extract_data_from_record(record, ext_range, column, /, ):
     return (
         record.get_data_column(ext_range, column).reshape(1, -1) 
         if hasattr(record, "get_data")
-        else np_.full((1, len(ext_range)), float(record), dtype=float, )
+        else _np.full((1, len(ext_range)), float(record), dtype=float, )
     )
 
 
@@ -166,7 +167,7 @@ def multiple_to_databank(
     self = selves[0]
     num_columns = len(selves)
     for row, n in enumerate(self.row_names):
-        data = np_.hstack(tuple(ds.data[(row,), :].T for ds in selves))
+        data = _np.hstack(tuple(ds.data[(row,), :].T for ds in selves))
         x = _series.Series(num_columns=num_columns, )
         x.set_data(self.column_dates, data)
         target_databank[n] = x
