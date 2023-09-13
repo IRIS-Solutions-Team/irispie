@@ -1,33 +1,46 @@
 """
+Steady equator
 """
 
 
 #[
+from __future__ import annotations
+
 import numpy as _np
-from typing import (Callable, )
+from typing import (Callable, Protocol, )
 from collections.abc import (Iterable, )
 
-from .. import (equations as _eq, )
-from . import (abc as _abc, )
-from ..evaluators import (steady as _es, )
+from .. import equations as _equations
+from . import plain as _plain
 #]
 
 
-class SteadyEquator(_abc.EquatorMixin, ):
+class SteadyEquatorProtocol:
+    """
+    """
+    #[
+    def eval(
+        self,
+        steady_array: _np.ndarray,
+        /,
+    ) -> _np.ndarray:
+        ...
+    #]
+
+
+class SteadyEquator:
     """
     """
     #[
     def __init__(
         self,
-        equations: _eq.Equations,
+        equations: Iterable[_equations.Equation],
         t_zero: int,
         /,
         *,
         custom_functions: dict[str, Callable] | None = None,
     ) -> None:
-        self._equations = tuple(equations, )
-        self._create_equator_function(custom_functions, )
-        self._populate_min_max_shifts()
+        self._equator = _plain.PlainEquator(equations, custom_functions=custom_functions, )
         self._t_zero = t_zero
 
     def eval(
@@ -50,7 +63,7 @@ class FlatSteadyEquator(SteadyEquator, ):
     ) -> _np.ndarray:
         """
         """
-        return self._func(steady_array, self._t_zero, steady_array, )
+        return self._equator.eval(steady_array, self._t_zero, steady_array, )
     #]
 
 
@@ -58,6 +71,8 @@ class NonflatSteadyEquator(SteadyEquator, ):
     """
     """
     #[
+    NONFLAT_STEADY_SHIFT: int = 1
+
     def eval(
         self,
         steady_array: _np.ndarray,
@@ -65,10 +80,10 @@ class NonflatSteadyEquator(SteadyEquator, ):
     ) -> _np.ndarray:
         """
         """
-        k = _es.NONFLAT_SHIFT
+        k = self.NONFLAT_STEADY_SHIFT
         return _np.hstack((
-            self._func(steady_array, self._t_zero, steady_array, ),
-            self._func(steady_array, self._t_zero+k, steady_array, ),
+            self._equator.eval(steady_array, self._t_zero, steady_array, ),
+            self._equator.eval(steady_array, self._t_zero+k, steady_array, ),
         ))
     #]
 

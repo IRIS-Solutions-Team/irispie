@@ -7,10 +7,10 @@ from __future__ import annotations
 
 from typing import (Self, )
 from numbers import (Number, )
-import numpy as np_
+import numpy as _np
 
 from ..aldi import (differentiators as ad_, )
-from .. import (incidence as in_, )
+from ..incidences import main as _incidence
 #]
 
 
@@ -18,7 +18,7 @@ class Atom(ad_.LoglyMixin):
     """
     Atomic value for invariance testing
     """
-    _data_context: np_.ndarray | None = None
+    _data_context: _np.ndarray | None = None
     _logly_context: dict[int, bool] | None = None
     _is_atom: bool = True
     #[
@@ -33,8 +33,8 @@ class Atom(ad_.LoglyMixin):
     @classmethod
     def no_context(
         cls: type,
-        diff: np_.ndarray,
-        invariant: np_.ndarray,
+        diff: _np.ndarray,
+        invariant: _np.ndarray,
         logly: bool,
     ) -> Self:
         self = cls()
@@ -45,15 +45,15 @@ class Atom(ad_.LoglyMixin):
     @classmethod
     def in_context(
         cls: type,
-        diff: np_.ndarray,
-        token: in_.Token,
+        diff: _np.ndarray,
+        token: _incidence.Token,
         *args,
     ) -> Self:
         """
         """
         self = cls()
         self._diff = diff==1
-        self._invariant = np_.full((diff.shape[0], 1), True)
+        self._invariant = _np.full((diff.shape[0], 1), True)
         self._logly_index = token.qid
         return self
 
@@ -75,16 +75,16 @@ class Atom(ad_.LoglyMixin):
         """
         if hasattr(other, "_is_atom"):
             new_diff = self._diff | other._diff
-            if np_.all(self._diff==False):
+            if _np.all(self._diff==False):
                 new_invariant = other._invariant
                 new_logly = other.logly
-            elif np_.all(other._diff==False):
+            elif _np.all(other._diff==False):
                 new_invariant = self._invariant
                 new_logly = self.logly
             else:
                 new_invariant = (
-                    np_.logical_not(self._diff) & other._invariant
-                    & np_.logical_not(other._diff) & self._invariant
+                    _np.logical_not(self._diff) & other._invariant
+                    & _np.logical_not(other._diff) & self._invariant
                 )
                 new_logly = False
         else:
@@ -105,7 +105,7 @@ class Atom(ad_.LoglyMixin):
         """
         if hasattr(other, "_is_atom"):
             new_diff = self._diff | other._diff
-            new_invariant = np_.all(other._diff, axis=0) & self._invariant
+            new_invariant = _np.all(other._diff, axis=0) & self._invariant
             new_logly = False
         else:
             new_diff = self._diff

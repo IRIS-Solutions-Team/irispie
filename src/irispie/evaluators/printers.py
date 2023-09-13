@@ -1,4 +1,5 @@
 """
+Iteration printers
 """
 
 
@@ -8,7 +9,8 @@ from numbers import (Number, )
 import numpy as _np
 import scipy as _sp
 
-from .. import (equations as _eq, quantities as _qu, )
+from .. import equations as _equations
+from .. import quantities as _quantities
 #]
 
 
@@ -24,7 +26,7 @@ class IterPrinter:
 
     def __init__(
         self, 
-        equations: _eq.Equations,
+        equations: Iterable[_equations.Equation],
         qids: Iterable[int],
         qid_to_logly: dict[int, bool],
         qid_to_name: dict[int, str],
@@ -137,7 +139,7 @@ class FlatSteadyIterPrinter(IterPrinter, ):
     #[
     def _populate_equations(
         self,
-        equations: _eq.Equations,
+        equations: Iterable[_equations.Equation],
         /,
     ) -> None:
         """
@@ -153,7 +155,7 @@ class FlatSteadyIterPrinter(IterPrinter, ):
     ) -> None:
         self._qids = tuple(qids)
         self._qid_to_print = {
-            i: _qu.print_name_maybe_log(qid_to_name[i], qid_to_logly[i], )
+            i: _quantities.print_name_maybe_log(qid_to_name[i], qid_to_logly[i], )
             for i in qids
         }
     #]
@@ -165,7 +167,7 @@ class NonflatSteadyIterPrinter(IterPrinter, ):
     #[
     def _populate_equations(
         self,
-        equations: _eq.Equations,
+        equations: Iterable[_equations.Equation],
         /,
     ) -> None:
         """
@@ -181,10 +183,10 @@ class NonflatSteadyIterPrinter(IterPrinter, ):
     ) -> None:
         self._qids = tuple(qids) + tuple(-i for i in qids)
         self._qid_to_print = {
-            i: _qu.print_name_maybe_log(qid_to_name[i], qid_to_logly[i], )
+            i: _quantities.print_name_maybe_log(qid_to_name[i], qid_to_logly[i], )
             for i in qids
         } | {
-            -i: "∆" + _qu.print_name_maybe_log(qid_to_name[i], qid_to_logly[i], )
+            -i: "∆" + _quantities.print_name_maybe_log(qid_to_name[i], qid_to_logly[i], )
             for i in qids
         }
     #]

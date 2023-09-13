@@ -4,28 +4,31 @@
 
 
 #[
-import enum as en_
-import numpy as np_
-import scipy as sp_
+from __future__ import annotations
+
 from typing import (Self, Callable, )
 from numbers import (Number, )
 import dataclasses as _dc
 
-from ..fords import (systems as _fy, descriptors as _fd, )
-from ..models import (flags as _mg, )
+import enum as _en
+import numpy as _np
+import scipy as _sp
+
+from ..fords import systems as _systems
+from ..fords import descriptors as _descriptors
 #]
 
 
-class EigenValueKind(en_.Flag):
-    STABLE = en_.auto()
-    UNIT = en_.auto()
-    UNSTABLE = en_.auto()
+class EigenValueKind(_en.Flag):
+    STABLE = _en.auto()
+    UNIT = _en.auto()
+    UNSTABLE = _en.auto()
 
 
-class SystemStabilityKind(en_.Flag):
-    STABLE = en_.auto()
-    MULTIPLE_STABLE = en_.auto()
-    NO_STABLE = en_.auto()
+class SystemStabilityKind(_en.Flag):
+    STABLE = _en.auto()
+    MULTIPLE_STABLE = _en.auto()
+    NO_STABLE = _en.auto()
 
 
 @_dc.dataclass(slots=True, )
@@ -52,23 +55,23 @@ class Solution:
     Xa: Impact matrix in triangular system
     """
     #[
-    T: np_.ndarray | None = None
-    R: np_.ndarray | None = None
-    K: np_.ndarray | None = None
-    Z: np_.ndarray | None = None
-    H: np_.ndarray | None = None
-    D: np_.ndarray | None = None
+    T: _np.ndarray | None = None
+    R: _np.ndarray | None = None
+    K: _np.ndarray | None = None
+    Z: _np.ndarray | None = None
+    H: _np.ndarray | None = None
+    D: _np.ndarray | None = None
 
-    Ta: np_.ndarray | None = None
-    Ra: np_.ndarray | None = None
-    Ka: np_.ndarray | None = None
-    Za: np_.ndarray | None = None
-    Ua: np_.ndarray | None = None
+    Ta: _np.ndarray | None = None
+    Ra: _np.ndarray | None = None
+    Ka: _np.ndarray | None = None
+    Za: _np.ndarray | None = None
+    Ua: _np.ndarray | None = None
 
-    J: np_.ndarray | None = None
-    Ru: np_.ndarray | None = None
-    X: np_.ndarray | None = None
-    Xa: np_.ndarray | None = None
+    J: _np.ndarray | None = None
+    Ru: _np.ndarray | None = None
+    X: _np.ndarray | None = None
+    Xa: _np.ndarray | None = None
 
     eigen_values: tuple[Number, ...] | None = None
     eigen_values_stability: tuple[EigenValueKind, ...] | None = None
@@ -76,9 +79,8 @@ class Solution:
 
     def __init__(
         self, 
-        descriptor: _fd.Descriptor,
-        system: _fy.System,
-        model_flags: _mg.Flags,
+        descriptor: _descriptors.Descriptor,
+        system: _systems.System,
         /,
         *,
         tolerance: float = 1e-12,
@@ -90,11 +92,14 @@ class Solution:
         is_unit_root = lambda root: abs(root) >= (1 - tolerance) and abs(root) < (1 + tolerance)
         #
         # Detach unstable from (stable + unit) roots and solve out expectations
+        # The system is triangular but because stable and unit roots are
+        # not detached yet, the system is called "preliminary"
         qz, eigen_values, eigen_values_stability = _solve_ordqz(system, is_alpha_beta_stable_or_unit_root, is_stable_root, is_unit_root, )
         system_stability = _classify_system_stability(descriptor, eigen_values_stability, )
         triangular_solution_prelim = _solve_transition_equations(descriptor, system, qz, )
         #
-        # Detach unit from stable roots and transform to square form
+        # Detach unit from stable roots to create the final triangular solution
+        # From the final triangular solution, calculate the square solution
         triangular_solution = detach_stable_from_unit_roots(triangular_solution_prelim, is_unit_root, )
         square_solution = _square_from_triangular(triangular_solution, )
         self.Ua, self.Ta, self.Ra, self.Ka, self.Xa, self.J, self.Ru = triangular_solution
@@ -107,14 +112,13 @@ class Solution:
         #
         return self
 
-    def expand_square_solution(self, forward, /, ) -> list[np_.ndarray]:
+    def expand_square_solution(self, forward, /, ) -> list[_np.ndarray]:
         """
         Expand R matrices of square solution for t+1...t+forward
         """
         R, X, J, Ru = self.R, self.X, self.J, self.Ru
         if (R is None) or (X is None) or (J is None) or (Ru is None):
             return None
-        Jk = np_.eye(J.shape[0])
         #
         # return [R(t+1), R(t+2), ..., R(t+forward)]
         #
@@ -122,7 +126,7 @@ class Solution:
         # k = 1, ..., forward or k-1 = 0, ..., forward-1
         #
         return [
-            -X @ np_.linalg.matrix_power(J, k_minus_1) @ Ru 
+            -X @ _np.linalg.matrix_power(J, k_minus_1) @ Ru 
             for k_minus_1 in range(0, forward)
         ]
     #]
@@ -132,20 +136,20 @@ def _left_div(A, B):
     """
     Solve A \ B
     """
-    return np_.linalg.lstsq(A, B, rcond=None)[0]
+    return _np.linalg.lstsq(A, B, rcond=None)[0]
 
 
 def _right_div(B, A):
     """
     Solve B/A = (A'\B')'
     """
-    return np_.linalg.lstsq(A.T, B.T, rcond=None)[0].T
+    return _np.linalg.lstsq(A.T, B.T, rcond=None)[0].T
 
 
 def _square_from_triangular(
-    triangular_solution: tuple[np_.ndarray, ...],
+    triangular_solution: tuple[_np.ndarray, ...],
     /,
-) -> tuple[np_.ndarray, ...]:
+) -> tuple[_np.ndarray, ...]:
     """
     T <- Ua @ Ta/U; note that Ta/U == (U'\Ta')'
     R <- Ua @ Ra;
@@ -164,16 +168,16 @@ def _square_from_triangular(
 
 
 def detach_stable_from_unit_roots(
-    transition_solution_prelim: tuple[np_.ndarray, ...],
+    transition_solution_prelim: tuple[_np.ndarray, ...],
     is_unit_root: Callable[[Number], bool],
     /,
-) -> tuple[np_.ndarray, ...]:
+) -> tuple[_np.ndarray, ...]:
     """
     """
     #[
     Ug, Tg, Rg, Kg, Xg, J, Ru = transition_solution_prelim
     num_xib = Tg.shape[0]
-    Ta, u, check_num_unit_roots = sp_.linalg.schur(Tg, sort=is_unit_root, ) # Tg = u @ Ta @ u.T
+    Ta, u, check_num_unit_roots = _sp.linalg.schur(Tg, sort=is_unit_root, ) # Tg = u @ Ta @ u.T
     Ua = Ug @ u if Ug is not None else u
     Ra = u.T @ Rg
     Ka = u.T @ Kg
@@ -182,7 +186,7 @@ def detach_stable_from_unit_roots(
     #]
 
 
-def _solve_measurement_equations(descriptor, system, Ua, ) -> tuple[np_.ndarray, ...]:
+def _solve_measurement_equations(descriptor, system, Ua, ) -> tuple[_np.ndarray, ...]:
     """
     """
     #[
@@ -196,7 +200,7 @@ def _solve_measurement_equations(descriptor, system, Ua, ) -> tuple[np_.ndarray,
     #]
 
 
-def _solve_transition_equations(descriptor, system, qz, ) -> tuple[np_.ndarray, ...]:
+def _solve_transition_equations(descriptor, system, qz, ) -> tuple[_np.ndarray, ...]:
     """
     """
     #[
@@ -258,15 +262,15 @@ def _solve_ordqz(
     is_stable_root,
     is_unit_root,
     /,
-) -> tuple[tuple[np_.ndarray, ...], tuple[Number, ], tuple[EigenValueKind, ...]]:
+) -> tuple[tuple[_np.ndarray, ...], tuple[Number, ], tuple[EigenValueKind, ...]]:
     """
     """
     #[
-    S, T, alpha, beta, Q, Z = sp_.linalg.ordqz(system.A, system.B, sort=is_alpha_beta_stable_or_unit_root, )
+    S, T, alpha, beta, Q, Z = _sp.linalg.ordqz(system.A, system.B, sort=is_alpha_beta_stable_or_unit_root, )
     Q = Q.T
     #
     inx_nonzero_alpha = alpha != 0
-    eigen_values = np_.full(beta.shape, np_.inf, dtype=complex, )
+    eigen_values = _np.full(beta.shape, _np.inf, dtype=complex, )
     eigen_values[inx_nonzero_alpha] = -beta[inx_nonzero_alpha] / alpha[inx_nonzero_alpha]
     eigen_values = tuple(eigen_values)
     #
@@ -281,13 +285,14 @@ def _solve_ordqz(
 
 def _classify_eig_value_stability(eig_value, is_stable_root, is_unit_root, ) -> EigenValueKind:
     #[
-    abs_eig_value = np_.abs(eig_value)
-    if is_stable_root(abs_eig_value):
-        return EigenValueKind.STABLE
-    elif is_unit_root(abs_eig_value):
-        return EigenValueKind.UNIT
-    else:
-        return EigenValueKind.UNSTABLE
+    abs_eig_value = _np.abs(eig_value)
+    match (is_stable_root(abs_eig_value), is_unit_root(abs_eig_value), ):
+        case (True, _, ):
+            return EigenValueKind.STABLE
+        case (_, True, ):
+            return EigenValueKind.UNIT
+        case _:
+            return EigenValueKind.UNSTABLE
     #]
 
 

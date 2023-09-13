@@ -25,6 +25,8 @@ class QuantityKind(enum.Flag):
     MEASUREMENT_VARIABLE = enum.auto()
     MEASUREMENT_SHOCK = enum.auto()
     EXOGENOUS_VARIABLE = enum.auto()
+    LHS_VARIABLE = enum.auto()
+    RHS_ONLY_VARIABLE = enum.auto()
     PARAMETER = enum.auto()
     TRANSITION_STD = enum.auto()
     MEASUREMENT_STD = enum.auto()
@@ -44,7 +46,6 @@ _export_kinds  = [
 
 for n in _export_kinds:
     exec(f"{n} = QuantityKind.{n}")
-
 __all__ = ["filter_quantities_by_name", ] + _export_kinds
 
 
@@ -76,66 +77,61 @@ class Quantity:
     #]
 
 
-Quantities: TypeAlias = Iterable[Quantity]
-Humans: TypeAlias = Iterable[str]
-HumansNotFound: TypeAlias = Iterable[str]
-
-
-def create_name_to_qid(quantities: Quantities) -> dict[str, int]:
+def create_name_to_qid(quantities: Iterable[Quantity]) -> dict[str, int]:
     return { qty.human: qty.id for qty in quantities }
 
 
-def create_name_to_quantity(quantities: Quantities) -> dict[str, int]:
+def create_name_to_quantity(quantities: Iterable[Quantity]) -> dict[str, int]:
     return { qty.human: qty for qty in quantities }
 
 
-def create_qid_to_name(quantities: Quantities) -> dict[int, str]:
+def create_qid_to_name(quantities: Iterable[Quantity]) -> dict[int, str]:
     return { qty.id: qty.human for qty in quantities }
 
 
-def create_qid_to_description(quantities: Quantities) -> dict[int, str]:
+def create_qid_to_description(quantities: Iterable[Quantity]) -> dict[int, str]:
     return { qty.id: qty.description for qty in quantities }
 
 
-def create_qid_to_kind(quantities: Quantities) -> dict[int, str]:
+def create_qid_to_kind(quantities: Iterable[Quantity]) -> dict[int, str]:
     return { qty.id: qty.kind for qty in quantities }
 
 
-def generate_quantities_of_kind(quantities: Quantities, kind: QuantityKind | None) -> Quantities:
+def generate_quantities_of_kind(quantities: Iterable[Quantity], kind: QuantityKind | None) -> Iterable[Quantity]:
     is_of_kind = (lambda qty: qty.kind in kind) if kind is not None else lambda k: True
     return ( qty for qty in quantities if is_of_kind(qty) )
 
 
-def generate_qids_by_kind(quantities: Quantities, kind: QuantityKind) -> list[int]:
+def generate_qids_by_kind(quantities: Iterable[Quantity], kind: QuantityKind) -> list[int]:
     return ( qty.id for qty in quantities if qty.kind in kind )
 
 
-def generate_quantity_names_by_kind(quantities: Quantities, kind: QuantityKind) -> list[str]:
+def generate_quantity_names_by_kind(quantities: Iterable[Quantity], kind: QuantityKind) -> list[str]:
     return ( qty.human for qty in quantities if qty.kind in kind )
 
 
-def generate_all_quantity_names(quantities: Quantities) -> Iterable[str]:
+def generate_all_quantity_names(quantities: Iterable[Quantity]) -> Iterable[str]:
     return ( qty.human for qty in quantities )
 
 
-def generate_all_qids(quantities: Quantities) -> Iterable[int]:
+def generate_all_qids(quantities: Iterable[Quantity]) -> Iterable[int]:
     return ( qty.id for qty in quantities )
 
 
-def get_max_qid(quantities: Quantities) -> int:
+def get_max_qid(quantities: Iterable[Quantity]) -> int:
     return max(qty.id for qty in quantities)
 
 
-def create_qid_to_logly(quantities: Quantities) -> dict[int, bool]:
+def create_qid_to_logly(quantities: Iterable[Quantity]) -> dict[int, bool]:
     return { qty.id: qty.logly for qty in quantities }
 
 
 def change_logly(
-    quantities: Quantities,
+    quantities: Iterable[Quantity],
     new_logly: bool,
     qids: Iterable[int],
     /
-) -> Quantities:
+) -> Iterable[Quantity]:
     qids = set(qids)
     return [
         qty if qty.id not in qids or qty.logly is None else Quantity(qty.id, qty.human, qty.kind, new_logly)
@@ -144,10 +140,10 @@ def change_logly(
 
 
 def validate_selection_of_quantities(
-    allowed_quantities: Quantities,
-    custom_quantities: Quantities | None,
+    allowed_quantities: Iterable[Quantity],
+    custom_quantities: Iterable[Quantity] | None,
     /,
-) -> tuple[Quantities, Quantities]:
+) -> tuple[Iterable[Quantity], Iterable[Quantity]]:
     """
     """
     invalid_quantities = list(set(custom_quantities) - set(allowed_quantities)) if custom_quantities is not None else []
@@ -156,10 +152,10 @@ def validate_selection_of_quantities(
 
 
 def lookup_quantities_by_name(
-    quantities: Quantities,
+    quantities: Iterable[Quantity],
     custom_names: Iterable[str],
     /,
-) -> tuple[Quantities, tuple[str]]:
+) -> tuple[Iterable[Quantity], tuple[str]]:
     """
     Lookup quantities by name, and return a list of quantities and a list
     of invalid names
@@ -177,7 +173,7 @@ def lookup_quantities_by_name(
 
 
 def lookup_qids_by_name(
-    quantities: Quantities,
+    quantities: Iterable[Quantity],
     custom_names: Iterable[str],
     /,
 ) -> tuple[tuple[int], tuple[str]]:
@@ -198,11 +194,11 @@ def lookup_qids_by_name(
 
 
 def filter_quantities_by_name(
-    quantities: Quantities,
+    quantities: Iterable[Quantity],
     /,
     include_names: Iterable[str] | None = None,
     exclude_names: Iterable[str] | None = None,
-) -> Quantities:
+) -> Iterable[Quantity]:
     """
     """
     include_names = set(include_names) if include_names is not None else None

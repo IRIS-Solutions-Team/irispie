@@ -1,10 +1,14 @@
-"""Handle wrongdoings"""
+"""
+Handle exceptions and warnings
+"""
 
 
 #[
-import warnings as wa_
-from typing import (TypeAlias, Literal, )
+from __future__ import annotations
+
+from typing import (TypeAlias, Literal, Callable, )
 from collections.abc import (Iterable, )
+import warnings as _wa
 #]
 
 
@@ -69,7 +73,7 @@ def _throw_as_warning(
     #[
     message = _prepare_message(message)
     message = "\nIrisPieWarning: " + message
-    wa_.warn(message, IrisPieWarning, stacklevel=4, )
+    _wa.warn(message, IrisPieWarning, stacklevel=4, )
     #]
 
 
@@ -80,6 +84,20 @@ def _throw_as_silent(
     """
     #[
     pass
+    #]
+
+
+def obsolete(func):
+    """
+    """
+    #[
+    def wrapper(*args, **kwargs, ):
+        message = (
+            f"Function {func.__name__} is obsolete and will be removed in a future version of IrisPie. "
+        )
+        _throw_as_warning(message)
+        return func(*args, **kwargs)
+    return wrapper
     #]
 
 

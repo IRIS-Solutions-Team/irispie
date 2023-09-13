@@ -10,7 +10,7 @@ import numpy as _np
 import operator as _op
 from collections.abc import (Iterable, )
 
-from .. import (quantities as _qu, )
+from .. import (quantities as _quantities, )
 #]
 
 
@@ -27,7 +27,7 @@ class Variant:
 
     def __init__(
         self,
-        quantities: _qu.Quantities, 
+        quantities: Iterable[_quantities.Quantity], 
         /,
         **kwargs,
     ) -> None:
@@ -36,10 +36,10 @@ class Variant:
 
     def _initilize_values(
         self,
-        quantities: _qu.Quantities, 
+        quantities: Iterable[_quantities.Quantity], 
         /,
     ) -> None:
-        max_qid = _qu.get_max_qid(quantities, )
+        max_qid = _quantities.get_max_qid(quantities, )
         size_array = max_qid + 1
         init_value = self._missing
         self.levels = _np.full((size_array,), init_value, dtype=float, )
@@ -72,7 +72,7 @@ class Variant:
         """
         """
         qids = list(qids)
-        index_logly = list(_qu.generate_index_logly(qids, qid_to_logly, ))
+        index_logly = list(_quantities.generate_index_logly(qids, qid_to_logly, ))
         #
         # Extract initial guesses for levels and changes
         maybelog_levels = self.levels[qids].flatten()
@@ -136,7 +136,7 @@ class Variant:
         """
         """
         qids = range(self.levels.shape[0])
-        return _qu.generate_index_logly(qids, qid_to_logly, )
+        return _quantities.generate_index_logly(qids, qid_to_logly, )
 
     def create_zero_array(
         self,

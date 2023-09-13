@@ -16,7 +16,7 @@ from __future__ import annotations
 import dataclasses as dc_
 import numpy as np_ 
 
-from . import (descriptors as fd_, )
+from . import descriptors as _descriptors
 #]
 
 
@@ -43,7 +43,7 @@ class System:
 
     def __init__(
         self,
-        descriptor: fd_.Descriptor,
+        descriptor: _descriptors.Descriptor,
         data_array: np_.ndarray,
         steady_array: np_.ndarray,
         /,

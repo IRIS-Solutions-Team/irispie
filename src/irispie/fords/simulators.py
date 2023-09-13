@@ -8,14 +8,15 @@ from __future__ import annotations
 from typing import (Self, TypeAlias, Literal, )
 import numpy as np_
 
-from ..fords import (solutions as sl_, descriptors as de_, )
-from ..dataman import (databanks as db_, )
+from ..fords import solutions as _solutions
+from ..fords import descriptors as _descriptors
+from ..databanks import main as _databanks
 #]
 
 
 def simulate_flat(
-    solution: sl_.Solution,
-    solution_vectors: de_.SolutionVectors,
+    solution: _solutions.Solution,
+    solution_vectors: _descriptors.SolutionVectors,
     data: np_.ndarray,
     columns_to_run: list[int],
     deviation: bool,
