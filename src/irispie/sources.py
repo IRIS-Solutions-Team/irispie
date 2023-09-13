@@ -12,7 +12,7 @@ from collections.abc import (Iterable, )
 
 from .parsers import preparser as _preparser
 from .parsers import algebraic as _algebraic
-from .parsers import algebraic as _common
+from .parsers import common as _common
 from . import equations as _equations
 from . import quantities as _quantities
 #]
