@@ -104,7 +104,7 @@ def _block_iterator(name_line, description_row, data_lines, start_date_only, /, 
     """
     #[
     _is_end = lambda cell: cell.startswith("__")
-    _is_start = lambda cell: cell.startswith("__") and _dates.frequency_from_string(cell) is not _dates.Frequency.UNKNOWN
+    _is_start = lambda cell: cell.startswith("__") and _dates.Frequency.from_letter(cell) is not _dates.Frequency.UNKNOWN
     name_line += ["__"]
     status = False
     blocks = []
@@ -124,7 +124,7 @@ def _block_iterator(name_line, description_row, data_lines, start_date_only, /, 
             status = True
             current_date_column = column
             current_start = column + 1
-            current_frequency = _dates.Frequency.from_string(cell)
+            current_frequency = _dates.Frequency.from_letter(cell)
     #]
 
 

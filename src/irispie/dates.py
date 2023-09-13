@@ -23,6 +23,7 @@ __all__ = [
     "yy", "hh", "qq", "mm", "dd", "ii",
     "Ranger", "start", "end",
     "Dater", "daters_from_sdmx_strings", "daters_from_iso_strings",
+    "frequency_from_string"
 ]
 
 
@@ -44,9 +45,12 @@ class Frequency(_en.IntEnum):
     def from_letter(cls, letter: str, /, ) -> Frequency:
         """
         """
+        letter = letter.replace("_", "").upper()
+        if not letter:
+            return cls.UNKNOWN
         return next(
             x for x in cls
-            if x.name.startswith(letter[0].upper()) and x is not cls.UNKNOWN
+            if x.name.startswith(letter[0]) and x is not cls.UNKNOWN
         )
 
     @property
