@@ -136,10 +136,11 @@ class Dataslab:
     ) -> None:
         """
         """
+        base_slice = slice(self.base_columns[0], self.base_columns[-1]+1)
         for i, n in enumerate(self.row_names):
             if n not in names:
                 continue
-            self.data[i, self.base_columns[0]:self.base_column_data[-1]+1] = value
+            self.data[i, base_slice] = value
 
 def _extract_data_from_record(record, ext_range, column, /, ):
     """
