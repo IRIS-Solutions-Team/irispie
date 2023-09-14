@@ -13,6 +13,7 @@ from collections.abc import (Iterable, )
 
 from .series import main as _series
 from .databanks import main as _databanks
+from .plans import main as _plans
 from . import dates as _dates
 #]
 
@@ -22,7 +23,7 @@ __all__ = (
 )
 
 
-class SimulatableProtocol(Protocol):
+class SimulatableProtocol(Protocol, ):
     def get_min_max_shift(self, /, ) -> tuple[int, int]:  ...
     def get_databank_names(self, /, ) -> tuple[str, ...]:  ...
 
@@ -82,6 +83,7 @@ class Dataslab:
         base_range: Iterable[Dater],
         /,
         column: int = 0,
+        plan: _plans.Plan | None = None,
     ) -> Self:
         """
         """
@@ -91,7 +93,7 @@ class Dataslab:
                 base_range,
             )
         )
-        names = simulatable.get_databank_names()
+        names = simulatable.get_databank_names(plan, )
         self = cls.from_databank(databank, names, ext_range, column=column, )
         self.base_columns = base_columns
         return self
@@ -143,6 +145,14 @@ class Dataslab:
             values = self.data[i, base_slice]
             values[_np.isnan(values)] = fill
 
+    def create_name_to_row(
+        self,
+        /,
+    ) -> dict[str, int]:
+        return { name: row for row, name in enumerate(self.row_names, ) }
+    #]
+
+
 def _extract_data_from_record(record, ext_range, column, /, ):
     """
     """
@@ -185,6 +195,8 @@ def get_extended_range(
     base_range = tuple(t for t in base_range)
     num_base_periods = len(base_range)
     min_shift, max_shift = simulatable.get_min_max_shifts()
+    if min_shift == 0:
+        min_shift = -1
     start_date = base_range[0] + min_shift
     end_date = base_range[-1] + max_shift
     base_columns = tuple(range(-min_shift, -min_shift+num_base_periods))

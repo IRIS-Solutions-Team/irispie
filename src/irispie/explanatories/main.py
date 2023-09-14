@@ -15,7 +15,7 @@ from .. import equations as _equations
 from .. import wrongdoings as _wrongdoings
 from ..aldi import adaptations as _adaptations
 
-from . import transforms as _transforms
+from .. import transforms as _transforms
 #]
 
 
@@ -35,6 +35,7 @@ class Explanatory:
     is_identity: bool | None = None
     _lhs_human: str | None = None
     lhs_name: str | None = None
+    res_name: str | None = None
     res_name: str | None = None
     lhs_qid: int | None = None
     _rhs_human: str | None = None
@@ -72,6 +73,7 @@ class Explanatory:
         """
         self.equation.finalize(name_to_qid, )
         self.lhs_qid = name_to_qid[self.lhs_name]
+        self.res_qid = name_to_qid[self.res_name] if self.res_name is not None else None
         rhs_xtring, *_ = _equations.xtring_from_human(self._rhs_human, name_to_qid, )
         lhs_xtring, *_ = _equations.xtring_from_human(self._lhs_human, name_to_qid, )
         lhs_token = _incidence.Token(self.lhs_qid, 0, )
@@ -133,7 +135,7 @@ class Explanatory:
         self._lhs_human, self._rhs_human = split
 
     def _parse_lhs(self, ) -> None:
-        transform, lhs_name = _transforms.recognize_transform(self._lhs_human, )
+        transform, lhs_name = _transforms.recognize_transform_in_equation(self._lhs_human, )
         if transform is None:
             raise _wrongdoings.IrisPieError(f"Could not parse this LHS expression: {self.lhs_name}")
         self._lhs_transform = transform
@@ -198,14 +200,29 @@ class Explanatory:
         """
         """
 
-    def assign_level(
+    def simulate(
         self,
         data: _np.ndarray,
-        t: int,
+        columns: int | _np.ndarray,
+        /,
     ) -> None:
         """
         """
-        new_value = self.eval_level(data, t, )
-        data[self.lhs_qid, t] = new_value
+        row = self.lhs_qid
+        data[row, columns] = self.eval_level(data, columns, )
+
+    def exogenize(
+        self,
+        data: _np.ndarray,
+        columns: int | _np.ndarray,
+        values: int | _np.ndarray,
+        /,
+    ) -> None:
+        """
+        """
+        lhs_row = self.lhs_qid
+        res_row = self.res_qid
+        data[lhs_row, columns] = values
+        data[res_row, columns] = self.eval_res(data, columns, )
     #]
 

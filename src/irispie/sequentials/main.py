@@ -1,4 +1,5 @@
 """
+Sequential models
 """
 
 
@@ -18,6 +19,7 @@ from ..conveniences import descriptions as _descriptions
 from ..incidences import main as _incidence
 from ..incidences import permutations as _permutations
 from ..explanatories import main as explanatories
+from ..plans import main as _plans
 
 from . import _simulate as _simulate
 #]
@@ -158,6 +160,13 @@ class Sequential(
         )
 
     @property
+    def num_equations(self, /, ) -> int:
+        """
+        Number of equations
+        """
+        return len(self.equations)
+
+    @property
     def descriptions(self, /, ) -> tuple[str]:
         """
         """
@@ -293,7 +302,7 @@ class Sequential(
         return "\n".join((
             f"{indented}Sequential object",
             f"{indented}Description: \"{self.get_description()}\"",
-            f"{indented}Number of equations: {len(self.explanatories)}",
+            f"{indented}Number of equations: {self.num_equations}",
             f"{indented}Number of [nonidentities, identities]: [{len(self.nonidentity_index)}, {len(self.identity_index)}]",
             f"{indented}Number of RHS-only names (excluding residuals): {len(self.rhs_only_names)}",
             f"{indented}[Min, Max] time shift: [{self.min_shift:+g}, {self.max_shift:+g}]",
@@ -306,7 +315,8 @@ class Sequential(
             x.precopy()
 
     #
-    # Implement SimulatableProtocol
+    # ===== Implement SimulatableProtocol =====
+    # This protocal is used in Dataslabs to prepare data arrays
     #
 
     def get_min_max_shifts(
@@ -319,10 +329,33 @@ class Sequential(
 
     def get_databank_names(
         self,
+        plan: _plans.Plan | None = None,
         /,
     ) -> tuple[str]:
         """
         """
-        return self.all_names
+        all_names = self.all_names
+        if plan is not None:
+            plan_names = set(plan.collect_databank_names())
+            extra_plan_names = tuple(plan_names.difference(all_names))
+            all_names = all_names + extra_plan_names
+        return all_names
+
+    #
+    # ===== Implement PlannableProtocol =====
+    #
+
+    def can_be_exogenized(self, /, ) -> tuple[str]:
+        return tuple(
+            n for i, n in enumerate(self.lhs_names)
+            if not self.explanatories[i].is_identity
+        )
+
+    def can_be_exogenized_when_data(self, /, ) -> tuple[str]:
+        return self.can_be_endogenized()
+
+    def can_be_endogenized(self, /, ) -> None:
+        return None
     #]
+
 

@@ -29,6 +29,9 @@ from .sequentials import __all__ as sequentials_all
 from .explanatories import *
 from .explanatories import __all__ as explanatories_all
 
+from .plans.main import *
+from .plans.main import __all__ as plans_all
+
 
 __all__ = (
     *dates_all,
@@ -39,5 +42,6 @@ __all__ = (
     *equations_all,
     *sequentials_all,
     *explanatories_all,
+    *plans_all,
 )
 
