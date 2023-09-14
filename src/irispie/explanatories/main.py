@@ -168,7 +168,7 @@ class Explanatory:
             "lambda x, t: "
             + self._lhs_transform.create_eval_level_str(lhs_token, rhs_xtring, )
         )
-        self.eval_level = eval(self._eval_level_str, None, self._custom_functions, )
+        self.eval_level = eval(self._eval_level_str, self._custom_functions, )
 
     def _create_eval_res(
         self,
@@ -181,7 +181,7 @@ class Explanatory:
                 "lambda x, t: "
                 f"{lhs_xtring}-({rhs_xtring})"
             )
-            self.eval_res = eval(self._eval_res_str, None, self._custom_functions, )
+            self.eval_res = eval(self._eval_res_str, self._custom_functions, )
 
     def __str__(self, /, ) -> str:
         """

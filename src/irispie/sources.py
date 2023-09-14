@@ -42,7 +42,7 @@ class SourceMixin:
         cls,
         source_string: str,
         /,
-        context: dict | None = None,
+        custom_functions: dict | None = None,
         save_preparsed: str = "",
         **kwargs,
     ) -> Self:
@@ -50,9 +50,9 @@ class SourceMixin:
         Create a new object from algebraic source string
         """
         source, info = AlgebraicSource.from_string(
-            source_string, context=context, save_preparsed=save_preparsed,
+            source_string, context=custom_functions, save_preparsed=save_preparsed,
         )
-        return cls.from_source(source, context=context, **kwargs, )
+        return cls.from_source(source, context=custom_functions, **kwargs, )
 
     @classmethod
     def from_file(

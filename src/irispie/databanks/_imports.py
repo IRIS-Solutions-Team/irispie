@@ -11,6 +11,7 @@ from collections.abc import (Iterable, Callable, )
 import csv as _cs
 import numpy as _np
 import dataclasses as _dc
+import pickle as _pickle
 
 from ..series import main as _series
 from .. import dates as _dates
@@ -83,6 +84,18 @@ class DatabankImportMixin:
             _add_series_for_block(self, b, array, )
         #
         return self
+
+    @classmethod
+    def from_pickle(
+        cls,
+        file_name: str,
+        /,
+        **kwargs,
+    ) -> Self:
+        """
+        """
+        with open(file_name, "rb") as fid:
+            return _pickle.load(fid, **kwargs, )
     #]
 
 

@@ -6,6 +6,8 @@ Exporting data to CSV sheets
 #[
 from __future__ import annotations
 
+import pickle as _pickle
+
 from collections.abc import (Iterable, )
 import csv as _cs
 import numpy as _np
@@ -97,6 +99,17 @@ class DatabankExportMixin:
                 writer.writerow(row)
         #
         return names
+
+    def to_pickle(
+        self,
+        file_name: str,
+        /,
+        **kwargs,
+    ) -> None:
+        """
+        """
+        with open(file_name, "wb+") as fid:
+            _pickle.dump(self, fid, **kwargs, )
     #]
 
 
