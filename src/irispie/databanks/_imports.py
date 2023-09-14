@@ -57,7 +57,7 @@ class DatabankImportMixin:
     """
     #[
     @classmethod
-    def _from_sheet(
+    def from_sheet(
         cls,
         file_name: str,
         /,

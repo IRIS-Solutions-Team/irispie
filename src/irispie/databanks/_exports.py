@@ -60,7 +60,7 @@ class DatabankExportMixin:
     Databank mixin for exporting data to CSV sheets
     """
     #[
-    def _to_sheet(
+    def to_sheet(
         self,
         file_name: str,
         *,
