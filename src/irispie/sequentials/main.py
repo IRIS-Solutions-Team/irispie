@@ -7,17 +7,16 @@ Sequential models
 from __future__ import annotations
 
 from collections.abc import (Iterable, )
-from typing import (Callable, )
+from typing import (Any, Callable, )
 import numpy as _np
 
 from .. import equations as _equations
 from .. import quantities as _quantities
-from .. import wrongdoings as _wrongdoings
 from .. import sources as _sources
 from ..conveniences import copies as _copies
 from ..conveniences import descriptions as _descriptions
-from ..incidences import main as _incidence
-from ..incidences import permutations as _permutations
+from ..incidences import main as _incidences
+from ..incidences import blazer as _blazer
 from ..explanatories import main as explanatories
 from ..plans import main as _plans
 
@@ -177,7 +176,7 @@ class Sequential(
 
     @property
     def incidence_matrix(self, /, ) -> _np.ndarray:
-        def _shift_test(tok: _incidence.Token) -> bool:
+        def _shift_test(tok: _incidences.Token) -> bool:
             return tok.shift == 0
         return _equations.create_incidence_matrix(
             self.equations,
@@ -217,21 +216,15 @@ class Sequential(
     def sequentialize(
         self,
         /,
-        when_fails: Literal["error"] | Literal["warning"] | Literal["silent"] = "warning",
-    ) -> Iterable[int]:
+    ) -> tuple[int, ...]:
         """
+        Reorder the model equations so that they can be solved sequentially
         """
-        im = self.incidence_matrix
-        (rows, columns), _, info = _permutations.sequentialize(im, )
-        im = im[rows, :]
-        im = im[:, rows]
-        if not _permutations.is_sequential(im, ):
-            _wrongdoings.throw(
-                when_fails,
-                "Cannot fully sequentialize the equations",
-            )
-        self.reorder_equations(rows, )
-        return rows
+        if self.is_sequential:
+            return tuple(range(self.num_equations))
+        eids_reordered = _blazer.sequentialize_strictly(self.incidence_matrix, )
+        self.reorder_equations(eids_reordered, )
+        return tuple(eids_reordered)
 
     @property
     def is_sequential(
@@ -240,7 +233,7 @@ class Sequential(
     ) -> bool:
         """
         """
-        return _permutations.is_sequential(self.incidence_matrix, )
+        return _blazer.is_sequential(self.incidence_matrix, )
 
     def print_equations(
         self,
