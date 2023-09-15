@@ -161,7 +161,7 @@ def sequentialize_strictly(
         fail = \
             inc_rem.size or eids_rem or qids_rem \
             or eids_first != qids_first \
-            or eids_last != qids_last \
+            or eids_last != qids_last
         if fail:
             _wrongdoings.IrisPieError("Cannot find strict sequential reordering", )
         return eids_first + eids_last
