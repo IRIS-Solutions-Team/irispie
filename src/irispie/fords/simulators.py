@@ -17,6 +17,7 @@ from ..databanks import main as _databanks
 def simulate_flat(
     solution: _solutions.Solution,
     solution_vectors: _descriptors.SolutionVectors,
+    boolex_logly: tuple[bool, ...],
     data: np_.ndarray,
     columns_to_run: list[int],
     deviation: bool,
@@ -35,6 +36,9 @@ def simulate_flat(
     Z = solution.Z
     H = solution.H
     D = solution.D if not deviation else 0
+
+    if any(boolex_logly):
+        data[boolex_logly, :] = np_.log(data[boolex_logly, :])
 
     curr_state = np_.array([
         data[t.qid, column_start-1+t.shift] 
@@ -96,6 +100,9 @@ def simulate_flat(
 
     data[transition_shocks_in_slab, :] = transition_shocks
     data[measurement_shocks_in_slab, :] = measurement_shocks
+
+    if any(boolex_logly):
+        data[boolex_logly, :] = np_.exp(data[boolex_logly, :])
 
     return data
 

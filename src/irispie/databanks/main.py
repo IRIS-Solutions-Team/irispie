@@ -34,7 +34,7 @@ __all__ = [
 
 SourceNames: TypeAlias = Iterable[str] | str | Callable[[str], bool] | None
 TargetNames: TypeAlias = Iterable[str] | str | Callable[[str], str] | None
-InterpretRange: TypeAlias = Literal["base"] | Literal["extended"]
+InterpretRange: TypeAlias = Literal["base", "extended", ]
 
 
 class SteadyDatabankableProtocol(Protocol):
@@ -75,13 +75,13 @@ _EXTENDED_RANGE_TUPLE_RESOLUTION = {
 }
 
 
-_SERIES_CONSTRUCTOR_RESOLUTION = {
+_SERIES_CONSTRUCTOR_FACTORY = {
     "start_date": _series.Series.from_start_date_and_values,
     "range": _series.Series.from_dates_and_values,
 }
 
 
-_ARRAY_TRANSPOSER_RESOLUTION = {
+_ARRAY_TRANSPOSER_FACTORY = {
     "vertical": _np.transpose,
     "horizontal": lambda x: x,
 }
@@ -127,20 +127,22 @@ class Databank(
         /,
         add_to_databank: Self | None = None,
         qid_to_description: dict[int, str] | None = None,
-        array_orientation: Literal["vertical"] | Literal["horizontal"] = "vertical",
-        interpret_dates: Literal["start_date"] | Literal["range"] = "start_date",
+        array_orientation: Literal["vertical", "horizontal", ] = "vertical",
+        interpret_dates: Literal["start_date", "range", ] = "start_date",
     ) -> Self:
         """
         """
         self = add_to_databank if add_to_databank else cls()
-        constructor = _SERIES_CONSTRUCTOR_RESOLUTION[interpret_dates]
-        transposer = _ARRAY_TRANSPOSER_RESOLUTION[array_orientation]
+        constructor = _SERIES_CONSTRUCTOR_FACTORY[interpret_dates]
+        transposer = _ARRAY_TRANSPOSER_FACTORY[array_orientation]
         for qid, data in enumerate(transposer(array)):
             name = qid_to_name.get(qid, None)
             if not name:
                 continue
+            if data.ndim == 1:
+                data = data.reshape(-1, 1)
             description = qid_to_description[qid] if qid_to_description else ""
-            series = constructor(dates, data.reshape(-1, 1), description=description)
+            series = constructor(dates, data, description=description)
             self[name] = series
         return self
 
@@ -354,40 +356,11 @@ class Databank(
 
     add_zero = _ft.partialmethod(add_steady, deviation=True)
 
-###     def __getitem__(self, name):
-###         return self.__dict__[name]
-### 
-###     def __setitem__(self, name, value) -> None:
-###         self.__dict__[name] = value
-### 
-###     def __or__(self, other) -> Self:
-###         new = _co.deepcopy(self)
-###         new.__dict__.update(other.__dict__)
-###         return new
-### 
-###     def _update(
-###         self,
-###         other: Databank,
-###         /,
-###     ) -> Self:
-###         """
-###         Update self using items from other
-###         """
-###         self.__dict__.update(other.__dict__)
+    def __or__(self, other) -> Self:
+        new = _co.deepcopy(self)
+        new.update(other, )
+        return new
     #]
-
-
-#
-# Add databank methods without the leading underscore
-#
-### exceptions = ["_description", ]
-### single_underscore_names = [
-###     n for n in dir(Databank) 
-###     if n.startswith("_") and not n.startswith("__") and not n.endswith("_") and n not in exceptions
-### ]
-### for n in single_underscore_names:
-###     setattr(Databank, n.removeprefix("_"), getattr(Databank, n))
-
 
 def _resolve_source_target_names(
     source_names: SourceNames,

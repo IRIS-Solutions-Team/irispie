@@ -4,10 +4,12 @@ Steady state evaluator
 
 
 #[
-import numpy as _np
 from collections.abc import (Iterable, )
 from types import (EllipsisType, )
+from typing import (Any, )
 from numbers import (Number, )
+import itertools as _it
+import numpy as _np
 
 from .. import equations as _equations
 from .. import quantities as _quantities
@@ -43,13 +45,17 @@ class SteadyEvaluator:
         variant: _variants.Variant,
         /,
         custom_functions: dict | None = None,
+        iter_printer_settings: dict[str, Any] | None = None,
     ) -> None:
         """
         """
         wrt_equations = list(wrt_equations, )
         #
-        # Create an overall self.wrt_qids comprising qids from both levels
-        # and changes, and then logical indices for levels and changes
+        # Create an overall long list `self.wrt_qids` comprising qids from both
+        # levels and changes, and then logical indices
+        # `self._bool_index_wrt_levels` and `._bool_index_wrt_changes` for
+        # accessing the levels and changes within the long list
+        #
         self._merge_levels_and_changes(wrt_qids_levels, wrt_qids_changes, )
         #
         qid_to_logly = _quantities.create_qid_to_logly(all_quantities, )
@@ -65,28 +71,45 @@ class SteadyEvaluator:
         # self._maybelog_init_changes are the initial guesses from the
         # variant data with missing values filled in for the long list of
         # wrt_qids. The actual values iterated over are
-        # self.maybelog_levels[self._index_wrt_levels] and
-        # self.maybelog_changes[self._index_wrt_changes].
+        # self.maybelog_levels[self._bool_index_wrt_levels] and
+        # self.maybelog_changes[self._bool_index_wrt_changes].
+        #
         maybelog_levels, maybelog_changes = variant.retrieve_maybelog_values_for_qids(self.wrt_qids, qid_to_logly, )
         maybelog_levels, maybelog_changes = _fill_missing(maybelog_levels, maybelog_changes, )
         self._maybelog_init_levels = maybelog_levels
         self._maybelog_init_changes = maybelog_changes
         #
-        self._num_levels = sum(self._index_wrt_levels)
-        self._num_changes = sum(self._index_wrt_changes)
+        self._num_levels = sum(self._bool_index_wrt_levels)
+        self._num_changes = sum(self._bool_index_wrt_changes)
         #
         self.init_guess = _np.hstack((
-            self._maybelog_init_levels[self._index_wrt_levels],
-            self._maybelog_init_changes[self._index_wrt_changes],
+            self._maybelog_init_levels[self._bool_index_wrt_levels],
+            self._maybelog_init_changes[self._bool_index_wrt_changes],
         ))
         #
         self._steady_array = variant.create_steady_array(qid_to_logly, num_columns=shift_vec.shape[1], shift_in_first_column=-t_zero, )
         self._update_steady_array(self.init_guess)
         #
         # Set up components
-        self._equator = self._equator_factory(wrt_equations, t_zero, custom_functions=custom_functions, )
-        self._jacobian = self._jacobian_factory(wrt_equations, self.wrt_qids, qid_to_logly, custom_functions=custom_functions, )
-        self._iter_printer = self._iter_printer_factory(wrt_equations, self.wrt_qids, qid_to_logly, qid_to_name, every=1, )
+        self._equator = self._equator_factory(
+            wrt_equations,
+            t_zero,
+            custom_functions=custom_functions,
+        )
+        self._jacobian = self._jacobian_factory(
+            wrt_equations,
+            self.wrt_qids,
+            qid_to_logly,
+            custom_functions=custom_functions,
+        )
+        iter_printer_settings = iter_printer_settings or {}
+        self.iter_printer = self._iter_printer_factory(
+            wrt_equations,
+            self.wrt_qids,
+            qid_to_logly,
+            qid_to_name,
+            **iter_printer_settings,
+        )
 
     def eval(
         self,
@@ -98,8 +121,8 @@ class SteadyEvaluator:
         self._update_steady_array(maybelog_guess, )
         equator = self._equator.eval(self._steady_array, )
         jacobian = self._jacobian.eval(self._steady_array, )
-        jacobian = jacobian[:, self._index_wrt_levels + self._index_wrt_changes]
-        self._iter_printer.next(maybelog_guess, equator, True, )
+        jacobian = jacobian[:, self._bool_index_wrt_levels + self._bool_index_wrt_changes]
+        self.iter_printer.next(maybelog_guess, equator, True, )
         return equator, jacobian
 
     def _merge_levels_and_changes(
@@ -120,6 +143,32 @@ class SteadyEvaluator:
         """
         """
         ...
+
+    def extract_levels(
+        self,
+        guess: _np.ndarray,
+        /,
+    ) -> tuple[_np.ndarray, tuple[int, ...]]:
+        """
+        """
+        levels = self._get_maybelog_levels(guess, )
+        levels[self._index_logly] = _np.exp(levels[self._index_logly])
+        levels = levels[self._bool_index_wrt_levels]
+        wrt_qids_levels = tuple(_it.compress(self.wrt_qids, self._bool_index_wrt_levels, ))
+        return levels, wrt_qids_levels
+
+    def extract_changes(
+        self,
+        guess: _np.ndarray,
+        /,
+    ) -> tuple[_np.ndarray, tuple[int, ...]]:
+        """
+        """
+        changes = self._get_maybelog_changes(guess, )
+        changes[self._index_logly] = _np.exp(changes[self._index_logly])
+        changes = changes[self._bool_index_wrt_changes]
+        wrt_qids_changes = tuple(_it.compress(self.wrt_qids, self._bool_index_wrt_changes, ))
+        return changes, wrt_qids_changes
     #]
 
 
@@ -138,8 +187,8 @@ class FlatSteadyEvaluator(SteadyEvaluator, ):
         /,
     ) -> None:
         self.wrt_qids = list(set(wrt_qids_levels))
-        self._index_wrt_levels = [qid in wrt_qids_levels for qid in self.wrt_qids]
-        self._index_wrt_changes = []
+        self._bool_index_wrt_levels = [qid in wrt_qids_levels for qid in self.wrt_qids]
+        self._bool_index_wrt_changes = []
 
     def _get_maybelog_levels(
         self,
@@ -149,8 +198,8 @@ class FlatSteadyEvaluator(SteadyEvaluator, ):
         """
         """
         new_maybelog_levels = _np.copy(self._maybelog_init_levels)
-        if self._index_wrt_levels:
-            new_maybelog_levels[self._index_wrt_levels] = current_guess
+        if self._bool_index_wrt_levels:
+            new_maybelog_levels[self._bool_index_wrt_levels] = current_guess
         return new_maybelog_levels
 
     def _get_maybelog_changes(
@@ -191,8 +240,8 @@ class NonflatSteadyEvaluator(SteadyEvaluator, ):
         /,
     ) -> None:
         self.wrt_qids = list(set(wrt_qids_levels) | set(wrt_qids_changes))
-        self._index_wrt_levels = [qid in wrt_qids_levels for qid in self.wrt_qids]
-        self._index_wrt_changes = [qid in wrt_qids_changes for qid in self.wrt_qids]
+        self._bool_index_wrt_levels = [qid in wrt_qids_levels for qid in self.wrt_qids]
+        self._bool_index_wrt_changes = [qid in wrt_qids_changes for qid in self.wrt_qids]
 
     def _get_maybelog_levels(
         self,
@@ -202,8 +251,8 @@ class NonflatSteadyEvaluator(SteadyEvaluator, ):
         """
         """
         new_maybelog_levels = _np.copy(self._maybelog_init_levels)
-        if self._index_wrt_levels:
-            new_maybelog_levels[self._index_wrt_levels] = current_guess[:self._num_levels]
+        if self._bool_index_wrt_levels:
+            new_maybelog_levels[self._bool_index_wrt_levels] = current_guess[:self._num_levels]
         return new_maybelog_levels
 
     def _get_maybelog_changes(
@@ -214,8 +263,8 @@ class NonflatSteadyEvaluator(SteadyEvaluator, ):
         """
         """
         new_maybelog_changes = _np.copy(self._maybelog_init_changes)
-        if self._index_wrt_changes:
-            new_maybelog_changes[self._index_wrt_changes] = current_guess[self._num_levels:]
+        if self._bool_index_wrt_changes:
+            new_maybelog_changes[self._bool_index_wrt_changes] = current_guess[self._num_levels:]
         return new_maybelog_changes
 
     def _update_steady_array(

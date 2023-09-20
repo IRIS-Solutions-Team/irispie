@@ -49,15 +49,32 @@ def blaze(
     eids = tuple(eids)
     qids = tuple(qids)
     #
+    # Step 1: Prefetch quantities/equations that can be ordered first
+    # individually (an equation only has one quantity), and ordered last
+    # individually (a quantity only occurs in one equation)
+    #
     eids_first, qids_first, eids_last, qids_last, eids_inner, qids_inner, im_inner \
     = prefetch(im, eids=eids, qids=qids, )
+    #
+    # Step 2: If there is a remaining core of interdependent equations, run
+    # a naive triangularization algorithm on it
     #
     if im_inner.size > 0:
         eids_inner, qids_inner, im_inner, *_ \
         = triangularize_inner_block(im_inner, eids=eids_inner, qids=qids_inner, )
     #
+    # Combine the results
+    #
     eids = eids_first + eids_inner + eids_last
     qids = qids_first + qids_inner + qids_last
+    #
+    # Step 3: Create a tuple with a Block object for each block of
+    # equations and equantities
+    #
+    first_blocks = tuple(_Block(eid, qid, ) for eid, qid in zip(eids_first, qids_first, ))
+    inner_blocks = tuple(_generate_inner_blocks(im_inner, eids=eids_inner, qids=qids_inner, ))
+    last_blocks = tuple(_Block(eid, qid, ) for eid, qid in zip(eids_last, qids_last, ))
+    #
     info = {
         "eids_first": eids_first,
         "qids_first": qids_first,
@@ -67,9 +84,6 @@ def blaze(
         "qids_inner": qids_inner,
         "im_inner": im_inner,
     }
-    first_blocks = tuple(_Block(eid, qid, ) for eid, qid in zip(eids_first, qids_first, ))
-    inner_blocks = tuple(_generate_inner_blocks(im_inner, eids=eids_inner, qids=qids_inner, ))
-    last_blocks = tuple(_Block(eid, qid, ) for eid, qid in zip(eids_last, qids_last, ))
     return first_blocks + inner_blocks + last_blocks, info
     #]
 
@@ -155,11 +169,11 @@ def sequentialize_strictly(
         #
         eids_first, qids_first, \
             eids_last, qids_last, \
-            eids_rem, qids_rem, inc_rem, \
-            = prefetch(inc, eids=eids, qids=qids, )
+            eids_rem, qids_rem, im_rem, \
+            = prefetch(im, eids=eids, qids=qids, )
         #
         fail = \
-            inc_rem.size or eids_rem or qids_rem \
+            im_rem.size or eids_rem or qids_rem \
             or eids_first != qids_first \
             or eids_last != qids_last
         if fail:

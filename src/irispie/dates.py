@@ -184,7 +184,7 @@ class Dater(
     def to_iso_string(
         self,
         /,
-        position: Literal["start"] | Literal["middle"] | Literal["end"] = "start",
+        position: Literal["start", "middle", "end", ] = "start",
     ) -> str:
         year, month, day = self.to_ymd(position=position, )
         return f"{year:04g}-{month:02g}-{day:02g}"
@@ -441,7 +441,7 @@ class RegularDaterMixin:
     def to_ymd(
         self, 
         /,
-        position: Literal["start"] | Literal["middle"] | Literal["end"] = "middle",
+        position: Literal["start", "middle", "end", ] = "middle",
     ) -> tuple[int, int, int]:
         year, per = self.to_year_period()
         return year, *self.month_day_resolution[position][per]
@@ -472,7 +472,7 @@ class RegularDaterMixin:
     def to_daily(
         self,
         /,
-        position: Literal["start"] | Literal["middle"] | Literal["end"] = "middle"
+        position: Literal["start", "middle", "end", ] = "middle"
     ) -> DailyDater:
         try:
             return DailyDater.from_ymd(*self.to_ymd(position=position, ), )
@@ -534,7 +534,7 @@ class HalfyearlyDater(Dater, RegularDaterMixin, ):
     def to_ymd(
         self, 
         /,
-        position: Literal["start"] | Literal["middle"] | Literal["end"] = "middle",
+        position: Literal["start", "middle", "end", ] = "middle",
     ) -> tuple[int, int, int]:
         year, per = self.to_year_period()
         return (
@@ -545,7 +545,7 @@ class HalfyearlyDater(Dater, RegularDaterMixin, ):
     def get_month(
         self,
         /,
-        position: Literal["start"] | Literal["middle"] | Literal["end"] = "middle",
+        position: Literal["start", "middle", "end", ] = "middle",
     ) -> int:
         _, per = self.to_year_period()
         return month_resolution[position][per]
@@ -675,7 +675,7 @@ class Ranger(_copies.CopyMixin, ):
         return type(self._start_date) if not self.needs_resolve else None
 
     @property
-    def direction(self, ) -> Literal["forward"] | Literal["backward"]:
+    def direction(self, ) -> Literal["forward", "backward", ]:
         return "forward" if self._step > 0 else "backward"
 
     @property

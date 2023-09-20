@@ -57,18 +57,20 @@ class Variant:
 
     def retrieve_values(
         self,
-        attr: Literal["levels"] | Literal["changes"],
-        qids: Iterable[int]|None = None,
+        attr: Literal["levels", "changes"],
+        qids: Iterable[int] | None = None,
         /,
     ) -> _np.ndarray:
-        values = _np.copy(getattr(self, attr)).reshape(-1, 1)
+        # values = _np.copy(getattr(self, attr)).reshape(-1, 1)
+        values = _np.copy(getattr(self, attr, ), )
+        qids = list(qids, )
         return values[qids] if qids is not None else values
 
     def retrieve_maybelog_values_for_qids(
         self,
         qids: Iterable[int],
         qid_to_logly: dict[int, bool],
-    ) -> tuple[_np.ndarray, _np.ndarray, ]:
+    ) -> tuple[_np.ndarray, ..., ]:
         """
         """
         qids = list(qids)

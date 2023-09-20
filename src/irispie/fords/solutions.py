@@ -1,5 +1,35 @@
-"""
+r"""
 # First-order solution matrices
+
+
+## Square solution:
+
+$$
+\begin{gathered}
+\xi_t = T \, \xi_{t-1} + R \, v_t + K
+\\
+y_t = Z \, \xi_t + H \, w_t + D
+\end{gathered}
+$$
+
+
+## Equivalent block-triangular solution:
+
+$$
+\begin{gathered}
+\alpha_t = T_\alpha \, \alpha_{t-1} + R_\alpha \, v_t + K_\alpha
+\\
+y_t = Z_\alpha \, \alpha_t + D + H \, w_t
+\\
+\xi_t \equiv = U_alpha \, \alpha_t
+\end{gathered}
+$$
+
+
+## Forward expansion:
+
+$$
+$$
 """
 
 
@@ -31,10 +61,16 @@ class SystemStabilityKind(_en.Flag):
     NO_STABLE = _en.auto()
 
 
+class VariableStability(_en.Flag):
+    STABLE = _en.auto()
+    UNIT_ROOT = _en.auto()
+
+
 @_dc.dataclass(slots=True, )
 class Solution:
     """
     ## Square solution:
+
     T: Transition matrix
     R: Impact matrix of transition shocks
     K: Intercept in transition equation
@@ -42,13 +78,18 @@ class Solution:
     H: Impact matrix of measurement shocks
     D: Intercept in measurement equation
 
-    ## Triangular solution:
+
+    ## Equivalent block-triangular solution:
+
     Ta: Transition matrix in triangular system
     Ra: Impact matrix of transition shocks in triangular system
     Ka: Intercept in transition equation in triangular system
     Za: Measurement matrix in triangular system
+    Ua: Rotation matrix from triangular to square system
+
 
     ## Forward expansion of square solution:
+
     J: Power matrix
     Ru: Forward-looking impact matrix of transition shocks
     X: Impact matrix in square system
@@ -76,6 +117,8 @@ class Solution:
     eigen_values: tuple[Number, ...] | None = None
     eigen_values_stability: tuple[EigenValueKind, ...] | None = None
     system_stability: SystemStabilityKind | None = None
+    transition_vector_stability: VariableStability | None = None
+    measurement_vector_stability: VariableStability | None = None
 
     def __init__(
         self, 
@@ -87,30 +130,115 @@ class Solution:
     ) -> Self:
         """
         """
-        is_alpha_beta_stable_or_unit_root = lambda alpha, beta: abs(beta) < (1 + tolerance)*abs(alpha)
-        is_stable_root = lambda root: abs(root) < (1 - tolerance)
-        is_unit_root = lambda root: abs(root) >= (1 - tolerance) and abs(root) < (1 + tolerance)
+        def is_alpha_beta_stable_or_unit_root(alpha: Number, beta: Number, /, ) -> bool:
+            return abs(beta) < (1 + tolerance)*abs(alpha)
+        def is_stable_root(root: Number, /, ) -> bool:
+            return abs(root) < (1 - tolerance)
+        def is_unit_root(root: Number, /, ) -> bool:
+            return abs(root) >= (1 - tolerance) and abs(root) < (1 + tolerance)
         #
         # Detach unstable from (stable + unit) roots and solve out expectations
         # The system is triangular but because stable and unit roots are
         # not detached yet, the system is called "preliminary"
-        qz, eigen_values, eigen_values_stability = _solve_ordqz(system, is_alpha_beta_stable_or_unit_root, is_stable_root, is_unit_root, )
-        system_stability = _classify_system_stability(descriptor, eigen_values_stability, )
-        triangular_solution_prelim = _solve_transition_equations(descriptor, system, qz, )
+        qz, self.eigen_values = \
+            _solve_ordqz(system, is_alpha_beta_stable_or_unit_root, is_stable_root, is_unit_root, )
+        triangular_solution_prelim = \
+            _solve_transition_equations(descriptor, system, qz, )
         #
         # Detach unit from stable roots to create the final triangular solution
         # From the final triangular solution, calculate the square solution
-        triangular_solution = detach_stable_from_unit_roots(triangular_solution_prelim, is_unit_root, )
-        square_solution = _square_from_triangular(triangular_solution, )
+        triangular_solution = \
+            detach_stable_from_unit_roots(triangular_solution_prelim, is_unit_root, )
+        square_solution = \
+            _square_from_triangular(triangular_solution, )
         self.Ua, self.Ta, self.Ra, self.Ka, self.Xa, self.J, self.Ru = triangular_solution
         self.T, self.R, self.K, self.X = square_solution
         #
         # Solve measurement equations
         self.Z, self.H, self.D, self.Za = _solve_measurement_equations(descriptor, system, self.Ua, )
-        self.eigen_values, self.eigen_values_stability = eigen_values, eigen_values_stability
-        self.system_stability = system_stability
-        #
-        return self
+        self._classify_eigen_values_stability(is_stable_root, is_unit_root, )
+        self._classify_system_stability(descriptor.get_num_forwards(), )
+        self._classify_transition_vector_stability(tolerance=tolerance, )
+        self._classify_measurement_vector_stability(tolerance=tolerance, )
+
+    @property
+    def num_alpha(self, /, ) -> int:
+        """
+        Number of alpha vector elements
+        """
+        return self.T.shape[0]
+
+    @property
+    def num_y(self, /, ) -> int:
+        """
+        Number of y vector elements
+        """
+        return self.Z.shape[0]
+
+    @property
+    def num_v(self, /, ) -> int:
+        """
+        Number of v vector elements
+        """
+        return self.R.shape[1]
+
+    @property
+    def num_w(self, /, ) -> int:
+        """
+        Number of w vector elements
+        """
+        return self.H.shape[1]
+
+    @property
+    def num_unit_roots(self, /, ) -> int:
+        """
+        Number of unit roots
+        """
+        return self.eigen_values_stability.count(EigenValueKind.UNIT)
+
+    @property
+    def Ta_stable(self, /, ) -> _np.ndarray:
+        """
+        Stable part of transition matrix
+        """
+        num_unit_roots = self.num_unit_roots
+        return self.Ta[num_unit_roots:, num_unit_roots:]
+
+    @property
+    def Ra_stable(self, /, ) -> _np.ndarray:
+        """
+        Stable part of impact matrix of transition shocks
+        """
+        num_unit_roots = self.num_unit_roots
+        return self.Ra[num_unit_roots:, :]
+
+    @property
+    def Za_stable(self, /, ) -> _np.ndarray:
+        """
+        Stable part of measurement matrix
+        """
+        num_unit_roots = self.num_unit_roots
+        return self.Za[:, num_unit_roots:]
+
+    @property
+    def boolex_stable_transition_vector(self, /, ) -> tuple[int, ...]:
+        """
+        Index of stable transition vector elements
+        """
+        return _np.array(tuple(
+            i == VariableStability.STABLE
+            for i in self.transition_vector_stability
+        ), dtype=bool, )
+
+    @property
+    def boolex_stable_measurement_vector(self, /, ) -> tuple[int, ...]:
+        """
+        Index of stable measurement vector elements
+        """
+        return _np.array(tuple(
+            i == VariableStability.STABLE
+            for i in self.measurement_vector_stability
+        ), dtype=bool, )
 
     def expand_square_solution(self, forward, /, ) -> list[_np.ndarray]:
         """
@@ -129,6 +257,54 @@ class Solution:
             -X @ _np.linalg.matrix_power(J, k_minus_1) @ Ru 
             for k_minus_1 in range(0, forward)
         ]
+
+    def _classify_eigen_values_stability(
+        self,
+        is_stable_root: Callable[[Number], bool],
+        is_unit_root: Callable[[Number], bool],
+        /,
+    ) -> None:
+        self.eigen_values_stability = tuple(
+            _classify_eigen_value_stability(v, is_stable_root, is_unit_root, )
+            for v in self.eigen_values
+        )
+
+    def _classify_system_stability(
+        self,
+        num_forwards: int,
+        /,
+    ) -> None:
+        num_unstable = self.eigen_values_stability.count(EigenValueKind.UNSTABLE)
+        if num_unstable == num_forwards:
+            self.system_stability = SystemStabilityKind.STABLE
+        elif num_unstable > num_forwards:
+            self.system_stability = SystemStabilityKind.NO_STABLE
+        else:
+            self.system_stability = SystemStabilityKind.MULTIPLE_STABLE
+
+    def _classify_transition_vector_stability(
+        self,
+        /,
+        tolerance: float = 1e-12,
+    ) -> None:
+        self.transition_vector_stability \
+            = _classify_solution_vector_stability(
+                self.Ua,
+                self.num_unit_roots,
+                tolerance=tolerance,
+            )
+
+    def _classify_measurement_vector_stability(
+        self,
+        /,
+        tolerance: float = 1e-12,
+    ) -> None:
+        self.measurement_vector_stability \
+            = _classify_solution_vector_stability(
+                self.Za,
+                self.num_unit_roots,
+                tolerance=tolerance,
+            )
     #]
 
 
@@ -141,7 +317,7 @@ def _left_div(A, B):
 
 def _right_div(B, A):
     """
-    Solve B/A = (A'\B')'
+    Solve B / A = (A' \ B')'
     """
     return _np.linalg.lstsq(A.T, B.T, rcond=None)[0].T
 
@@ -151,7 +327,7 @@ def _square_from_triangular(
     /,
 ) -> tuple[_np.ndarray, ...]:
     """
-    T <- Ua @ Ta/U; note that Ta/U == (U'\Ta')'
+    T <- Ua @ Ta / U; note that Ta / U == (U' \ Ta')'
     R <- Ua @ Ra;
     X <- Xa @ Ra;
     K <- Ua @ Ka;
@@ -173,6 +349,7 @@ def detach_stable_from_unit_roots(
     /,
 ) -> tuple[_np.ndarray, ...]:
     """
+    Apply a secondary Schur decomposition to detach stable eigenvalues from unit roots
     """
     #[
     Ug, Tg, Rg, Kg, Xg, J, Ru = transition_solution_prelim
@@ -200,7 +377,12 @@ def _solve_measurement_equations(descriptor, system, Ua, ) -> tuple[_np.ndarray,
     #]
 
 
-def _solve_transition_equations(descriptor, system, qz, ) -> tuple[_np.ndarray, ...]:
+def _solve_transition_equations(
+    descriptor,
+    system,
+    qz,
+    /,
+) -> tuple[_np.ndarray, ...]:
     """
     """
     #[
@@ -262,7 +444,7 @@ def _solve_ordqz(
     is_stable_root,
     is_unit_root,
     /,
-) -> tuple[tuple[_np.ndarray, ...], tuple[Number, ], tuple[EigenValueKind, ...]]:
+) -> tuple[tuple[_np.ndarray, ...], tuple[Number, ], ]:
     """
     """
     #[
@@ -274,39 +456,42 @@ def _solve_ordqz(
     eigen_values[inx_nonzero_alpha] = -beta[inx_nonzero_alpha] / alpha[inx_nonzero_alpha]
     eigen_values = tuple(eigen_values)
     #
-    eigen_values_stability = tuple(
-        _classify_eig_value_stability(v, is_stable_root, is_unit_root, )
-        for v in eigen_values
-    )
     #
-    return (S, T, Q, Z), eigen_values, eigen_values_stability
+    return (S, T, Q, Z), eigen_values
     #]
 
 
-def _classify_eig_value_stability(eig_value, is_stable_root, is_unit_root, ) -> EigenValueKind:
+def _classify_eigen_value_stability(
+    eigen_value,
+    is_stable_root,
+    is_unit_root,
+) -> EigenValueKind:
     #[
-    abs_eig_value = _np.abs(eig_value)
-    match (is_stable_root(abs_eig_value), is_unit_root(abs_eig_value), ):
-        case (True, _, ):
-            return EigenValueKind.STABLE
-        case (_, True, ):
-            return EigenValueKind.UNIT
-        case _:
-            return EigenValueKind.UNSTABLE
-    #]
-
-
-def _classify_system_stability(descriptor, eigen_values_stability, ):
-    #[
-    num_unstable = sum(1 for s in eigen_values_stability if s==EigenValueKind.UNSTABLE)
-    num_forwards = descriptor.get_num_forwards()
-    if num_unstable == num_forwards:
-        stability = SystemStabilityKind.STABLE
-    elif num_unstable > num_forwards:
-        stability = SystemStabilityKind.NO_STABLE
+    abs_eigen_value = _np.abs(eigen_value)
+    if is_stable_root(abs_eigen_value):
+        return EigenValueKind.STABLE
+    elif is_unit_root(abs_eigen_value):
+        return EigenValueKind.UNIT
     else:
-        stability = SystemStabilityKind.MULTIPLE_STABLE
-    return stability
+        return EigenValueKind.UNSTABLE
     #]
 
+
+def _classify_solution_vector_stability(
+    transform_matrix: _np.ndarray,
+    num_unit_roots: int,
+    /,
+    tolerance: float = 1e-12,
+) -> None:
+    """
+    """
+    #[
+    test_matrix = _np.abs(transform_matrix[:, :num_unit_roots], )
+    index = _np.any(test_matrix > tolerance, axis=1, )
+    return tuple(
+        VariableStability.UNIT_ROOT if i
+        else VariableStability.STABLE
+        for i in index
+    )
+    #]
 

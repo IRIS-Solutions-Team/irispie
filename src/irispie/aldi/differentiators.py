@@ -15,8 +15,9 @@ import copy as _cp
 from ..exceptions import ListException
 
 from ..aldi import finite_differentiators as af_
-from ..aldi import adaptations as aa_
-from ..incidences import main as _incidence
+from ..aldi import adaptations as _adaptations
+from ..incidences import main as _incidences
+from ..equators import plain as _equators
 from .. import equations as _equations
 #]
 
@@ -280,10 +281,10 @@ class Context:
         self._populate_equations(equations, )
         #
         all_tokens = set(_equations.generate_all_tokens_from_equations(self._equations, ), )
-        self.min_shift = _incidence.get_min_shift(all_tokens, )
-        self.max_shift = _incidence.get_max_shift(all_tokens, )
+        self.min_shift = _incidences.get_min_shift(all_tokens, )
+        self.max_shift = _incidences.get_max_shift(all_tokens, )
         self.shape_data = (
-            1 + (_incidence.get_max_qid(all_tokens) or 0),
+            1 + (_incidences.get_max_qid(all_tokens) or 0),
             -self.min_shift + num_columns_to_eval + self.max_shift,
         )
         #
@@ -293,10 +294,13 @@ class Context:
             k: af_.finite_differentiator(v) 
             for k, v in custom_functions.items()
         } if custom_functions else None
-        custom_functions = aa_.add_function_adaptations_to_custom_functions(custom_functions)
+        custom_functions = _adaptations.add_function_adaptations_to_custom_functions(custom_functions)
         custom_functions["Atom"] = Atom
         #
-        self._equator = _ep.PlainEquator(self._equations, custom_functions, )
+        self._equator = _equators.PlainEquator(
+            self._equations,
+            custom_functions=custom_functions,
+        )
 
     @property
     def _t_zero(self, /, ) -> int:
@@ -327,7 +331,7 @@ class Context:
         """
         """
         self._equations = tuple(
-            _adapt_equation_for_aldi(e, _self._get_diff_shape_for_eid(e.id), )
+            _adapt_equation_for_aldi(e, self._get_diff_shape_for_eid(e.id), )
             for e in equations
         )
 
@@ -344,6 +348,7 @@ class Context:
         columns_to_eval = self._get_columns_to_eval()
         self._x = {}
         for eqn in self._equations:
+            self._x[eqn.id] = {}
             for tok in eqn.incidence:
                 atom = Atom.in_context(
                     diff=atom_factory.create_diff_for_token(tok, self._eid_to_wrts[eqn.id], ),
@@ -362,7 +367,7 @@ class Context:
         """
         self._verify_data_array_shape(data_array.shape, )
         Atom._data_context = data_array
-        output = self._equator.eval(self._x, None, steady_array, )
+        output = self._equator.eval(self._x, 0, steady_array, )
         Atom._data_context = None
         return output
 
@@ -408,7 +413,7 @@ def _adapt_equation_for_aldi(
     """
     #[
     aldi_equation = _cp.deepcopy(equation)
-    aldi_equation.xtring = aldi_equation.xtring.replace("x[", f"x[{eid}][")
+    aldi_equation.xtring = aldi_equation.xtring.replace("x[", f"x[{aldi_equation.id}][")
     aldi_equation.xtring += f" + Atom.zero({diff_shape}, )"
     return aldi_equation
     #]
@@ -435,7 +440,7 @@ class AtomFactoryProtocol(Protocol, ):
     #[
     def create_diff_for_token(
         self,
-        token: _incidence.Token,
+        token: _incidences.Token,
         wrts: tuple[Any, ...],
     ) -> _np.ndarray:
         """
@@ -445,7 +450,7 @@ class AtomFactoryProtocol(Protocol, ):
 
     def create_data_index_for_token(
         self,
-        token: _incidence.Token,
+        token: _incidences.Token,
         columns_to_eval: tuple[int, int],
     ) -> tuple[int, slice]:
         """

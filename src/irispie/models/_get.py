@@ -31,8 +31,8 @@ _TIME_SERIES_QUANTITY = _quantities.QuantityKind.VARIABLE | _quantities.Quantity
 
 _DATABANK_OUTPUT_FORMAT_RESOLUTION = {
     "dict": lambda x: x,
-    "Databank": lambda x: _databanks.Databank._from_dict(x),
-    "databank": lambda x: _databanks.Databank._from_dict(x),
+    "Databank": lambda x: _databanks.Databank.from_dict(x),
+    "databank": lambda x: _databanks.Databank.from_dict(x),
     "json": lambda x: js_.dumps(x),
     "json4": lambda x: js_.dumps(x, indent=4),
 }
@@ -55,30 +55,14 @@ class GetMixin:
     Frontend getter methods for Model objects
     """
     #[
-    def _get_values_from_primary_variant(
-        self,
-        /,
-        variant_attr: Literal["levels"] | Literal["changes"],
-        kind: _quantities.QuantityKind,
-        **kwargs,
-    ) -> dict[str, Number]:
-        """
-        """
-        qid_to_name = self.create_qid_to_name()
-        qids = list(_quantities.generate_qids_by_kind(self._invariant._quantities, kind))
-        x = self._variants[0].retrieve_values(variant_attr, qids)
-        return {
-            qid_to_name[q]: float(x[i, 0])
-            for i, q in enumerate(qids)
-        }
-
     @_decorate_output_format
     def get_steady_levels(
         self,
         /,
         **kwargs,
     ) -> dict[str, Number]:
-        return self._get_values_from_primary_variant(variant_attr="levels", kind=_sources.LOGLY_VARIABLE, **kwargs, )
+        qids = _quantities.generate_qids_by_kind(self._invariant._quantities, _sources.LOGLY_VARIABLE, )
+        return self._get_values("levels", qids, **kwargs, )
 
     @_decorate_output_format
     def get_steady_changes(
@@ -86,7 +70,8 @@ class GetMixin:
         /,
         **kwargs,
     ) -> dict[str, Number]:
-        return self._get_values_from_primary_variant(variant_attr="changes", kind=_sources.LOGLY_VARIABLE, **kwargs, )
+        qids = _quantities.generate_qids_by_kind(self._invariant._quantities, _sources.LOGLY_VARIABLE, )
+        return self._get_values("changes", qids, **kwargs, )
 
     @_decorate_output_format
     def get_steady(
@@ -94,9 +79,21 @@ class GetMixin:
         /,
         **kwargs,
     ) -> dict[str, Number]:
-        levels = self._get_values_from_primary_variant(variant_attr="levels", kind=_sources.LOGLY_VARIABLE, **kwargs, )
-        changes = self._get_values_from_primary_variant(variant_attr="changes", kind=_sources.LOGLY_VARIABLE, **kwargs, )
-        return { k: (levels[k], changes[k]) for k in levels.keys() }
+        """
+        """
+        qids = tuple(_quantities.generate_qids_by_kind(self._invariant._quantities, _sources.LOGLY_VARIABLE, ))
+        levels = self._get_values("levels", qids, **kwargs, )
+        changes = self._get_values("changes", qids, **kwargs, )
+        if self.is_singleton:
+            out = {
+                k: (levels[k], changes[k], )
+                for k in levels.keys()
+            }
+        else:
+            out = { k: None for k in levels.keys() }
+            for k in levels.keys():
+                out[k] = list(zip(levels[k], changes[k]))
+        return out
 
     @_decorate_output_format
     def get_parameters(
@@ -104,7 +101,8 @@ class GetMixin:
         /,
         **kwargs,
     ) -> dict[str, Number]:
-        return self._get_values_from_primary_variant(variant_attr="levels", kind=_quantities.QuantityKind.PARAMETER)
+        qids = _quantities.generate_qids_by_kind(self._invariant._quantities, _quantities.QuantityKind.PARAMETER, )
+        return self._get_values("levels", qids, **kwargs, )
 
     @_decorate_output_format
     def get_stds(
@@ -112,7 +110,8 @@ class GetMixin:
         /,
         **kwargs,
     ) -> dict[str, Number]:
-        return self._get_values_from_primary_variant(variant_attr="levels", kind=_quantities.QuantityKind.STD)
+        qids = _quantities.generate_qids_by_kind(self._invariant._quantities, _quantities.QuantityKind.STD, )
+        return self._get_values("levels", qids, **kwargs, )
 
     @_decorate_output_format
     def get_parameters_stds(
@@ -120,13 +119,13 @@ class GetMixin:
         /,
         **kwargs,
     ) -> dict[str, Number]:
-        return self._get_values_from_primary_variant(variant_attr="levels", kind=_quantities.QuantityKind.PARAMETER_OR_STD)
+        qids = _quantities.generate_qids_by_kind(self._invariant._quantities, _quantities.QuantityKind.PARAMETER_OR_STD, )
+        return self._get_values("levels", qids, **kwargs, )
 
     @_decorate_output_format
     def get_log_status(
         self,
         /,
-        **kwargs,
     ) -> dict[str, bool]:
         return {
             qty.human: qty.logly
@@ -137,7 +136,6 @@ class GetMixin:
     def get_initials(
         self,
         /,
-        kind: Literal["required"] | Literal["discarded"] = "required",
     ) -> _incidence.Tokens:
         """
         Get required list of initial conditions
@@ -146,7 +144,7 @@ class GetMixin:
         # model, and lag them by one period to get initial conditions
         initial_tokens = [
             _incidence.Token(t.qid, t.shift-1)
-            for t in self._invariant._dynamic_descriptor.solution_vectors.get_initials(kind, )
+            for t in self._invariant.dynamic_descriptor.solution_vectors.get_initials()
         ]
         return _incidence.print_tokens(initial_tokens, self.create_qid_to_name(), )
 
@@ -173,23 +171,23 @@ class GetMixin:
             qid: (name if qid_to_kind[qid] in _TIME_SERIES_QUANTITY else "")
             for qid, name in self.create_qid_to_name().items()
         }
-        qid_to_descriptor = self.create_qid_to_descriptor()
+        qid_to_description = self.create_qid_to_description()
         #
-        return _databanks.Databank._from_array(
+        return _databanks.Databank.from_array(
             array, qid_to_name, start_date, 
             array_orientation="horizontal",
             interpret_dates="start_date",
-            qid_to_descriptor=qid_to_descriptor,
+            qid_to_description=qid_to_description,
         )
 
     def get_solution_vectors(self, /, ) -> _descriptors.SolutionVectors:
         """
         Get the solution vectors of the model
         """
-        return self._invariant._dynamic_descriptor.solution_vectors
+        return self._invariant.dynamic_descriptor.solution_vectors
 
     def get_all_solution_matrices(self, /, ):
-        return [ v.solution for v in self._variants ]
+        return tuple(v.solution for v in self._variants)
 
     def get_solution_matrices(self, /, ):
         return self._variants[0].solution
@@ -236,5 +234,36 @@ class GetMixin:
         /,
     ) -> dict[str, Callable]:
         return self._invariant._function_context
+
+    def _get_values(
+        self,
+        variant_attr: Literal["levels", "changes"],
+        qids: Iterable[int],
+        /,
+        **kwargs,
+    ) -> dict[str, Any]:
+        """
+        """
+        custom_round = kwargs.pop("round", None, )
+        def apply(value: Number) -> Number:
+            value = float(value)
+            return round(value, custom_round) if custom_round is not None else value
+        #
+        if self.is_singleton:
+            def insert_value(out_dict, name, value):
+                out_dict[name] = apply(value)
+        else:
+            def insert_value(out_dict, name, value):
+                out_dict.setdefault(name, []).append(apply(value))
+        #
+        qids = tuple(qids)
+        qid_to_name = self.create_qid_to_name()
+        out_dict = {}
+        #
+        for v in self._variants:
+            values = v.retrieve_values(variant_attr, qids)
+            for qid, value in zip(qids, values):
+                insert_value(out_dict, qid_to_name[qid], value)
+        return out_dict
     #]
 

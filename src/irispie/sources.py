@@ -75,7 +75,8 @@ class AlgebraicSource:
     #[
     __slots__ = (
         "quantities", "dynamic_equations", "steady_equations",
-        "log_variables", "all_but", "context", "sealed",
+        "log_variables", "all_but", "context", "shock_qid_to_std_qid",
+        "sealed",
     )
     def __init__(self, /) -> None:
         self.quantities = []
@@ -85,14 +86,19 @@ class AlgebraicSource:
         self.all_but = []
         self.context = None
         self.sealed = False
+        self.shock_qid_to_std_qid = None
 
     def seal(self, /) -> None:
         _check_unique_names(qty.human for qty in self.quantities)
-        self._add_stds()
         self.quantities = _reorder_by_kind(self.quantities)
         self.dynamic_equations = _reorder_by_kind(self.dynamic_equations)
         self.steady_equations = _reorder_by_kind(self.steady_equations)
         self.quantities = _stamp_id(self.quantities)
+        #
+        self.shock_qid_to_std_qid = {}
+        self._add_stds(_quantities.QuantityKind.TRANSITION_SHOCK, _quantities.QuantityKind.TRANSITION_STD, )
+        self._add_stds(_quantities.QuantityKind.MEASUREMENT_SHOCK, _quantities.QuantityKind.MEASUREMENT_STD, )
+        #
         self.dynamic_equations = _stamp_id(self.dynamic_equations)
         self.steady_equations = _stamp_id(self.steady_equations)
         self._populate_logly()
@@ -162,24 +168,6 @@ class AlgebraicSource:
             for i, ein in enumerate(equation_inputs, start=offset)
         ]
 
-    def _add_stds(self) -> None:
-        """
-        """
-        def _create_std_input_from_shock(shock):
-            description = _STD_DESCRIPTION + (shock.description if shock.description else shock.human)
-            human = STD_PREFIX + shock.human
-            return(description, human)
-        #
-        transition_shocks = (q for q in self.quantities if q.kind in _quantities.QuantityKind.TRANSITION_SHOCK)
-        if transition_shocks:
-            transition_std_inputs = (_create_std_input_from_shock(i) for i in transition_shocks)
-            self._add_quantities(transition_std_inputs, _quantities.QuantityKind.TRANSITION_STD)
-        #
-        measurement_shocks = (q for q in self.quantities if q.kind in _quantities.QuantityKind.MEASUREMENT_SHOCK)
-        if measurement_shocks:
-            measurement_std_inputs = (_create_std_input_from_shock(i) for i in measurement_shocks)
-            self._add_quantities(measurement_std_inputs, _quantities.QuantityKind.MEASUREMENT_STD)
-
     def _populate_logly(self, /) -> None:
         default_logly = self._resolve_default_logly()
         qid_to_logly = { 
@@ -199,6 +187,23 @@ class AlgebraicSource:
         if not self._is_logly_consistent():
             raise Exception("Inconsistent use of !all-but in !log-variables")
         return self.all_but.pop()=="all-but" if self.all_but else False
+
+    def _add_stds(
+        self,
+        shock_kind: _quantities.QuantityKind,
+        std_kind: _quantities.QuantityKind,
+        /,
+    ) -> None:
+        """
+        """
+        shocks = (q for q in self.quantities if q.kind in shock_kind)
+        for std_qid, shock in enumerate(shocks, start=len(self.quantities)):
+            std_human = _create_std_name(shock, )
+            std_logly = False
+            std_description = _create_std_description(shock, )
+            std_quantity = _quantities.Quantity(std_qid, std_human, std_kind, std_logly, std_description, )
+            self.quantities.append(std_quantity, )
+            self.shock_qid_to_std_qid[shock.id] = std_qid
 
     @classmethod
     def from_lists(
@@ -283,10 +288,22 @@ def _handle_white_spaces(x: str, /) -> str:
 
 
 def _reorder_by_kind(items: Iterable, /) -> Iterable:
-    return sorted(items, key=lambda x: (x.kind.value, x.entry))
+    return list(sorted(items, key=lambda x: (x.kind.value, x.entry)))
 
 
 def _stamp_id(items: Iterable, /) -> Iterable:
     return [ i.set_id(_id) for _id, i in enumerate(items) ]
 
+
+def _create_std_name(
+    shock: _quantities.Quantity,
+    /,
+) -> str:
+    return STD_PREFIX + shock.human
+
+def _create_std_description(
+    shock: _quantities.Quantity,
+    /,
+) -> str:
+    return _STD_DESCRIPTION + (shock.description if shock.description else shock.human)
 

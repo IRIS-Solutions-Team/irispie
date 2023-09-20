@@ -49,7 +49,7 @@ def _databank_repr(x, /, ) -> str:
     elif isinstance(x, str):
         s = f'"{x}"'
     elif isinstance(x, _np.ndarray) or isinstance(x, list) or isinstance(x, tuple):
-        s = _re.sub("\n + ", " ", repr(x))
+        s = _re.sub(r"\n+ +", " ", repr(x))
     elif hasattr(x, "_get_first_line_view"):
         s = x._get_first_line_view()
     else:

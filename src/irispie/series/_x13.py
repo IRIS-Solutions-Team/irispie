@@ -30,7 +30,7 @@ class Mixin:
         when_error: _wrongdoings.HOW = "warning",
         clean_up: bool = True,
         output: str = "sa",
-        mode: Literal["mult"] | Literal["add"] | Literal["pseudoadd"] | Literal["logadd"] = "mult",
+        mode: Literal["mult", "add", "pseudoadd", "logadd", ] = "mult",
         **kwargs,
     ) -> tuple[Self, dict]:
         """
@@ -190,7 +190,7 @@ def _remove_leading_trailing_nans(
 def _create_settings(
     base_start_date: _dates.Date,
     output: str,
-    mode: Literal["mult"] | Literal["add"] | Literal["pseudoadd"] | Literal["logadd"],
+    mode: Literal["mult", "add", "pseudoadd", "logadd", ],
     /,
     transform_function: str = "none",
 ) ->  dict[str, str]:

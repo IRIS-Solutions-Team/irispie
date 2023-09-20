@@ -104,6 +104,12 @@ class Dataslab:
         """
         return len(self.column_dates)
 
+    @property
+    def num_rows(self, /, ) -> int:
+        """
+        """
+        return self.data.shape[0] if self.data is not None else 0
+
     def remove_terminal(self, /, ) -> None:
         """
         """

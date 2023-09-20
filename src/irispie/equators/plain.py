@@ -49,9 +49,9 @@ class PlainEquator:
         """
         """
         custom_functions = _aa.add_function_adaptations_to_custom_functions(custom_functions, )
-        joined_xtrings = " , ".join(i.xtring for i in self_equations)
-        func_string = _eq.EVALUATOR_PREAMBLE + "(" + joined_xtrings + " , )"
-        self._func = eval(func_string, custom_functions, )
+        joined_xtrings = "  ,  ".join(i.xtring for i in self._equations)
+        self._func_str = _eq.EVALUATOR_PREAMBLE + "(" + joined_xtrings + " , )"
+        self._func = eval(self._func_str, custom_functions, )
 
     def _populate_min_max_shifts(self, /, ) -> None:
         """

@@ -176,12 +176,12 @@ def lookup_qids_by_name(
     quantities: Iterable[Quantity],
     custom_names: Iterable[str],
     /,
-) -> tuple[tuple[int], tuple[str]]:
+) -> tuple[tuple[int, ...], tuple[str, ...]]:
     """
     Lookup quantities by name, and return a list of quantities and a list
     of invalid names
     """
-    custom_names = list(custom_names)
+    custom_names = tuple(custom_names)
     name_to_qid  = create_name_to_qid(quantities)
     custom_qids = tuple(
         name_to_qid[n]

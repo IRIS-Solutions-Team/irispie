@@ -12,7 +12,8 @@ import warnings as _wa
 #]
 
 
-HOW: TypeAlias = Literal["error"] | Literal["warning"] | Literal["silent"]
+HOW: TypeAlias = Literal["error", "warning", "silent"]
+
 
 _PLAIN_PREFIX = ""
 _LIST_PREFIX = "××× "

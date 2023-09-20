@@ -32,6 +32,9 @@ from .explanatories import __all__ as explanatories_all
 from .plans.main import *
 from .plans.main import __all__ as plans_all
 
+from .namings import *
+from .namings import __all__ as namings_all
+
 
 __all__ = (
     *dates_all,
@@ -43,5 +46,6 @@ __all__ = (
     *sequentials_all,
     *explanatories_all,
     *plans_all,
+    *namings_all,
 )
 

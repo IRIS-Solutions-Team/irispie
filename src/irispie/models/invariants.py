@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from typing import (Self, Callable, )
+import copy as _copy
 
 from .. import equations as _equations
 from .. import quantities as _quantities
@@ -32,10 +33,13 @@ class Invariant:
         "_flags",
         "_function_context",
         "_quantities",
+        "shock_qid_to_std_qid",
         "_dynamic_equations",
         "_steady_equations",
-        "_dynamic_descriptor",
-        "_steady_descriptor",
+        "dynamic_descriptor",
+        "steady_descriptor",
+        "_plain_equator_for_dynamic_equations",
+        "_plain_equator_for_steady_equations",
         "_min_shift",
         "_max_shift",
     )
@@ -53,9 +57,10 @@ class Invariant:
         #
         self._populate_function_context(context)
         #
-        self._quantities = _cp.deepcopy(model_source.quantities, )
-        self._dynamic_equations = _cp_deepcopy(model_source.dynamic_equations, )
-        self._steady_equations = _cp.deepcopy(model_source.steady_equations, )
+        self._quantities = _copy.deepcopy(model_source.quantities, )
+        self.shock_qid_to_std_qid = _copy.deepcopy(model_source.shock_qid_to_std_qid, )
+        self._dynamic_equations = _copy.deepcopy(model_source.dynamic_equations, )
+        self._steady_equations = _copy.deepcopy(model_source.steady_equations, )
         #
         name_to_qid = _quantities.create_name_to_qid(self._quantities, )
         _equations.finalize_dynamic_equations(self._dynamic_equations, name_to_qid, )
@@ -65,8 +70,8 @@ class Invariant:
             _check_syntax(self._dynamic_equations, self._function_context, )
             _check_syntax(self._steady_equations, self._function_context, )
         #
-        self._dynamic_descriptor = _descriptors.Descriptor(self._dynamic_equations, self._quantities, self._function_context, )
-        self._steady_descriptor = _descriptors.Descriptor(self._steady_equations, self._quantities, self._function_context, )
+        self.dynamic_descriptor = _descriptors.Descriptor(self._dynamic_equations, self._quantities, self._function_context, )
+        self.steady_descriptor = _descriptors.Descriptor(self._steady_equations, self._quantities, self._function_context, )
         #
         self._plain_equator_for_dynamic_equations = _equators.PlainEquator(
             _equations.generate_equations_of_kind( self._dynamic_equations, _PLAIN_EQUATOR_EQUATION, ),

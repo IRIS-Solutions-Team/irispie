@@ -31,15 +31,22 @@ class SimulateMixin:
     ) -> _databanks.Databank:
         """
         """
+
         dataslabs = tuple(
             _dataslabs.Dataslab.from_databank_for_simulation(self, in_databank, base_range, column=i, )
             for i in range(self.num_variants)
         )
 
+        qid_to_logly = self.create_qid_to_logly()
+        boolex_logly = tuple(
+            qid_to_logly[qid] or False
+            for qid in range(dataslabs[0].num_rows)
+        )
+
         for variant, dataslab in zip(self._variants, dataslabs):
             new_data = dataslab.copy_data()
             new_data = _simulators.simulate_flat(
-                variant.solution, self.get_solution_vectors(),
+                variant.solution, self.get_solution_vectors(), boolex_logly,
                 new_data, dataslab.base_columns, deviation, anticipate,
             )
             dataslab.data = new_data

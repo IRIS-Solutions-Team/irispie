@@ -5,7 +5,7 @@
 #[
 from __future__ import annotations
 
-from typing import (Self, TypeAlias, Literal, )
+from typing import (Self, Any, TypeAlias, Literal, )
 from collections.abc import (Iterable, Callable, )
 from numbers import (Number, )
 import copy as _co
@@ -15,45 +15,36 @@ import functools as _ft
 
 from .. import equations as _equations
 from .. import quantities as _quantities
-from .. import wrongdoings as _wd
 from .. import sources as _sources
 from .. import dates as _dates
 from ..parsers import common as _pc
 from ..databanks import main as _databanks
-from ..fords import solutions as _sl
+from ..fords import solutions as _solutions
 from ..fords import steadiers as _fs
-from ..fords import descriptors as _de
-from ..fords import systems as _sy
+from ..fords import descriptors as _descriptors
+from ..fords import systems as _systems
+from .. import wrongdoings as _wrongdoings
 
 from . import variants as _variants
 from . import invariants as _invariants
-from . import _flags
-from . import _simulate
-from . import _steady
-from . import _get
+from . import _covariances as _covariances
+from . import _flags as _flags
+from . import _simulate as _simulate
+from . import _steady as _steady
+from . import _get as _get
 #]
 
 
-#[
 __all__ = [
     "Model"
 ]
-
-
-_SteadySolverReturn: TypeAlias = tuple[
-    _np.ndarray|None, Iterable[int]|None,
-    _np.ndarray|None, Iterable[int]|None,
-]
-
-
-_EquationSwitch: TypeAlias = Literal["dynamic"] | Literal["steady"]
-#]
 
 
 class Model(
     _sources.SourceMixin,
     _simulate.SimulateMixin,
     _steady.SteadyMixin,
+    _covariances.CoverianceMixin,
     _get.GetMixin,
 ):
     """
@@ -77,25 +68,17 @@ class Model(
         self,
         /,
         **kwargs,
-    ) -> Self:
+    ) -> None:
         """
         """
-        garbage_key = None
-        qid_to_value = _rekey_dict(kwargs, _quantities.create_name_to_qid(self._invariant._quantities))
-        for v in self._variants:
-            v.update_values_from_dict(qid_to_value)
+        name_to_qid = self.create_name_to_qid()
+        qid_to_name = self.create_qid_to_name()
         #
-        self._enforce_auto_values()
-        return self
-
-    def assign_from_databank(
-        self,
-        databank: _databanks.Databank,
-        /,
-    ) -> Self:
-        """
-        """
-        return self.assign(**databank.__dict__)
+        qid_to_value = _rekey_dict(kwargs, name_to_qid, )
+        for vid, variant in enumerate(self._variants, ):
+            qid_to_value_variant = _extract_dict_variant(qid_to_value, vid, qid_to_name, )
+            variant.update_values_from_dict(qid_to_value_variant, )
+            self._enforce_auto_values(variant, )
 
     def copy(self) -> Self:
         """
@@ -122,6 +105,13 @@ class Model(
         elif new_num > self.num_variants:
             self._expand_num_variants(new_num, )
         return self
+
+    @property
+    def is_singleton(self, /, ) -> bool:
+        """
+        True for Models with only one variant
+        """
+        return self.num_variants == 1
 
     def change_logly(
         self,
@@ -170,11 +160,11 @@ class Model(
     def create_qid_to_kind(self, /, ) -> dict[int, str]:
         return _quantities.create_qid_to_kind(self._invariant._quantities)
 
-    def create_qid_to_descriptor(self, /, ) -> dict[int, str]:
+    def create_qid_to_description(self, /, ) -> dict[int, str]:
         """
         Create a dictionary mapping from quantity id to quantity descriptor
         """
-        return _quantities.create_qid_to_descriptor(self._invariant._quantities)
+        return _quantities.create_qid_to_description(self._invariant._quantities)
 
     def create_qid_to_logly(self, /, ) -> dict[int, bool]:
         """
@@ -216,7 +206,7 @@ class Model(
             True: self.create_zero_array, False: self.create_steady_array,
         }[deviation](**kwargs)
 
-    def _enforce_auto_values(self, /, ) -> None:
+    def _enforce_auto_values(self, variant, /, ) -> None:
         """
         """
         #
@@ -226,15 +216,15 @@ class Model(
             qid: (0, _np.nan)
             for qid in _quantities.generate_qids_by_kind(self._invariant._quantities, _quantities.QuantityKind.SHOCK)
         }
-        self._variants[0].update_values_from_dict(assign_shocks)
+        variant.update_values_from_dict(assign_shocks)
         #
         # Remove changes from quantities that are not logly variables
         #
         assign_non_logly = {
             qid: (..., _np.nan)
-            for qid in  _quantities.generate_qids_by_kind(self._invariant._quantities, ~sources.LOGLY_VARIABLE)
+            for qid in _quantities.generate_qids_by_kind(self._invariant._quantities, ~_sources.LOGLY_VARIABLE)
         }
-        self._variants[0].update_values_from_dict(assign_non_logly)
+        variant.update_values_from_dict(assign_non_logly)
 
     def _shrink_num_variants(self, new_num: int, /, ) -> None:
         """
@@ -253,23 +243,23 @@ class Model(
         self,
         /,
         **kwargs,
-    ) -> Iterable[_sy.System]:
+    ) -> Iterable[_systems.System]:
         """
         Create unsolved first-order system for each variant
         """
         model_flags = self._invariant._flags.update_from_kwargs(**kwargs, )
-        return [
-            self._systemize(variant, self._invariant._dynamic_descriptor, model_flags, )
+        return tuple(
+            self._systemize(variant, self._invariant.dynamic_descriptor, model_flags, )
             for variant in self._variants
-        ]
+        )
 
     def _systemize(
         self,
         variant: _variants.Variant,
-        descriptor: _de.Descriptor,
+        descriptor: _descriptors.Descriptor,
         model_flags: flags.Flags,
         /,
-    ) -> _sy.System:
+    ) -> _systems.System:
         """
         Create unsolved first-order system for one variant
         """
@@ -278,13 +268,15 @@ class Model(
         qid_to_logly = self.create_qid_to_logly()
         #
         if model_flags.is_linear:
-            data_array = variant.create_zero_array(qid_to_logly, num_columns=num_columns, shift_in_first_column=ac.min_shift)
+            data_array = variant.create_zero_array(qid_to_logly, num_columns=num_columns, shift_in_first_column=ac.min_shift, )
+            data_array_lagged = None
             steady_array = variant.create_steady_array(qid_to_logly, num_columns=1, ).reshape(-1)
         else:
-            data_array = variant.create_steady_array(qid_to_logly, num_columns=num_columns, )
+            data_array = variant.create_steady_array(qid_to_logly, num_columns=num_columns, shift_in_first_column=ac.min_shift, )
+            data_array_lagged = variant.create_steady_array(qid_to_logly, num_columns=num_columns, shift_in_first_column=ac.min_shift-1, )
             steady_array = data_array[:, -ac.min_shift]
         #
-        return _sy.System(descriptor, data_array, steady_array, )
+        return _systems.System(descriptor, data_array, steady_array, model_flags, data_array_lagged, )
 
     def solve(
         self,
@@ -307,12 +299,12 @@ class Model(
         """
         Calculate first-order solution for one Variant of this Model
         """
-        system = self._systemize(variant, self._invariant._dynamic_descriptor, model_flags, )
-        variant.solution = _sl.Solution(self._invariant._dynamic_descriptor, system, )
+        system = self._systemize(variant, self._invariant.dynamic_descriptor, model_flags, )
+        variant.solution = _solutions.Solution(self._invariant.dynamic_descriptor, system, )
 
     def _choose_plain_equator(
         self,
-        equation_switch: _EquationSwitch,
+        equation_switch: Literal["dynamic", "steady", ],
         /,
     ) -> Callable | None:
         """
@@ -331,7 +323,11 @@ class Model(
         """
         """
         default_std = default_std if default_std is not None else _DEFAULT_STD_RESOLUTION(self.get_flags())
-        self.assign(**{ k: default_std for k in _quantities.generate_quantity_names_by_kind(self._invariant._quantities, _quantities.QuantityKind.STD) })
+        dict_to_assign = {
+            k: default_std
+            for k in _quantities.generate_quantity_names_by_kind(self._invariant._quantities, _quantities.QuantityKind.STD, )
+        }
+        self.assign(**dict_to_assign, )
 
     @classmethod
     def from_source(
@@ -352,10 +348,10 @@ class Model(
             **kwargs,
         )
         #
-        self._variants = [ _variants.Variant(self._invariant._quantities) ]
-        #
-        self._enforce_auto_values()
-        self._assign_default_stds(default_std)
+        self._variants = [ _variants.Variant(self._invariant._quantities, ) ]
+        for v in self._variants:
+            self._enforce_auto_values(v, )
+        self._assign_default_stds(default_std, )
         #
         return self
 
@@ -377,9 +373,9 @@ class Model(
         """
         return self._invariant._min_shift, self._invariant._max_shift
 
-    def get_databank_names(self, /, ) -> list[str]:
+    def get_databank_names(self, plan, /, ) -> tuple[str, ...]:
         qid_to_name = self.create_qid_to_name()
-        return [ qid_to_name[qid] for qid in range(len(qid_to_name)) ]
+        return tuple(qid_to_name[qid] for qid in range(len(qid_to_name)))
     #]
 
 
@@ -391,7 +387,7 @@ _DEFAULT_STD_RESOLUTION = lambda flags: {
 }[flags.is_linear]
 
 
-def _rekey_dict(dict_to_rekey: dict, old_key_to_new_key: dict, /, garbage_key=None) -> dict:
+def _rekey_dict(dict_to_rekey: dict, old_key_to_new_key: dict, /, garbage_key=None, ) -> dict:
     #[
     new_dict = {
         old_key_to_new_key.get(key, garbage_key): value
@@ -415,4 +411,34 @@ def resolve_variant(self, variants, /, ) -> Iterable[int]:
         return [v for v in variants]
     #]
 
+
+def _extract_dict_variant(
+    qid_to_value: dict[int, Any],
+    vid: int,
+    qid_to_name: dict[int, str],
+    /,
+) -> dict[int, tuple[Number|Ellipsis, Number|Ellipsis]]:
+    """
+    """
+    def _extract_value_variant(
+        value: list | tuple | Number,
+        name: str,
+        /,
+    ) -> tuple[Number|Ellipsis, Number|Ellipsis]:
+        """
+        """
+        if isinstance(value, Iterable, ) and not isinstance(value, str, ) and not isinstance(value, tuple, ):
+            value = list(value, )[vid]
+        if isinstance(value, Number, ) or value is Ellipsis:
+            value = (value, Ellipsis, )
+        if not isinstance(value, tuple, ) or len(value) != 2:
+            raise _wrongdoings.IrisPieError(
+                f"Invalid type of value assigned to this Model quantity: \"{name}\"",
+            )
+        return value
+        #
+    return {
+        qid: _extract_value_variant(value, qid_to_name[qid], )
+        for qid, value in qid_to_value.items()
+    }
 

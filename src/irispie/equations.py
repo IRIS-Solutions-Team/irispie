@@ -124,7 +124,7 @@ def _finalize_equations_from_humans(
     ))
     if error_log:
         raise _wrongdoings.IrisPieError(
-            ["Some names used in equations not declared"]
+            ("Some names used in equations are not declared", )
             + error_log
         )
     #]

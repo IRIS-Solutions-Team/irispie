@@ -8,6 +8,7 @@ from collections.abc import (Iterable, )
 from numbers import (Number, )
 import numpy as _np
 import scipy as _sp
+import os as _os
 
 from .. import equations as _equations
 from .. import quantities as _quantities
@@ -38,7 +39,7 @@ class IterPrinter:
         self._populate_equations(equations)
         self._populate_quantities(qids, qid_to_logly, qid_to_name, )
         ...
-        self._iter_count = 0
+        self._func_count = 0
         self._curr_f = None
         self._curr_x = None
         self._prev_x = None
@@ -47,22 +48,22 @@ class IterPrinter:
 
     def next(self, x, f, j_done, /, ) -> None:
         """
-        Handle next iteration
+        Handle next function evaluation
         """
-        self._curr_f = f.flatten()
-        self._curr_x = x.flatten()
+        self._curr_f = _np.array(tuple(f))
+        self._curr_x = _np.array(tuple(x))
         f_norm = _sp.linalg.norm(self._curr_f, 2)
-        if self._iter_count == 0:
+        if self._func_count == 0:
             dimension = (self._curr_f.size, self._curr_x.size, )
             self.print_header(dimension, )
         self._last_iter_string = self.get_iter_string(f_norm, j_done, *self.find_worst_diff_x(), *self.find_worst_equation(), )
-        if self._iter_count % self._every == 0:
-            print(self._last_iter_string)
+        if self._func_count % self._every == 0:
+            _print_to_width(self._last_iter_string)
         self._prev_x = self._curr_x
         self._prev_f = self._curr_f
         self._curr_f = None
         self._curr_x = None
-        self._iter_count += 1
+        self._func_count += 1
 
     def find_worst_equation(self, /, ) -> tuple[Number, str]:
         """
@@ -90,22 +91,22 @@ class IterPrinter:
 
     def print_header(self, dimension, /, ) -> None:
         """
-        Print header for iterations
+        Print header for fuction evaluations
         """
         dim_string = f"Dimension: {dimension[0]}×{dimension[1]}"
-        header = f"{'iter':>5}   {'‖ƒ‖':>11}   {'∇ƒ':>5}   {'max|∆x|':>11}   {' ':10}   {'max|ƒ|':>11}   {''}"
+        header = f"{'ƒ-count':>8}   {'‖ƒ‖':>11}   {'∇ƒ':>5}   {'max|∆x|':>11}   {' ':10}   {'max|ƒ|':>11}   {''}"
         len_header = len(header) + self._MAX_LEN_EQUATION_STRING + 1
         self._divider_line = self._HEADER_DIVIDER_CHAR * len_header
         upper_divider = self._divider_line
         upper_divider = self._divider_line[0:2] + dim_string + self._divider_line[2 + len(dim_string):]
         lower_divider = self._divider_line
-        print("", upper_divider, header, lower_divider, sep="\n")
+        _print_to_width("", upper_divider, header, lower_divider, )
 
     def print_footer(self, /, ) -> None:
         """
         Print footer for iterations
         """
-        print(self._divider_line, self._last_iter_string, self._divider_line, sep="\n")
+        _print_to_width(self._divider_line, self._last_iter_string, self._divider_line, )
 
     def get_iter_string(
         self,
@@ -121,13 +122,13 @@ class IterPrinter:
         Print info on current iteration
         """
         j_done_string = "√" if j_done else "×"
-        return f"{self._iter_count:5g}   {f_norm:.5e}   {j_done_string:>5}   {worst_diff_x}   {worst_diff_x_name}   {worst_f}   {worst_equation}"
+        return f"{self._func_count:8g}   {f_norm:.5e}   {j_done_string:>5}   {worst_diff_x}   {worst_diff_x_name}   {worst_f}   {worst_equation}"
 
     def reset(self, /, ) -> None:
         """
         Reset iterations printer
         """
-        self._iter_count = 0
+        self._func_count = 0
         self._prev_x = None
         self._prev_f = None
     #]
@@ -205,8 +206,17 @@ def _clip_string_exactly(
     Clip string to exactly to max length
     """
     return (
-        full_string[:max_length-1] + "…" 
+        full_string[:max_length-1] + "⋯" 
         if len(full_string) > max_length else f"{full_string:{max_length}}"
     )
 
+
+def _print_to_width(*args, ) -> None:
+    """
+    """
+    width = _os.get_terminal_size().columns
+    for text in args:
+        if len(text) > width:
+            text = text[:width-1] + "⋯"
+        print(text)
 
