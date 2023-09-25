@@ -42,7 +42,7 @@ __version__ = _md.version(__name__)
 
 
 #[
-def require_irispie_version(
+def min_irispie_version_required(
     minimum_version_str: str,
 ):
     """
@@ -71,7 +71,7 @@ __all__ = (
     *explanatories_all,
     *plans_all,
     *namings_all,
-    "require_irispie_version",
+    "min_irispie_version_required",
     "__version__",
 )
 
