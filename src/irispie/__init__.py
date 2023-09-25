@@ -2,6 +2,8 @@
 Iris Pie
 """
 
+import importlib.metadata as _md
+
 from .dates import *
 from .dates import __all__ as dates_all
 
@@ -36,6 +38,28 @@ from .namings import *
 from .namings import __all__ as namings_all
 
 
+__version__ = _md.version(__name__)
+
+
+#[
+def require_irispie_version(
+    minimum_version_str: str,
+):
+    """
+    """
+    current_version = _convert_version(__version__, )
+    minimum_version = _convert_version(minimum_version_str, )
+    if current_version < minimum_version:
+        raise Exception(
+            f"Current version of irispie ({__version__}) is less than minimum version required ({minimum_version_str})"
+        )
+
+
+def _convert_version(version_str: str) -> tuple[int, ...]:
+    return tuple(int(s) for s in version_str.split("."))
+#]
+
+
 __all__ = (
     *dates_all,
     *series_all,
@@ -47,5 +71,8 @@ __all__ = (
     *explanatories_all,
     *plans_all,
     *namings_all,
+    "require_irispie_version",
+    "__version__",
 )
+
 
