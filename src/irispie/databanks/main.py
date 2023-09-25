@@ -19,6 +19,7 @@ from numbers import (Number, )
 from ..conveniences import views as _views
 from ..conveniences import descriptions as _descriptions
 from ..series import main as _series
+from .. import quantities as _quantities
 from .. import dataslabs as _dataslabs
 from .. import dates as _dates
 
@@ -146,36 +147,36 @@ class Databank(
             self[name] = series
         return self
 
-    @classmethod
-    def for_simulation(
-        cls,
-        simulatable: SimulatableProtocol,
-        base_range: Iterable[_dates.Dater],
-        /,
-        value: Number | _np.ndarray | None = None,
-        func: Callable | None = None
-    ) -> Self:
-        """
-        """
-        ext_range, *_ = _dataslabs.get_extended_range(simulatable, base_range, )
-        if value is None and func is None:
-            value = 0
-        if value is not None:
-            constructor = _ft.partial(_series.Series.from_dates_and_values, ext_range, value, )
-        else:
-            constructor = _ft.partial(_series.Series.from_dates_and_func, ext_range, func, )
-        self = cls()
-        for name in simulatable.get_databank_names():
-            self[name] = constructor()
-        return self
+#     @classmethod
+#     def for_simulation(
+#         cls,
+#         simulatable: SimulatableProtocol,
+#         base_range: Iterable[_dates.Dater],
+#         /,
+#         value: Number | _np.ndarray | None = None,
+#         func: Callable | None = None
+#     ) -> Self:
+#         """
+#         """
+#         ext_range, *_ = _dataslabs.get_extended_range(simulatable, base_range, )
+#         if value is None and func is None:
+#             value = 0
+#         if value is not None:
+#             constructor = _ft.partial(_series.Series.from_dates_and_values, ext_range, value, )
+#         else:
+#             constructor = _ft.partial(_series.Series.from_dates_and_func, ext_range, func, )
+#         self = cls()
+#         for name in simulatable.get_databank_names():
+#             self[name] = constructor()
+#         return self
 
-    def get_names(self: Self) -> list[str]:
+    def get_names(self, /, ) -> list[str]:
         """
         Get all names stored in a databank save for private attributes
         """
-        return list(self.keys())
+        return tuple(self.keys())
 
-    def get_num_items(self: Self) -> int:
+    def get_num_items(self, /, ) -> int:
         """
         """
         return len(self.keys())
@@ -208,7 +209,7 @@ class Databank(
         /,
         source_names: SourceNames = None,
         target_names: TargetNames = None,
-    ) -> Self:
+    ) -> None:
         """
         """
         context_names = self.get_names()
@@ -217,13 +218,12 @@ class Databank(
             z for z in zip(source_names, target_names) if z[0] in context_names and z[0]!=z[1]
         ):
             self[new_name] = self.pop(old_name)
-        return self
 
     def remove(
         self: Self,
         /,
         remove_names: SourceNames = None,
-    ) -> Self:
+    ) -> None:
         """
         """
         if remove_names is None:
@@ -232,13 +232,12 @@ class Databank(
         remove_names, *_ = _resolve_source_target_names(remove_names, None, context_names)
         for n in set(remove_names).intersection(context_names):
             del self[n]
-        return self
 
     def keep(
         self: Self,
         /,
         keep_names: SourceNames = None,
-    ) -> Self:
+    ) -> None:
         """
         """
         if keep_names is None:
@@ -246,7 +245,7 @@ class Databank(
         context_names = self.get_names()
         keep_names, *_ = _resolve_source_target_names(keep_names, None, context_names)
         remove_names = set(context_names).difference(keep_names)
-        return self.remove(remove_names)
+        self.remove(remove_names)
 
     def apply(
         self,
@@ -254,12 +253,11 @@ class Databank(
         /,
         source_names: SourceNames = None,
         target_names: TargetNames = None,
-    ) -> Self:
+    ) -> None:
         context_names = self.get_names()
         source_names, target_names = _resolve_source_target_names(source_names, target_names, context_names)
         for s, t in zip(source_names, target_names):
             self[t] = func(self[s])
-        return self
 
     def filter(
         self,
@@ -336,8 +334,9 @@ class Databank(
         prepending.clip(None, end_prepending, )
         self.underlay(prepending, )
 
-    def add_steady(
-        self,
+    @classmethod
+    def steady(
+        cls,
         steady_databankable: SteadyDatabankableProtocol,
         input_range: Iterable[_dates.Dater],
         /,
@@ -351,10 +350,31 @@ class Databank(
         num_columns = int(end_date - start_date + 1)
         if num_columns < 1:
             raise Exception("Empty date range is not allowed when creating steady databank")
-        steady_databank = steady_databankable._get_steady_databank(start_date, end_date, deviation=deviation)
-        self.update(steady_databank)
+        self = steady_databankable._get_steady_databank(start_date, end_date, deviation=deviation)
+        return self
 
-    add_zero = _ft.partialmethod(add_steady, deviation=True)
+    zero = _ft.partialmethod(steady, deviation=True)
+
+    def minus_control(
+        self,
+        model,
+        control: Self,
+        /,
+    ) -> None:
+        """
+        """
+        MINUS_FACTORY = {
+            True: lambda x, y: x / y,
+            False: lambda x, y: x - y,
+            None: lambda x, y: x - y,
+        }
+        kind = _quantities.QuantityKind.VARIABLE | _quantities.QuantityKind.SHOCK
+        quantities = model.get_quantities(kind=kind, )
+        qid_to_name = _quantities.create_qid_to_name(quantities, )
+        qid_to_logly = _quantities.create_qid_to_logly(quantities, )
+        for qid, name in qid_to_name.items():
+            minus_func = MINUS_FACTORY[qid_to_logly[qid]]
+            self[name] = minus_func(self[name], control[name], )
 
     def __or__(self, other) -> Self:
         new = _co.deepcopy(self)

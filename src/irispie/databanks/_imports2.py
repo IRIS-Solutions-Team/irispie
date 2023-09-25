@@ -69,6 +69,20 @@ def read_csv(
     #]
 
 
+def _remove_nonascii_from_start(
+    string: str,
+    /,
+) -> str:
+    """
+    Remove non-ASCII characters from start of string
+    """
+    #[
+    while string and not string[0].isascii():
+        string = string[1:]
+    return string
+    #]
+
+
 def _generate_blocks(
     header_iterator: _HeaderIterator,
     data_iterator: _DataIterator,
@@ -215,7 +229,7 @@ class _ColumnwiseFileFactory(_FileFactory):
         self,
         /,
     ) -> tuple[Iterator[_Header], Iterator[_DataVector], ]:
-        with open(self._file_path, newline="", ) as file:
+        with open(self._file_path, encoding="utf-8-sig", ) as file:
             csv_reader = _cs.reader(file, )
             header_iterator = self._create_header_iterator(csv_reader, )
             data_iterator = self._create_data_iterator(csv_reader, )
@@ -247,6 +261,8 @@ class _ColumnwiseFileFactory(_FileFactory):
         for _ in range(self._skip_rows):
             next(csv_reader, )
         name_row = next(csv_reader, )
+        if name_row and name_row[0]:
+            name_row[0] = _remove_nonascii_from_start(name_row[0], )
         description_row = next(csv_reader, ) if self._has_description_row else _it.repeat("", )
         return zip(name_row, description_row, )
 

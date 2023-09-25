@@ -205,18 +205,20 @@ def _clip_string_exactly(
     """
     Clip string to exactly to max length
     """
-    return (
-        full_string[:max_length-1] + "⋯" 
+    return \
+        full_string[:max_length-1] + "⋯" \
         if len(full_string) > max_length else f"{full_string:{max_length}}"
-    )
 
 
 def _print_to_width(*args, ) -> None:
     """
     """
-    width = _os.get_terminal_size().columns
+    try:
+        width = _os.get_terminal_size().columns
+    except:
+        width = None
     for text in args:
-        if len(text) > width:
+        if width is not None and len(text) > width:
             text = text[:width-1] + "⋯"
         print(text)
 

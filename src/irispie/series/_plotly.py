@@ -50,14 +50,27 @@ class Mixin:
         date_str = [ t.to_plotly_date() for t in range ]
         date_format = range[0].frequency.plotly_format
         figure = _pg.Figure() if figure is None else figure
+        axis_id = f"{subplot+1}" if subplot else ""
         subplot = _resolve_subplot(figure, subplot, )
-        for i in builtin_range(num_columns):
-            figure.add_trace(_pg.Scatter(
-                x=date_str, y=data[:, i], name=legend[i] if legend else None,
-                line={"color": _COLOR_ORDER[i % len(_COLOR_ORDER)]},
-            ), row=subplot[0], col=subplot[1])
         show_legend = show_legend if show_legend is not None else legend is not None
-        figure.update_layout(title=title, xaxis={"tickformat": date_format}, showlegend=show_legend, )
+        for i in builtin_range(num_columns):
+            figure.add_trace(
+                _pg.Scatter(
+                    x=date_str, y=data[:, i], name=legend[i] if legend else None,
+                    line={"color": _COLOR_ORDER[i % len(_COLOR_ORDER)]},
+                    #marker={"color": _COLOR_ORDER[i % len(_COLOR_ORDER)]},
+                    showlegend=show_legend, xhoverformat="%Y-%q",
+                    xaxis=f"x{axis_id}", yaxis=f"y{axis_id}",
+                ),
+                row=subplot[0], col=subplot[1]
+            )
+        figure.update_layout({
+            f"xaxis{axis_id}": {"showticklabels": True, "tickformat": date_format},
+            f"yaxis{axis_id}": { "zeroline": True, "zerolinecolor": "#aaa", },
+            "legend": {"yanchor": "bottom", "yref": "container", "y": 0.02, "xanchor": "center", "xref": "paper", "x": 0.5, "orientation": "h", },
+            "title": {"text": title, "yanchor": "top", "yref": "container", "y": 0.98, "xanchor": "center", "xref": "paper", "x": 0.5, },
+            "modebar": {"add": "hovercompare"},
+        })
         if xline:
             xline = xline.to_plotly_date()
             figure.add_vline(xline)

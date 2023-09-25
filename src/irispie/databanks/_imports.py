@@ -73,7 +73,7 @@ class DatabankImportMixin:
         """
         self = cls(**kwargs)
         num_header_lines = 1 + int(description_row)
-        csv_lines = _read_csv_lines(file_name, num_header_lines, **csv_reader_settings, )
+        csv_lines = _read_csv(file_name, num_header_lines, **csv_reader_settings, )
         header_lines = csv_lines[0:num_header_lines]
         data_lines = csv_lines[num_header_lines:]
         name_line = header_lines[0]
@@ -99,16 +99,25 @@ class DatabankImportMixin:
     #]
 
 
-def _read_csv_lines(file_name, num_header_lines, /, delimiter=",", **kwargs, ):
+def _read_csv(file_name, num_header_lines, /, delimiter=",", **kwargs, ):
     """
+    Read CSV cells into a list of lists
     """
     #[
-    with open(file_name, "r") as fid:
-        reader = _cs.reader(fid, **kwargs, )
-        all_lines = [ line for line in reader ]
-    if all_lines:
-        all_lines[0][0] = all_lines[0][0].replace("\ufeff", "", )
+    with open(file_name, "rt", encoding="utf-8-sig", ) as fid:
+        all_lines = [ line for line in _cs.reader(fid, **kwargs, ) ]
     return all_lines
+    #]
+
+
+def _remove_nonascii_from_start(string, /, ):
+    """
+    Remove non-ascii characters from the start of a string
+    """
+    #[
+    while string and not string[0].isascii():
+        string = string[1:]
+    return string
     #]
 
 

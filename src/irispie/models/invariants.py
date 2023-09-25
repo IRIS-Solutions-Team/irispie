@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from typing import (Self, Callable, )
-import copy as _copy
+import copy as _cp
 
 from .. import equations as _equations
 from .. import quantities as _quantities
@@ -30,12 +30,14 @@ class Invariant:
     """
     #[
     __slots__ = (
+        "quantities",
+        "dynamic_equations",
+        "steady_equations",
+        "preprocessor",
+        "postprocessor",
         "_flags",
         "_function_context",
-        "_quantities",
         "shock_qid_to_std_qid",
-        "_dynamic_equations",
-        "_steady_equations",
         "dynamic_descriptor",
         "steady_descriptor",
         "_plain_equator_for_dynamic_equations",
@@ -45,7 +47,7 @@ class Invariant:
     )
     def __init__(
         self,
-        model_source,
+        source,
         /,
         context: dict | None = None,
         check_syntax: bool = True,
@@ -54,32 +56,45 @@ class Invariant:
         """
         """
         self._flags = _flags.Flags.from_kwargs(**kwargs, )
-        #
         self._populate_function_context(context)
         #
-        self._quantities = _copy.deepcopy(model_source.quantities, )
-        self.shock_qid_to_std_qid = _copy.deepcopy(model_source.shock_qid_to_std_qid, )
-        self._dynamic_equations = _copy.deepcopy(model_source.dynamic_equations, )
-        self._steady_equations = _copy.deepcopy(model_source.steady_equations, )
+        self.quantities = _cp.deepcopy(source.quantities)
+        self.dynamic_equations = _cp.deepcopy(source.dynamic_equations)
+        self.steady_equations = _cp.deepcopy(source.steady_equations)
+        self.preprocessor = None
+        self.postprocessor = None
         #
-        name_to_qid = _quantities.create_name_to_qid(self._quantities, )
-        _equations.finalize_dynamic_equations(self._dynamic_equations, name_to_qid, )
-        _equations.finalize_steady_equations(self._steady_equations, name_to_qid, )
+        _add_stds(self.quantities, _quantities.QuantityKind.TRANSITION_SHOCK, _quantities.QuantityKind.TRANSITION_STD, )
+        _add_stds(self.quantities, _quantities.QuantityKind.MEASUREMENT_SHOCK, _quantities.QuantityKind.MEASUREMENT_STD, )
+        _quantities.check_unique_names(self.quantities)
+        #
+        quantities = _quantities.reorder_by_kind(self.quantities, )
+        dynamic_equations = _equations.reorder_by_kind(self.dynamic_equations, )
+        steady_equations = _equations.reorder_by_kind(self.steady_equations, )
+        _quantities.stamp_id(self.quantities, )
+        _equations.stamp_id(self.dynamic_equations, )
+        _equations.stamp_id(self.steady_equations, )
+        #
+        self.shock_qid_to_std_qid = _create_shock_qid_to_std_qid(self.quantities, )
+        #
+        name_to_qid = _quantities.create_name_to_qid(self.quantities, )
+        _equations.finalize_dynamic_equations(self.dynamic_equations, name_to_qid, )
+        _equations.finalize_steady_equations(self.steady_equations, name_to_qid, )
         #
         if check_syntax:
-            _check_syntax(self._dynamic_equations, self._function_context, )
-            _check_syntax(self._steady_equations, self._function_context, )
+            _check_syntax(self.dynamic_equations, self._function_context, )
+            _check_syntax(self.steady_equations, self._function_context, )
         #
-        self.dynamic_descriptor = _descriptors.Descriptor(self._dynamic_equations, self._quantities, self._function_context, )
-        self.steady_descriptor = _descriptors.Descriptor(self._steady_equations, self._quantities, self._function_context, )
+        self.dynamic_descriptor = _descriptors.Descriptor(self.dynamic_equations, self.quantities, self._function_context, )
+        self.steady_descriptor = _descriptors.Descriptor(self.steady_equations, self.quantities, self._function_context, )
         #
         self._plain_equator_for_dynamic_equations = _equators.PlainEquator(
-            _equations.generate_equations_of_kind( self._dynamic_equations, _PLAIN_EQUATOR_EQUATION, ),
+            _equations.generate_equations_of_kind( self.dynamic_equations, _PLAIN_EQUATOR_EQUATION, ),
             custom_functions=self._function_context,
         )
         #
         self._plain_equator_for_steady_equations = _equators.PlainEquator(
-            _equations.generate_equations_of_kind(self._steady_equations, _PLAIN_EQUATOR_EQUATION, ),
+            _equations.generate_equations_of_kind(self.steady_equations, _PLAIN_EQUATOR_EQUATION, ),
             custom_functions=self._function_context,
         )
         #
@@ -90,10 +105,10 @@ class Invariant:
         """
         """
         self._min_shift = _equations.get_min_shift_from_equations(
-            self._dynamic_equations + self._steady_equations,
+            self.dynamic_equations + self.steady_equations,
         )
         self._max_shift = _equations.get_max_shift_from_equations(
-            self._dynamic_equations + self._steady_equations,
+            self.dynamic_equations + self.steady_equations,
         )
 
     def _populate_function_context(
@@ -146,4 +161,61 @@ def _success_creating_lambda(equation, function_context):
     except Exception as ex:
         return False
     #]
+
+
+def _create_shock_qid_to_std_qid(
+    quantities: Iterable[_quantities.Quantity],
+    /,
+) -> dict[int, int]:
+    """
+    """
+    name_to_qid = _quantities.create_name_to_qid(quantities, )
+    qid_to_name = _quantities.create_qid_to_name(quantities, )
+    kind = _quantities.QuantityKind.SHOCK
+    all_shock_qids = tuple(_quantities.generate_qids_by_kind(quantities, kind))
+    return {
+        shock_qid: name_to_qid[_create_std_name(qid_to_name[shock_qid], )]
+        for shock_qid in all_shock_qids
+    }
+
+
+def _add_stds(
+    quantities: Iterable[_quantities.Quantity],
+    shock_kind: _quantities.QuantityKind,
+    std_kind: _quantities.QuantityKind,
+    /,
+) -> None:
+    """
+    """
+    shocks = (q for q in quantities if q.kind in shock_kind)
+    for std_qid, shock in enumerate(shocks, start=len(quantities)):
+        std_human = _create_std_name(shock.human, )
+        std_logly = False
+        std_description = _create_std_description(shock.description, shock.human, )
+        std_entry = len(quantities)
+        std_quantity = _quantities.Quantity(std_qid, std_human, std_kind, std_logly, std_description, std_entry, )
+        quantities.append(std_quantity, )
+
+
+_STD_PREFIX = "std_"
+_STD_DESCRIPTION = "(Std) "
+
+
+def _create_std_name(
+    shock_name: str,
+    /,
+) -> str:
+    """
+    """
+    return _STD_PREFIX + shock_name
+
+
+def _create_std_description(
+    shock_description: str,
+    shock_human: str,
+    /,
+) -> str:
+    """
+    """
+    return _STD_DESCRIPTION + (shock_description if shock_description else shock_human)
 

@@ -6,11 +6,13 @@ Model quantities
 #[
 from __future__ import annotations
 
-import enum
-import dataclasses as _dc
-
 from typing import (TypeAlias, )
 from collections.abc import (Iterable, )
+import enum
+import collections as _co
+import dataclasses as _dc
+
+from . import wrongdoings as _wrongdoings
 #]
 
 
@@ -61,10 +63,6 @@ class Quantity:
     description: str | None = None
     entry: int | None = None
 
-    def set_id(self, qid: int) -> Self:
-        self.id = qid
-        return self
-
     def set_logly(self, logly: bool) -> Self:
         self.logly = logly
         return self
@@ -98,7 +96,10 @@ def create_qid_to_kind(quantities: Iterable[Quantity]) -> dict[int, str]:
 
 
 def generate_quantities_of_kind(quantities: Iterable[Quantity], kind: QuantityKind | None) -> Iterable[Quantity]:
-    is_of_kind = (lambda qty: qty.kind in kind) if kind is not None else lambda k: True
+    if kind is not None:
+        def is_of_kind(qty: Quantity, /, ) -> bool: return qty.kind in kind
+    else:
+        def is_of_kind(qty: Quantity, /, ) -> bool: return True
     return ( qty for qty in quantities if is_of_kind(qty) )
 
 
@@ -221,4 +222,27 @@ def generate_index_logly(
 def print_name_maybe_log(name, logly, /, ) -> str:
     return f"log({name})" if logly else name
 
+
+def check_unique_names(quantities: Iterable[Quantity], /, ) -> None:
+    """
+    """
+    #[
+    name_counter = _co.Counter(q.human for q in quantities)
+    if any(c>1 for c in name_counter.values()):
+        duplicates = [ n for n, c in name_counter.items() if c>1 ]
+        raise _wrongdoings.IrisPieError(
+            ["These names are declared multiple times"] + duplicates
+        )
+    #]
+
+
+def reorder_by_kind(quantities: Iterable[Quantity], /) -> Iterable[Quantity]:
+    return list(sorted(quantities, key=lambda x: (x.kind.value, x.entry)))
+
+
+def stamp_id(quantities: Iterable[Quantity], /) -> None:
+    """
+    """
+    for i, q in enumerate(quantities, ):
+        q.id = i
 

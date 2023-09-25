@@ -32,6 +32,7 @@ from . import _flags as _flags
 from . import _simulate as _simulate
 from . import _steady as _steady
 from . import _get as _get
+from . import _processor as _processor
 #]
 
 
@@ -46,6 +47,7 @@ class Model(
     _steady.SteadyMixin,
     _covariances.CoverianceMixin,
     _get.GetMixin,
+    _processor.ProcessorMixin,
 ):
     """
 
@@ -86,9 +88,41 @@ class Model(
         """
         return _co.deepcopy(self)
 
-    def __getitem__(self, variants):
+    def __getitem__(
+        self,
+        request,
+        /,
+    ):
+        """
+        """
+        if isinstance(request, str):
+            return self._getitem_value(request, )
+        else:
+            return self._getitem_variant(variant, )
+
+    def _getitem_value(
+        self,
+        name: str,
+        /,
+    ) -> Any:
+        """
+        """
+        names = (name, )
+        quantities = self._invariant.quantities
+        qids, invalid_names = _quantities.lookup_qids_by_name(quantities, names, )
+        if invalid_names:
+            raise _wrongdoings.IrisPieError(f"Invalid model name \"{invalid_names[0]}\"", )
+        else:
+            singleton_dict = self._get_values("levels", qids, )
+            return singleton_dict[name]
+
+    def _getitem_variant(
+        self,
+        variants,
+        /,
+    ) -> Self:
         new = self.from_self()
-        index_variants = resolve_variant(self, variants)
+        index_variants = resolve_variant(self, variants, )
         new._variants = [ self._variants[i] for i in index_variants ]
         return new
 
@@ -125,10 +159,10 @@ class Model(
         some_names = set(some_names) if some_names else None
         qids = [
             qty.id
-            for qty in self._invariant._quantities
+            for qty in self._invariant.quantities
             if qty.logly is not None and (some_names is None or qty.human in some_names)
         ]
-        self._invariant._quantities = _quantities.change_logly(self._invariant._quantities, new_logly, qids)
+        self._invariant.quantities = _quantities.change_logly(self._invariant.quantities, new_logly, qids)
 
     @property
     def num_variants(self, /, ) -> int:
@@ -152,25 +186,25 @@ class Model(
         return self._invariant._flags.is_flat
 
     def create_name_to_qid(self, /, ) -> dict[str, int]:
-        return _quantities.create_name_to_qid(self._invariant._quantities)
+        return _quantities.create_name_to_qid(self._invariant.quantities)
 
     def create_qid_to_name(self, /, ) -> dict[int, str]:
-        return _quantities.create_qid_to_name(self._invariant._quantities)
+        return _quantities.create_qid_to_name(self._invariant.quantities)
 
     def create_qid_to_kind(self, /, ) -> dict[int, str]:
-        return _quantities.create_qid_to_kind(self._invariant._quantities)
+        return _quantities.create_qid_to_kind(self._invariant.quantities)
 
     def create_qid_to_description(self, /, ) -> dict[int, str]:
         """
         Create a dictionary mapping from quantity id to quantity descriptor
         """
-        return _quantities.create_qid_to_description(self._invariant._quantities)
+        return _quantities.create_qid_to_description(self._invariant.quantities)
 
     def create_qid_to_logly(self, /, ) -> dict[int, bool]:
         """
         Create a dictionary mapping from quantity id to quantity log-status
         """
-        return _quantities.create_qid_to_logly(self._invariant._quantities)
+        return _quantities.create_qid_to_logly(self._invariant.quantities)
 
     def create_steady_array(
         self,
@@ -214,7 +248,7 @@ class Model(
         #
         assign_shocks = {
             qid: (0, _np.nan)
-            for qid in _quantities.generate_qids_by_kind(self._invariant._quantities, _quantities.QuantityKind.SHOCK)
+            for qid in _quantities.generate_qids_by_kind(self._invariant.quantities, _quantities.QuantityKind.SHOCK)
         }
         variant.update_values_from_dict(assign_shocks)
         #
@@ -222,7 +256,7 @@ class Model(
         #
         assign_non_logly = {
             qid: (..., _np.nan)
-            for qid in _quantities.generate_qids_by_kind(self._invariant._quantities, ~_sources.LOGLY_VARIABLE)
+            for qid in _quantities.generate_qids_by_kind(self._invariant.quantities, ~_sources.LOGLY_VARIABLE)
         }
         variant.update_values_from_dict(assign_non_logly)
 
@@ -325,7 +359,7 @@ class Model(
         default_std = default_std if default_std is not None else _DEFAULT_STD_RESOLUTION(self.get_flags())
         dict_to_assign = {
             k: default_std
-            for k in _quantities.generate_quantity_names_by_kind(self._invariant._quantities, _quantities.QuantityKind.STD, )
+            for k in _quantities.generate_quantity_names_by_kind(self._invariant.quantities, _quantities.QuantityKind.STD, )
         }
         self.assign(**dict_to_assign, )
 
@@ -341,18 +375,15 @@ class Model(
         """
         """
         self = cls()
-        #
         self._invariant = _invariants.Invariant(
             source,
             context=context,
             **kwargs,
         )
-        #
-        self._variants = [ _variants.Variant(self._invariant._quantities, ) ]
+        self._variants = [ _variants.Variant(self._invariant.quantities, ) ]
         for v in self._variants:
             self._enforce_auto_values(v, )
         self._assign_default_stds(default_std, )
-        #
         return self
 
     def from_self(self, ) -> Self:
@@ -441,4 +472,3 @@ def _extract_dict_variant(
         qid: _extract_value_variant(value, qid_to_name[qid], )
         for qid, value in qid_to_value.items()
     }
-

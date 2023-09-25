@@ -161,7 +161,7 @@ def acorr_from_acov(
     acorr_by_order = [None, ] * len(acov_by_order)
     is_singleton = _is_singleton(acov_by_order[0], )
     if is_singleton:
-        acov_by_order = _add_extra_dimension(acov_by_order, )
+        acov_by_order = _add_dim_to_singleton(acov_by_order, )
     #
     # Scale matrix has inv_std[i]*inv_std[j]
     #
@@ -179,7 +179,7 @@ def acorr_from_acov(
     )
     #
     if is_singleton:
-        acorr_by_order = _remove_extra_dimension(acorr_by_order, )
+        acorr_by_order = _remove_dim_from_singleton(acorr_by_order, )
     return acorr_by_order
     #]
 
@@ -210,7 +210,7 @@ def _is_singleton(
 
 
 def _add_dim_to_singleton(
-    array: tuple[_np.ndarray, ...],
+    array_by_order: tuple[_np.ndarray, ...],
     /,
 ) -> tuple[_np.ndarray, ...]:
     """
@@ -224,7 +224,7 @@ def _add_dim_to_singleton(
 
 
 def _remove_dim_from_singleton(
-    array: tuple[_np.ndarray, ...],
+    array_by_order: tuple[_np.ndarray, ...],
     /,
 ) -> tuple[_np.ndarray, ...]:
     """

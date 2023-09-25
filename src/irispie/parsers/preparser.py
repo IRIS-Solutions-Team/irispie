@@ -31,7 +31,7 @@ def from_string(
 
     info["context"] = context if context else {}
 
-    # Remove line comments %, #, ...
+    # Remove line comments %, #, ..., \
     source = _remove_comments(source)
 
     # Evaluate <...> expressions in the local context
@@ -48,7 +48,9 @@ def from_string(
 
     info["preparser_needed"] = _is_preparser_needed(source)
 
-    preparsed_source = _run_preparser_on_source_string(source, context, ) if info["preparser_needed"] else source
+    preparsed_source = \
+        _run_preparser_on_source_string(source, context, ) \
+        if info["preparser_needed"] else source
 
     # Resolve pseudofunctions
     preparsed_source = pf_.resolve_pseudofunctions(preparsed_source)
@@ -218,6 +220,7 @@ class _If:
         return code, sequence[index_end+1:]
     #]
 
+
 class _End:
     """
     """
@@ -229,7 +232,7 @@ class _End:
     #]
 
 
-_COMMENTS_PATTERN = re_.compile(r'"[^"\n]*"|[%#].*|\.\.\..*')
+_COMMENTS_PATTERN = re_.compile(r'"[^"\n]*"|[%#].*|\.\.\.|\\.*')
 
 
 def _remove_comments(source: str, /, ) -> str:
@@ -250,7 +253,7 @@ def _resolve_sequence(sequence: Sequence, context: dict, /, ) -> str:
     while sequence:
         new_code, sequence = sequence[0].resolve(sequence, context, )
         if new_code:
-            code = code + "\n" + new_code if code else new_code
+            code = (code + "\n" + new_code) if code else new_code
     return code
 
 
@@ -269,6 +272,7 @@ def _stringify(input, /, ):
         return str(input)
     else:
         return ",".join([_stringify(i, ) for i in input])
+
 
 def _evaluate_contextual_expressions(text: str, context: dict, /):
     def _replace(match):

@@ -25,6 +25,7 @@ class SimulateMixin:
         /,
         plan: _plans.Plan | None = None,
         prepend_input: bool = True,
+        add_to_databank: _databanks.Databank | None = None,
     ) -> tuple[_databanks.Databank, dict[str, Any]]:
         """
         """
@@ -51,6 +52,11 @@ class SimulateMixin:
         out_db = ds.to_databank()
         if prepend_input:
             out_db.prepend(in_databank, ds.column_dates[0]-1, )
+        #
+        # Add to custom databank
+        #
+        if add_to_databank is not None:
+            out_db = add_to_databank | out_db
         #
         info = {"dataslab": ds, }
         return out_db, info

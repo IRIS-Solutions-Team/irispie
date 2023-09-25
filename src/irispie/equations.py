@@ -66,10 +66,6 @@ class Equation:
         self.xtring, self.incidence, error_log, *_ = xtring_from_human(self.human, name_to_id, )
         return error_log
 
-    def set_id(self, qid: int) -> Self:
-        self.id = qid
-        return self
-
     def create_equator_func(self, /, *, custom_functions: dict[str, Callable]) -> Callable:
         equator_func_string = create_equator_func_string([self.xtring], custom_functions)
         eval(equator_func_string, custom_functions, )
@@ -124,7 +120,7 @@ def _finalize_equations_from_humans(
     ))
     if error_log:
         raise _wrongdoings.IrisPieError(
-            ("Some names used in equations are not declared", )
+            ("These names used in equations are not declared", )
             + error_log
         )
     #]
@@ -201,7 +197,7 @@ def xtring_from_human(
             tokens_list.append(new_token)
             return new_token.print_xtring()
         else:
-            error_log.append(name + " in " + human)
+            error_log.append(f"\"{name}\" in {human}")
             tokens_list.append(_incidence.Token(None, None))
             return _REPLACE_UKNOWN
 
@@ -325,4 +321,15 @@ def create_incidence_matrix(
         incidence_matrix[row_index, column_indices] = True
     return incidence_matrix
     #]
+
+
+def reorder_by_kind(equations: Iterable[Equation], /) -> Iterable[Equation]:
+    return list(sorted(equations, key=lambda x: (x.kind.value, x.entry)))
+
+
+def stamp_id(equations: Iterable[Equation], /) -> None:
+    """
+    """
+    for i, e in enumerate(equations, ):
+        e.id = i
 

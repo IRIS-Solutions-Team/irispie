@@ -10,6 +10,7 @@ from collections.abc import (Iterable, )
 from numbers import (Number, )
 import functools as _ft
 import json as _js
+import numpy as _np
 
 from .. import equations as _equations
 from .. import quantities as _quantities
@@ -61,7 +62,7 @@ class GetMixin:
         /,
         **kwargs,
     ) -> dict[str, Number]:
-        qids = _quantities.generate_qids_by_kind(self._invariant._quantities, _sources.LOGLY_VARIABLE, )
+        qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _sources.LOGLY_VARIABLE, )
         return self._get_values("levels", qids, **kwargs, )
 
     @_decorate_output_format
@@ -70,7 +71,7 @@ class GetMixin:
         /,
         **kwargs,
     ) -> dict[str, Number]:
-        qids = _quantities.generate_qids_by_kind(self._invariant._quantities, _sources.LOGLY_VARIABLE, )
+        qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _sources.LOGLY_VARIABLE, )
         return self._get_values("changes", qids, **kwargs, )
 
     @_decorate_output_format
@@ -81,7 +82,7 @@ class GetMixin:
     ) -> dict[str, Number]:
         """
         """
-        qids = tuple(_quantities.generate_qids_by_kind(self._invariant._quantities, _sources.LOGLY_VARIABLE, ))
+        qids = tuple(_quantities.generate_qids_by_kind(self._invariant.quantities, _sources.LOGLY_VARIABLE, ))
         levels = self._get_values("levels", qids, **kwargs, )
         changes = self._get_values("changes", qids, **kwargs, )
         if self.is_singleton:
@@ -101,7 +102,7 @@ class GetMixin:
         /,
         **kwargs,
     ) -> dict[str, Number]:
-        qids = _quantities.generate_qids_by_kind(self._invariant._quantities, _quantities.QuantityKind.PARAMETER, )
+        qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _quantities.QuantityKind.PARAMETER, )
         return self._get_values("levels", qids, **kwargs, )
 
     @_decorate_output_format
@@ -110,7 +111,7 @@ class GetMixin:
         /,
         **kwargs,
     ) -> dict[str, Number]:
-        qids = _quantities.generate_qids_by_kind(self._invariant._quantities, _quantities.QuantityKind.STD, )
+        qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _quantities.QuantityKind.STD, )
         return self._get_values("levels", qids, **kwargs, )
 
     @_decorate_output_format
@@ -119,7 +120,7 @@ class GetMixin:
         /,
         **kwargs,
     ) -> dict[str, Number]:
-        qids = _quantities.generate_qids_by_kind(self._invariant._quantities, _quantities.QuantityKind.PARAMETER_OR_STD, )
+        qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _quantities.QuantityKind.PARAMETER_OR_STD, )
         return self._get_values("levels", qids, **kwargs, )
 
     @_decorate_output_format
@@ -129,7 +130,7 @@ class GetMixin:
     ) -> dict[str, bool]:
         return {
             qty.human: qty.logly
-            for qty in self._invariant._quantities
+            for qty in self._invariant.quantities
             if qty.kind in _sources.LOGLY_VARIABLE
         }
 
@@ -167,14 +168,20 @@ class GetMixin:
         )
         #
         qid_to_kind = self.create_qid_to_kind()
+        remove_qids = tuple(
+            qid
+            for qid, kind in qid_to_kind.items()
+            if kind not in _TIME_SERIES_QUANTITY
+        )
         qid_to_name = {
-            qid: (name if qid_to_kind[qid] in _TIME_SERIES_QUANTITY else "")
-            for qid, name in self.create_qid_to_name().items()
+            qid: name for qid, name in self.create_qid_to_name().items()
+            if qid not in remove_qids
         }
+        array = _np.delete(array, remove_qids, axis=0, )
         qid_to_description = self.create_qid_to_description()
         #
         return _databanks.Databank.from_array(
-            array, qid_to_name, start_date, 
+            array, qid_to_name, start_date,
             array_orientation="horizontal",
             interpret_dates="start_date",
             qid_to_description=qid_to_description,
@@ -198,8 +205,8 @@ class GetMixin:
         kind: _equations.EquationKind | None = None,
     ) -> tuple[_equations.Equation]:
         return tuple(
-            _equations.generate_equations_of_kind(self._invariant._dynamic_equations, kind)
-            if kind else self._invariant._dynamic_equations
+            _equations.generate_equations_of_kind(self._invariant.dynamic_equations, kind)
+            if kind else self._invariant.dynamic_equations
         )
 
     def get_steady_equations(
@@ -208,8 +215,8 @@ class GetMixin:
         kind: _equations.EquationKind | None = None,
     ) -> tuple[_equations.Equation]:
         return tuple(
-            _equations.generate_equations_of_kind(self._invariant._steady_equations, kind)
-            if kind else self._invariant._steady_equations
+            _equations.generate_equations_of_kind(self._invariant.steady_equations, kind)
+            if kind else self._invariant.steady_equations
         )
 
     def get_quantities(
@@ -219,8 +226,8 @@ class GetMixin:
         kind: _quantities.QuantityKind | None = None,
     ) -> _quantities.Quantities:
         return tuple(
-            _quantities.generate_quantities_of_kind(self._invariant._quantities, kind)
-            if kind else self._invariant._quantities
+            _quantities.generate_quantities_of_kind(self._invariant.quantities, kind)
+            if kind else self._invariant.quantities
         )
 
     def get_flags(
