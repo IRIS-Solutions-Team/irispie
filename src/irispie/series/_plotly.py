@@ -83,7 +83,7 @@ class Mixin:
         if axis_id:
             del layout["xaxis"]
             del layout["yaxis"]
-        layout[f"yaxis{axis_id}"]["tickformat"] = date_format
+        layout[f"xaxis{axis_id}"]["tickformat"] = date_format
         layout["title"]["text" ] = title
         figure.update_layout(layout, )
 
