@@ -1,0 +1,31 @@
+{
+    "xaxis": {
+        "showticklabels": true,
+        "tickformat": null
+    },
+    "yaxis": {
+        "zeroline": true,
+        "zerolinecolor": "#aaa"
+    },
+    "legend": {
+        "yanchor": "bottom",
+        "yref": "container",
+        "y": 0.02,
+        "xanchor": "center",
+        "xref": "paper",
+        "x": 0.5,
+        "orientation": "h"
+    },
+    "title": {
+        "text": null,
+        "yanchor": "top",
+        "yref": "container",
+        "y": 0.98,
+        "xanchor": "center",
+        "xref": "paper",
+        "x": 0.5
+    },
+    "modebar": {
+        "add": "hovercompare"
+    }
+}

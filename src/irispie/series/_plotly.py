@@ -7,11 +7,23 @@ Plotly interface to time series objects
 from __future__ import annotations
 
 from types import EllipsisType
+import os as _os
+import json as _js
+import copy as _cp
 import plotly.graph_objects as _pg
 import plotly.subplots as _ps
 
 from .. import dates as _dates
 #]
+
+
+_PLOTLY_STYLES_FOLDER = _os.path.join(_os.path.dirname(__file__), "plotly_styles")
+
+_PLOTLY_STYLES = {
+    "layouts": {},
+}
+with open(_os.path.join(_PLOTLY_STYLES_FOLDER, "plain_layout.json", ), "rt", ) as fid:
+    _PLOTLY_STYLES["layouts"]["plain"] = _js.load(fid, )
 
 
 builtin_range = range
@@ -64,13 +76,17 @@ class Mixin:
                 ),
                 row=subplot[0], col=subplot[1]
             )
-        figure.update_layout({
-            f"xaxis{axis_id}": {"showticklabels": True, "tickformat": date_format},
-            f"yaxis{axis_id}": { "zeroline": True, "zerolinecolor": "#aaa", },
-            "legend": {"yanchor": "bottom", "yref": "container", "y": 0.02, "xanchor": "center", "xref": "paper", "x": 0.5, "orientation": "h", },
-            "title": {"text": title, "yanchor": "top", "yref": "container", "y": 0.98, "xanchor": "center", "xref": "paper", "x": 0.5, },
-            "modebar": {"add": "hovercompare"},
-        })
+
+        layout = _cp.deepcopy(_PLOTLY_STYLES["layouts"]["plain"])
+        layout[f"xaxis{axis_id}"] = layout["xaxis"]
+        layout[f"yaxis{axis_id}"] = layout["yaxis"]
+        if axis_id:
+            del layout["xaxis"]
+            del layout["yaxis"]
+        layout[f"yaxis{axis_id}"]["tickformat"] = date_format
+        layout["title"]["text" ] = title
+        figure.update_layout(layout, )
+
         if xline:
             xline = xline.to_plotly_date()
             figure.add_vline(xline)
