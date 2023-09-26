@@ -6,10 +6,11 @@ Data arrays with row and column names
 #[
 from __future__ import annotations
 
-import numpy as _np
 from typing import (Self, Protocol, )
 from numbers import (Number, )
 from collections.abc import (Iterable, )
+import numpy as _np
+import dataclasses as _dc
 
 from .series import main as _series
 from .databanks import main as _databanks
@@ -19,90 +20,82 @@ from . import dates as _dates
 
 
 __all__ = (
-    "Dataslab",
+    "Dataslate",
 )
 
 
-class SimulatableProtocol(Protocol, ):
+class SlatableProtocol(Protocol, ):
+    """
+    """
     def get_min_max_shift(self, /, ) -> tuple[int, int]:  ...
     def get_databank_names(self, /, ) -> tuple[str, ...]:  ...
 
 
-class Dataslab:
+@_dc.dataclass
+class Dataslate:
     """
     """
     #[
     data: _np.ndarray | None = None
     row_names: Iterable[str] | None = None
     missing_names: tuple[str, ...] | None = None
-    column_dates: tuple[Dater, ...] | None = None
+    column_dates: tuple[_dates.Dater, ...] | None = None
     base_columns: tuple[int, ...] | None = None
+
+    def __init__(
+        self,
+        slatable: SlatableProtocol,
+        databank: _databanks.Databank,
+        base_range: Iterable[_dates.Dater],
+        /,
+        slate: int = 0,
+        plan: _plans.Plan | None = None,
+    ) -> Self:
+        """
+        """
+        self.row_names = slatable.get_databank_names(plan, )
+        self.missing_names = databank.get_missing_names(self.row_names, )
+        self._resolve_column_dates(slatable, base_range, )
+        self._populate_data(databank, slate, )
+
+    def _populate_data(
+        self,
+        databank: _databanks.Databank,
+        slate: int,
+    ) -> None:
+        """
+        """
+        generate_data = tuple(
+            _extract_data_from_record(databank[n], self.from_to, self.num_periods, slate, )
+            if n not in self.missing_names else self.nan_row
+            for n in self.row_names
+        )
+        self.data = _np.vstack(generate_data)
 
     def to_databank(self, *args, **kwargs, ) -> _dates.Databank:
         """
         """
         return multiple_to_databank((self,), *args, **kwargs, )
 
-    @classmethod
-    def from_databank(
-        cls,
-        databank: _databanks.Databank,
-        names: Iterable[str],
-        ext_range: Ranger,
-        /,
-        column: int = 0,
-    ) -> Self:
-        """
-        Add data from a databank to this dataslab
-        """
-        self = cls()
-        missing_names = [
-            n for n in names
-            if n not in databank
-        ]
-        #
-        num_periods = len(ext_range)
-        nan_row = _np.full((1, num_periods), _np.nan, dtype=float)
-        generate_data = tuple(
-            _extract_data_from_record(databank[n], ext_range, column, )
-            if n not in missing_names else nan_row
-            for n in names
-        )
-        #
-        self.data = _np.vstack(generate_data)
-        self.row_names = tuple(names)
-        self.column_dates = tuple(ext_range)
-        self.missing_names = missing_names
-        return self
-
-    @classmethod
-    def from_databank_for_simulation(
-        cls,
-        simulatable: SimulatableProtocol,
-        databank: _databanks.Databank,
-        base_range: Iterable[Dater],
-        /,
-        column: int = 0,
-        plan: _plans.Plan | None = None,
-    ) -> Self:
-        """
-        """
-        ext_range, base_columns = (
-            get_extended_range(
-                simulatable,
-                base_range,
-            )
-        )
-        names = simulatable.get_databank_names(plan, )
-        self = cls.from_databank(databank, names, ext_range, column=column, )
-        self.base_columns = base_columns
         return self
 
     @property
-    def num_ext_periods(self, /, ) -> int:
+    def num_periods(self, /, ) -> int:
         """
         """
         return len(self.column_dates)
+
+    @property
+    def from_to(self, /, ) -> tuple[_dates.Dater, _dates.Dater]:
+        """
+        """
+        return self.column_dates[0], self.column_dates[-1]
+
+    @property
+    def nan_row(self, /, ) -> int:
+        """
+        """
+        return _np.full((1, self.num_periods), _np.nan, dtype=float)
 
     @property
     def num_rows(self, /, ) -> int:
@@ -156,17 +149,15 @@ class Dataslab:
         /,
     ) -> dict[str, int]:
         return { name: row for row, name in enumerate(self.row_names, ) }
+
+    def _resolve_column_dates(
+        self,
+        slatable: SlatableProtocol,
+        base_range: Iterable[_dates.Dater],
+        /,
+    ) -> None:
+        self.column_dates, self.base_columns = get_extended_range(slatable, base_range, )
     #]
-
-
-def _extract_data_from_record(record, ext_range, column, /, ):
-    """
-    """
-    return (
-        record.get_data_column(ext_range, column).reshape(1, -1) 
-        if hasattr(record, "get_data")
-        else _np.full((1, len(ext_range)), float(record), dtype=float, )
-    )
 
 
 def multiple_to_databank(
@@ -175,7 +166,7 @@ def multiple_to_databank(
     target_databank: _databanks.Databank | None = None,
 ) -> _databanks.Databank:
     """
-    Add data from a dataslab to a new or existing databank
+    Add data from a dataslate to a new or existing databank
     """
     #[
     if target_databank is None:
@@ -192,7 +183,7 @@ def multiple_to_databank(
 
 
 def get_extended_range(
-    simulatable: SimulatableProtocol,
+    slatable: SlatableProtocol,
     base_range: Iterable[_dates.Dater],
     /,
 ) -> Iterable[_dates.Dater]:
@@ -200,12 +191,23 @@ def get_extended_range(
     """
     base_range = tuple(t for t in base_range)
     num_base_periods = len(base_range)
-    min_shift, max_shift = simulatable.get_min_max_shifts()
+    min_shift, max_shift = slatable.get_min_max_shifts()
     if min_shift == 0:
         min_shift = -1
-    start_date = base_range[0] + min_shift
-    end_date = base_range[-1] + max_shift
+    min_base_date = min(base_range)
+    max_base_date = max(base_range)
+    start_date = min_base_date + min_shift
+    end_date = max_base_date + max_shift
     base_columns = tuple(range(-min_shift, -min_shift+num_base_periods))
-    ext_range = tuple(_dates.Ranger(start_date, end_date))
-    return ext_range, base_columns
+    column_dates = tuple(_dates.Ranger(start_date, end_date))
+    return column_dates, base_columns
+
+
+def _extract_data_from_record(record, from_to, num_periods, column, /, ):
+    """
+    """
+    try:
+        return record.get_data_column_from_to(from_to, column).reshape(1, -1)
+    except AttributeError:
+        return _np.full((1, self.num_periods), float(record), dtype=float, )
 

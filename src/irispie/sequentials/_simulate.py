@@ -5,12 +5,13 @@
 from __future__ import annotations
 
 from typing import (Any, )
+from numbers import (Number, )
 import numpy as _np
 
 from ..databanks import main as _databanks
 from ..plans import main as _plans
 from ..explanatories import main as _explanatories
-from .. import dataslabs as _dataslabs
+from .. import dataslates as _dataslates
 #]
 
 
@@ -30,10 +31,11 @@ class SimulateMixin:
         """
         """
         #
-        # Arrange input data into a dataslab
+        # Arrange input data into a dataslate
         #
-        ds = _dataslabs.Dataslab.from_databank_for_simulation(
-            self, in_databank, base_range, column=0, plan=plan,
+        ds = _dataslates.Dataslate(
+            self, in_databank, base_range,
+            slate=0, plan=plan,
         )
         #
         # Fill missing residuals with zeros
@@ -58,7 +60,7 @@ class SimulateMixin:
         if add_to_databank is not None:
             out_db = add_to_databank | out_db
         #
-        info = {"dataslab": ds, }
+        info = {"dataslate": ds, }
         return out_db, info
 
     def _simulate(
@@ -73,9 +75,9 @@ class SimulateMixin:
         """
         for plan_column, data_column in enumerate(columns):
             for x in self.explanatories:
-                status, value = _is_exogenized(x, data, plan, data_column, plan_column, name_to_row, )
+                status, implied_value = _is_exogenized(x, data, plan, data_column, plan_column, name_to_row, )
                 if status:
-                    x.exogenize(data, data_column, value)
+                    x.exogenize(data, data_column, implied_value)
                 else:
                     x.simulate(data, data_column, )
 
@@ -88,7 +90,10 @@ def _is_exogenized(
     data_column: int,
     plan_column: int,
     name_to_row: dict[str, int],
-) -> bool:
+) -> tuple[bool, Number | None]:
+    """
+    """
+    #[
     if plan is None or explanatory.is_identity:
         return False, None
     #
@@ -106,4 +111,5 @@ def _is_exogenized(
     if transform.when_data and _np.isnan(implied_value):
         return False, None
     return True, implied_value
+    #]
 

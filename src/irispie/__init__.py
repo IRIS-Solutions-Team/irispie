@@ -13,8 +13,8 @@ from .series import __all__ as series_all
 from .databanks.main import *
 from .databanks.main import __all__ as databanks_all
 
-from .dataslabs import *
-from .dataslabs import __all__ as dataslabs_all
+from .dataslates import *
+from .dataslates import __all__ as dataslates_all
 
 from .models import *
 from .models import __all__ as models_all

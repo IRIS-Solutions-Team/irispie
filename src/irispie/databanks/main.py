@@ -20,7 +20,7 @@ from ..conveniences import views as _views
 from ..conveniences import descriptions as _descriptions
 from ..series import main as _series
 from .. import quantities as _quantities
-from .. import dataslabs as _dataslabs
+from .. import dataslates as _dataslates
 from .. import dates as _dates
 
 from . import _imports as _imports
@@ -147,34 +147,17 @@ class Databank(
             self[name] = series
         return self
 
-#     @classmethod
-#     def for_simulation(
-#         cls,
-#         simulatable: SimulatableProtocol,
-#         base_range: Iterable[_dates.Dater],
-#         /,
-#         value: Number | _np.ndarray | None = None,
-#         func: Callable | None = None
-#     ) -> Self:
-#         """
-#         """
-#         ext_range, *_ = _dataslabs.get_extended_range(simulatable, base_range, )
-#         if value is None and func is None:
-#             value = 0
-#         if value is not None:
-#             constructor = _ft.partial(_series.Series.from_dates_and_values, ext_range, value, )
-#         else:
-#             constructor = _ft.partial(_series.Series.from_dates_and_func, ext_range, func, )
-#         self = cls()
-#         for name in simulatable.get_databank_names():
-#             self[name] = constructor()
-#         return self
-
     def get_names(self, /, ) -> list[str]:
         """
         Get all names stored in a databank save for private attributes
         """
         return tuple(self.keys())
+
+    def get_missing_names(self, names: Iterable[str], /, ) -> tuple[str]:
+        """
+        Get names that are not in the databank
+        """
+        return tuple(name for name in names if name not in self)
 
     def get_num_items(self, /, ) -> int:
         """

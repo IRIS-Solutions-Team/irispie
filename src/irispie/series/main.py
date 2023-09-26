@@ -112,7 +112,9 @@ class Series(
             data_type=self.data_type,
         )
 
-    def _create_periods_of_missing_values(self, num_rows=0):
+    def _create_periods_of_missing_values(self, num_rows=0) -> _np.ndarray:
+        """
+        """
         return _np.full(
             (num_rows, self.shape[1]),
             self._missing,
@@ -205,7 +207,7 @@ class Series(
         columns = self._resolve_columns(columns)
         if not self.start_date:
             self.start_date = next(iter(dates))
-            self.data = self._create_periods_of_missing_values(1)
+            self.data = self._create_periods_of_missing_values(num_rows=1, )
         pos, add_before, add_after = _get_date_positions(dates, self.start_date, self.shape[0]-1)
         self.data = self._create_expanded_data(add_before, add_after)
         if add_before:
@@ -227,37 +229,44 @@ class Series(
     ) -> _np.ndarray:
         """
         """
-        data, dates = self.get_data_and_resolved_dates(*args)
+        dates, pos, columns, expanded_data = self._resolve_dates_and_positions(*args, )
+        data = expanded_data[_np.ix_(pos, columns)]
         num_columns = data.shape[1]
         new = Series(num_columns=num_columns, data_type=self.data_type)
         new.set_data(dates, data)
         return new
 
-    def get_data_and_resolved_dates(
+    def _resolve_dates_and_positions(
         self,
         dates: Dates,
         columns: ColumnsRequestType = None,
         /,
-    ) -> _np.ndarray:
+    ) -> tuple[Iterable[_dates.Dater], Iterable[int], Iterable[int], _np.ndarray]:
         """
         """
         dates = [ t for t in self._resolve_dates(dates) ]
         columns = self._resolve_columns(columns)
         base_date = self.start_date
+        #
         if not dates or not base_date:
             num_dates = len(set(dates))
-            return self._create_periods_of_missing_values(num_dates)[:, columns], dates
+            pos = tuple()
+            data = self._create_periods_of_missing_values(num_rows=num_dates,)[:, columns]
+            return dates, pos, columns, data
+        #
         pos, add_before, add_after = _get_date_positions(dates, self.start_date, self.shape[0]-1)
         data = self._create_expanded_data(add_before, add_after)
         if not isinstance(pos, Iterable):
             pos = (pos, )
-        return data[_np.ix_(pos, columns)], dates
+        return dates, pos, columns, data
 
     def get_data(
         self,
         *args,
     ) -> _np.ndarray:
-        return self.get_data_and_resolved_dates(*args)[0]
+        dates, pos, columns, expanded_data = self._resolve_dates_and_positions(*args, )
+        data = expanded_data[_np.ix_(pos, columns)]
+        return data
 
     def get_data_column(
         self,
@@ -268,7 +277,30 @@ class Series(
         """
         """
         column = column if column and column<self.data.shape[1] else 0
-        return self.get_data(dates, column)
+        return self.get_data(dates, column, )
+
+    def get_data_from_to(
+        self,
+        from_to,
+        *args,
+    ) -> _np.ndarray:
+        """
+        """
+        dates, pos, columns, expanded_data \
+            = self._resolve_dates_and_positions(from_to, *args, )
+        from_pos, to_pos = pos[0], pos[-1]+1
+        return expanded_data[from_pos:to_pos, columns]
+
+    def get_data_column_from_to(
+        self,
+        from_to: Iterable[_dates.Dater],
+        column: Number | None = None,
+        /,
+    ) -> _np.ndarray:
+        """
+        """
+        column = column if column and column<self.data.shape[1] else 0
+        return self.get_data_from_to(from_to, column, )
 
     def extract_columns(
         self,
@@ -392,7 +424,9 @@ class Series(
         encompassing_range = _dates.get_encompassing_range(self, *args)
         new_data = self.get_data(encompassing_range)
         add_data = (
-            x.get_data(encompassing_range) if hasattr(x, "get_data") else _create_data_from_number(x, encompassing_range, self.data_type)
+            x.get_data(encompassing_range)
+            if hasattr(x, "get_data")
+            else _create_data_from_number(x, encompassing_range, self.data_type)
             for x in args
         )
         new_data = _np.hstack((new_data, *add_data))

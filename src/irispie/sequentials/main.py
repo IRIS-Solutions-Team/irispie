@@ -308,8 +308,8 @@ class Sequential(
             x.precopy()
 
     #
-    # ===== Implement SimulatableProtocol =====
-    # This protocal is used in Dataslabs to prepare data arrays
+    # ===== Implement SlatableProtocol =====
+    # This protocal is used in Dataslates to prepare data arrays
     #
 
     def get_min_max_shifts(
