@@ -24,6 +24,7 @@ from . import _plotly
 from . import _conversion
 from . import _x13
 from . import _hp
+from . import _fillings
 #]
 
 
