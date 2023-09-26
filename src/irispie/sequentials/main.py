@@ -235,17 +235,16 @@ class Sequential(
         """
         return _blazer.is_sequential(self.incidence_matrix, )
 
-    def print_equations(
+    def get_human_equations(
         self,
         /,
-        indent: int = 4,
         descriptions: bool = True,
         separator: str = "\n\n",
-    ) -> str:
+    ) -> tuple[str]:
         """
         """
-        return separator.join(
-            x.print_equation(indent=indent, description=descriptions, )
+        return tuple(
+            x.equation.human
             for x in self.explanatories
         )
 

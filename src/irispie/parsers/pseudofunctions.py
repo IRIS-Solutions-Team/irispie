@@ -76,7 +76,7 @@ def _pseudo_diff(code, shift, /, ) -> str:
     return "(" + "(" + code + ")-(" + _shift_all_names(code, shift) + ")" + ")"
 
 
-def _pseudo_difflog(code, shift, /, ) -> str:
+def _pseudo_diff_log(code, shift, /, ) -> str:
     return "(" + "log(" + code + ")-log(" + _shift_all_names(code, shift) + ")" + ")"
 
 
@@ -101,17 +101,17 @@ def _pseudo_mov(code, shift, /, ) -> list[str]:
         ], total
 
 
-def _pseudo_movsum(code, shift, /, ) -> str:
+def _pseudo_mov_sum(code, shift, /, ) -> str:
     sequence, total = _pseudo_mov(code, shift, )
     return "(" + "+".join(sequence) + ")"
 
 
-def _pseudo_movavg(code, shift, /, ) -> str:
+def _pseudo_mov_avg(code, shift, /, ) -> str:
     sequence, total = _pseudo_mov(code, shift, )
     return "(" + "(" + "+".join(sequence) + ")/" + str(total) + ")"
 
 
-def _pseudo_movprod(code, shift, /, ) -> str:
+def _pseudo_mov_prod(code, shift, /, ) -> str:
     sequence, *_ = _pseudo_mov(code, shift)
     return "(" + "*".join(sequence) + ")"
 
@@ -121,18 +121,26 @@ _PSEUDOFUNC_RESOLUTION = {
         (_pseudo_shift, -1),
     "diff":
         (_pseudo_diff, -1),
+    "diff_log":
+        (_pseudo_diff_log, -1),
     "difflog":
-        (_pseudo_difflog, -1),
+        (_pseudo_diff_log, -1),
     "pct": 
         (_pseudo_pct, -1),
     "roc": 
         (_pseudo_roc, -1),
+    "mov_sum":
+        (_pseudo_mov_sum, -4),
     "movsum":
-        (_pseudo_movsum, -4),
+        (_pseudo_mov_sum, -4),
+    "mov_avg":
+        (_pseudo_mov_avg, -4),
     "movavg":
-        (_pseudo_movavg, -4),
+        (_pseudo_mov_avg, -4),
+    "mov_prod":
+        (_pseudo_mov_prod, -4),
     "movprod":
-        (_pseudo_movprod, -4),
+        (_pseudo_mov_prod, -4),
 }
 
 
@@ -150,4 +158,5 @@ _PSEUDOFUNC_BODY_PATTERN = r"\(" + _PSEUDOFUNC_EXPRESSION_PATTERN + _PSEUDOFUNC_
 
 # Full pseudofunction pattern
 _PSEUDOFUNC_PATTERN = re_.compile(_PSEUDOFUNC_NAME_PATTERN + _PSEUDOFUNC_BODY_PATTERN)
+
 
