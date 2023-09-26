@@ -151,10 +151,14 @@ class Series(
         dates: Iterable[_dates.Dater],
         values: _np.ndarray | Iterable,
         /,
+        data_type: type = _np.float64,
+        **kwargs,
     ) -> Self:
-        values = _conform_data(values)
+        """
+        """
+        values = _conform_data(values, data_type=data_type, )
         num_columns = values.shape[1] if hasattr(values, "shape") else 1
-        self = cls(num_columns=num_columns)
+        self = cls(num_columns=num_columns, data_type=data_type, **kwargs)
         self.set_data(dates, values)
         return self
 
@@ -164,11 +168,14 @@ class Series(
         start_date: _dates.Dater,
         values: _np.ndarray | Iterable,
         /,
+        data_type: type = _np.float64,
         **kwargs,
     ) -> Self:
-        values = _conform_data(values, )
+        """
+        """
+        values = _conform_data(values, data_type=data_type, )
         num_columns = values.shape[1] if hasattr(values, "shape") else 1
-        self = cls(num_columns=num_columns, **kwargs)
+        self = cls(num_columns=num_columns, data_type=data_type, **kwargs)
         self.start_date = start_date
         self.data = values
         self.trim()
@@ -503,13 +510,22 @@ class Series(
     }
 
     def __or__(self, other):
+        """
+        Implement the | operator
+        """
         return self.hstack(other)
 
     def __lshift__(self, other):
+        """
+        Implement the << operator
+        """
         return self.copy().overlay_by_range(other, )
 
     def __rshift__(self, other):
-        return self.copy().overlay_by_range(self, )
+        """
+        Implement the >> operator
+        """
+        return other.copy().overlay_by_range(self, )
 
     def trim(self):
         if self.data.size==0:
@@ -844,12 +860,16 @@ def _cumulate_backward(new, dx, by, cum_func, initial, shifted_backward_range, /
     #]
 
 
-def _conform_data(data, /, ) -> _np.ndarray:
+def _conform_data(data, /, data_type, ) -> _np.ndarray:
     """
     """
     #[
+    if isinstance(data, tuple, ):
+        return _np.hstack(
+            tuple(_conform_data(d, data_type=data_type, ) for d in data),
+        )
     if not isinstance(data, _np.ndarray, ):
-        data = _np.array(data, dtype=float, ndmin=2, ).T
+        return _np.array(data, dtype=data_type, ndmin=2, ).T
     return data
     #]
 
