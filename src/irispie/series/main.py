@@ -25,6 +25,7 @@ from . import _conversion
 from . import _x13
 from . import _hp
 from . import _fillings
+from . import _movings
 #]
 
 
@@ -71,13 +72,16 @@ class Series(
     _x13.Mixin,
     _plotly.Mixin,
     _fillings.FillingMixin,
+    _movings.MovingMixin,
     _descriptions.DescriptionMixin,
     _conversion.Mixin,
     _views.SeriesViewMixin,
     _copies.CopyMixin,
 ):
     """
+    Time series objects
     """
+
     #[
     __slots__ = (
         "start_date", "data", "data_type", "metadata"
@@ -88,7 +92,7 @@ class Series(
     _short_str_format: str = ">15"
     _date_str_format: str = ">12"
     _missing = _np.nan
-    _missing_str: str = "·"
+    _missing_str: str = "⋅"
     _test_missing_period = staticmethod(lambda x: _np.all(_np.isnan(x)))
 
     def __init__(
@@ -698,6 +702,7 @@ class Series(
 
     for n in FUNCTION_ADAPTATIONS:
         exec(f"def _{n}_(self, *args, **kwargs, ): return self.apply(_np.{n}, *args, **kwargs, )")
+
     #]
 
 
