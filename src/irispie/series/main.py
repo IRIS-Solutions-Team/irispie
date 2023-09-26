@@ -69,6 +69,7 @@ class Series(
     _hp.Mixin,
     _x13.Mixin,
     _plotly.Mixin,
+    _fillings.FillingMixin,
     _descriptions.DescriptionMixin,
     _conversion.Mixin,
     _views.SeriesViewMixin,
