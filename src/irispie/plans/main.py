@@ -232,17 +232,28 @@ class Plan:
             )
         return tuple(d - self.start_date for d in dates)
 
-    def get_pretty_table(self, *args, **kwargs, ) -> _pt.PrettyTable:
+    def get_pretty_table(
+        self,
+        /,
+        names: None | Ellipsis = None,
+    ) -> _pt.PrettyTable:
         """
+        Create pretty table for the Plan
         """
         table = _pt.PrettyTable()
-        table.align = "r"
         table.field_names = ("", ) + tuple("{:>10}".format(table) for table in self.base_range)
+        table.align = "r"
+        table.align[""] = "l"
         for name in self.can_be_exogenized:
-            if _is_pristine(self.exogenized[name], ):
+            if names is not Ellipsis and _is_pristine(self.exogenized[name], ):
                 continue
             table.add_row([name] + [ (str(i) if i is not None else "") for i in self.exogenized[name] ], )
         return table
+
+    def pretty_print(self, *args, **kwargs, ) -> None:
+        """
+        """
+        print(self.get_pretty_table(*args, **kwargs, ), )
 
     def get_pretty_string(self, *args, **kwargs, ) -> str:
         """
@@ -260,8 +271,9 @@ class Plan:
 Plan.for_simulation = Plan.for_simulate
 
 
-def _is_pristine(row: tuple, /, ) -> bool:
+def _is_pristine(row: list, /, ) -> bool:
     """
     """
     return all(i is None for i in row)
+
 

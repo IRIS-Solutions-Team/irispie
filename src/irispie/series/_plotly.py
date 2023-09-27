@@ -18,12 +18,27 @@ from .. import dates as _dates
 
 
 _PLOTLY_STYLES_FOLDER = _os.path.join(_os.path.dirname(__file__), "plotly_styles")
-
 _PLOTLY_STYLES = {
     "layouts": {},
 }
 with open(_os.path.join(_PLOTLY_STYLES_FOLDER, "plain_layout.json", ), "rt", ) as fid:
     _PLOTLY_STYLES["layouts"]["plain"] = _js.load(fid, )
+
+
+def _line_plot(color: str, **settings) -> _pg.Scatter:
+    """
+    """
+    return _pg.Scatter(line_color=color, mode="lines", **settings)
+
+def _bar_plot(color: str, **settings) -> _pg.Bar:
+    """
+    """
+    return _pg.Bar(marker_color=color, **settings, )
+
+_PLOTLY_TRACES_FACTORY = {
+    "line": _line_plot,
+    "bar": _bar_plot,
+}
 
 
 builtin_range = range
@@ -44,6 +59,7 @@ class Mixin:
     """
     """
     #[
+
     def plot(
         self,
         *,
@@ -54,7 +70,10 @@ class Mixin:
         figure = None,
         subplot: tuple[int, int] | int | None = None,
         xline = None,
+        type: Literal["line", "bar"] = "line",
     ) -> _pg.Figure:
+        """
+        """
         range = self._resolve_dates(range)
         range = [ t for t in range ]
         data = self.get_data(range)
@@ -66,16 +85,18 @@ class Mixin:
         subplot = _resolve_subplot(figure, subplot, )
         show_legend = show_legend if show_legend is not None else legend is not None
         for i in builtin_range(num_columns):
-            figure.add_trace(
-                _pg.Scatter(
-                    x=date_str, y=data[:, i], name=legend[i] if legend else None,
-                    line={"color": _COLOR_ORDER[i % len(_COLOR_ORDER)]},
-                    #marker={"color": _COLOR_ORDER[i % len(_COLOR_ORDER)]},
-                    showlegend=show_legend, xhoverformat="%Y-%q",
-                    xaxis=f"x{axis_id}", yaxis=f"y{axis_id}",
-                ),
-                row=subplot[0], col=subplot[1]
-            )
+            color = _COLOR_ORDER[i % len(_COLOR_ORDER)]
+            traces_settings = {
+                "x": date_str,
+                "y": data[:, i],
+                "name": legend[i] if legend else None,
+                "showlegend": show_legend,
+                "xhoverformat": "%Y-%q",
+                "xaxis": f"x{axis_id}",
+                "yaxis": f"y{axis_id}",
+            }
+            traces_object = _PLOTLY_TRACES_FACTORY[type](color, **traces_settings, )
+            figure.add_trace(traces_object, row=subplot[0], col=subplot[1], )
 
         layout = _cp.deepcopy(_PLOTLY_STYLES["layouts"]["plain"])
         layout[f"xaxis{axis_id}"] = layout["xaxis"]
@@ -91,6 +112,7 @@ class Mixin:
             xline = xline.to_plotly_date()
             figure.add_vline(xline)
         return figure
+
     #]
 
 
