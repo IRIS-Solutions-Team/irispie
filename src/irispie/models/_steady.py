@@ -14,6 +14,7 @@ import functools as _ft
 import itertools as _it
 import numpy as _np
 import scipy as _sp
+import dataclasses as _dc
 
 from .. import equations as _eq
 from .. import quantities as _quantities
@@ -26,9 +27,52 @@ from . import _flags
 #]
 
 
+@_dc.dataclass
+class PlannableForSteady:
+    """
+    Implement PlannableProtocol
+    """
+    #[
+
+    can_be_exogenized: tuple[str, ...]
+    can_be_endogenized: tuple[str, ...]
+    can_be_fixed_level: tuple[str, ...]
+    can_be_fixed_change: tuple[str, ...]
+
+    def __init__(
+        self,
+        model,
+        /,
+    ) -> None:
+        """
+        """
+        generate = _quantities.generate_quantity_names_by_kind
+        #
+        self.can_be_exogenized = tuple(generate(
+            model._invariant.quantities,
+            _quantities.QuantityKind.ENDOGENOUS_VARIABLE,
+        ))
+        #
+        self.can_be_endogenized = tuple(generate(
+            model._invariant.quantities,
+            _quantities.QuantityKind.PARAMETER,
+        ))
+        #
+        self.can_be_fixed_level = tuple(generate(
+            model._invariant.quantities,
+            _quantities.QuantityKind.ENDOGENOUS_VARIABLE,
+        ))
+        #
+        self.can_be_fixed_change = self.can_be_fixed_level
+
+    #]
+
+
 class SteadyMixin:
     """
     """
+    #[
+
     def steady(
         self,
         /,
@@ -250,6 +294,16 @@ class SteadyMixin:
         )
         return all_status, details
 
+    #
+    # ===== Implement PlannableProtocol =====
+    # This protocol is used to create Plan objects
+    #
+
+    def get_plannable_for_steady(self, /) -> PlannableForSteady:
+        return PlannableForSteady(self, )
+
+    #]
+
 
 def _apply_delog_on_vector(
     vector: _np.ndarray,
@@ -260,11 +314,14 @@ def _apply_delog_on_vector(
     """
     Delogarithmize the elements of numpy vector that have True log-status
     """
+    #[
     logly_index = [ qid_to_logly[qid] for qid in qids ]
     vector = _np.copy(vector)
     if any(logly_index):
         vector[logly_index] = _np.exp(vector[logly_index])
     return vector
+    #]
+
 
 def _resolve_qids_fixed(
     fixable_quantities,
@@ -273,6 +330,7 @@ def _resolve_qids_fixed(
 ) -> tuple[int, ...]:
     """
     """
+    #[
     if fix is None:
         fix = ()
     elif isinstance(fix, str):
@@ -294,6 +352,7 @@ def _resolve_qids_fixed(
         if q.id not in qids_fixed
     )
     return wrt_qids
+    #]
 
 
 _DEFAULT_OPTIM_SETTINGS = {
@@ -301,4 +360,5 @@ _DEFAULT_OPTIM_SETTINGS = {
     "xtol": 1e-12,
     "gtol": 1e-12,
 }
+
 

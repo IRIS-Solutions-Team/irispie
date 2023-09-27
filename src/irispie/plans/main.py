@@ -7,6 +7,8 @@ Simulation plans
 from __future__ import annotations
 
 from typing import (Iterable, Protocol, )
+import warnings as _wa
+import prettytable as _pt
 
 from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
@@ -18,38 +20,97 @@ __all__ = (
     "Plan",
 )
 
-
 class PlannableProtocol(Protocol, ):
     """
     """
     #[
-    def can_be_exogenized(self, /, ) -> Iterable[str]: ...
-    def can_be_endogenized(self, /, ) -> Iterable[str]: ...
+
+    can_be_exogenized: Iterable[str] | None
+    can_be_endogenized: Iterable[str] | None
+    can_be_fixed_level: Iterable[str] | None
+    can_be_fixed_change: Iterable[str] | None
+
+    #]
+
+
+class GetPlannableForSimulateProtocol(Protocol, ):
+    """
+    """
+    #[
+
+    def get_plannable_for_simulate(self, ) -> PlannableForSimulate: ...
+
+    #]
+
+
+class GetPlannableForSteadyProtocol(Protocol, ):
+    """
+    """
+    #[
+
+    def get_plannable_for_steady(self, ) -> PlannableForSimulate: ...
+
     #]
 
 
 class Plan:
     """
     """
+    #[
+
     __slots__ = (
         "base_range",
         "anticipate",
         "exogenized",
         "endogenized",
+        "fixed_level",
+        "fixed_change",
     )
 
     def __init__(
         self,
-        plannable,
-        base_range: Iterable[Dater],
+        plannable: GetPlannableProtocol,
+        base_range: Iterable[Dater] | None,
         /,
-        anticipate: bool = True,
+        anticipate: bool | None = True,
     ) -> None:
         """
         """
-        self.base_range = tuple(base_range)
+        self.base_range = \
+            tuple(base_range) \
+            if base_range is not None \
+            else None
         self.anticipate = anticipate
+        #
+        if hasattr(plannable, "get_plannable_for_simulate"):
+            _wa.warn("Warning: Use Plan.for_simulation() instead of Plan()", SyntaxWarning, )
+            plannable = plannable.get_plannable_for_simulate()
+        #
         self._initialize(plannable, )
+
+    @classmethod
+    def for_simulate(
+        cls,
+        model: GetPlannableForSimulateProtocol,
+        base_range: Iterable[Dater],
+        /,
+        anticipate: bool = True,
+    ) -> Self:
+        """
+        """
+        plannable = model.get_plannable_for_simulate()
+        return cls(plannable, base_range, anticipate=anticipate, )
+
+    @classmethod
+    def for_steady(
+        cls,
+        model: GetPlannableForSteadyProtocol,
+        /,
+    ) -> Self:
+        """
+        """
+        plannable = model.get_plannable_for_steady()
+        return cls(plannable, None, anticipate=None, )
 
     @property
     def start_date(self, /, ) -> Dater:
@@ -61,7 +122,7 @@ class Plan:
     def num_periods(self, /, ) -> int:
         """
         """
-        return len(self.base_range)
+        return len(self.base_range) if self.base_range is not None else 1
 
     @property
     def can_be_exogenized(self, /, ) -> tuple[str]:
@@ -82,22 +143,34 @@ class Plan:
     ) -> None:
         """
         """
-        can_be_exogenized = plannable.can_be_exogenized()
+        #
+        # REFACTOR
+        # as descriptors
+        #
         self.exogenized = {
             n: [None] * self.num_periods
-            for n in can_be_exogenized
-        } if can_be_exogenized else {}
+            for n in plannable.can_be_exogenized
+        } if plannable.can_be_exogenized else {}
         #
-        can_be_endogenized = plannable.can_be_endogenized()
         self.endogenized = {
             n: [None] * self.num_periods
-            for n in can_be_endogenized
-        } if can_be_endogenized else {}
+            for n in plannable.can_be_endogenized
+        } if plannable.can_be_endogenized else {}
+        #
+        self.fixed_level = {
+            n: [None] * self.num_periods
+            for n in plannable.can_be_fixed_level
+        } if plannable.can_be_fixed_level else {}
+        #
+        self.fixed_change = {
+            n: [None] * self.num_periods
+            for n in plannable.can_be_fixed_change
+        } if plannable.can_be_fixed_change else {}
 
     def exogenize(
         self,
         dates: Iterable[_dates.Dater] | Ellipsis,
-        names: Iterable[str] | str,
+        names: Iterable[str] | str | Ellipsis,
         /,
         transform: str | None = None,
         when_data: bool = False,
@@ -125,7 +198,7 @@ class Plan:
     def _resolve_and_check_names(
         self,
         what: dict,
-        names: Iterable[str] | str,
+        names: Iterable[str] | str | Ellipsis,
         done: str,
         /,
     ) -> tuple[str]:
@@ -158,4 +231,37 @@ class Plan:
                 ["These date(s) are out of simulation range:"] + invalid
             )
         return tuple(d - self.start_date for d in dates)
+
+    def get_pretty_table(self, *args, **kwargs, ) -> _pt.PrettyTable:
+        """
+        """
+        table = _pt.PrettyTable()
+        table.align = "r"
+        table.field_names = ("", ) + tuple("{:>10}".format(table) for table in self.base_range)
+        for name in self.can_be_exogenized:
+            if _is_pristine(self.exogenized[name], ):
+                continue
+            table.add_row([name] + [ (str(i) if i is not None else "") for i in self.exogenized[name] ], )
+        return table
+
+    def get_pretty_string(self, *args, **kwargs, ) -> str:
+        """
+        """
+        return self.get_pretty_table(*args, **kwargs, ).get_string()
+
+    def __str__(self, /, ) -> str:
+        """
+        """
+        return self.get_pretty_string()
+
+    #]
+
+
+Plan.for_simulation = Plan.for_simulate
+
+
+def _is_pristine(row: tuple, /, ) -> bool:
+    """
+    """
+    return all(i is None for i in row)
 

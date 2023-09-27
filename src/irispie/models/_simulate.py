@@ -21,6 +21,7 @@ class SimulateMixin:
     """
     """
     #[
+
     def simulate(
         self,
         in_databank: _databanks.Databank,
@@ -66,6 +67,7 @@ class SimulateMixin:
         #
         info = {"dataslates": dataslates, }
         return out_db, info
+
     #]
 
 

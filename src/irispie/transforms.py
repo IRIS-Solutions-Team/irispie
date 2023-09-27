@@ -52,7 +52,8 @@ class TransformNone(Transform, ):
     #[
     _LHS_PATTERN = _re.compile(r"(\w+)")
     _DATABANK_NAME = "$"
-    _SYMBOL = "••"
+    #_SYMBOL = "••"
+    _SYMBOL = "==="
 
     def create_eval_level_str(
         self,
@@ -130,8 +131,8 @@ class TransformDiffLog(Transform, ):
     """
     #[
     _LHS_PATTERN = _re.compile(r"\(log\((\w+)\)-log\(\1\[-1\]\)\)")
-    _DATABANK_NAME = "difflog_$"
-    _SYMBOL = "difflog"
+    _DATABANK_NAME = "diff_log_$"
+    _SYMBOL = "diff_log"
 
     def create_eval_level_str(
         self,
@@ -222,6 +223,7 @@ RESOLVE_TRANSFORM = {
     "none": TransformNone,
     "log": TransformLog,
     "diff": TransformDiff,
+    "diff_log": TransformDiffLog,
     "difflog": TransformDiffLog,
     "roc": TransformRoc,
     "pct": TransformPct,

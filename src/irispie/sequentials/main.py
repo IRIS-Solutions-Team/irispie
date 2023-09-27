@@ -7,7 +7,7 @@ Sequential models
 from __future__ import annotations
 
 from collections.abc import (Iterable, )
-from typing import (Any, Callable, )
+from typing import (Self, Any, Callable, NoReturn, )
 import numpy as _np
 
 from .. import equations as _equations
@@ -29,6 +29,30 @@ __all__ = (
 )
 
 
+class PlannableForSimulate:
+    """
+    Implement PlannableProtocol
+    """
+    #[
+
+    def __init__(
+        self,
+        sequential,
+        /,
+    ) -> None:
+        """
+        """
+        self.can_be_exogenized = tuple(
+            n for i, n in enumerate(sequential.lhs_names)
+            if not sequential.explanatories[i].is_identity
+        )
+        self.can_be_endogenized = None
+        self.can_be_fixed_level = None
+        self.can_be_fixed_change = None
+
+    #]
+
+
 class Sequential(
     _simulate.SimulateMixin,
     _sources.SourceMixin,
@@ -38,6 +62,7 @@ class Sequential(
     """
     """
     #[
+
     __slots__ = (
         "explanatories",
         "all_names",
@@ -335,19 +360,15 @@ class Sequential(
 
     #
     # ===== Implement PlannableProtocol =====
+    # This protocol is used to create Plan objects
     #
 
-    def can_be_exogenized(self, /, ) -> tuple[str]:
-        return tuple(
-            n for i, n in enumerate(self.lhs_names)
-            if not self.explanatories[i].is_identity
-        )
+    def get_plannable_for_simulate(self, /, ) -> Self:
+        return PlannableForSimulate(self, )
 
-    def can_be_exogenized_when_data(self, /, ) -> tuple[str]:
-        return self.can_be_endogenized()
+    def get_plannable_for_steady(self, /, ) -> NoReturn:
+        raise NotImplementedError()
 
-    def can_be_endogenized(self, /, ) -> None:
-        return None
     #]
 
 
