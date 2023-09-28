@@ -77,8 +77,6 @@ class Dataslate:
         """
         return multiple_to_databank((self,), *args, **kwargs, )
 
-        return self
-
     @property
     def num_periods(self, /, ) -> int:
         """
@@ -209,5 +207,5 @@ def _extract_data_from_record(record, from_to, num_periods, column, /, ):
     try:
         return record.get_data_column_from_to(from_to, column).reshape(1, -1)
     except AttributeError:
-        return _np.full((1, self.num_periods), float(record), dtype=float, )
+        return _np.full((1, num_periods), float(record), dtype=float, )
 

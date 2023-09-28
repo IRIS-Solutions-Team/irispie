@@ -19,7 +19,7 @@ from .conveniences import copies as _copies
 
 
 __all__ = [
-    "Frequency",
+    "Frequency", "Freq",
     "yy", "hh", "qq", "mm", "dd", "ii",
     "Ranger", "start", "end",
     "Dater", "daters_from_sdmx_strings", "daters_from_iso_strings",
@@ -67,6 +67,9 @@ class Frequency(_en.IntEnum):
     def __str__(self, /, ) -> str:
         return self.name
     #]
+
+
+Freq = Frequency
 
 
 PLOTLY_FORMATS = {
@@ -621,8 +624,6 @@ qq = QuarterlyDater.from_year_period
 mm = MonthlyDater.from_year_period
 
 ii = IntegerDater
-
-
 
 
 def dd(year: int, month: int | ellipsis, day: int) -> DailyDater:

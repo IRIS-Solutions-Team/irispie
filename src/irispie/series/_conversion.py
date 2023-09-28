@@ -23,12 +23,32 @@ class Mixin:
         self,
         new_freq: _dates.Frequency,
         /,
-        method: str = "mean",
+        method: Literal["mean", "sum", "first", "last", "min", "max"] = "mean",
         remove_missing: bool = False,
         select: list[int] | None = None,
     ) -> Self:
         """
+        ---
+
+        # aggregate
+
         Aggregate time series to a lower frequency
+
+        ## Syntax
+
+        y = x.aggregate(new_freq, method="mean", remove_missing=False, select=None)
+
+        ## Input arguments
+
+        * `new_freq`: Frequency
+        >
+        > The new frequency to aggregate the original time series to.
+        >
+
+        * `method` {"mean", "sum", "first", "last", "min", "max"}
+        >
+        > The method to use for aggregation. The following methods are available:
+        >
         """
         method_func = _AGGREGATION_METHOD_RESOLUTION[method]
         #
@@ -175,6 +195,7 @@ def _aggregate_within_data(
     """
     #[
     if select is not None:
+        select = tuple(select)
         within_data = within_data[select]
     if remove_missing:
         within_data = within_data[~_np.isnan(within_data)]
