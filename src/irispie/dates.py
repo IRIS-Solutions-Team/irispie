@@ -172,10 +172,12 @@ class Dater(
         return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_sdmx_string(sdmx_string)
 
     @staticmethod
-    def dater_from_ymd(freq: Frequency, *args, ) -> Dater:
+    def from_ymd(freq: Frequency, *args, ) -> Dater:
         """
         """
         return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_ymd(*args, )
+
+    dater_from_ymd = from_ymd
 
     @staticmethod
     def today(freq: Frequency, ) -> Dater:
@@ -192,6 +194,13 @@ class Dater(
         year, month, day = self.to_ymd(position=position, )
         return f"{year:04g}-{month:02g}-{day:02g}"
 
+    def to_python_date(
+        self,
+        /,
+        position: Literal["start", "middle", "end", ] = "start",
+    ) -> str:
+        return _dt.date(*self.to_ymd(position=position, ))
+
     to_plotly_date = _ft.partialmethod(to_iso_string, position="middle")
 
     def __init__(self, serial=0) -> None:
@@ -202,6 +211,14 @@ class Dater(
 
     def resolve(self, context: ResolutionContextProtocol) -> Self:
         return self
+
+    def convert(self, new_freq: Frequency, *args ,**kwargs, ) -> Dater:
+        """
+        Convert date to a new frequency
+        """
+        year, month, day = self.to_ymd(*args, **kwargs, )
+        new_class = DATER_CLASS_FROM_FREQUENCY_RESOLUTION[new_freq]
+        return new_class.from_ymd(year, month, day, )
 
     def __bool__(self) -> bool:
         return not self.needs_resolve
@@ -449,10 +466,8 @@ class RegularDaterMixin:
         year, per = self.to_year_period()
         return year, *self.month_day_resolution[position][per]
 
-    def __str__(self) -> str:
-        year, per = self.to_year_period()
-        letter = self.frequency.letter
-        return self.frequency.sdmx_format.format(year=year, per=per, letter=letter)
+    def __str__(self, /, ) -> str:
+        return self.to_sdmx_string()
 
     def create_soy(self, ) -> Self:
         year, *_ = self.to_year_period()
@@ -484,7 +499,7 @@ class RegularDaterMixin:
     #]
 
 
-class YearlyDater(Dater, RegularDaterMixin, ): 
+class YearlyDater(RegularDaterMixin, Dater, ):
     #[
     frequency: Frequency = Frequency.YEARLY
     needs_resolve: bool = False
@@ -511,7 +526,7 @@ class YearlyDater(Dater, RegularDaterMixin, ):
     #]
 
 
-class HalfyearlyDater(Dater, RegularDaterMixin, ):
+class HalfyearlyDater(RegularDaterMixin, Dater, ):
     #[
     frequency: Frequency = Frequency.HALFYEARLY
     needs_resolve: bool = False
@@ -559,7 +574,7 @@ class HalfyearlyDater(Dater, RegularDaterMixin, ):
     #]
 
 
-class QuarterlyDater(Dater, RegularDaterMixin, ):
+class QuarterlyDater(RegularDaterMixin, Dater, ):
     frequency: Frequency = Frequency.QUARTERLY
     needs_resolve: bool = False
     origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.QUARTERLY)
@@ -586,7 +601,7 @@ class QuarterlyDater(Dater, RegularDaterMixin, ):
         return 1+((month-1)//3)
 
 
-class MonthlyDater(Dater, RegularDaterMixin, ):
+class MonthlyDater(RegularDaterMixin, Dater, ):
     #[
     frequency: Frequency = Frequency.MONTHLY
     needs_resolve: bool = False
@@ -694,6 +709,12 @@ class Ranger(_copies.CopyMixin, ):
     def to_plotly_dates(self) -> Iterable[str]:
         return [t.to_plotly_date() for t in self]
 
+    def to_iso_strings(self, *args, **kwargs, ) -> Iterable[str]:
+        return [t.to_iso_string(*args, **kwargs, ) for t in self]
+
+    def to_python_dates(self, *args, **kwargs, ) -> Iterable[str]:
+        return [t.to_python_date(*args, **kwargs, ) for t in self]
+
     def __len__(self) -> int|None:
         return len(self._serials) if not self.needs_resolve else None
 
@@ -770,7 +791,7 @@ def date_index(dates: Iterable[Dater | None], base: Dater) -> Iterable[int]:
     #]
 
 
-class ContextualDater(Dater, RangeableMixin):
+class ContextualDater(Dater, RangeableMixin, ):
     """
     Dates with context dependent resolution
     """

@@ -65,12 +65,12 @@ class Dataslate:
     ) -> None:
         """
         """
-        generate_data = tuple(
+        data = tuple(
             _extract_data_from_record(databank[n], self.from_to, self.num_periods, slate, )
             if n not in self.missing_names else self.nan_row
             for n in self.row_names
         )
-        self.data = _np.vstack(generate_data)
+        self.data = _np.vstack(data)
 
     def to_databank(self, *args, **kwargs, ) -> _dates.Databank:
         """

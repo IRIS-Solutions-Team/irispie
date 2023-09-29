@@ -30,25 +30,25 @@ class Mixin:
         """
         ---
 
-        # aggregate
+        # `aggregate`
 
         Aggregate time series to a lower frequency
 
         ## Syntax
 
-        y = x.aggregate(new_freq, method="mean", remove_missing=False, select=None)
+            y = x.aggregate(new_freq, method="mean", remove_missing=False, select=None)
 
         ## Input arguments
 
-        * `new_freq`: Frequency
-        >
-        > The new frequency to aggregate the original time series to.
-        >
+            * `new_freq`: Frequency
+            >
+            > The new frequency to aggregate the original time series to.
+            >
 
-        * `method` {"mean", "sum", "first", "last", "min", "max"}
-        >
-        > The method to use for aggregation. The following methods are available:
-        >
+            * `method` {"mean", "sum", "first", "last", "min", "max"}
+            >
+            > The method to use for aggregation. The following methods are available:
+            >
         """
         method_func = _AGGREGATION_METHOD_RESOLUTION[method]
         #
