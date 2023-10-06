@@ -101,3 +101,13 @@ def print_tokens(
     """
     return [ t.print(qid_to_name) for t in tokens ]
 
+
+def rows_and_columns_from_tokens(
+    tokens: Iterable[Token],
+    column_zero: int,
+) -> tuple[Iterable[int], Iterable[int]]:
+    """
+    """
+    rows, columns = zip(*((t.qid, column_zero+t.shift) for t in tokens))
+    return tuple(rows), tuple(columns)
+

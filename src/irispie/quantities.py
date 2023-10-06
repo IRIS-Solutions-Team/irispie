@@ -13,6 +13,7 @@ import collections as _co
 import dataclasses as _dc
 
 from . import wrongdoings as _wrongdoings
+from . import attributes as _attributes
 #]
 
 
@@ -52,16 +53,20 @@ __all__ = ["filter_quantities_by_name", ] + _export_kinds
 
 
 @_dc.dataclass(slots=True, )
-class Quantity:
+class Quantity(
+    _attributes.AttributesMixin,
+):
     """
     """
     #[
+
     id: int | None = None
     human: str | None = None
     kind: QuantityKind = QuantityKind.UNSPECIFIED
     logly: bool | None = None
     description: str | None = None
     entry: int | None = None
+    attributes: tuple[str, ...] = ()
 
     def set_logly(self, logly: bool) -> Self:
         self.logly = logly
@@ -72,6 +77,7 @@ class Quantity:
 
     def __hash__(self, /, ) -> int:
         return hash(self.__repr__)
+
     #]
 
 

@@ -5,25 +5,29 @@
 #[
 from __future__ import annotations
 
-import re as re_
-import parsimonious
-import functools
-import itertools
 from collections.abc import Iterable
-from typing import (TypeAlias, Protocol, )
+from typing import (Self, Any, NoReturn, TypeAlias, Protocol, )
+import re as _re
+import parsimonious as _pa
+import functools as _ft
+import itertools as _it
+import copy as _cp
 
+from .. import wrongdoings as _wrongdoings
 from ..parsers import (common as co_, pseudofunctions as pf_, shifts as sh_, )
 #]
 
 
 def from_string(
     source: str,
-    context: dict | None = None,
     /,
+    *,
+    context: dict[str, Any] | None = None,
     save_preparsed: str = "",
 ) -> tuple[str, dict]:
     """
     """
+    #[
     info = {
         "context": None,
         "preparser_needed": None,
@@ -59,6 +63,7 @@ def from_string(
         _save_preparsed_source(preparsed_source, save_preparsed)
 
     return preparsed_source, info
+    #]
 
 
 _GRAMMAR_DEF = co_.GRAMMAR_DEF + r"""
@@ -87,21 +92,21 @@ _GRAMMAR_DEF = co_.GRAMMAR_DEF + r"""
         if_condition = ~r"[^¡]+"
         if_keyword = keyword_prefix "if"
         then_keyword = keyword_prefix "then"
-        else_keyword = keyword_prefix "else"
 
+    else_keyword = keyword_prefix "else"
     end_keyword = keyword_prefix "end"
 
 """
 
 
-_GRAMMAR = parsimonious.grammar.Grammar(_GRAMMAR_DEF)
+_GRAMMAR = _pa.grammar.Grammar(_GRAMMAR_DEF)
 _KEYWORD_PREFIX = _GRAMMAR["keyword_prefix"].literal
 _KEYWORDS = [ k.members[1].literal for k in _GRAMMAR["keyword"].members ]
 _KEYWORDS_PATTERN = co_.compile_keywords_pattern(_KEYWORDS)
-_translate_keywords = functools.partial(co_.translate_keywords, _KEYWORDS_PATTERN)
+_translate_keywords = _ft.partial(co_.translate_keywords, _KEYWORDS_PATTERN)
 
 
-class _Visitor(parsimonious.nodes.NodeVisitor):
+class _Visitor(_pa.nodes.NodeVisitor):
     """
     """
     #[
@@ -118,6 +123,9 @@ class _Visitor(parsimonious.nodes.NodeVisitor):
 
     def visit_end_keyword(self, node, visited_children):
         self._add(_End())
+
+    def visit_else_keyword(self, node, visited_children):
+        self._add(_Else())
 
     def visit_for_do_block(self, node, visited_children):
         control_name, tokens = visited_children[2]
@@ -148,19 +156,21 @@ class _Visitor(parsimonious.nodes.NodeVisitor):
     #]
 
 
-class _ElementProtocol(Protocol, ):
+class _DirectiveProtocol(Protocol, ):
     def resolve(self, sequence, context, ): ...
     def replace(self, pattern, replacement, ): ...
 
 
-Sequence: TypeAlias = Iterable[_ElementProtocol]
+Sequence: TypeAlias = Iterable[_DirectiveProtocol]
 
 
 class _Text:
     """
     """
     #[
+
     level = 0
+
     def __init__(self, content: str, ):
         self.content = content
 
@@ -177,25 +187,30 @@ class _For:
     """
     """
     #[
-    level = 1
-    def __init__(self, control_name, tokens, /, ):
-        self.control_name = control_name
-        self.tokens = tokens
 
-    def replace(self, pattern, replacement, /, ):
+    level = 1
+
+    def __init__(self, control_name, tokens, /, ):
+        self._control_name = control_name
+        self._tokens = tokens
+
+    def replace(self, pattern, replacement, /, ) -> Self:
         return self
 
-    def _resolve_sequence(self, sequence, context, control_name, token, /, ):
-        sequence = [ s.replace(control_name, token) for s in sequence ]
-        return _resolve_sequence(sequence, context)
+    def _expand_tokens(self, for_body_sequence: Sequence, ):
+        """
+        """
+        new = []
+        for t in self._tokens:
+            new.extend(s.replace(self._control_name, t) for s in _cp.deepcopy(for_body_sequence))
+        return new
 
     def resolve(self, sequence: Sequence, context: dict, /, ):
         index_end = _find_matching_end(sequence)
-        code = "\n".join(
-            self._resolve_sequence(sequence[1:index_end], context, self.control_name, t)
-            for t in self.tokens
-        )
+        for_body_sequence = self._expand_tokens(sequence[1:index_end], )
+        code = _resolve_sequence(for_body_sequence, context, )
         return code, sequence[index_end+1:]
+
     #]
 
 
@@ -206,18 +221,58 @@ class _If:
     level = 1
 
     def __init__(self, condition, /, ):
-        self.condition_text = condition
-        self.condition_result = None
+        self._condition_text = condition.strip()
+        self._condition_result = None
 
-    def replace(self, pattern, replacement):
-        self.condition_text = self.condition_text.replace(pattern, replacement)
+    def replace(self, pattern, replacement) -> Self:
+        self._condition_text = self._condition_text.replace(pattern, replacement)
         return self
 
     def resolve(self, sequence: Sequence, context: dict, /, ):
-        raise Exception("!if not implemented yet")
-        index_end = _find_matching_end(sequence)
-        code = ...
+        """
+        """
+        self._evaluate_condition(context, )
+        index_end = _find_matching_end(sequence, )
+        index_else = _find_matching_else(sequence, ) or index_end
+        if self._condition_result:
+            code = _resolve_sequence(sequence[1:index_else], context, )
+        else:
+            code = _resolve_sequence(sequence[index_else+1:index_end], context, )
         return code, sequence[index_end+1:]
+
+    def _evaluate_condition(
+        self,
+        context: dict[str, Any] | None,
+        /,
+    ) -> None:
+        """
+        """
+        try:
+            self._condition_result = bool(eval(self._condition_text, {}, context, ))
+        except Exception as exc:
+            raise _wrongdoings.IrisPieError(
+                f"Failed to evaluate this !if condition: {self._condition_text}",
+            ) from exc
+    #]
+
+
+class _Else:
+    """
+    """
+    #[
+    level = 0
+
+    def replace(self, pattern, replacement):
+        """
+        """
+        return self
+
+    def resolve(self, *args, **kwargs, ) -> NoReturn:
+        """
+        """
+        raise _wrongdoings.IrisPieError(
+            "Misplaced preparsing directive !else",
+        )
     #]
 
 
@@ -225,36 +280,74 @@ class _End:
     """
     """
     #[
+
     level = -1
 
     def replace(self, pattern, replacement):
         return self
+
+    def resolve(self, *args, **kwargs, ) -> NoReturn:
+        """
+        """
+        raise _wrongdoings.IrisPieError(
+            "Misplaced preparsing directive !end",
+        )
+
     #]
 
 
-_COMMENTS_PATTERN = re_.compile(r'"[^"\n]*"|[%#].*|\.\.\.|\\.*')
+_COMMENTS_PATTERN = _re.compile(r'"[^"\n]*"|[%#].*|\.\.\.|\\.*')
 
 
 def _remove_comments(source: str, /, ) -> str:
-    return re_.sub(
+    return _re.sub(
         _COMMENTS_PATTERN,
         lambda m: m.group(0) if m.group(0).startswith('"') else "",
         source,
     )
 
+def _cumulate_level(sequence: Sequence, /, ) -> int:
+    return list(_it.accumulate(s.level for s in sequence))
+
 
 def _find_matching_end(sequence: Sequence, /, ) -> int:
-    level = list(itertools.accumulate(s.level for s in sequence))
-    return level.index(0)
+    """
+    Find !end that is on level 0
+    """
+    #[
+    cum_level = _cumulate_level(sequence, )
+    return cum_level.index(0)
+    #]
+
+
+def _find_matching_else(sequence: Sequence, /, ) -> int:
+    """
+    Find !else that is on level 0
+    """
+    #[
+    cum_level = _cumulate_level(sequence, )
+    return next(
+        (i for i, l in enumerate(cum_level) if l == 1 and isinstance(sequence[i], _Else)),
+        None,
+    )
+    #]
 
 
 def _resolve_sequence(sequence: Sequence, context: dict, /, ) -> str:
+    """
+    """
+    #[
     code = ""
     while sequence:
         new_code, sequence = sequence[0].resolve(sequence, context, )
-        if new_code:
-            code = (code + "\n" + new_code) if code else new_code
+        if code and new_code:
+            code = code + "\n" + new_code
+        elif new_code:
+            code = new_code
+        else:
+            pass
     return code
+    #]
 
 
 def _strip_lines(text: str) -> str:
@@ -262,7 +355,7 @@ def _strip_lines(text: str) -> str:
     return "\n".join(s for s in split_text if s)
 
 
-_contextual_expression_pattern = re_.compile(r"<([^>]*)>")
+_contextual_expression_pattern = _re.compile(r"<([^>]*)>")
 
 
 def _stringify(input, /, ):
@@ -275,12 +368,17 @@ def _stringify(input, /, ):
 
 
 def _evaluate_contextual_expressions(text: str, context: dict, /):
+    """
+    """
+    #[
     def _replace(match):
         try:
-            return _stringify(eval(match.group(1), {}, context), )
+            expression = match.group(1).strip()
+            return _stringify(eval(expression, {}, context, ), )
         except:
-            raise Exception(f"Error evaluating this contextual expresssion: {match.group(0)}")
-    return re_.sub(_contextual_expression_pattern, _replace, text)
+            raise Exception(f"Failed to evaluate this contextual expression: {expression}")
+    return _re.sub(_contextual_expression_pattern, _replace, text)
+    #]
 
 
 def _is_preparser_needed(source: str, /, ) -> bool:

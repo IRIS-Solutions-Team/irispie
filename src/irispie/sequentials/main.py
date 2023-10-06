@@ -42,10 +42,6 @@ class PlannableForSimulate:
     ) -> None:
         """
         """
-        self.can_be_exogenized = tuple(
-            n for i, n in enumerate(sequential.lhs_names)
-            if not sequential.explanatories[i].is_identity
-        )
         self.can_be_endogenized = None
         self.can_be_fixed_level = None
         self.can_be_fixed_change = None
@@ -344,7 +340,7 @@ class Sequential(
         """
         return self.min_shift, self.max_shift
 
-    def get_databank_names(
+    def get_databox_names(
         self,
         plan: _plans.Plan | None = None,
         /,
@@ -353,21 +349,24 @@ class Sequential(
         """
         all_names = self.all_names
         if plan is not None:
-            plan_names = set(plan.collect_databank_names())
+            plan_names = set(plan.collect_databox_names())
             extra_plan_names = tuple(plan_names.difference(all_names))
             all_names = all_names + extra_plan_names
         return all_names
 
     #
-    # ===== Implement PlannableProtocol =====
-    # This protocol is used to create Plan objects
+    # ===== Implement SimulatePlannableProtocol =====
+    # This protocol is used to create SimulatePlan objects
     #
 
-    def get_plannable_for_simulate(self, /, ) -> Self:
-        return PlannableForSimulate(self, )
+    @property
+    def simulate_can_be_exogenized(self, /, ) -> tuple[str, ...]:
+        return tuple(
+            i.lhs_name for i in self.explanatories
+            if not i.is_identity
+        )
 
-    def get_plannable_for_steady(self, /, ) -> NoReturn:
-        raise NotImplementedError()
+    simulate_can_be_endogenized = ()
 
     #]
 

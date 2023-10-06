@@ -1,5 +1,5 @@
 """
-Databank imports
+Databox imports
 """
 
 
@@ -53,7 +53,7 @@ class _ImportBlockDescriptor:
     #]
 
 
-class DatabankImportMixin:
+class DataboxImportMixin:
     """
     """
     #[

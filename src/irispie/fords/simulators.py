@@ -6,11 +6,12 @@ First-order system simulators
 from __future__ import annotations
 
 from typing import (Self, TypeAlias, Literal, )
-import numpy as np_
+import numpy as _np
 
+from .. import dataslates as _dataslates
 from ..fords import solutions as _solutions
 from ..fords import descriptors as _descriptors
-from ..databanks import main as _databanks
+from ..databoxes import main as _databoxes
 #]
 
 
@@ -18,14 +19,14 @@ def simulate_flat(
     solution: _solutions.Solution,
     solution_vectors: _descriptors.SolutionVectors,
     boolex_logly: tuple[bool, ...],
-    data: np_.ndarray,
+    data: _np.ndarray,
     columns_to_run: list[int],
     deviation: bool,
     anticipate: bool,
 ):
     column_start = columns_to_run[0]
     column_slice = slice(column_start, column_start+len(columns_to_run))
-    column_array = np_.array(range(column_start, column_start+len(columns_to_run)))
+    column_array = _np.array(range(column_start, column_start+len(columns_to_run)))
 
     vec = solution_vectors
 
@@ -38,15 +39,14 @@ def simulate_flat(
     D = solution.D if not deviation else 0
 
     if any(boolex_logly):
-        data[boolex_logly, :] = np_.log(data[boolex_logly, :])
+        data[boolex_logly, :] = _np.log(data[boolex_logly, :])
 
-    curr_state = np_.array([
-        data[t.qid, column_start-1+t.shift] 
-        for t in vec.transition_variables
-    ], dtype=float).reshape(-1, 1)
+    curr_state = _dataslates.retrieve_vector_from_data_array(
+        data, vec.transition_variables, column_start-1,
+    )
 
-    missing_initials = np_.isnan(curr_state)
-    unnecessary_initials = ~np_.array(vec.initial_conditions).reshape(-1, 1)
+    missing_initials = _np.isnan(curr_state)
+    unnecessary_initials = ~_np.array(vec.initial_conditions).reshape(-1, 1)
     missing_unnecessary_initials = missing_initials & unnecessary_initials
     curr_state[missing_unnecessary_initials] = 0
 
@@ -70,13 +70,13 @@ def simulate_flat(
     measurement_shocks_in_slab = [t.qid for t in vec.measurement_shocks]
     measurement_shocks = data[[t.qid for t in vec.measurement_shocks], :]
 
-    transition_shocks[np_.isnan(transition_shocks)] = 0
-    measurement_shocks[np_.isnan(measurement_shocks)] = 0
+    transition_shocks[_np.isnan(transition_shocks)] = 0
+    measurement_shocks[_np.isnan(measurement_shocks)] = 0
 
     Rx = [R]
-    forward = -1
+    forward = None
 
-    shock_column_incidence = list(np_.any(transition_shocks[:, column_array] != 0, axis=0))
+    shock_column_incidence = list(_np.any(transition_shocks[:, column_array] != 0, axis=0))
     if any(shock_column_incidence):
         # Last shock at t+forward
         forward = len(shock_column_incidence) - shock_column_incidence[::-1].index(True) - 1
@@ -86,7 +86,12 @@ def simulate_flat(
             Rk = [None]*forward
         Rx = Rx + (Rk if Rk is not None else [])
 
-    shock_column_end = column_start + forward
+    shock_column_end = (
+        column_start + forward
+        if forward is not None
+        else column_start - 1
+    )
+
     for t in column_array:
         shock_impact = sum( 
             Rx[k] @ transition_shocks[:, (s,)] if Rx[k] is not None else 0 
@@ -102,7 +107,7 @@ def simulate_flat(
     data[measurement_shocks_in_slab, :] = measurement_shocks
 
     if any(boolex_logly):
-        data[boolex_logly, :] = np_.exp(data[boolex_logly, :])
+        data[boolex_logly, :] = _np.exp(data[boolex_logly, :])
 
     return data
 

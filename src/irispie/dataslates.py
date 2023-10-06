@@ -11,10 +11,12 @@ from numbers import (Number, )
 from collections.abc import (Iterable, )
 import numpy as _np
 import dataclasses as _dc
+import numpy as _np
 
 from .series import main as _series
-from .databanks import main as _databanks
+from .databoxes import main as _databoxes
 from .plans import main as _plans
+from .incidences import main as _incidences
 from . import dates as _dates
 #]
 
@@ -28,7 +30,7 @@ class SlatableProtocol(Protocol, ):
     """
     """
     def get_min_max_shift(self, /, ) -> tuple[int, int]:  ...
-    def get_databank_names(self, /, ) -> tuple[str, ...]:  ...
+    def get_databox_names(self, /, ) -> tuple[str, ...]:  ...
 
 
 @_dc.dataclass
@@ -36,6 +38,7 @@ class Dataslate:
     """
     """
     #[
+
     data: _np.ndarray | None = None
     row_names: Iterable[str] | None = None
     missing_names: tuple[str, ...] | None = None
@@ -45,7 +48,7 @@ class Dataslate:
     def __init__(
         self,
         slatable: SlatableProtocol,
-        databank: _databanks.Databank,
+        databox: _databoxes.Databox,
         base_range: Iterable[_dates.Dater],
         /,
         slate: int = 0,
@@ -53,29 +56,29 @@ class Dataslate:
     ) -> Self:
         """
         """
-        self.row_names = slatable.get_databank_names(plan, )
-        self.missing_names = databank.get_missing_names(self.row_names, )
+        self.row_names = slatable.get_databox_names(plan, )
+        self.missing_names = databox.get_missing_names(self.row_names, )
         self._resolve_column_dates(slatable, base_range, )
-        self._populate_data(databank, slate, )
+        self._populate_data(databox, slate, )
 
     def _populate_data(
         self,
-        databank: _databanks.Databank,
+        databox: _databoxes.Databox,
         slate: int,
     ) -> None:
         """
         """
         data = tuple(
-            _extract_data_from_record(databank[n], self.from_to, self.num_periods, slate, )
+            _extract_data_from_record(databox[n], self.from_to, self.num_periods, slate, )
             if n not in self.missing_names else self.nan_row
             for n in self.row_names
         )
         self.data = _np.vstack(data)
 
-    def to_databank(self, *args, **kwargs, ) -> _dates.Databank:
+    def to_databox(self, *args, **kwargs, ) -> _dates.Databox:
         """
         """
-        return multiple_to_databank((self,), *args, **kwargs, )
+        return multiple_to_databox((self,), *args, **kwargs, )
 
     @property
     def num_periods(self, /, ) -> int:
@@ -155,28 +158,50 @@ class Dataslate:
         /,
     ) -> None:
         self.column_dates, self.base_columns = get_extended_range(slatable, base_range, )
+
+    def retrieve_vector(
+        self,
+        tokens: tuple[str, ...],
+        column_zero: int,
+        /,
+    ) -> _np.ndarray:
+        """
+        """
+        return retrieve_vector_from_data_array(self.data, tokens, column_zero, )
+
+    def store_vector(
+        self,
+        tokens: tuple[str, ...],
+        vector: _np.ndarray,
+        column_zero: int,
+        /,
+    ) -> None:
+        """
+        """
+        store_vector_in_data_array(vector, self.data, tokens, column_zero, )
+
     #]
 
 
-def multiple_to_databank(
+def multiple_to_databox(
     selves,
     /,
-    target_databank: _databanks.Databank | None = None,
-) -> _databanks.Databank:
+    target_databox: _databoxes.Databox | None = None,
+) -> _databoxes.Databox:
     """
-    Add data from a dataslate to a new or existing databank
+    Add data from a dataslate to a new or existing databox
     """
     #[
-    if target_databank is None:
-        target_databank = _databanks.Databank()
+    if target_databox is None:
+        target_databox = _databoxes.Databox()
     self = selves[0]
     num_columns = len(selves)
     for row, n in enumerate(self.row_names):
         data = _np.hstack(tuple(ds.data[(row,), :].T for ds in selves))
         x = _series.Series(num_columns=num_columns, )
         x.set_data(self.column_dates, data)
-        target_databank[n] = x
-    return target_databank
+        target_databox[n] = x
+    return target_databox
     #]
 
 
@@ -208,4 +233,28 @@ def _extract_data_from_record(record, from_to, num_periods, column, /, ):
         return record.get_data_column_from_to(from_to, column).reshape(1, -1)
     except AttributeError:
         return _np.full((1, num_periods), float(record), dtype=float, )
+
+
+def retrieve_vector_from_data_array(
+    data: _np.ndarray,
+    tokens: Iterable[_incidences.Incidence],
+    column_zero: int
+) -> _np.ndarray:
+    """
+    """
+    rows, columns = _incidences.rows_and_columns_from_tokens(tokens, column_zero, )
+    return data[rows, columns].reshape(-1, 1)
+
+
+def store_vector_in_data_array(
+    vector: _np.ndarray,
+    data: _np.ndarray,
+    tokens: Iterable[_incidences.Incidence],
+    column_zero: int
+) -> None:
+    """
+    """
+    rows, columns = _incidences.rows_and_columns_from_tokens(tokens, column_zero, )
+    data[rows, columns] = vector
+
 

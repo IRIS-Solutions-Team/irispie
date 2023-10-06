@@ -16,7 +16,7 @@ import functools as _ft
 from ..series import main as _series
 from .. import dates as _dates
 
-from . import main as _databanks
+from . import main as _databoxes
 #]
 
 
@@ -61,11 +61,11 @@ def read_csv(
     #
     header_iterator, data_iterator = factory.create_header_and_data_iterators()
     data_array_reader = factory.create_data_array_reader()
-    all_databanks = tuple(
-        b.create_databank_from_block(data_array_reader, **kwargs, )
+    all_databoxes = tuple(
+        b.create_databox_from_block(data_array_reader, **kwargs, )
         for b in _generate_blocks(header_iterator, data_iterator, **kwargs, )
     )
-    return all_databanks
+    return all_databoxes
     #]
 
 
@@ -140,14 +140,14 @@ class _Block:
         """
         self._headers.append(header)
 
-    def create_databank_from_block(
+    def create_databox_from_block(
         self,
         data_array_reader: _DataArrayReader,
         /,
         **kwargs,
-    ) -> _databanks.Databank:
+    ) -> _databoxes.Databox:
         """
-        Create a databank from the block
+        Create a databox from the block
         """
         self._load_data_array(data_array_reader, )
         return self._data_array

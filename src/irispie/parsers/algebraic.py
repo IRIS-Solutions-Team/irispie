@@ -16,6 +16,7 @@ from ..parsers import (common as co_, substitutions as su_, )
 
 _WHERE_SUBSTITUTE = ["transition-equations", "measurement-equations"]
 
+
 def from_string(source_string: str, /, ) -> sources.Source:
     """
     """
@@ -44,9 +45,10 @@ _GRAMMAR_DEF = co_.GRAMMAR_DEF + r"""
     description_quote = '"'
     description_text = ~r'[^"]*'
 
-    attributes = ~r"\([:\w,;\s]*\)"
+    block_attributes = "{" attribute_chain "}"
+        attribute_chain = ~r"(\s*:\w+\s*)+"
 
-    eqn_block = eqn_keyword attributes? eqn_ended* 
+    eqn_block = eqn_keyword block_attributes? eqn_ended* 
     eqn_keyword = transition_equations_keyword / measurement_equations_keyword
         / substitutions_keyword / autoswaps_simulate_keyword / autoswaps_steady_keyword
         / preprocessor_keyword / postprocessor_keyword
@@ -58,7 +60,7 @@ _GRAMMAR_DEF = co_.GRAMMAR_DEF + r"""
     eqn_version_separator = "!!"
     eqn_version = ~r"[\?\w\.,\(\)=:\+\^\-\*\{\}\[\]/ \t\n&\$]+"
 
-    qty_block = qty_keyword attributes? qty_ended*
+    qty_block = qty_keyword block_attributes? qty_ended*
     qty_keyword = transition_variables_keyword / transition_shocks_keyword / measurement_variables_keyword / measurement_shocks_keyword / parameters_keyword / exogenous_variables_keyword
     qty_ended = white_spaces description white_spaces qty_name qty_end
     qty_name = ~r"\b[\?a-zA-Z]\w*\b"
@@ -102,8 +104,7 @@ class _Visitor(pa_.nodes.NodeVisitor):
         super().__init__()
         self.content = {}
 
-    def _add(self, block_name, new_content, attributes):
-        # FIXME: handle attributes
+    def _add(self, block_name, new_content, ):
         if new_content:
             updated_content = self.content.setdefault(block_name, []) + new_content
             self.content[block_name] = updated_content
@@ -112,16 +113,28 @@ class _Visitor(pa_.nodes.NodeVisitor):
         return self.content
 
     def _visit_block(self, node, visited_children):
+        if not visited_children[2]:
+            return
         block_name = visited_children[0]
-        block_attributes = visited_children[1]
-        block_content = visited_children[2]
-        self._add(block_name, block_content, block_attributes)
+        block_attributes = \
+            (visited_children[1][0], ) \
+            if visited_children[1] else (None, )
+        block_content_with_attributes = [
+            b + block_attributes
+            for b in visited_children[2]
+        ]
+        self._add(block_name, block_content_with_attributes, )
 
     visit_qty_block = _visit_block
     visit_eqn_block = _visit_block
 
-    def visit_attributes(self, node, visited_children):
-        return node.text.replace("(", "").replace(")", "")
+    def visit_block_attributes(self, node, visited_children):
+        attributes = visited_children[1].strip().replace("(", "").replace(")", "")
+        attributes = attributes.split(":")
+        if len(attributes) < 2:
+            return ()
+        attributes = tuple(":" + a.strip() for a in attributes[1:])
+        return attributes
 
     def visit_log_block(self, node, visited_children):
         block_name, _, _, _, block_content = visited_children

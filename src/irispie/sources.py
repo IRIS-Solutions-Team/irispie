@@ -17,8 +17,8 @@ from . import quantities as _quantities
 #]
 
 
-QuantityInput: TypeAlias = tuple[str, str]
-EquationInput: TypeAlias = tuple[str, tuple[str, str]]
+QuantityInput: TypeAlias = tuple[str, str, tuple[str, ...]]
+EquationInput: TypeAlias = tuple[str, tuple[str, str], tuple[str, ...]]
 
 
 LOGLY_VARIABLE = (
@@ -34,7 +34,7 @@ class SourceMixin:
     #[
     @classmethod
     def from_string(
-        cls,
+        klass,
         source_string: str,
         /,
         context: dict | None = None,
@@ -47,11 +47,11 @@ class SourceMixin:
         source, info = AlgebraicSource.from_string(
             source_string, context=context, save_preparsed=save_preparsed,
         )
-        return cls.from_source(source, context=context, **kwargs, )
+        return klass.from_source(source, context=context, **kwargs, )
 
     @classmethod
     def from_file(
-        cls,
+        klass,
         source_files: str | Iterable[str],
         /,
         **kwargs,
@@ -60,7 +60,7 @@ class SourceMixin:
         Create a new object from algebraic source files
         """
         source_string = _common.combine_source_files(source_files, )
-        return cls.from_string(source_string, **kwargs, )
+        return klass.from_string(source_string, **kwargs, )
     #]
 
 
@@ -124,37 +124,58 @@ class AlgebraicSource:
         self.log_variables += log_variable_inputs
 
     def _add_quantities(self, quantity_inputs: Iterable[QuantityInput] | None, kind: _quantities.QuantityKind) -> None:
+        """
+        """
         if not quantity_inputs:
             return
-        offset = self.quantities[-1].entry + 1 if self.quantities else 0
+        start_entry = self.quantities[-1].entry + 1 if self.quantities else 0
         self.quantities = self.quantities + [
-            _quantities.Quantity(id=None, human=q[1].strip(), kind=kind, logly=None, description=q[0].strip(), entry=i)
-            for i, q in enumerate(quantity_inputs, start=offset)
+            _quantities.Quantity(
+                id=None,
+                human=q[1].strip(),
+                kind=kind,
+                logly=None,
+                description=q[0].strip(),
+                entry=i,
+                attributes=_conform_attributes(q[2], )
+            )
+            for i, q in enumerate(quantity_inputs, start=start_entry)
         ]
 
     def _add_equations(self, equation_inputs: Iterable[EquationInput] | None, kind: _equations.EquationKind, /) -> None:
+        """
+        """
         if not equation_inputs:
             return
-        offset = self.dynamic_equations[-1].entry + 1 if self.dynamic_equations else 0
-        self.dynamic_equations = self.dynamic_equations + [
-            _equations.Equation(id=None, human=_handle_white_spaces(ein[1][0]), kind=kind, description=ein[0].strip(), entry=i)
-            for i, ein in enumerate(equation_inputs, start=offset)
-        ]
-        self.steady_equations = self.steady_equations + [
-            _equations.Equation(id=None, human=_handle_white_spaces(ein[1][1] if ein[1][1] else ein[1][0]), kind=kind, description=ein[0].strip(), entry=i)
-            for i, ein in enumerate(equation_inputs, start=offset)
-        ]
+        #
+        def _create_equations(equation_inputs, kind, start_entry, human_func):
+            return [
+                _equations.Equation(
+                    id=None,
+                    human=human_func(ein),
+                    kind=kind,
+                    description=ein[0].strip(),
+                    entry=i,
+                    attributes=_conform_attributes(ein[2], ),
+                )
+                for i, ein in enumerate(equation_inputs, start=start_entry)
+            ]
+        #
+        def _human_func_dynamic(ein):
+            return _handle_white_spaces(ein[1][0])
+        #
+        def _human_func_steady(ein):
+            return _handle_white_spaces(ein[1][1] if ein[1][1] else ein[1][0])
+        #
+        start_entry = self.dynamic_equations[-1].entry + 1 if self.dynamic_equations else 0
+        self.dynamic_equations += _create_equations(equation_inputs, kind, start_entry, _human_func_dynamic)
+        self.steady_equations += _create_equations(equation_inputs, kind, start_entry, _human_func_steady)
 
     def populate_logly(self, /) -> None:
         """
         """
-        #
-        # Logly status for nonlisted variables
         default_logly = self._resolve_default_logly()
-        #
-        # Logly status for listed variables
         listed_logly = not default_logly
-        #
         for qty in self.quantities:
             if qty.kind not in LOGLY_VARIABLE:
                 continue
@@ -170,7 +191,7 @@ class AlgebraicSource:
 
     @classmethod
     def from_lists(
-        cls,
+        klass,
         /,
         transition_variables: Iterable[QuantityInput],
         transition_equations: Iterable[EquationInput], 
@@ -199,7 +220,7 @@ class AlgebraicSource:
 
     @classmethod
     def from_string(
-        cls,
+        klass,
         source_string: str,
         /,
         context: dict | None = None,
@@ -208,11 +229,11 @@ class AlgebraicSource:
         """
         """
         preparsed_string, preparser_info = _preparser.from_string(
-            source_string, context, save_preparsed=save_preparsed, 
+            source_string, context=context, save_preparsed=save_preparsed, 
         )
         parsed_content = _algebraic.from_string(preparsed_string)
         #
-        self = AlgebraicSource()
+        self = klass()
         self.add_transition_variables(parsed_content.get("transition-variables"))
         self.add_transition_shocks(parsed_content.get("transition-shocks"))
         self.add_transition_equations(parsed_content.get("transition-equations"))
@@ -233,4 +254,16 @@ class AlgebraicSource:
 
 def _handle_white_spaces(x: str, /) -> str:
     return _re.sub(r"[\s\n\r]+", "", x)
+
+
+def _conform_attributes(attributes: str | Iterable[str] | None, /, ) -> set:
+    """
+    """
+    #[
+    if not attributes:
+        return set()
+    if isinstance(attributes, str):
+        attributes = set((attributes, ))
+    return set(a.strip() for a in attributes)
+    #]
 

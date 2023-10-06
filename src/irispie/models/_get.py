@@ -17,7 +17,7 @@ from .. import quantities as _quantities
 from .. import sources as _sources
 from .. import dates as _dates
 from ..incidences import main as _incidence
-from ..databanks import main as _databanks
+from ..databoxes import main as _databoxes
 from ..fords import descriptors as _descriptors
 
 from . import _flags
@@ -25,15 +25,15 @@ from . import _flags
 
 
 """
-Quantities that are time series in model databanks
+Quantities that are time series in model databoxes
 """
 _TIME_SERIES_QUANTITY = _quantities.QuantityKind.VARIABLE | _quantities.QuantityKind.SHOCK
 
 
 _DATABANK_OUTPUT_FORMAT_RESOLUTION = {
     "dict": lambda x: x,
-    "Databank": lambda x: _databanks.Databank.from_dict(x),
-    "databank": lambda x: _databanks.Databank.from_dict(x),
+    "Databox": lambda x: _databoxes.Databox.from_dict(x),
+    "databox": lambda x: _databoxes.Databox.from_dict(x),
     "json": lambda x: js_.dumps(x),
     "json4": lambda x: js_.dumps(x, indent=4),
 }
@@ -45,7 +45,7 @@ def _decorate_output_format(func: Callable, ):
     #[
     def _wrapper(*args, **kwargs):
         output = func(*args, **kwargs)
-        output_format = kwargs.get("output", "Databank")
+        output_format = kwargs.get("output", "Databox")
         return _DATABANK_OUTPUT_FORMAT_RESOLUTION[output_format](output)
     return _wrapper
     #]
@@ -149,13 +149,13 @@ class GetMixin:
         ]
         return _incidence.print_tokens(initial_tokens, self.create_qid_to_name(), )
 
-    def _get_steady_databank(
+    def _get_steady_databox(
         self,
         start_date: _dates.Dater,
         end_date: _dates.Dater,
         /,
         deviation: bool = False,
-    ) -> _databanks.Databank:
+    ) -> _databoxes.Databox:
         """
         """
         num_columns = int(end_date - start_date + 1)
@@ -180,7 +180,7 @@ class GetMixin:
         array = _np.delete(array, remove_qids, axis=0, )
         qid_to_description = self.create_qid_to_description()
         #
-        return _databanks.Databank.from_array(
+        return _databoxes.Databox.from_array(
             array, qid_to_name, start_date,
             array_orientation="horizontal",
             interpret_dates="start_date",

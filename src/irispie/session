@@ -1,0 +1,157 @@
+let SessionLoad = 1
+let s:so_save = &g:so | let s:siso_save = &g:siso | setg so=0 siso=0 | setl so=-1 siso=-1
+let v:this_session=expand("<sfile>:p")
+silent only
+silent tabonly
+cd ~/iris-drive
+if expand('%') == '' && !&modified && line('$') <= 1 && getline(1) == ''
+  let s:wipebuf = bufnr('%')
+endif
+let s:shortmess_save = &shortmess
+if &shortmess =~ 'A'
+  set shortmess=aoOA
+else
+  set shortmess=aoO
+endif
+badd +529 irispie-package/src/irispie/series/main.py
+badd +0 term://~/iris-drive/irispie-package/src/irispie//65835:/opt/homebrew/Cellar/bash/5.2.15/bin/bash
+badd +12 ~/.config/nvim/after/syntax/python.vim
+badd +11 ~/.config/nvim/syntax/matlab.vim
+argglobal
+%argdel
+edit irispie-package/src/irispie/series/main.py
+let s:save_splitbelow = &splitbelow
+let s:save_splitright = &splitright
+set splitbelow splitright
+wincmd _ | wincmd |
+split
+1wincmd k
+wincmd _ | wincmd |
+vsplit
+wincmd _ | wincmd |
+vsplit
+2wincmd h
+wincmd w
+wincmd w
+wincmd w
+let &splitbelow = s:save_splitbelow
+let &splitright = s:save_splitright
+wincmd t
+let s:save_winminheight = &winminheight
+let s:save_winminwidth = &winminwidth
+set winminheight=0
+set winheight=1
+set winminwidth=0
+set winwidth=1
+exe '1resize ' . ((&lines * 29 + 21) / 42)
+exe 'vert 1resize ' . ((&columns * 60 + 91) / 183)
+exe '2resize ' . ((&lines * 29 + 21) / 42)
+exe 'vert 2resize ' . ((&columns * 61 + 91) / 183)
+exe '3resize ' . ((&lines * 29 + 21) / 42)
+exe 'vert 3resize ' . ((&columns * 60 + 91) / 183)
+exe '4resize ' . ((&lines * 10 + 21) / 42)
+argglobal
+balt ~/.config/nvim/after/syntax/python.vim
+setlocal fdm=syntax
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=0
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+86
+normal! zo
+let s:l = 531 - ((2 * winheight(0) + 14) / 29)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 531
+normal! 020|
+lcd ~/iris-drive/irispie-package/src/irispie
+wincmd w
+argglobal
+if bufexists(fnamemodify("~/.config/nvim/after/syntax/python.vim", ":p")) | buffer ~/.config/nvim/after/syntax/python.vim | else | edit ~/.config/nvim/after/syntax/python.vim | endif
+if &buftype ==# 'terminal'
+  silent file ~/.config/nvim/after/syntax/python.vim
+endif
+balt ~/iris-drive/irispie-package/src/irispie/series/main.py
+setlocal fdm=syntax
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=0
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+let s:l = 18 - ((17 * winheight(0) + 14) / 29)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 18
+normal! 08|
+lcd ~/iris-drive/irispie-package/src/irispie
+wincmd w
+argglobal
+if bufexists(fnamemodify("term://~/iris-drive/irispie-package/src/irispie//65835:/opt/homebrew/Cellar/bash/5.2.15/bin/bash", ":p")) | buffer term://~/iris-drive/irispie-package/src/irispie//65835:/opt/homebrew/Cellar/bash/5.2.15/bin/bash | else | edit term://~/iris-drive/irispie-package/src/irispie//65835:/opt/homebrew/Cellar/bash/5.2.15/bin/bash | endif
+if &buftype ==# 'terminal'
+  silent file term://~/iris-drive/irispie-package/src/irispie//65835:/opt/homebrew/Cellar/bash/5.2.15/bin/bash
+endif
+balt ~/iris-drive/irispie-package/src/irispie/series/main.py
+setlocal fdm=manual
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=0
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+let s:l = 24 - ((23 * winheight(0) + 14) / 29)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 24
+normal! 07|
+lcd ~/iris-drive/irispie-package/src/irispie
+wincmd w
+argglobal
+enew
+balt ~/iris-drive/irispie-package/src/irispie/series/main.py
+setlocal fdm=manual
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=0
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+lcd ~/iris-drive/irispie-package/src/irispie
+wincmd w
+2wincmd w
+exe '1resize ' . ((&lines * 29 + 21) / 42)
+exe 'vert 1resize ' . ((&columns * 60 + 91) / 183)
+exe '2resize ' . ((&lines * 29 + 21) / 42)
+exe 'vert 2resize ' . ((&columns * 61 + 91) / 183)
+exe '3resize ' . ((&lines * 29 + 21) / 42)
+exe 'vert 3resize ' . ((&columns * 60 + 91) / 183)
+exe '4resize ' . ((&lines * 10 + 21) / 42)
+if exists(':tcd') == 2 | tcd ~/iris-drive/irispie-package/src/irispie | endif
+tabnext 1
+if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0 && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'
+  silent exe 'bwipe ' . s:wipebuf
+endif
+unlet! s:wipebuf
+set winheight=1 winwidth=20
+let &shortmess = s:shortmess_save
+let &winminheight = s:save_winminheight
+let &winminwidth = s:save_winminwidth
+let s:sx = expand("<sfile>:p:r")."x.vim"
+if filereadable(s:sx)
+  exe "source " . fnameescape(s:sx)
+endif
+let &g:so = s:so_save | let &g:siso = s:siso_save
+set hlsearch
+nohlsearch
+doautoall SessionLoadPost
+unlet SessionLoad
+" vim: set ft=vim :

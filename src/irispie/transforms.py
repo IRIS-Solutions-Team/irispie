@@ -14,6 +14,18 @@ from .incidences import main as _incidence
 #]
 
 
+_ANTICIPATE_SYMBOL = {
+    True: "A",
+    False: "U",
+}
+
+_WHEN_DATA_SYMBOL = {
+    True: "?",
+    False: "!",
+    None: "",
+}
+
+
 class TransformProtocol(Protocol, ):
     _LHS_PATTERN: _re.Pattern
     def __str__(self) -> str: ...
@@ -23,26 +35,32 @@ class Transform:
     """
     """
     #[
+
     def __init__(
         self,
         /,
-        when_data: bool = False,
+        anticipate: bool = True,
+        when_data: bool | None = False,
     ) -> None:
+        self.anticipate = anticipate
         self.when_data = when_data
 
     def __str__(self, /, ) -> str:
-        when_data_symbol = "!" if not self.when_data else "?"
-        return when_data_symbol + self._SYMBOL
+        return "" \
+            + _WHEN_DATA_SYMBOL[self.when_data] \
+            + _ANTICIPATE_SYMBOL[self.anticipate] \
+            + self._SYMBOL
 
     def __repr__(self, /, ) -> self:
         return self.__str__()
 
-    def resolve_databank_name(
+    def resolve_databox_name(
         self,
         base_name: str, 
         /,
     ) -> str:
         return self._DATABANK_NAME.replace("$", base_name, )
+
     #]
 
 
@@ -52,8 +70,7 @@ class TransformNone(Transform, ):
     #[
     _LHS_PATTERN = _re.compile(r"(\w+)")
     _DATABANK_NAME = "$"
-    #_SYMBOL = "••"
-    _SYMBOL = "==="
+    _SYMBOL = ""
 
     def create_eval_level_str(
         self,

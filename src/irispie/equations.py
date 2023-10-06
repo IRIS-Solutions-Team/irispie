@@ -17,6 +17,7 @@ import operator as _op
 
 from .incidences import main as _incidence
 from . import quantities as _quantities
+from . import attributes as _attributes
 from . import wrongdoings as _wrongdoings
 #]
 
@@ -49,9 +50,13 @@ for n in __all__:
 
 
 @_dc.dataclass(slots=True, )
-class Equation:
+class Equation(
+    _attributes.AttributesMixin,
+):
     """
     """
+    #[
+
     id: int | None = None
     human: str | None = None
     kind: EquationKind | None = None
@@ -59,9 +64,8 @@ class Equation:
     xtring: str | None = None
     incidence: _incidence.Tokens | None = None
     entry: int | None = None
-    """
-    """
-    #[
+    attributes: set[str] = ()
+
     def finalize(self, name_to_id: dict[str, int]) -> _ErrorLogType:
         self.xtring, self.incidence, error_log, *_ = xtring_from_human(self.human, name_to_id, )
         return error_log
@@ -72,6 +76,7 @@ class Equation:
 
     def __hash__(self, /, ) -> int:
         return hash(self.__repr__)
+
     #]
 
 

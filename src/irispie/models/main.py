@@ -18,7 +18,7 @@ from .. import quantities as _quantities
 from .. import sources as _sources
 from .. import dates as _dates
 from ..parsers import common as _pc
-from ..databanks import main as _databanks
+from ..databoxes import main as _databoxes
 from ..fords import solutions as _solutions
 from ..fords import steadiers as _fs
 from ..fords import descriptors as _descriptors
@@ -209,7 +209,7 @@ class Model(
     def create_steady_array(
         self,
         /,
-        variant: _variants.Variant|None = None,
+        variant: _variants.Variant | None = None,
         **kwargs,
     ) -> _np.ndarray:
         qid_to_logly = self.create_qid_to_logly()
@@ -397,14 +397,17 @@ class Model(
 
     #
     # Implement SimulatableProtocol
+    # =============================
     #
 
-    def get_min_max_shifts(self) -> tuple[int, int]:
+    def get_min_max_shifts(self, ) -> tuple[int, int]:
         """
         """
         return self._invariant._min_shift, self._invariant._max_shift
 
-    def get_databank_names(self, plan, /, ) -> tuple[str, ...]:
+    def get_databox_names(self, plan, /, ) -> tuple[str, ...]:
+        """
+        """
         qid_to_name = self.create_qid_to_name()
         return tuple(qid_to_name[qid] for qid in range(len(qid_to_name)))
     #]

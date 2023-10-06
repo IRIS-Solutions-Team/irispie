@@ -8,7 +8,7 @@ from typing import (Any, )
 from numbers import (Number, )
 import numpy as _np
 
-from ..databanks import main as _databanks
+from ..databoxes import main as _databoxes
 from ..plans import main as _plans
 from ..explanatories import main as _explanatories
 from .. import dataslates as _dataslates
@@ -21,20 +21,20 @@ class SimulateMixin:
     #[
     def simulate(
         self,
-        in_databank: _databanks.Databank,
+        in_databox: _databoxes.Databox,
         base_range: Iterable[Dater],
         /,
         plan: _plans.Plan | None = None,
         prepend_input: bool = True,
-        add_to_databank: _databanks.Databank | None = None,
-    ) -> tuple[_databanks.Databank, dict[str, Any]]:
+        add_to_databox: _databoxes.Databox | None = None,
+    ) -> tuple[_databoxes.Databox, dict[str, Any]]:
         """
         """
         #
         # Arrange input data into a dataslate
         #
         ds = _dataslates.Dataslate(
-            self, in_databank, base_range,
+            self, in_databox, base_range,
             slate=0, plan=plan,
         )
         #
@@ -48,17 +48,17 @@ class SimulateMixin:
         name_to_row = ds.create_name_to_row()
         self._simulate(ds.data, columns_to_simulate, name_to_row, plan, )
         #
-        # Build output databank
+        # Build output databox
         #
         ds.remove_terminal()
-        out_db = ds.to_databank()
+        out_db = ds.to_databox()
         if prepend_input:
-            out_db.prepend(in_databank, ds.column_dates[0]-1, )
+            out_db.prepend(in_databox, ds.column_dates[0]-1, )
         #
-        # Add to custom databank
+        # Add to custom databox
         #
-        if add_to_databank is not None:
-            out_db = add_to_databank | out_db
+        if add_to_databox is not None:
+            out_db = add_to_databox | out_db
         #
         info = {"dataslate": ds, }
         return out_db, info
@@ -98,11 +98,11 @@ def _is_exogenized(
         return False, None
     #
     lhs_name = explanatory.lhs_name
-    transform = plan.exogenized[lhs_name][plan_column]
+    transform = plan.get_exogenized_point(lhs_name, plan_column)
     if transform is None:
         return False, None
     #
-    transform_name = transform.resolve_databank_name(lhs_name, )
+    transform_name = transform.resolve_databox_name(lhs_name, )
     lhs_name_row = name_to_row[lhs_name]
     transform_row = name_to_row[transform_name]
     transform_value = data[transform_row, data_column]

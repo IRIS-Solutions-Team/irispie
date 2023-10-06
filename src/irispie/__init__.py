@@ -10,8 +10,8 @@ from .dates import __all__ as dates_all
 from .series import *
 from .series import __all__ as series_all
 
-from .databanks.main import *
-from .databanks.main import __all__ as databanks_all
+from .databoxes.main import *
+from .databoxes.main import __all__ as databoxes_all
 
 from .dataslates import *
 from .dataslates import __all__ as dataslates_all
@@ -63,7 +63,7 @@ def _convert_version(version_str: str) -> tuple[int, ...]:
 __all__ = (
     *dates_all,
     *series_all,
-    *databanks_all,
+    *databoxes_all,
     *models_all,
     *quantities_all,
     *equations_all,

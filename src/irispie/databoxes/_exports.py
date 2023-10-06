@@ -57,9 +57,9 @@ class _ExportBlockDescriptor:
     #]
 
 
-class DatabankExportMixin:
+class DataboxExportMixin:
     """
-    Databank mixin for exporting data to CSV sheets
+    Databox mixin for exporting data to CSV sheets
     """
     #[
     def to_sheet(

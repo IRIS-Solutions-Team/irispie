@@ -8,13 +8,13 @@ from __future__ import annotations
 
 from numbers import Number
 from collections.abc import (Iterable, Callable, )
-from typing import (Self, TypeAlias, )
+from typing import (Self, Any, TypeAlias, NoReturn, )
 from types import (EllipsisType, )
 import numpy as _np
 import itertools as _it
 import functools as _ft
+import copy as _cp
 
-from ..conveniences import views as _views
 from ..conveniences import descriptions as _descriptions
 from ..conveniences import copies as _copies
 from .. import dates as _dates
@@ -26,24 +26,24 @@ from . import _x13
 from . import _hp
 from . import _fillings
 from . import _movings
+from . import _views
+from ._diffcums import __all__ as _diffcums__all__
+from ._diffcums import *
 #]
 
 
-FUNCTION_ADAPTATIONS_NUMPY = {"log", "exp", "sqrt", "maximum", "minimum", "mean", "median"}
-FUNCTION_ADAPTATIONS_BUILTINS = {"max", "min", }
-FUNCTION_ADAPTATIONS = FUNCTION_ADAPTATIONS_NUMPY | FUNCTION_ADAPTATIONS_BUILTINS
+FUNCTION_ADAPTATIONS_NUMPY = ("log", "exp", "sqrt", "maximum", "minimum", "mean", "median", )
+FUNCTION_ADAPTATIONS_BUILTINS = ("max", "min", )
+FUNCTION_ADAPTATIONS = tuple(set(FUNCTION_ADAPTATIONS_NUMPY + FUNCTION_ADAPTATIONS_BUILTINS))
 
 
-__all__ = [
-    "Series", "shift",
-    "diff", "difflog", "pct", "roc",
-    "cum_diff", "cum_difflog", "cum_pct", "cum_roc",
-] + list(FUNCTION_ADAPTATIONS)
+__all__ = (
+    "Series",
+) + _diffcums__all__ + FUNCTION_ADAPTATIONS
 
 
 Dates: TypeAlias = _dates.Dater | Iterable[_dates.Dater] | _dates.Ranger | EllipsisType | None
 ColumnsRequestType: TypeAlias = int | Iterable[int] | slice | None
-Data: TypeAlias = Number | Iterable[Number] | tuple | _np.ndarray
 
 
 def _get_date_positions(dates, base, num_periods):
@@ -75,7 +75,7 @@ class Series(
     _movings.MovingMixin,
     _descriptions.DescriptionMixin,
     _conversion.Mixin,
-    _views.SeriesViewMixin,
+    _views.ViewMixin,
     _copies.CopyMixin,
 ):
     """
@@ -84,8 +84,8 @@ class Series(
 
     #[
     __slots__ = (
-        "start_date", "data", "data_type", "metadata"
-        "_description", "_column_titles",
+        "start_date", "data", "data_type", "_column_titles",
+        "metadata", "_description", 
     )
 
     _numeric_format: str = "15g"
@@ -103,14 +103,20 @@ class Series(
         data_type: type = _np.float64,
         description: str = "",
         column_titles: Iterable[str] | None = None,
-        **kwargs,
+        start_date: _dates.Dater | None = None,
+        dates: Iterable[_dates.Dater] | None = None,
+        values: Any | None = None,
+        func: Callable | None = None,
     ) -> None:
         self.start_date = None
         self.data_type = data_type
         self.data = _np.full((0, num_columns), self._missing, dtype=self.data_type)
         self.metadata = {}
         self._description = description
-        self._column_titles = column_titles or [""] * num_columns
+        self.column_titles = column_titles
+        self._reset_column_titles_if_needed()
+        test = (x is not None for x in (start_date, dates, values, func))
+        _SERIES_FACTORY.get(tuple(test), _invalid_constructor)(self, start_date=start_date, dates=dates, values=values, func=func, )
 
     def reset(self, /, ) -> None:
         self.__init__(
@@ -153,69 +159,56 @@ class Series(
 
     @classmethod
     def from_dates_and_values(
-        cls,
-        dates: Iterable[_dates.Dater],
-        values: _np.ndarray | Iterable,
+        klass,
+        dates: Dates,
+        values: Any,
         /,
-        data_type: type = _np.float64,
         **kwargs,
     ) -> Self:
         """
         """
-        values = _conform_data(values, data_type=data_type, )
-        num_columns = values.shape[1] if hasattr(values, "shape") else 1
-        self = cls(num_columns=num_columns, data_type=data_type, **kwargs)
-        self.set_data(dates, values)
-        return self
+        return klass(
+            dates=dates,
+            values=values,
+            **kwargs,
+        )
 
     @classmethod
     def from_start_date_and_values(
-        cls,
+        klass,
         start_date: _dates.Dater,
         values: _np.ndarray | Iterable,
         /,
-        data_type: type = _np.float64,
         **kwargs,
     ) -> Self:
-        """
-        """
-        values = _conform_data(values, data_type=data_type, )
-        num_columns = values.shape[1] if hasattr(values, "shape") else 1
-        self = cls(num_columns=num_columns, data_type=data_type, **kwargs)
-        self.start_date = start_date
-        self.data = values
-        self.trim()
-        return self
+        return klass(
+            start_date=start_date,
+            values=values,
+            **kwargs,
+        )
 
     @classmethod
     def from_dates_and_func(
-        cls,
+        klass,
         dates: Iterable[_dates.Dater],
         func: Callable,
         /,
         **kwargs,
     ) -> Self:
-        """
-        Create a new time series from dates and a function
-        """
-        self = cls(**kwargs)
-        dates = list(dates)
-        data = [
-            [func() for j in range(self.num_columns)]
-            for i in range(len(dates))
-        ]
-        data = _np.array(data, dtype=self.data_type)
-        self.set_data(dates, data)
-        return self
+        return klass(
+            dates=dates,
+            func=func,
+            **kwargs,
+        )
 
     @_trim_decorate
     def set_data(
         self,
         dates: Dates,
-        data: Data | Series,
+        data: Any | Series,
         columns: ColumnsRequestType = None,
         /,
-    ) -> Self:
+    ) -> None:
         dates = self._resolve_dates(dates)
         columns = self._resolve_columns(columns)
         if not self.start_date:
@@ -234,7 +227,6 @@ class Series(
             data = _it.repeat(data)
         for c, d in zip(columns, data):
             self.data[pos, c] = d
-        return self
 
     def _get_data_and_recreate(
         self,
@@ -334,14 +326,21 @@ class Series(
         self.start_date = new_start_date
         return self
 
-    def _resolve_dates(self, dates):
+    def _resolve_dates(self, dates, ):
+        """
+        """
         if dates is None:
-            return []
-        if dates is Ellipsis:
-            dates = _dates.Ranger(None, None)
-        if isinstance(dates, _dates.ResolvableProtocol) and dates.needs_resolve:
+            dates = []
+        if isinstance(dates, slice) and dates == slice(None, ):
+            dates = ...
+        if dates is ...:
+            dates = _dates.Ranger(None, None, )
+        if hasattr(dates, "needs_resolve") and dates.needs_resolve:
             dates = dates.resolve(self)
-        return dates
+        return tuple(
+            d.resolve(self) if hasattr(d, "needs_resolve") and d.needs_resolve else d
+            for d in dates
+        )
 
     def _resolve_columns(
         self,
@@ -439,12 +438,13 @@ class Series(
         add_data = (
             x.get_data(encompassing_range)
             if hasattr(x, "get_data")
-            else _create_data_from_number(x, encompassing_range, self.data_type)
+            else _create_data_column_from_number(x, encompassing_range, self.data_type)
             for x in args
         )
         new_data = _np.hstack((new_data, *add_data))
-        new = Series(num_columns=new_data.shape[1])
-        new.set_data(encompassing_range, new_data)
+        new = Series(num_columns=new_data.shape[1], )
+        new.set_data(encompassing_range, new_data, )
+        new.trim()
         return new
 
     def clip(
@@ -464,18 +464,21 @@ class Series(
     def is_empty(self, ) -> bool:
         return not self.data.size
 
-    def empty(self, ) -> None:
-        self.data = _np.empty((0, self.num_columns), dtype=self.data_type)
+    def empty(
+        self,
+        *,
+        num_columns: int | None = None
+    ) -> None:
+        num_columns = num_columns if num_columns is not None else self.num_columns
+        self.data = _np.empty((0, num_columns), dtype=self.data_type)
 
     def overlay_by_range(
         self,
         other: Self,
         /,
     ) -> Self:
-        self.trim()
-        other.trim()
         self.set_data(other.range, other.data, )
-        return self
+        self.trim()
 
     def overlay(
         self,
@@ -483,7 +486,7 @@ class Series(
         /,
         method = "by_range",
     ) -> Self:
-        return self._LAY_METHOD_RESOLUTION[method]["overlay"](self, other, )
+        self._LAY_METHOD_RESOLUTION[method]["overlay"](self, other, )
 
     def underlay_by_range(
         self,
@@ -492,16 +495,9 @@ class Series(
     ) -> Self:
         """
         """
-        self.trim()
-        other.trim()
-        self_range = self.range
-        self_data = self.data
-        #
-        self.start_date = other.start_date
-        enforce_columns = _np.zeros((1, self.data.shape[1]), dtype=self.data_type)
-        self.data = enforce_columns + other.data
-        self.set_data(self_range, self_data, )
-        return self
+        new_self = other.copy()
+        new_self.overlay(self, )
+        self._shallow_copy_data(new_self, )
 
     def underlay(
         self,
@@ -509,11 +505,55 @@ class Series(
         /,
         method = "by_range",
     ) -> Self:
-        return self._LAY_METHOD_RESOLUTION[method]["underlay"](self, other, )
+        self._LAY_METHOD_RESOLUTION[method]["underlay"](self, other, )
 
     _LAY_METHOD_RESOLUTION = {
         "by_range": {"overlay": overlay_by_range, "underlay": underlay_by_range},
     }
+
+    def _shallow_copy_data(
+        self,
+        other: Self,
+        /,
+    ) -> None:
+        """
+        """
+        for n in ("start_date", "data", "data_type", ):
+            setattr(self, n, getattr(other, n, ))
+
+    @property
+    def column_titles(self, ) -> tuple[str, ...]:
+        """
+        """
+        return self._column_titles
+
+    @column_titles.setter
+    def column_titles(
+        self,
+        column_titles: Iterable[str] | str,
+    ) -> None:
+        """
+        """
+        if not column_titles:
+            self._column_titles = ("", ) * self.num_columns
+            return
+        if isinstance(column_titles, str):
+            column_titles = (column_titles, )
+        if len(self._column_titles) == 1:
+            self._column_titles = tuple(self._column_titles) * self.num_columns
+        if len(column_titles) != self.num_columns:
+            raise IrisPieError(
+                "Number of column titles must match number of data columns"
+            )
+
+    def _reset_column_titles_if_needed(
+        self,
+        /,
+    ) -> None:
+        """
+        """
+        if not self._column_titles or self.num_columns != len(self._column_titles):
+            self._column_titles = ("", ) * self.num_columns
 
     def __or__(self, other):
         """
@@ -534,13 +574,14 @@ class Series(
         return other.copy().overlay_by_range(self, )
 
     def trim(self):
-        if self.data.size==0:
+        if self.data.size == 0:
             self.reset()
             return self
         num_leading = _get_num_leading_missing_rows(self.data, self._test_missing_period)
         if num_leading == self.data.shape[0]:
             self.reset()
             return self
+        self._reset_column_titles_if_needed()
         num_trailing = _get_num_leading_missing_rows(self.data[::-1], self._test_missing_period)
         if not num_leading and not num_trailing:
             return self
@@ -682,7 +723,10 @@ class Series(
         elif axis == 0 and new_data.shape == (self.data.shape[1], ):
             return new_data
         else:
-            raise Exception("Function applied on a time series resulted in a data array with an unexpected shape")
+            raise IrisPieError(
+                "Function applied on a time series resulted"
+                " in a data array with an unexpected shape"
+            )
 
     def _binop(self, other, func, /, ):
         if not isinstance(other, type(self)):
@@ -699,6 +743,10 @@ class Series(
     def _replace_data(self, new_data, /, ) -> None:
         self.data = new_data
         self.trim()
+
+
+    def __iter__(self):
+        return zip(self.range, self.data)
 
     for n in FUNCTION_ADAPTATIONS:
         exec(f"def _{n}_(self, *args, **kwargs, ): return self.apply(_np.{n}, *args, **kwargs, )")
@@ -727,144 +775,18 @@ def _get_num_leading_missing_rows(data, test_missing_period, /, ):
     # else:
         # return func(x, *args, **kwargs)
 
+
 def hstack(first, *args) -> Self:
     return first.hstack(*args)
 
 
-def _create_data_from_number(
+def _create_data_column_from_number(
     number: Number,
     range: _dates.Ranger,
     data_type: type,
     /,
 ) -> _np.ndarray:
     return _np.full((len(range), 1), number, dtype=data_type)
-
-
-def shift(x, by=-1, ) -> Series:
-    """
-    """
-    #[
-    new = x.copy()
-    new._shift(by)
-    return new
-    #]
-
-
-def _negative_by_decorator(func):
-    def wrapper(x, *args, **kwargs, ):
-        if len(args) > 0:
-            by = args[0]
-            if not isinstance(by, str) and (int(by) != by or by >= 0):
-                raise Exception("Time shift must be a negative integer")
-        return func(x, *args, **kwargs, )
-    return wrapper
-
-
-@_negative_by_decorator
-def diff(x, by=-1, /, ) -> Series:
-    return x - shift(x, by)
-
-
-@_negative_by_decorator
-def cum_diff(dx, by=-1, /, initial=0, range=_dates.Ranger(), ) -> Series:
-    return _cumulate(dx, by, "diff", initial, range, )
-
-
-@_negative_by_decorator
-def difflog(x, by=-1, /, ) -> Series:
-    return log(x) - log(shift(x, by))
-
-
-@_negative_by_decorator
-def cum_difflog(dx, by=-1, /, initial=1, range=_dates.Ranger(), ) -> Series:
-    return _cumulate(dx, by, "difflog", initial, range, )
-
-
-@_negative_by_decorator
-def pct(x, by=-1, /, ) -> Series:
-    return 100*(x/shift(x, by) - 1)
-
-
-@_negative_by_decorator
-def cum_pct(dx, by=-1, /, initial=1, range=_dates.Ranger(), ) -> Series:
-    return _cumulate(dx, by, "pct", initial, range, )
-
-
-@_negative_by_decorator
-def roc(x, by=-1, /, ) -> Series:
-    return x/shift(x, by)
-
-
-@_negative_by_decorator
-def cum_roc(roc, by=-1, /, initial=1, range=_dates.Ranger(), ) -> Series | None:
-    return _cumulate(roc, by, "roc", initial, range, )
-
-
-_CUMULATIVE_FUNCTIONS = {
-    "diff": {
-        "forward": lambda x_past, change_curr: x_past + change_curr,
-        "backward": lambda x_future, change_future: x_future - change_future,
-    },
-    "difflog": {
-        "forward": lambda x_past, change_curr: x_past * exp(change_curr),
-        "backward": lambda x_future, change_future: x_future / exp(change_future),
-    },
-    "pct": {
-        "forward": lambda x_past, change_curr: x_past * (1 + change_curr/100),
-        "backward": lambda x_future, change_future: x_future / (1 + change_future/100),
-    },
-    "roc": {
-        "forward": lambda x_past, change_curr: x_past * change_curr,
-        "backward": lambda x_future, change_future: x_future / change_future,
-    },
-}
-
-
-def _cumulate(dx, by, func, initial, range, /, ) -> Series:
-    """
-    """
-    #[
-    direction = range.direction
-    cum_func = _CUMULATIVE_FUNCTIONS[func][direction]
-    new = Series(num_columns=dx.num_columns, data_type=dx.data_type, )
-    match direction:
-        case "forward":
-            _cumulate_forward(new, dx, by, cum_func, initial, range, )
-        case "backward":
-            _cumulate_backward(new, dx, by, cum_func, initial, range, )
-    return new.trim()
-    #]
-
-
-def _cumulate_forward(new, dx, by, cum_func, initial, range, /, ) -> None:
-    """
-    """
-    #[
-    range = range.resolve(dx)
-    shifted_range = tuple(t.shift(by) for t in range)
-    initial_range = _dates.Ranger(_builtin_min(shifted_range), range.end_date, )
-    new.set_data(initial_range, initial)
-    for t, sh in zip(range, shifted_range):
-        new_data = cum_func(new.get_data(sh, ), dx.get_data(t, ), )
-        new.set_data(t, new_data)
-    #]
-
-
-def _cumulate_backward(new, dx, by, cum_func, initial, shifted_backward_range, /, ) -> None:
-    """
-    """
-    #[
-    dx_range_shifted = _dates.Ranger(dx.start_date, dx.end_date, -1, )
-    dx_range_shifted.shift(by)
-    shifted_backward_range = shifted_backward_range.resolve(dx_range_shifted)
-    backward_range = shifted_backward_range.copy()
-    backward_range.shift(-by)
-    initial_range = _dates.Ranger(_builtin_min(shifted_backward_range), backward_range.start_date)
-    new.set_data(initial_range, initial)
-    for t, sh in zip(backward_range, shifted_backward_range):
-        new_data = cum_func(new.get_data(t, ), dx.get_data(t, ), )
-        new.set_data(sh, new_data)
-    #]
 
 
 def _conform_data(data, /, data_type, ) -> _np.ndarray:
@@ -912,4 +834,71 @@ for n in FUNCTION_ADAPTATIONS_BUILTINS:
         f"def {n}(x, *args, **kwargs): "
         f"return x._{n}_(*args, **kwargs)"
     )
+
+
+def _from_dates_and_values(
+    self,
+    dates: Iterable[_dates.Dater],
+    values: _np.ndarray | Iterable,
+    **kwargs,
+) -> None:
+    """
+    """
+    #[
+    values = _conform_data(values, data_type=self.data_type, )
+    num_columns = values.shape[1] if hasattr(values, "shape") else 1
+    self.empty(num_columns=num_columns, )
+    self.set_data(dates, values, )
+    #]
+
+
+def _from_dates_and_func(
+    self,
+    dates: Iterable[_dates.Dater],
+    func: Callable,
+    **kwargs,
+) -> Self:
+    """
+    Create a new time series from dates and a function
+    """
+    #[
+    dates = tuple(dates)
+    data = [
+        [func() for j in range(self.num_columns)]
+        for i in range(len(dates))
+    ]
+    data = _np.array(data, dtype=self.data_type)
+    self.set_data(dates, data)
+    #]
+
+
+def _from_start_date_and_values(
+    self,
+    start_date: _dates.Dater,
+    values: _np.ndarray | Iterable,
+    **kwargs,
+) -> None:
+    """
+    """
+    #[
+    values = _conform_data(values, data_type=self.data_type, )
+    self.start_date = start_date
+    self.data = values
+    self.trim()
+    #]
+
+
+def _invalid_constructor(
+    self,
+    **kwargs,
+) -> NoReturn:
+    raise _wrongdoings.IrisPieError("Invalid Series object constructor")
+
+
+_SERIES_FACTORY = {
+    (False, False, False, False): lambda self, **kwargs: None,
+    (True, False, True, False): _from_start_date_and_values,
+    (False, True, True, False): _from_dates_and_values,
+    (False, True, False, True): _from_dates_and_func,
+}
 

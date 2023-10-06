@@ -25,12 +25,13 @@ from .. import dates as _dates
 
 from . import _imports as _imports
 from . import _exports as _exports
+from . import _views as _views
 #]
 
 
-__all__ = [
-    "Databank",
-]
+__all__ = (
+    "Databox", "Databank",
+)
 
 
 SourceNames: TypeAlias = Iterable[str] | str | Callable[[str], bool] | None
@@ -38,12 +39,12 @@ TargetNames: TypeAlias = Iterable[str] | str | Callable[[str], str] | None
 InterpretRange: TypeAlias = Literal["base", "extended", ]
 
 
-class SteadyDatabankableProtocol(Protocol):
+class SteadyDataboxableProtocol(Protocol):
     """
     """
     #[
     def get_min_max_shifts(self, *args) -> tuple(int, int): ...
-    def _get_steady_databank(self, *args) -> Any: ...
+    def _get_steady_databox(self, *args) -> Any: ...
     #]
 
 
@@ -88,16 +89,17 @@ _ARRAY_TRANSPOSER_FACTORY = {
 }
 
 
-class Databank(
-    _imports.DatabankImportMixin,
-    _exports.DatabankExportMixin,
+class Databox(
+    _imports.DataboxImportMixin,
+    _exports.DataboxExportMixin,
     _descriptions.DescriptionMixin,
-    _views.DatabankViewMixin,
+    _views.ViewMixin,
     dict,
 ):
     """
-    Create a databank object as a simple namespace with utility functions
+    Unstructured data storage class
     """
+
     #[
     def __init__(
         self,
@@ -126,14 +128,14 @@ class Databank(
         qid_to_name: Sequence[str] | dict[int, str],
         dates: _dates.Dater,
         /,
-        add_to_databank: Self | None = None,
+        add_to_databox: Self | None = None,
         qid_to_description: dict[int, str] | None = None,
         array_orientation: Literal["vertical", "horizontal", ] = "vertical",
         interpret_dates: Literal["start_date", "range", ] = "start_date",
     ) -> Self:
         """
         """
-        self = add_to_databank if add_to_databank else cls()
+        self = add_to_databox if add_to_databox else cls()
         constructor = _SERIES_CONSTRUCTOR_FACTORY[interpret_dates]
         transposer = _ARRAY_TRANSPOSER_FACTORY[array_orientation]
         for qid, data in enumerate(transposer(array)):
@@ -149,13 +151,13 @@ class Databank(
 
     def get_names(self, /, ) -> list[str]:
         """
-        Get all names stored in a databank save for private attributes
+        Get all names stored in a databox save for private attributes
         """
         return tuple(self.keys())
 
     def get_missing_names(self, names: Iterable[str], /, ) -> tuple[str]:
         """
-        Get names that are not in the databank
+        Get names that are not in the databox
         """
         return tuple(name for name in names if name not in self)
 
@@ -166,7 +168,7 @@ class Databank(
 
     def to_dict(self: Self) -> dict:
         """
-        Convert Databank to dict
+        Convert Databox to dict
         """
         return { k: v for k, v in self.items() }
 
@@ -178,14 +180,14 @@ class Databank(
     ) -> Self:
         """
         """
-        new_databank = _co.deepcopy(self)
+        new_databox = _co.deepcopy(self)
         if source_names is None and target_names is None:
-            return new_databank
-        context_names = new_databank.get_names()
+            return new_databox
+        context_names = new_databox.get_names()
         source_names, target_names = _resolve_source_target_names(source_names, target_names, context_names)
-        new_databank = new_databank.rename(source_names, target_names)
-        new_databank.keep(target_names)
-        return new_databank
+        new_databox = new_databox.rename(source_names, target_names)
+        new_databox.keep(target_names)
+        return new_databox
 
     def rename(
         self: Self,
@@ -278,19 +280,43 @@ class Databank(
     def to_json(self, **kwargs):
         return _js.dumps(self, **kwargs)
 
+    def overlay(
+        self,
+        other: Self,
+        /,
+        **kwargs,
+    ) -> None:
+        """
+        """
+        self._lay(other, _series.Series.overlay, **kwargs)
+
     def underlay(
         self,
         other: Self,
         /,
+        **kwargs,
+    ) -> None:
+        """
+        """
+        self._lay(other, _series.Series.underlay, **kwargs)
+
+    def _lay(
+        self,
+        other: Self,
+        func: Callable,
+        /,
+        names: Iterable[str] | None = None,
+        **kwargs,
     ) -> None:
         """"
         """
-        self_names = self.filter(value_test=lambda x: isinstance(x, _series.Series))
-        other_names = other.filter(value_test=lambda x: isinstance(x, _series.Series))
-        names = set(self_names).intersection(other_names)
+        if names is None:
+            self_names = self.filter(value_test=lambda x: isinstance(x, _series.Series))
+            other_names = other.filter(value_test=lambda x: isinstance(x, _series.Series))
+            names = set(self_names).intersection(other_names)
         for n in names:
             if self[n].frequency == other[n].frequency:
-                self[n].underlay(other[n], )
+                func(self[n], other[n], **kwargs, )
 
     def clip(
         self,
@@ -320,7 +346,7 @@ class Databank(
     @classmethod
     def steady(
         cls,
-        steady_databankable: SteadyDatabankableProtocol,
+        steady_databoxable: SteadyDataboxableProtocol,
         input_range: Iterable[_dates.Dater],
         /,
         deviation: bool = False,
@@ -328,12 +354,12 @@ class Databank(
     ) -> Self:
         """
         """
-        min_shift, max_shift = steady_databankable.get_min_max_shifts()
+        min_shift, max_shift = steady_databoxable.get_min_max_shifts()
         start_date, end_date = _resolve_input_range(input_range, min_shift, max_shift, interpret_range)
         num_columns = int(end_date - start_date + 1)
         if num_columns < 1:
-            raise Exception("Empty date range is not allowed when creating steady databank")
-        self = steady_databankable._get_steady_databank(start_date, end_date, deviation=deviation)
+            raise Exception("Empty date range is not allowed when creating steady databox")
+        self = steady_databoxable._get_steady_databox(start_date, end_date, deviation=deviation)
         return self
 
     zero = _ft.partialmethod(steady, deviation=True)
@@ -364,6 +390,10 @@ class Databank(
         new.update(other, )
         return new
     #]
+
+
+Databank = Databox
+
 
 def _resolve_source_target_names(
     source_names: SourceNames,

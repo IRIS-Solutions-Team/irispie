@@ -10,7 +10,7 @@ from typing import (Self, Any, TypeAlias, Literal, Protocol, runtime_checkable)
 from collections.abc import (Iterable, )
 import numpy as _np
 
-from ..databanks import main as _databanks
+from ..databoxes import main as _databoxes
 from ..fords import simulators as _simulators
 from ..plans import main as _plans
 from .. import dataslates as _dataslates
@@ -24,19 +24,19 @@ class SimulateMixin:
 
     def simulate(
         self,
-        in_databank: _databanks.Databank,
+        in_databox: _databoxes.Databox,
         base_range: Iterable[Dater],
         /,
         anticipate: bool = True,
         deviation: bool = False,
         plan: _plans.Plan | None = None,
         prepend_input: bool = True,
-        add_to_databank: _databanks.Databank | None = None,
-    ) -> tuple[_databanks.Databank, dict[str, Any]]:
+        add_to_databox: _databoxes.Databox | None = None,
+    ) -> tuple[_databoxes.Databox, dict[str, Any]]:
         """
         """
         dataslates = tuple(
-            _dataslates.Dataslate(self, in_databank, base_range, plan=plan, slate=i, )
+            _dataslates.Dataslate(self, in_databox, base_range, plan=plan, slate=i, )
             for i in range(self.num_variants)
         )
         #
@@ -55,15 +55,15 @@ class SimulateMixin:
             dataslate.data = new_data
             dataslate.remove_columns(dataslate.base_columns[-1] - dataslate.num_periods + 1)
         #
-        out_db = _dataslates.multiple_to_databank(dataslates)
+        out_db = _dataslates.multiple_to_databox(dataslates)
         if prepend_input:
-            out_db.prepend(in_databank, base_range[0]-1, )
+            out_db.prepend(in_databox, base_range[0]-1, )
         out_db = out_db | self.get_parameters_stds()
         #
-        # Add to custom databank
+        # Add to custom databox
         #
-        if add_to_databank is not None:
-            out_db = add_to_databank | out_db
+        if add_to_databox is not None:
+            out_db = add_to_databox | out_db
         #
         info = {"dataslates": dataslates, }
         return out_db, info

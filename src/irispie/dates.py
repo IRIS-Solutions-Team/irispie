@@ -15,6 +15,7 @@ from collections.abc import (Iterable, Callable, )
 from numbers import (Number, )
 
 from .conveniences import copies as _copies
+from . import wrongdoings as _wrongdoings
 #]
 
 
@@ -106,7 +107,9 @@ class ResolvableProtocol(Protocol, ):
 
 def _check_daters(first, second) -> None:
     if type(first) != type(second):
-        raise Exception("Dates must be the same date frequency")
+        raise _wrongdoings.IrisPieError(
+            "Cannot handle dates of different types in this context"
+        )
 
 
 def _check_daters_decorate(func: Callable, ) -> Callable:
@@ -203,7 +206,7 @@ class Dater(
 
     to_plotly_date = _ft.partialmethod(to_iso_string, position="middle")
 
-    def __init__(self, serial=0) -> None:
+    def __init__(self, serial=0, ) -> None:
         self.serial = int(serial)
 
     def get_distance_from_origin(self) -> int:
@@ -232,7 +235,7 @@ class Dater(
     def __str__(self) -> str:
         return self.to_sdmx_string()
 
-    _databank_repr = __str__
+    _databox_repr = __str__
 
     def __format__(self, *args) -> str:
         str_format = args[0] if args else ""
