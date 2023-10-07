@@ -14,11 +14,6 @@ from .incidences import main as _incidence
 #]
 
 
-_ANTICIPATE_SYMBOL = {
-    True: "A",
-    False: "U",
-}
-
 _WHEN_DATA_SYMBOL = {
     True: "?",
     False: "!",
@@ -39,17 +34,12 @@ class Transform:
     def __init__(
         self,
         /,
-        anticipate: bool = True,
         when_data: bool | None = False,
     ) -> None:
-        self.anticipate = anticipate
         self.when_data = when_data
 
     def __str__(self, /, ) -> str:
-        return "" \
-            + _WHEN_DATA_SYMBOL[self.when_data] \
-            + _ANTICIPATE_SYMBOL[self.anticipate] \
-            + self._SYMBOL
+        return _WHEN_DATA_SYMBOL[self.when_data] + self._SYMBOL
 
     def __repr__(self, /, ) -> self:
         return self.__str__()
@@ -70,7 +60,7 @@ class TransformNone(Transform, ):
     #[
     _LHS_PATTERN = _re.compile(r"(\w+)")
     _DATABANK_NAME = "$"
-    _SYMBOL = ""
+    _SYMBOL = "[•]"
 
     def create_eval_level_str(
         self,
@@ -96,7 +86,7 @@ class TransformLog(Transform, ):
     #[
     _LHS_PATTERN = _re.compile(r"log\((\w+)\)")
     _DATABANK_NAME = "log_$"
-    _SYMBOL = "log"
+    _SYMBOL = "[log]"
 
     def create_eval_level_str(
         self,
@@ -122,7 +112,7 @@ class TransformDiff(Transform, ):
     #[
     _LHS_PATTERN = _re.compile(r"\(\((\w+)\)-\(\1\[-1\]\)\)")
     _DATABANK_NAME = "diff_$"
-    _SYMBOL = "diff"
+    _SYMBOL = "[diff]"
 
     def create_eval_level_str(
         self,
@@ -149,7 +139,7 @@ class TransformDiffLog(Transform, ):
     #[
     _LHS_PATTERN = _re.compile(r"\(log\((\w+)\)-log\(\1\[-1\]\)\)")
     _DATABANK_NAME = "diff_log_$"
-    _SYMBOL = "diff_log"
+    _SYMBOL = "[diff_log]"
 
     def create_eval_level_str(
         self,
@@ -176,7 +166,7 @@ class TransformRoc(Transform, ):
     #[
     _LHS_PATTERN = _re.compile(r"\(\((\w+)\)/\(\1\[-1\]\)\)")
     _DATABANK_NAME = "roc_$"
-    _SYMBOL = "roc"
+    _SYMBOL = "[roc]"
 
     def create_eval_level_str(
         self,
@@ -203,7 +193,7 @@ class TransformPct(Transform, ):
     #[
     _LHS_PATTERN = _re.compile(r"\(100*\((\w+)\)/\(\1\[-1\]\)-100\)")
     _DATABANK_NAME = "pct_$"
-    _SYMBOL = "pct"
+    _SYMBOL = "[pct]"
 
     def create_eval_level_str(
         self,

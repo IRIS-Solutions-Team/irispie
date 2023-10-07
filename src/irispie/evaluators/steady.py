@@ -4,6 +4,8 @@ Steady state evaluator
 
 
 #[
+from __future__ import annotations
+
 from collections.abc import (Iterable, )
 from types import (EllipsisType, )
 from typing import (Any, )
@@ -38,11 +40,11 @@ class SteadyEvaluator:
 
     def __init__(
         self,
-        wrt_equations: Iterable[_equations.Equation],
+        variant: _variants.Variant,
         all_quantities: Iterable[_quantities.Quantity],
+        wrt_equations: Iterable[_equations.Equation],
         wrt_qids_levels: list[int],
         wrt_qids_changes: list[int],
-        variant: _variants.Variant,
         /,
         custom_functions: dict | None = None,
         iter_printer_settings: dict[str, Any] | None = None,
@@ -179,6 +181,19 @@ class FlatSteadyEvaluator(SteadyEvaluator, ):
     _equator_factory = _equators.FlatSteadyEquator
     _jacobian_factory = _jacobians.FlatSteadyJacobian
     _iter_printer_factory = _printers.FlatSteadyIterPrinter
+
+    def __init__(
+        self,
+        variant: _variants.Variant,
+        all_quantities: Iterable[_quantities.Quantity],
+        *args,
+        **kwargs,
+    ) -> None:
+        """
+        """
+        super().__init__(variant, all_quantities, *args, **kwargs, )
+        qid_to_logly = _quantities.create_qid_to_logly(all_quantities, )
+        variant.zero_changes(qid_to_logly, )
 
     def _merge_levels_and_changes(
         self,

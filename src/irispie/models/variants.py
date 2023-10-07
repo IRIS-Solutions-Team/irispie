@@ -10,7 +10,8 @@ import numpy as _np
 import operator as _op
 from collections.abc import (Iterable, )
 
-from .. import (quantities as _quantities, )
+from .. import quantities as _quantities
+from . import _flags
 #]
 
 
@@ -20,7 +21,7 @@ class Variant:
     """
     #[
     __slots__ = (
-        "levels", "changes", "solution",
+        "num_quantities", "levels", "changes", "solution",
     )
 
     _missing = _np.nan
@@ -28,22 +29,33 @@ class Variant:
     def __init__(
         self,
         quantities: Iterable[_quantities.Quantity], 
+        model_flags: _flags.Flags,
         /,
         **kwargs,
     ) -> None:
-        self._initilize_values(quantities, )
-        self.solution = None
-
-    def _initilize_values(
-        self,
-        quantities: Iterable[_quantities.Quantity], 
-        /,
-    ) -> None:
         max_qid = _quantities.get_max_qid(quantities, )
-        size_array = max_qid + 1
-        init_value = self._missing
-        self.levels = _np.full((size_array,), init_value, dtype=float, )
-        self.changes = _np.full((size_array,), init_value, dtype=float, )
+        self.num_quantities = max_qid + 1
+        self.solution = None
+        self._initilize_values()
+        if model_flags.is_flat:
+            qid_to_logly = _quantities.create_qid_to_logly(quantities, )
+            self.zero_changes(qid_to_logly, )
+
+    def _initilize_values(self, /, ) -> None:
+        """
+        """
+        self._reset_levels()
+        self._reset_changes()
+
+    def _reset_levels(self, /, ) -> None:
+        """
+        """
+        self.levels = _np.full((self.num_quantities, ), self._missing, dtype=float, )
+
+    def _reset_changes(self, /, ) -> None:
+        """
+        """
+        self.changes = _np.full((self.num_quantities, ), self._missing, dtype=float, )
 
     def update_values_from_dict(self, update: dict, /, ) -> None:
         self.levels = _update_from_dict(self.levels, update, _op.itemgetter(0), lambda x: x, )
@@ -86,14 +98,25 @@ class Variant:
         #
         return maybelog_levels, maybelog_changes
 
-    def reset_changes(
+    def zero_changes(
         self,
-        qid_to_logly: dict[int, bool],
+        qid_to_logly: dict[int, bool | None],
         /,
     ) -> None:
-        index_logly = self._generate_index_logly(qid_to_logly, )
-        self.changes[:] = 0
-        self.changes[index_logly] = 1
+        """
+        Reset all quantities to flat
+        """
+        self._reset_changes()
+        index_logly_false = [
+            i for i in range(self.num_quantities) if qid_to_logly.get(i, None) is False
+        ] # Needs to be a list, because tuples are interpreted as dimensional indices by numpy
+        if index_logly_false:
+            self.changes[index_logly_false] = 0
+        index_logly_true = [
+            i for i in range(self.num_quantities) if qid_to_logly.get(i, None) is True
+        ] # Needs to be a list, because tuples are interpreted as dimensional indices by numpy
+        if index_logly_true:
+            self.changes[index_logly_true] = 1
 
     def create_steady_array(
         self,

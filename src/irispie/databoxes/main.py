@@ -43,8 +43,10 @@ class SteadyDataboxableProtocol(Protocol):
     """
     """
     #[
+
     def get_min_max_shifts(self, *args) -> tuple(int, int): ...
-    def _get_steady_databox(self, *args) -> Any: ...
+    def generate_steady_items(self, *args) -> Any: ...
+
     #]
 
 
@@ -110,20 +112,20 @@ class Databox(
 
     @classmethod
     def from_dict(
-        cls,
+        klass,
         _dict: dict,
         /,
     ) -> Self:
         """
         """
-        self = cls()
+        self = klass()
         for k, v in _dict.items():
             self[k] = v
         return self
 
     @classmethod
     def from_array(
-        cls,
+        klass,
         array: _np.ndarray,
         qid_to_name: Sequence[str] | dict[int, str],
         dates: _dates.Dater,
@@ -135,7 +137,7 @@ class Databox(
     ) -> Self:
         """
         """
-        self = add_to_databox if add_to_databox else cls()
+        self = add_to_databox if add_to_databox else klass()
         constructor = _SERIES_CONSTRUCTOR_FACTORY[interpret_dates]
         transposer = _ARRAY_TRANSPOSER_FACTORY[array_orientation]
         for qid, data in enumerate(transposer(array)):
@@ -345,7 +347,7 @@ class Databox(
 
     @classmethod
     def steady(
-        cls,
+        klass,
         steady_databoxable: SteadyDataboxableProtocol,
         input_range: Iterable[_dates.Dater],
         /,
@@ -354,15 +356,15 @@ class Databox(
     ) -> Self:
         """
         """
+        self = klass()
         min_shift, max_shift = steady_databoxable.get_min_max_shifts()
         start_date, end_date = _resolve_input_range(input_range, min_shift, max_shift, interpret_range)
-        num_columns = int(end_date - start_date + 1)
-        if num_columns < 1:
-            raise Exception("Empty date range is not allowed when creating steady databox")
-        self = steady_databoxable._get_steady_databox(start_date, end_date, deviation=deviation)
+        items = steady_databoxable.generate_steady_items(start_date, end_date, deviation=deviation)
+        for name, value in items:
+            self[name] = value
         return self
 
-    zero = _ft.partialmethod(steady, deviation=True)
+    zero = _ft.partialmethod(steady, deviation=True, )
 
     def minus_control(
         self,

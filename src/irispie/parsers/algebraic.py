@@ -138,12 +138,12 @@ class _Visitor(pa_.nodes.NodeVisitor):
 
     def visit_log_block(self, node, visited_children):
         block_name, _, _, _, block_content = visited_children
-        self._add(block_name, block_content, None)
+        self._add(block_name, block_content, )
 
     def visit_all_but_flag(self, node, visited_children):
         block_name = "all-but"
         flag = visited_children[0] if visited_children else ""
-        self._add(block_name, [flag], None)
+        self._add(block_name, [flag], )
         return flag
 
     def visit_qty_ended(self, node, visited_children):

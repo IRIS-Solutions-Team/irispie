@@ -81,7 +81,7 @@ class IterPrinter:
         """
         if self._prev_x is None:
             return f"{self._NAN_STRING:>11}", f"{self._NAN_STRING:{self._MAX_LEN_NAME_STRING}}"
-        diff_x = self._curr_x - self._prev_x if self._prev_x is not None else None
+        diff_x = abs(self._curr_x - self._prev_x) if self._prev_x is not None else None
         index = _np.argmax(diff_x)
         worst_diff_x = diff_x[index]
         worst_qid = self._qids[index]

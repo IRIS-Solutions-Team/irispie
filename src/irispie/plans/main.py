@@ -1,28 +1,41 @@
 """
-Simulation plans
+------------------------------------------------------------
+
+
+Plans for dynamic simulations and steady state calculations
+============================================================
+
+
+------------------------------------------------------------
 """
 
 
 #[
 from __future__ import annotations
 
-from typing import (Iterable, Protocol, )
+from collections.abc import (Iterable, )
+from typing import (Self, Any, Protocol, NoReturn, )
 import warnings as _wa
-import prettytable as _pt
 import functools as _ft
+import copy as _copy
 
+from ..conveniences import copies as _copies
 from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
 from .. import transforms as _transforms
+from . import _pretty as _pretty
+from . import _indexes as _indexes
 #]
 
 
 __all__ = (
-    "SimulatePlan", "Plan", "SteadyPlan",
+    "PlanSimulate",
+    "PlanSteady",
+    "Plan",
 )
 
 
-class SimulatePlannableProtocol(Protocol, ):
+class PlannableSimulateProtocol(Protocol, ):
     """
     """
     #[
@@ -33,7 +46,7 @@ class SimulatePlannableProtocol(Protocol, ):
     #]
 
 
-class SteadyPlannableProtocol(Protocol, ):
+class PlannableSteadyProtocol(Protocol, ):
     """
     """
     #[
@@ -46,23 +59,77 @@ class SteadyPlannableProtocol(Protocol, ):
     #]
 
 
-class SimulatePlan:
+class PlanSimulate(
+    _pretty.PrettyMixin,
+    _indexes.ItemMixin,
+    _copies.CopyMixin,
+):
     """
+------------------------------------------------------------
+
+
+Plans for dynamic simulations
+===============================
+
+
+------------------------------------------------------------
     """
     #[
 
     __slots__ = (
         "base_range",
-        "anticipate",
+        "can_be_anticipated",
         "can_be_exogenized",
         "can_be_endogenized",
         "_exogenized_register",
         "_endogenized_register",
+        "_anticipated_register",
+        "_default_exogenized",
+        "_default_endogenized",
+        "_default_anticipated",
     )
+
+    def properties():
+        """
+------------------------------------------------------------
+
+
+Properties of `PlanSimulate` objects
+=====================================
+
+#### `start_date` ####
+Start date of the simulation range
+
+#### `num_periods` ####
+Number of periods in the simulation range
+
+#### `base_range` ####
+Simulation range
+
+#### `anticipate` ####
+Default anticipation status
+
+#### `can_be_exogenized` ####
+Names of quantities that can be exogenized
+
+#### `can_be_endogenized` ####
+Names of quantities that can be endogenized
+
+#### `can_be_anticipated` ####
+Names of quantities that have anticipation status
+
+#### `pretty` ####
+Tabular view of the simulation plan
+
+
+------------------------------------------------------------
+        """
+
+    #[
 
     def __init__(
         self,
-        plannable: SimulatePlannableProtocol,
+        plannable: PlannableSimulateProtocol,
         base_range: Iterable[Dater] | None,
         /,
         anticipate: bool = True,
@@ -70,9 +137,10 @@ class SimulatePlan:
         """
         """
         self.base_range = tuple(base_range)
-        self.anticipate = bool(anticipate)
-        #
-        for r in ("exogenized", "endogenized", ):
+        self._default_exogenized = None
+        self._default_endogenized = None
+        self._default_anticipated = bool(anticipate)
+        for r in ("exogenized", "endogenized", "anticipated", ):
             register = {
                 n: [None] * self.num_periods
                 for n in getattr(plannable, f"simulate_can_be_{r}")
@@ -92,51 +160,103 @@ class SimulatePlan:
         """
         return len(self.base_range) if self.base_range is not None else 1
 
+    def anticipate(
+        self,
+        dates: Iterable[_dates.Dater] | Ellipsis,
+        names: Iterable[str] | str | Ellipsis,
+        /,
+        new_status: bool | None = None,
+    ) -> None:
+        _plan_simulate(
+            self._anticipated_register,
+            self.base_range,
+            dates,
+            names,
+            new_status,
+        )
+
     def exogenize(
         self,
         dates: Iterable[_dates.Dater] | Ellipsis,
         names: Iterable[str] | str | Ellipsis,
         /,
         *,
-        anticipate: bool | None = None,
         transform: str | None = None,
         when_data: bool | None = False,
     ) -> None:
         """
+------------------------------------------------------------
+
+
+`exogenize`
+===========
+
+#### Exogenize certain quantities at certain dates ####
+
+```
+self.exogenize(dates, names, ... )
+```
+
+Input arguments
+----------------
+
+### `dates` ###
+Dates at which the `names` will be exogenized
+
+### `names` ###
+Names of quantities to exogenize at the `dates`
+
+Optional arguments
+------------------
+
+### `transform` ###
+Transformation to apply to the exogenized quantities; only
+available in simulation plans created for
+[`Sequential`](../Sequential/index.md) objects
+
+
+------------------------------------------------------------
         """
-        anticipate = self.anticipate if anticipate is None else bool(anticipate)
+        new_status = _transforms.RESOLVE_TRANSFORM[transform](when_data, )
         _plan_simulate(
             self._exogenized_register,
             self.base_range,
             dates,
             names,
-            anticipate,
-            transform,
-            when_data,
+            new_status,
         )
 
     def endogenize(
         self,
         dates: Iterable[_dates.Dater] | Ellipsis,
         names: Iterable[str] | str | Ellipsis,
-        /,
-        *,
-        anticipate: bool | None = None,
     ) -> None:
         """
+
+        Endogenize
+
         """
         transform = None
         when_data = None
-        anticipate = self.anticipate if anticipate is None else bool(anticipate)
+        new_status = _transforms.RESOLVE_TRANSFORM[transform](when_data, )
         _plan_simulate(
             self._endogenized_register,
             self.base_range,
             dates,
             names,
-            anticipate,
-            transform,
-            when_data,
+            new_status,
         )
+
+    def get_anticipated_point(
+        self,
+        name: str,
+        column: int,
+        /,
+    ) -> bool | None:
+        """
+        """
+        point = self._anticipated_register[name][column]
+        return point if point is not None else self._default_anticipated
 
     def get_exogenized_point(
         self,
@@ -146,7 +266,8 @@ class SimulatePlan:
     ) -> _transforms.Transform | None:
         """
         """
-        return self._exogenized_register[name][column]
+        point = self._exogenized_register[name][column]
+        return point if point is not None else self._default_exogenized
 
     def get_endogenized_point(
         self,
@@ -156,7 +277,8 @@ class SimulatePlan:
     ) -> _transforms.Transform | None:
         """
         """
-        return self._endogenized_register[name][column]
+        point = self._endogenized_register[name][column]
+        return point if point is not None else self._default_endogenized
 
     def collect_databox_names(self, /, ) -> tuple[str]:
         """
@@ -169,46 +291,6 @@ class SimulatePlan:
             )
         return tuple(databox_names)
 
-    @property
-    def pretty(self, /, ) -> _pt.PrettyTable:
-        """
-        """
-        return self.get_pretty()
-
-    @property
-    def pretty_full(self, /, ) -> str:
-        """
-        """
-        return self.get_pretty(full=True, )
-
-    def get_pretty(
-        self,
-        /,
-        full: bool = False,
-    ) -> _pt.PrettyTable:
-        """
-        Create pretty table for the Plan
-        """
-        table = _pt.PrettyTable()
-        table.field_names = ("", ) + tuple("{:>10}".format(table) for table in self.base_range)
-        table.align = "r"
-        table.align[""] = "l"
-        if hasattr(self, "_exogenized_register"):
-            _add_register_to_table(table, self._exogenized_register, full, )
-        if hasattr(self, "_endogenized_register"):
-            _add_register_to_table(table, self._endogenized_register, full, )
-        return table
-
-    def pretty_print(self, *args, **kwargs, ) -> None:
-        """
-        """
-        print(self.get_pretty_table(*args, **kwargs, ), )
-
-    def get_pretty_string(self, *args, **kwargs, ) -> str:
-        """
-        """
-        return self.get_pretty_table(*args, **kwargs, ).get_string()
-
     def __str__(self, /, ) -> str:
         """
         """
@@ -217,37 +299,21 @@ class SimulatePlan:
     #]
 
 
-Plan = SimulatePlan
+Plan = PlanSimulate
 
 
-def _add_register_to_table(
-    table,
-    register,
-    full,
-) -> None:
+class PlanSteady():
     """
-    """
-    #[
-    previous = None
-    for k, v in register.items():
-        if full or _has_point(v, ):
-            dates = [ (str(i) if i is not None else "") for i in v ]
-            if previous:
-                table.add_row(previous, )
-            previous = [k] + dates
-    if previous:
-        table.add_row(previous, divider=True, )
-    #]
+------------------------------------------------------------
 
 
-def _has_point(row: list, /, ) -> bool:
-    """
-    """
-    return any(i is not None for i in row)
+`PlanSteady`
+============
+
+#### Plan for steady state calculations ####
 
 
-class SteadyPlan:
-    """
+------------------------------------------------------------
     """
     #[
 
@@ -264,7 +330,7 @@ class SteadyPlan:
 
     def __init__(
         self,
-        plannable: SteadyPlannableProtocol,
+        plannable: PlannableSteadyProtocol,
         /,
     ) -> None:
         """
@@ -328,14 +394,26 @@ def _resolve_dates(
 ) -> tuple[int, ...]:
     """
     """
+    #[
     if dates is Ellipsis:
         return tuple(range(len(base_range)))
+    catch_invalid_dates(dates, base_range, )
+    return tuple(d - base_range[0] for d in dates)
+    #]
+
+
+def catch_invalid_dates(
+    dates: Iterable[_dates.Dater],
+    base_range: tuple[_dates.Dater],
+    /,
+) -> NoReturn | None:
+    """
+    """
     invalid = [repr(d) for d in dates if d not in base_range]
     if invalid:
         raise _wrongdoings.IrisPieError(
             ["These date(s) are out of simulation range:"] + invalid
         )
-    return tuple(d - base_range[0] for d in dates)
 
 
 def _plan_simulate(
@@ -343,16 +421,16 @@ def _plan_simulate(
     base_range: Iterable[_dates.Dater],
     dates: Iterable[_dates.Dater] | Ellipsis,
     names: Iterable[str] | str | Ellipsis,
-    anticipate: bool | None,
-    transform: str | None,
-    when_data: bool | None,
+    new_status: Any,
 ) -> None:
     """
     """
+    #[
     names = _resolve_and_check_names(register, names, )
     date_indexes = _resolve_dates(base_range, dates, )
-    transform = _transforms.RESOLVE_TRANSFORM[transform](anticipate, when_data, )
+    anticipate = True
     for n in names:
         for t in date_indexes:
-            register[n][t] = transform
+            register[n][t] = new_status
+    #]
 

@@ -16,6 +16,7 @@ from .. import equations as _equations
 from .. import quantities as _quantities
 from .. import sources as _sources
 from .. import dates as _dates
+from ..series import main as _series
 from ..incidences import main as _incidence
 from ..databoxes import main as _databoxes
 from ..fords import descriptors as _descriptors
@@ -149,7 +150,7 @@ class GetMixin:
         ]
         return _incidence.print_tokens(initial_tokens, self.create_qid_to_name(), )
 
-    def _get_steady_databox(
+    def generate_steady_items(
         self,
         start_date: _dates.Dater,
         end_date: _dates.Dater,
@@ -160,12 +161,15 @@ class GetMixin:
         """
         num_columns = int(end_date - start_date + 1)
         shift_in_first_column = start_date.get_distance_from_origin()
+        qid_to_name = self.create_qid_to_name()
+        qid_to_description = self.create_qid_to_description()
         #
         array = self.create_some_array(
             deviation=deviation,
             num_columns=num_columns,
             shift_in_first_column=shift_in_first_column,
         )
+        num_rows = array.shape[0]
         #
         qid_to_kind = self.create_qid_to_kind()
         remove_qids = tuple(
@@ -173,19 +177,25 @@ class GetMixin:
             for qid, kind in qid_to_kind.items()
             if kind not in _TIME_SERIES_QUANTITY
         )
-        qid_to_name = {
-            qid: name for qid, name in self.create_qid_to_name().items()
-            if qid not in remove_qids
-        }
-        array = _np.delete(array, remove_qids, axis=0, )
-        qid_to_description = self.create_qid_to_description()
-        #
-        return _databoxes.Databox.from_array(
-            array, qid_to_name, start_date,
-            array_orientation="horizontal",
-            interpret_dates="start_date",
-            qid_to_description=qid_to_description,
+        names = (
+            qid_to_name[qid]
+            for qid in range(num_rows, )
+            if qid in remove_qids
         )
+        descriptions = (
+            qid_to_description[qid]
+            for qid in range(num_rows, )
+            if qid in remove_qids
+        )
+        for qid in qid_to_name.keys():
+            if qid_to_kind[qid] in _TIME_SERIES_QUANTITY:
+                yield qid_to_name[qid], _series.Series(
+                    start_date=start_date,
+                    values=array[qid, :].reshape(-1, 1),
+                    description=qid_to_description[qid],
+                )
+            else:
+                yield qid_to_name[qid], array[qid, 0]
 
     def get_solution_vectors(self, /, ) -> _descriptors.SolutionVectors:
         """

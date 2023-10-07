@@ -170,7 +170,7 @@ class SteadyMixin:
             _DEFAULT_OPTIM_SETTINGS if optim_settings is None \
             else _DEFAULT_OPTIM_SETTINGS | optim_settings
         #
-        # REFACTOR
+        # REFACTOR: Plan.steady
         #
         wrt_equations = self.get_steady_equations()
         fixable_quantities = \
@@ -179,12 +179,13 @@ class SteadyMixin:
             _resolve_qids_fixed(fixable_quantities, fix, fix_level, )
         wrt_qids_changes = \
             _resolve_qids_fixed(fixable_quantities, fix, fix_change, )
+        #
         steady_evaluator = evaluator_class(
-            wrt_equations,
+            variant,
             self.get_quantities(),
+            wrt_equations,
             wrt_qids_levels,
             wrt_qids_changes,
-            variant,
             iter_printer_settings=iter_printer_settings,
         )
         #

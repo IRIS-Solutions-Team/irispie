@@ -190,7 +190,7 @@ def _add_stds(
     shocks = (q for q in quantities if q.kind in shock_kind)
     for std_qid, shock in enumerate(shocks, start=len(quantities)):
         std_human = _create_std_name(shock.human, )
-        std_logly = False
+        std_logly = None
         std_description = _create_std_description(shock.description, shock.human, )
         std_entry = len(quantities)
         std_quantity = _quantities.Quantity(std_qid, std_human, std_kind, std_logly, std_description, std_entry, )

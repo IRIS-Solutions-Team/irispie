@@ -1,5 +1,14 @@
 """
+------------------------------------------------------------
+
+
 Iris Pie
+=========
+
+#### A Python package for macroeconomic modelling ####
+
+
+------------------------------------------------------------
 """
 
 import importlib.metadata as _md

@@ -18,7 +18,7 @@ class ViewMixin(_views.ViewMixin, ):
         """
         """
         shape = self.data.shape
-        return f"Series {self.frequency.letter} {self.start_date}:{self.end_date} {shape[0]}-by-{shape[1]}"
+        return f"Series {self.frequency.letter} {self.start_date}>>{self.end_date} {shape[0]}-by-{shape[1]}"
 
     def _get_content_view_(self, /, ):
         """

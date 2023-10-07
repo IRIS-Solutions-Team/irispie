@@ -793,13 +793,16 @@ def _conform_data(data, /, data_type, ) -> _np.ndarray:
     """
     """
     #[
+    # Tuple means columns
     if isinstance(data, tuple, ):
-        return _np.hstack(
-            tuple(_conform_data(d, data_type=data_type, ) for d in data),
-        )
+        return _np.hstack(tuple(
+            _conform_data(d, data_type=data_type, ) for d in data
+        ))
+    #
     if not isinstance(data, _np.ndarray, ):
         return _np.array(data, dtype=data_type, ndmin=2, ).T
-    return data
+    #
+    return _np.array(data, dtype=data_type, ndmin=2, )
     #]
 
 

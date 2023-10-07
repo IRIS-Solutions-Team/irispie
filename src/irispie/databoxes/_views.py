@@ -31,11 +31,11 @@ class ViewMixin(_views.ViewMixin, ):
         """
         """
         names = self.get_names()
-        content = []
         if names:
             max_len = self._get_max_name_length_()
-            content = [ _REPR_INDENT + str(k).rjust(max_len) + _REPR_SEPARATOR + _databox_repr(self[k]) for k in names ]
-            content = content
+            content = tuple(_REPR_INDENT + str(k).rjust(max_len) + _REPR_SEPARATOR + _databox_repr(self[k]) for k in names)
+        else:
+            content = ()
         return content
 
     def _get_max_name_length_(self, /, ):

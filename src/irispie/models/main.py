@@ -212,6 +212,8 @@ class Model(
         variant: _variants.Variant | None = None,
         **kwargs,
     ) -> _np.ndarray:
+        """
+        """
         qid_to_logly = self.create_qid_to_logly()
         if variant is None:
             variant = self._variants[0]
@@ -380,7 +382,9 @@ class Model(
             context=context,
             **kwargs,
         )
-        self._variants = [ _variants.Variant(self._invariant.quantities, ) ]
+        self._variants = [_variants.Variant(
+            self._invariant.quantities, self._invariant._flags,
+        )]
         for v in self._variants:
             self._enforce_auto_values(v, )
         self._assign_default_stds(default_std, )

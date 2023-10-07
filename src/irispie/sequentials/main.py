@@ -367,6 +367,7 @@ class Sequential(
         )
 
     simulate_can_be_endogenized = ()
+    simualte_can_be_anticipated = ()
 
     #]
 
