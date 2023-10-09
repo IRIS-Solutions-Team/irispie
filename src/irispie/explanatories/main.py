@@ -6,9 +6,10 @@
 from __future__ import annotations
 
 from collections.abc import (Iterable, )
-from typing import (Callable, )
+from typing import (Any, Callable, )
 import dataclasses as _dc
 import copy as _cp
+import numpy as _np
 
 from ..incidences import main as _incidence
 from .. import equations as _equations
@@ -29,6 +30,7 @@ class Explanatory:
     """
     """
     #[
+
     _RESIDUAL_PREFIX = "res_"
     _IDENTITY_EQUAL_SIGN = "==="
     equation: _equations.Equation | None = None
@@ -205,11 +207,13 @@ class Explanatory:
         data: _np.ndarray,
         columns: int | _np.ndarray,
         /,
-    ) -> None:
+    ) -> dict[str, Any]:
         """
         """
         row = self.lhs_qid
         data[row, columns] = self.eval_level(data, columns, )
+        info = {"is_finite": _np.isfinite(data[row, columns]), }
+        return info
 
     def exogenize(
         self,
@@ -217,12 +221,15 @@ class Explanatory:
         columns: int | _np.ndarray,
         values: int | _np.ndarray,
         /,
-    ) -> None:
+    ) -> dict[str, Any]:
         """
         """
         lhs_row = self.lhs_qid
         res_row = self.res_qid
         data[lhs_row, columns] = values
         data[res_row, columns] = self.eval_res(data, columns, )
+        info = {"is_finite": _np.isfinite(data[res_row, columns]), }
+        return info
+
     #]
 

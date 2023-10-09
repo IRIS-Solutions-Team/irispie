@@ -309,15 +309,15 @@ class Solution:
 
 
 def _left_div(A, B):
-    """
+    r"""
     Solve A \ B
     """
     return _np.linalg.lstsq(A, B, rcond=None)[0]
 
 
 def _right_div(B, A):
-    """
-    Solve B / A = (A' \ B')'
+    r"""
+    Solve B / A which is (A' \ B')'
     """
     return _np.linalg.lstsq(A.T, B.T, rcond=None)[0].T
 
@@ -326,16 +326,16 @@ def _square_from_triangular(
     triangular_solution: tuple[_np.ndarray, ...],
     /,
 ) -> tuple[_np.ndarray, ...]:
-    """
-    T <- Ua @ Ta / U; note that Ta / U == (U' \ Ta')'
-    R <- Ua @ Ra;
-    X <- Xa @ Ra;
-    K <- Ua @ Ka;
-    xi(t) = ... -X J**(k-1) Ru e(t+k)
+    r"""
+    T <- Ua • Ta / Ua
+    R <- Ua • Ra
+    X <- Xa • Ra
+    K <- Ua • Ka
+    xi[t] = ... -X J**(k-1) Ru e[t+k]
     """
     #[
     Ua, Ta, Ra, Ka, Xa, *_ = triangular_solution
-    T = Ua @ _right_div(Ta, Ua) # Ua @ Ta / Ua
+    T = Ua @ _right_div(Ta, Ua) # Ua • Ta • inv(Ua)
     R = Ua @ Ra
     K = Ua @ Ka
     X = Ua @ Xa

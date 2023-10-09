@@ -1,6 +1,7 @@
 """
 """
 
+
 #[
 from __future__ import annotations
 
@@ -8,6 +9,7 @@ from typing import (Any, )
 from numbers import (Number, )
 import numpy as _np
 
+from .. import wrongdoings as _wrongdoings
 from ..databoxes import main as _databoxes
 from ..plans import main as _plans
 from ..explanatories import main as _explanatories
@@ -19,6 +21,7 @@ class SimulateMixin:
     """
     """
     #[
+
     def simulate(
         self,
         in_databox: _databoxes.Databox,
@@ -27,6 +30,7 @@ class SimulateMixin:
         plan: _plans.Plan | None = None,
         prepend_input: bool = True,
         add_to_databox: _databoxes.Databox | None = None,
+        when_nonfinite: Literal["error", "warning", "silent", ] = "warning",
     ) -> tuple[_databoxes.Databox, dict[str, Any]]:
         """
         """
@@ -42,11 +46,15 @@ class SimulateMixin:
         #
         ds.fill_missing_in_base_columns(self.res_names, fill=0, )
         #
-        # Run simulation
+        # Run simulation period by period, equation by equation
         #
         columns_to_simulate = ds.base_columns
-        name_to_row = ds.create_name_to_row()
-        self._simulate(ds.data, columns_to_simulate, name_to_row, plan, )
+        self._simulate_periods_and_explanatories(
+            ds,
+            columns_to_simulate,
+            plan,
+            when_nonfinite=when_nonfinite,
+        )
         #
         # Build output databox
         #
@@ -63,25 +71,39 @@ class SimulateMixin:
         info = {"dataslate": ds, }
         return out_db, info
 
-    def _simulate(
+    def _simulate_periods_and_explanatories(
         self,
-        data: _np.ndarray,
+        ds: _dataslates.Dataslate,
         columns: Iterable[int],
-        name_to_row: dict[str, int],
         plan: _plans.Plan | None,
         /,
+        when_nonfinite: Literal["error", "warning", "silent", ] = "warning",
     ) -> None:
         """
         """
-        for plan_column, data_column in enumerate(columns):
+        when_nonfinite_stream = \
+            _wrongdoings.STREAM_FACTORY[when_nonfinite] \
+            ("Simulating the following data point(s) resulted in non-finite values:", )
+        #
+        name_to_row = ds.create_name_to_row()
+        first_base_column = ds.base_columns[0] if ds.base_columns else None
+        #
+        for data_column in columns:
+            plan_column = data_column - first_base_column
+            date = ds.column_dates[data_column]
+            #
             for x in self.explanatories:
-                status, implied_value = _is_exogenized(x, data, plan, data_column, plan_column, name_to_row, )
-                if status:
-                    x.exogenize(data, data_column, implied_value)
+                is_exogenized, implied_value = _is_exogenized(x, ds.data, plan, data_column, plan_column, name_to_row, )
+                if is_exogenized:
+                    info = x.exogenize(ds.data, data_column, implied_value)
                 else:
-                    x.simulate(data, data_column, )
+                    info = x.simulate(ds.data, data_column, )
+                _catch_nonfinite(when_nonfinite_stream, info["is_finite"], x.lhs_name, date, )
+                #
+        when_nonfinite_stream.throw()
 
     #]
+
 
 def _is_exogenized(
     explanatory: _explanatories.Explanatory,
@@ -111,5 +133,21 @@ def _is_exogenized(
     if transform.when_data and _np.isnan(implied_value):
         return False, None
     return True, implied_value
+    #]
+
+
+def _catch_nonfinite(
+    stream: _wrongdoings.Stream,
+    is_finite: bool | _np.ndarray,
+    name: str,
+    date: Dater,
+) -> None:
+    """
+    """
+    #[
+    if _np.all(is_finite, ):
+        return
+    message = f"{name}[{date}]"
+    stream.add(message, )
     #]
 

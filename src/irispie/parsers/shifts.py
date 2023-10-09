@@ -10,7 +10,7 @@ import re as re_
 
 
 TIME_SHIFT_INSIDE = r"[\s\+\-\d]+"
-_CURLY_TIME_SHIFT_PATTERN = re_.compile(r"(?<=[\w\?])\{(" + TIME_SHIFT_INSIDE + ")\}")
+_CURLY_TIME_SHIFT_PATTERN = re_.compile(r"(?<=[\w\?])\{(" + TIME_SHIFT_INSIDE + r")\}")
 
 
 def standardize_time_shifts(source: str, /, ) -> str:

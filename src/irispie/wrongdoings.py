@@ -6,12 +6,13 @@ Handle exceptions and warnings
 #[
 from __future__ import annotations
 
-from typing import (TypeAlias, Literal, Callable, )
+from typing import (TypeAlias, Literal, Callable, NoReturn, )
 from collections.abc import (Iterable, )
 import warnings as _wa
+import os as _os
 #]
 
-
+_WARN_SKIPS = (_os.path.dirname(__file__), )
 HOW: TypeAlias = Literal["error", "warning", "silent"]
 
 
@@ -74,7 +75,7 @@ def _throw_as_warning(
     #[
     message = _prepare_message(message)
     message = "\nIrisPieWarning: " + message
-    _wa.warn(message, IrisPieWarning, stacklevel=4, )
+    _wa.warn(message, IrisPieWarning, skip_file_prefixes=_WARN_SKIPS, )
     #]
 
 
@@ -107,4 +108,88 @@ _RESOLVE_HOW = {
     "warning": _throw_as_warning,
     "silent": _throw_as_silent,
 }
+
+
+class _Stream:
+    """
+    """
+    #[
+
+    def __init__(
+        self,
+        title: str,
+        /,
+    ) -> None:
+        """
+        """
+        self.message = (title, )
+
+    def add(
+        self,
+        message: str,
+    ) -> None:
+        ...
+
+    def throw(self, /, ) -> None:
+        ...
+
+    #]
+
+
+class ErrorStream(_Stream):
+    """
+    """
+    #[
+
+    def add(
+        self,
+        message: str,
+    ) -> NoReturn:
+        """
+        """
+        self.message += (message, )
+        raise IrisPieError(self.message, )
+
+    #]
+
+
+class WarningStream(_Stream):
+    """
+    """
+    #[
+
+    def add(
+        self,
+        message: str,
+    ) -> None:
+        self.message += (message, )
+
+    def throw(self, /, ) -> None:
+        """
+        """
+        _throw_as_warning(self.message)
+
+    #]
+
+
+class SilentStream(_Stream):
+    """
+    """
+    #[
+
+    def add(self, *args, **kwargs, ) -> None:
+        pass
+
+    def throw(self, *args, **kwargs, ) -> None:
+        pass
+
+    #]
+
+
+STREAM_FACTORY = {
+    "error": ErrorStream,
+    "warning": WarningStream,
+    "silent": SilentStream,
+}
+
 

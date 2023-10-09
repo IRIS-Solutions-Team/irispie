@@ -634,14 +634,15 @@ class MonthlyDater(RegularDaterMixin, Dater, ):
 
 
 yy = YearlyDater.from_year_period
-
 hh = HalfyearlyDater.from_year_period
-
 qq = QuarterlyDater.from_year_period
-
 mm = MonthlyDater.from_year_period
-
 ii = IntegerDater
+
+yy = staticmethod(YearlyDater.from_year_period)
+hh = staticmethod(HalfyearlyDater.from_year_period)
+qq = staticmethod(QuarterlyDater.from_year_period)
+mm = staticmethod(MonthlyDater.from_year_period)
 
 
 def dd(year: int, month: int | ellipsis, day: int) -> DailyDater:

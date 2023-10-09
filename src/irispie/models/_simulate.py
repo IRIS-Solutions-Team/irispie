@@ -55,6 +55,8 @@ class SimulateMixin:
             dataslate.data = new_data
             dataslate.remove_columns(dataslate.base_columns[-1] - dataslate.num_periods + 1)
         #
+        # Combine resulting dataslates into a databox
+        #
         out_db = _dataslates.multiple_to_databox(dataslates)
         if prepend_input:
             out_db.prepend(in_databox, base_range[0]-1, )
