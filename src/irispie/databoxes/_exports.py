@@ -14,11 +14,15 @@ import csv as _cs
 import numpy as _np
 import itertools as _it
 import dataclasses as _dc
+import functools as _ft
 
 from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
 from ..databoxes import main as _databoxes
 #]
+
+
+_DEFAULT_ROUND = 12
 
 
 @_dc.dataclass
@@ -38,10 +42,17 @@ class _ExportBlock:
     delimiter: str | None = None
     numeric_format: str | None = None
     nan_str: str | None = None
+    round: int | None = None
 
     def __iter__(self, ):
         """
         """
+        def _round(x, /, ):
+            if self.round is None:
+                return x
+            else:
+                return _np.round(x, self.round)
+        #
         descriptions = _get_descriptions_for_names(self.databox, self.names, )
         num_data_columns = _get_num_data_columns_for_names(self.databox, self.names, )
         data_array = _get_data_array_for_names(self.databox, self.names, self.dates, )
@@ -64,9 +75,12 @@ class _ExportBlock:
             ))
             yield ("", ) + description_row + ("", )
         #
-        # Data rows
+        # Dates and data, row by row
         for date, data_row in zip(self.dates, data_array, ):
-            yield (str(date), ) + tuple( x if not _np.isnan(x) else self.nan_str for x in data_row.tolist() ) + ("", )
+            yield \
+                (str(date), ) \
+                + tuple(x if not _np.isnan(x) else self.nan_str for x in _round(data_row).tolist()) \
+                + ("", )
         #
         # Empty rows afterwards
         for _ in range(self.total_num_data_rows - len(self.dates), ):
@@ -91,6 +105,7 @@ class DataboxExportMixin:
         delimiter: str = ",",
         numeric_format: str = "g",
         nan_str: str = "",
+        round: int = _DEFAULT_ROUND,
         csv_writer_settings: dict = None,
         when_empty: Literal["error", "warning", "silent"] = "warning",
     ) -> dict[str, Any]:
@@ -104,7 +119,7 @@ class DataboxExportMixin:
         export_blocks = (
             _ExportBlock(
                 self, frequency, frequency_range[frequency], frequency_names[frequency],
-                total_num_data_rows, description_row, delimiter, numeric_format, nan_str,
+                total_num_data_rows, description_row, delimiter, numeric_format, nan_str, round,
             )
             for frequency in frequency_range.keys()
         )

@@ -30,7 +30,8 @@ from . import _views as _views
 
 
 __all__ = (
-    "Databox", "Databank",
+    "Databox",
+    "Databank",
 )
 
 
