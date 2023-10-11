@@ -122,7 +122,8 @@ class _Stream:
     ) -> None:
         """
         """
-        self.message = (title, )
+        self.title = (title, )
+        self.messages = ()
 
     def add(
         self,
@@ -132,6 +133,10 @@ class _Stream:
 
     def throw(self, /, ) -> None:
         ...
+
+    @property
+    def final_message(self, /, ) -> tuple[str, ...]:
+        return self.title + self.messages
 
     #]
 
@@ -147,8 +152,8 @@ class ErrorStream(_Stream):
     ) -> NoReturn:
         """
         """
-        self.message += (message, )
-        raise IrisPieError(self.message, )
+        self.messages += (message, )
+        raise IrisPieError(self.final_message, )
 
     #]
 
@@ -162,12 +167,13 @@ class WarningStream(_Stream):
         self,
         message: str,
     ) -> None:
-        self.message += (message, )
+        self.messages += (message, )
 
     def throw(self, /, ) -> None:
         """
         """
-        _throw_as_warning(self.message)
+        if self.messages:
+            _throw_as_warning(self.final_message)
 
     #]
 

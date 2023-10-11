@@ -19,7 +19,8 @@ class Mixin:
     """
     """
     #[
-    def aggregate(
+
+    def aggregated(
         self,
         new_freq: _dates.Frequency,
         /,
@@ -74,7 +75,9 @@ class Mixin:
         new_start_date, new_data = aggregate_func(self, new_dater_class, aggregate_within_data_func)
         return type(self).from_start_date_and_values(new_start_date, new_data, )
 
-    def disaggregate(
+    aggregate = aggregated
+
+    def disaggregated(
         self,
         new_freq: _dates.Frequency,
         /,
@@ -93,6 +96,9 @@ class Mixin:
         new_dater_class = _dates.DATER_CLASS_FROM_FREQUENCY_RESOLUTION[new_freq]
         new_start_date, new_data = method_func(self, new_dater_class)
         return type(self).from_start_date_and_values(new_start_date, new_data, )
+
+    disaggregate = disaggregated
+
     #]
 
 

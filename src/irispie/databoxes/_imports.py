@@ -19,7 +19,7 @@ from .. import dates as _dates
 
 
 @_dc.dataclass
-class _ImportBlockDescriptor:
+class _ImportBlock:
     """
     """
     #[
@@ -59,7 +59,7 @@ class DataboxImportMixin:
     #[
     @classmethod
     def from_sheet(
-        cls,
+        klass,
         file_name: str,
         /,
         start_date_only: bool = False,
@@ -71,9 +71,13 @@ class DataboxImportMixin:
     ) -> Self:
         """
         """
-        self = cls(**kwargs)
+        self = klass(**kwargs)
+
         num_header_lines = 1 + int(description_row)
         csv_lines = _read_csv(file_name, num_header_lines, **csv_reader_settings, )
+        if not csv_lines:
+            return self
+
         header_lines = csv_lines[0:num_header_lines]
         data_lines = csv_lines[num_header_lines:]
         name_line = header_lines[0]
@@ -87,7 +91,7 @@ class DataboxImportMixin:
 
     @classmethod
     def from_pickle(
-        cls,
+        klass,
         file_name: str,
         /,
         **kwargs,
@@ -125,8 +129,19 @@ def _block_iterator(name_line, description_row, data_lines, start_date_only, /, 
     """
     """
     #[
-    _is_end = lambda cell: cell.startswith("__")
-    _is_start = lambda cell: cell.startswith("__") and _dates.Frequency.from_letter(cell) is not _dates.Frequency.UNKNOWN
+    def _is_end(cell, /, ) -> bool:
+        return cell.startswith("__")
+    #
+    def _is_start(cell, /, ) -> bool:
+        if not cell.startswith("__"):
+            return False
+        try:
+            letter = cell.removeprefix("__")[0]
+            _dates.Frequency.from_letter(letter)
+            return True
+        except:
+            return False
+    #
     name_line += ["__"]
     status = False
     blocks = []
@@ -141,7 +156,7 @@ def _block_iterator(name_line, description_row, data_lines, start_date_only, /, 
             names = name_line[current_start:column]
             descriptions = description_row[current_start:column]
             row_index, dates = _extract_dates_from_data_lines(data_lines, current_frequency, current_date_column, start_date_only, )
-            yield _ImportBlockDescriptor(row_index, dates, current_start, num_columns, names, descriptions)
+            yield _ImportBlock(row_index, dates, current_start, num_columns, names, descriptions)
         if not status and _is_start(cell):
             status = True
             current_date_column = column
@@ -165,12 +180,12 @@ def _extract_dates_from_data_lines(
         True: lambda i, line: start_date + i,
         False: lambda i, line: _dates.Dater.from_sdmx_string(frequency, line[column]),
     }[start_date_only]
-    row_index_and_dates = [ 
+    row_indices_and_dates = ( 
         (i, date_extractor(i, line))
         for i, line in enumerate(data_lines)
         if start_date_only or line[column]
-    ]
-    return tuple(zip(*row_index_and_dates))
+    )
+    return tuple(zip(*row_indices_and_dates)) or ((), ())
     #]
 
 

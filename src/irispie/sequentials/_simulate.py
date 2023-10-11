@@ -29,7 +29,7 @@ class SimulateMixin:
         /,
         plan: _plans.Plan | None = None,
         prepend_input: bool = True,
-        add_to_databox: _databoxes.Databox | None = None,
+        target_databox: _databoxes.Databox | None = None,
         when_nonfinite: Literal["error", "warning", "silent", ] = "warning",
     ) -> tuple[_databoxes.Databox, dict[str, Any]]:
         """
@@ -37,14 +37,14 @@ class SimulateMixin:
         #
         # Arrange input data into a dataslate
         #
-        ds = _dataslates.Dataslate(
+        ds = _dataslates.HorizontalDataslate.for_slatable(
             self, in_databox, base_range,
-            slate=0, plan=plan,
+            variant=0, plan=plan,
         )
         #
         # Fill missing residuals with zeros
         #
-        ds.fill_missing_in_base_columns(self.res_names, fill=0, )
+        ds.fill_missing_in_base_periods(self.res_names, fill=0, )
         #
         # Run simulation period by period, equation by equation
         #
@@ -65,15 +65,15 @@ class SimulateMixin:
         #
         # Add to custom databox
         #
-        if add_to_databox is not None:
-            out_db = add_to_databox | out_db
+        if target_databox is not None:
+            out_db = target_databox | out_db
         #
         info = {"dataslate": ds, }
         return out_db, info
 
     def _simulate_periods_and_explanatories(
         self,
-        ds: _dataslates.Dataslate,
+        ds: _dataslates.HorizontalDataslate,
         columns: Iterable[int],
         plan: _plans.Plan | None,
         /,

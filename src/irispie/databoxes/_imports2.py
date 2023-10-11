@@ -27,21 +27,23 @@ _DataIterator: TypeAlias = Iterator[_DataVector, ]
 _DataArrayReader: TypeAlias = Callable[[Iterable[int], ], _np.ndarray]
 
 
-_GENFROMTXT_SETTINGS = dict(
-    delimiter=",",
-    ndmin=2,
-)
+_GENFROMTXT_SETTINGS = {
+    "delimiter": ",",
+    "ndmin": 2,
+}
 
 
-class _FileFactory(Protocol):
+class _SheetFileFactory(Protocol):
     """
     Protocol for file factory
     """
     #[
+
     def create_header_and_data_iterators(self, ) -> tuple[_HeaderIterator, _DataIterator, ]:
         ...
     def create_data_array_reader(self, ) -> _DataArrayReader:
         ...
+
     #]
 
 
@@ -57,6 +59,7 @@ def read_csv(
     Read a CSV file
     """
     #[
+
     factory = _ColumnwiseFileFactory(file_path, **kwargs, )
     #
     header_iterator, data_iterator = factory.create_header_and_data_iterators()
@@ -66,6 +69,7 @@ def read_csv(
         for b in _generate_blocks(header_iterator, data_iterator, **kwargs, )
     )
     return all_databoxes
+
     #]
 
 
@@ -93,29 +97,40 @@ def _generate_blocks(
     Generate blocks of data of same date frequency
     """
     #[
-    is_yieldable = lambda block: block is not None and block.num_columns > 0
+    def _is_yieldable(block, /, ) -> bool:
+        return block is not None and block.num_columns > 0
+    #
     current_block = None
     for index, (header, data, ) in enumerate(zip(header_iterator, data_iterator, )):
         if _is_end_of_file(header, ):
-            if is_yieldable(current_block, ):
+            if _is_yieldable(current_block, ):
                 yield current_block
             current_block = None
         elif _is_start_of_block(header, ):
-            if is_yieldable(current_block, ):
+            if _is_yieldable(current_block, ):
                 yield current_block
             current_block = _Block(index, header, data, **kwargs, )
         elif current_block is not None:
             current_block.add_header(header, )
         else:
             current_block = None
-    if is_yieldable(current_block, ):
+    if _is_yieldable(current_block, ):
         yield current_block
     #]
 
 
 class _Block:
-    __slots__ = ("_start_index", "_headers", "_dates", "_data_array", )
+    """
+    """
     #[
+
+    __slots__ = (
+        "_start_index",
+        "_headers",
+        "_dates",
+        "_data_array",
+    )
+
     def __init__(
         self,
         start_index: int | None,
@@ -184,6 +199,7 @@ class _Block:
             self._start_index,
             self._start_index + self.num_columns,
         )
+
     #]
 
 
@@ -210,7 +226,7 @@ def _is_end_of_file(
     return header[0] == _END_OF_FILE
 
 
-class _ColumnwiseFileFactory(_FileFactory):
+class _ColumnwiseFileFactory(_SheetFileFactory):
     """
     Iterator factory for columnwise data
     """

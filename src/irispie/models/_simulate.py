@@ -31,12 +31,12 @@ class SimulateMixin:
         deviation: bool = False,
         plan: _plans.Plan | None = None,
         prepend_input: bool = True,
-        add_to_databox: _databoxes.Databox | None = None,
+        target_databox: _databoxes.Databox | None = None,
     ) -> tuple[_databoxes.Databox, dict[str, Any]]:
         """
         """
         dataslates = tuple(
-            _dataslates.Dataslate(self, in_databox, base_range, plan=plan, slate=i, )
+            _dataslates.HorizontalDataslate.for_slatable(self, in_databox, base_range, plan=plan, variant=i, )
             for i in range(self.num_variants)
         )
         #
@@ -53,19 +53,19 @@ class SimulateMixin:
                 new_data, dataslate.base_columns, deviation, anticipate,
             )
             dataslate.data = new_data
-            dataslate.remove_columns(dataslate.base_columns[-1] - dataslate.num_periods + 1)
+            dataslate.remove_periods_from_end(dataslate.base_columns[-1] - dataslate.num_periods + 1)
         #
         # Combine resulting dataslates into a databox
         #
-        out_db = _dataslates.multiple_to_databox(dataslates)
+        out_db = _dataslates.multiple_to_databox(dataslates, )
         if prepend_input:
             out_db.prepend(in_databox, base_range[0]-1, )
         out_db = out_db | self.get_parameters_stds()
         #
         # Add to custom databox
         #
-        if add_to_databox is not None:
-            out_db = add_to_databox | out_db
+        if target_databox is not None:
+            out_db = target_databox | out_db
         #
         info = {"dataslates": dataslates, }
         return out_db, info

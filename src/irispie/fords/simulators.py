@@ -41,7 +41,7 @@ def simulate_flat(
     if any(boolex_logly):
         data[boolex_logly, :] = _np.log(data[boolex_logly, :])
 
-    curr_state = _dataslates.retrieve_vector_from_data_array(
+    curr_state = _dataslates.HorizontalDataslate.retrieve_vector_from_data_array(
         data, vec.transition_variables, column_start-1,
     )
 

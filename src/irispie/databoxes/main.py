@@ -130,14 +130,14 @@ class Databox(
         qid_to_name: Sequence[str] | dict[int, str],
         dates: _dates.Dater,
         /,
-        add_to_databox: Self | None = None,
+        target_databox: Self | None = None,
         qid_to_description: dict[int, str] | None = None,
         array_orientation: Literal["vertical", "horizontal", ] = "vertical",
         interpret_dates: Literal["start_date", "range", ] = "start_date",
     ) -> Self:
         """
         """
-        self = add_to_databox if add_to_databox else klass()
+        self = target_databox or klass()
         constructor = _SERIES_CONSTRUCTOR_FACTORY[interpret_dates]
         transposer = _ARRAY_TRANSPOSER_FACTORY[array_orientation]
         for qid, data in enumerate(transposer(array)):
@@ -265,16 +265,24 @@ class Databox(
         frequency: _dates.Frequency,
     ) -> Iterable[str]:
         """
+        Get all time series names with the given frequency
         """
-        return self.filter(value_test=lambda x: isinstance(x, _series.Series) and x.frequency==frequency)
+        def _is_series_with_frequency(x):
+            return isinstance(x, _series.Series) and x.frequency == frequency
+        return self.filter(value_test=_is_series_with_frequency, )
 
     def get_range_by_frequency(
         self,
         frequency: _dates.Frequency,
     ) -> Ranger:
+        """
+        Get the encompassing date range for all time series with the given frequency
+        """
+        if frequency == _dates.Frequency.UNKNOWN:
+            return _dates.EmptyRanger()
         names = self.get_series_names_by_frequency(frequency)
         if not names:
-            return Ranger(None, None)
+            return _dates.EmptyRanger()
         min_start_date = min((self[n].start_date for n in names), key=_op.attrgetter("serial"))
         max_end_date = max((self[n].end_date for n in names), key=_op.attrgetter("serial"))
         return _dates.Ranger(min_start_date, max_end_date)

@@ -193,26 +193,27 @@ Tabular view of the simulation plan
 
 #### Exogenize certain quantities at certain dates ####
 
-```
-self.exogenize(dates, names, ... )
-```
+Syntax
+-------
+
+    self.exogenize(dates, names, **options )
 
 Input arguments
 ----------------
 
 ### `dates` ###
-Dates at which the `names` will be exogenized
+Dates at which the `names` will be exogenized.
 
 ### `names` ###
-Names of quantities to exogenize at the `dates`
+Names of quantities to exogenize at the `dates`.
 
-Optional arguments
-------------------
+Options
+--------
 
-### `transform` ###
-Transformation to apply to the exogenized quantities; only
+### `transform=None` ###
+Transformation (a string) to be applied to the exogenized quantities; only
 available in simulation plans created for
-[`Sequential`](../Sequential/index.md) objects
+[`Sequential`](../Sequential/index.md) objects.
 
 
 ------------------------------------------------------------

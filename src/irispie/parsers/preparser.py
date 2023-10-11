@@ -33,7 +33,7 @@ def from_string(
         "preparser_needed": None,
     }
 
-    info["context"] = context if context else {}
+    info["context"] = context or {}
 
     # Remove line comments %, #, ..., \
     source = _remove_comments(source)
@@ -113,7 +113,7 @@ class _Visitor(_pa.nodes.NodeVisitor):
     def __init__(self, context=None):
         super().__init__()
         self.content = []
-        self.context = context if context else {}
+        self.context = context or {}
 
     def _add(self, new):
         self.content.append(new)

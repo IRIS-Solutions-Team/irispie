@@ -47,7 +47,7 @@ ColumnsRequestType: TypeAlias = int | Iterable[int] | slice | None
 
 
 def _get_date_positions(dates, base, num_periods):
-    pos = list(_dates.date_index(dates, base))
+    pos = tuple(_dates.date_index(dates, base))
     min_pos = _builtin_min((x for x in pos if x is not None), default=0)
     max_pos = _builtin_max((x for x in pos if x is not None), default=0)
     add_before = _builtin_max(-min_pos, 0)
@@ -212,7 +212,7 @@ class Series(
         dates = self._resolve_dates(dates)
         columns = self._resolve_columns(columns)
         if not self.start_date:
-            self.start_date = next(iter(dates))
+            self.start_date = next(iter(dates), None, )
             self.data = self._create_periods_of_missing_values(num_rows=1, )
         pos, add_before, add_after = _get_date_positions(dates, self.start_date, self.shape[0]-1)
         self.data = self._create_expanded_data(add_before, add_after)
@@ -249,7 +249,8 @@ class Series(
     ) -> tuple[Iterable[_dates.Dater], Iterable[int], Iterable[int], _np.ndarray]:
         """
         """
-        dates = [ t for t in self._resolve_dates(dates) ]
+        dates = self._resolve_dates(dates, )
+        dates = [ t for t in dates ]
         columns = self._resolve_columns(columns)
         base_date = self.start_date
         #
@@ -267,9 +268,10 @@ class Series(
 
     def get_data(
         self,
+        dates = ...,
         *args,
     ) -> _np.ndarray:
-        dates, pos, columns, expanded_data = self._resolve_dates_and_positions(*args, )
+        dates, pos, columns, expanded_data = self._resolve_dates_and_positions(dates, *args, )
         data = expanded_data[_np.ix_(pos, columns)]
         return data
 
@@ -329,14 +331,16 @@ class Series(
     def _resolve_dates(self, dates, ):
         """
         """
-        if dates is None:
+        if not dates:
             dates = []
         if isinstance(dates, slice) and dates == slice(None, ):
             dates = ...
-        if dates is ...:
+        if dates is ... and self.start_date is not None:
             dates = _dates.Ranger(None, None, )
+        if dates is ... and self.start_date is None:
+            dates = _dates.EmptyRanger()
         if hasattr(dates, "needs_resolve") and dates.needs_resolve:
-            dates = dates.resolve(self)
+            dates = dates.resolve(self, )
         return tuple(
             d.resolve(self) if hasattr(d, "needs_resolve") and d.needs_resolve else d
             for d in dates
@@ -507,9 +511,52 @@ class Series(
     ) -> Self:
         self._LAY_METHOD_RESOLUTION[method]["underlay"](self, other, )
 
+    def underlaid(
+        self,
+        other: Self,
+        *args,
+        **kwargs,
+    ) -> Self:
+        new = self.copy()
+        new.underlay(other, *args, **kwargs)
+        return new
+
+    def overlaid(
+        self,
+        other: Self,
+        *args,
+        **kwargs,
+    ) -> Self:
+        new = self.copy()
+        new.overlay(other, *args, **kwargs)
+        return new
+
     _LAY_METHOD_RESOLUTION = {
         "by_range": {"overlay": overlay_by_range, "underlay": underlay_by_range},
     }
+
+    def redate(
+        self,
+        new_date: _dates.Dater,
+        old_date: _dates.Dater | None = None,
+        /,
+    ) -> None:
+        """
+        """
+        self.start_date = new_date \
+            if old_date is None \
+            else new_date - (old_date - self.start_date)
+
+    def redated(
+        self,
+        *args,
+        **kwargs,
+    ) -> Self:
+        """
+        """
+        new = self.copy()
+        new.redate(*args, **kwargs)
+        return new
 
     def _shallow_copy_data(
         self,
@@ -585,7 +632,7 @@ class Series(
         num_trailing = _get_num_leading_missing_rows(self.data[::-1], self._test_missing_period)
         if not num_leading and not num_trailing:
             return self
-        slice_from = num_leading if num_leading else None
+        slice_from = num_leading or None
         slice_to = -num_trailing if num_trailing else None
         self.data = self.data[slice(slice_from, slice_to), ...]
         if slice_from:

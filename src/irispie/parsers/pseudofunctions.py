@@ -37,7 +37,7 @@ def _expand_pseudofunction(match, /, ) -> str:
 
 
 def _resolve_shift(shift: str, default_shift: int, /, ) -> int:
-    shift = shift.strip() if shift else ""
+    shift = (shift or "").strip()
     return int(shift) if shift else default_shift
 
 

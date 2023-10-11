@@ -329,7 +329,7 @@ class Sequential(
 
     #
     # ===== Implement SlatableProtocol =====
-    # This protocal is used in Dataslates to prepare data arrays
+    # This protocal is used in HorizontalDataslate.for_slatable to prepare data arrays
     #
 
     def get_min_max_shifts(

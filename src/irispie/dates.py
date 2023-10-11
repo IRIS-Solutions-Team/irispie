@@ -42,16 +42,15 @@ class Frequency(_en.IntEnum):
     UNKNOWN = -1
 
     @classmethod
-    def from_letter(cls, letter: str, /, ) -> Frequency:
+    def from_letter(
+        klass,
+        string: str,
+        /,
+    ) -> Self:
         """
         """
-        letter = letter.replace("_", "").upper()
-        if not letter:
-            return cls.UNKNOWN
-        return next(
-            x for x in cls
-            if x.name.startswith(letter[0]) and x is not cls.UNKNOWN
-        )
+        letter = string.replace("_", "").upper()[0]
+        return next( x for x in klass if x.name.startswith(letter) )
 
     @property
     def letter(self, /, ) -> str:
@@ -318,9 +317,9 @@ class IntegerDater(Dater, ):
     origin = 0
 
     @classmethod
-    def from_sdmx_string(cls, sdmx_string: str) -> IntegerDater:
-        sdmx_string = sdmx_string.strip().removeprefix("(", "").removesuffix(")")
-        return cls(int(sdmx_string))
+    def from_sdmx_string(klass, sdmx_string: str) -> IntegerDater:
+        sdmx_string = sdmx_string.strip().removeprefix("(").removesuffix(")")
+        return klass(int(sdmx_string))
 
     def to_sdmx_string(self) -> str:
         return f"({self.serial})"
@@ -343,20 +342,20 @@ class DailyDater(Dater, ):
     origin = _dt.date(BASE_YEAR, 1, 1).toordinal()
 
     @classmethod
-    def from_ymd(cls: type, year: int, month: int=1, day: int=1) -> Self:
+    def from_ymd(klass: type, year: int, month: int=1, day: int=1) -> Self:
         serial = _dt.date(year, month, day).toordinal()
-        return cls(serial)
+        return klass(serial)
 
     @classmethod
-    def from_year_period(cls, year: int, period: int) -> Self:
+    def from_year_period(klass, year: int, period: int) -> Self:
         boy_serial = _dt.date(year, 1, 1).toordinal()
         serial = boy_serial + int(period) - 1
-        return cls(serial)
+        return klass(serial)
 
     @classmethod
-    def from_sdmx_string(cls, sdmx_string: str) -> DailyDater:
+    def from_sdmx_string(klass, sdmx_string: str) -> DailyDater:
         year, month, day, *_ = sdmx_string.split("-")
-        return cls.from_ymd(int(year), int(month), int(day))
+        return klass.from_ymd(int(year), int(month), int(day))
 
     @property
     def year(self, /, ) -> int:
@@ -435,17 +434,17 @@ class RegularDaterMixin:
     #[
     @classmethod
     def from_year_period(
-            cls: type,
+            klass: type,
             year: int,
             per: int | str = 1,
         ) -> Self:
-        per = per if per != "end" else cls.frequency.value
-        new_serial = _serial_from_ypf(year, per, cls.frequency.value)
-        return cls(new_serial)
+        per = per if per != "end" else klass.frequency.value
+        new_serial = _serial_from_ypf(year, per, klass.frequency.value)
+        return klass(new_serial)
 
     @classmethod
-    def from_ymd(cls, year: int, month: int=1, day: int=1, ) -> YearlyDater:
-        return cls.from_year_period(year, cls.month_to_period(month, ), )
+    def from_ymd(klass, year: int, month: int=1, day: int=1, ) -> YearlyDater:
+        return klass.from_year_period(year, klass.month_to_period(month, ), )
 
     @property
     def year(self, ) -> int:
@@ -514,8 +513,8 @@ class YearlyDater(RegularDaterMixin, Dater, ):
     }
 
     @classmethod
-    def from_sdmx_string(cls, sdmx_string: str) -> YearlyDater:
-        return cls(int(sdmx_string))
+    def from_sdmx_string(klass, sdmx_string: str) -> YearlyDater:
+        return klass(int(sdmx_string))
 
     def to_sdmx_string(self) -> str:
         return f"{self.get_year():04g}"
@@ -541,9 +540,9 @@ class HalfyearlyDater(RegularDaterMixin, Dater, ):
     }
 
     @classmethod
-    def from_sdmx_string(cls, sdmx_string: str) -> HalfyearlyDater:
+    def from_sdmx_string(klass, sdmx_string: str) -> HalfyearlyDater:
         year, halfyear = sdmx_string.split("-H")
-        return cls.from_year_period(int(year), int(halfyear))
+        return klass.from_year_period(int(year), int(halfyear))
 
     def to_sdmx_string(self) -> str:
         year, per = self.to_year_period()
@@ -588,9 +587,9 @@ class QuarterlyDater(RegularDaterMixin, Dater, ):
     }
 
     @classmethod
-    def from_sdmx_string(cls, sdmx_string: str) -> QuarterlyDater:
+    def from_sdmx_string(klass, sdmx_string: str) -> QuarterlyDater:
         year, quarter = sdmx_string.split("-Q")
-        return cls.from_year_period(int(year), int(quarter))
+        return klass.from_year_period(int(year), int(quarter))
 
     def to_sdmx_string(self) -> str:
         year, per = self.to_year_period()
@@ -616,9 +615,9 @@ class MonthlyDater(RegularDaterMixin, Dater, ):
     }
 
     @classmethod
-    def from_sdmx_string(cls, sdmx_string: str) -> MonthlyDater:
+    def from_sdmx_string(klass, sdmx_string: str) -> MonthlyDater:
         year, month = sdmx_string.split("-")
-        return cls.from_year_period(int(year), int(month))
+        return klass.from_year_period(int(year), int(month))
 
     def to_sdmx_string(self) -> str:
         year, per = self.to_year_period()
@@ -633,16 +632,98 @@ class MonthlyDater(RegularDaterMixin, Dater, ):
     #]
 
 
-yy = YearlyDater.from_year_period
-hh = HalfyearlyDater.from_year_period
-qq = QuarterlyDater.from_year_period
-mm = MonthlyDater.from_year_period
-ii = IntegerDater
+class UnknownDater:
+    """
+    """
+    #[
 
-yy = staticmethod(YearlyDater.from_year_period)
-hh = staticmethod(HalfyearlyDater.from_year_period)
-qq = staticmethod(QuarterlyDater.from_year_period)
-mm = staticmethod(MonthlyDater.from_year_period)
+    def from_sdmx_string(sdmx_string: str) -> None:
+        return None
+
+    #]
+
+
+def _dater_or_ranger_decorator(
+    func: Callable,
+    /,
+) -> Callable:
+    """
+    """
+    #[
+    def wrapper(*args, ):
+        try:
+            index = args.index(Ellipsis)
+            start_date = func(*args[:index], ) if args[:index] else None
+            end_date = func(*args[index+1:], ) if args[index+1:] else None
+            return Ranger(start_date, end_date, )
+        except ValueError:
+            return func(*args, )
+    return wrapper
+    #]
+
+
+yy = _dater_or_ranger_decorator(YearlyDater.from_year_period, )
+yy.__doc__ = \
+"""
+------------------------------------------------------------
+
+
+`yy`
+=====
+
+##### Create a yearly-frequency date or date range ####
+
+Syntax
+-------
+
+    date = yy(year)
+    range = yy(start_year, ..., end_year)
+
+Input arguments
+----------------
+
+### `year ###
+Year (an integer number).
+
+### `start_year` ###
+Start year for a date range.
+
+### `end_year` ###
+End year for a date range.
+
+Returns
+--------
+
+### `date` ###
+A `YearlyDater` object (if only a single year is specified as an input
+argument).
+
+### `range` ###
+A `Ranger` object (if a start and end year are specified as input
+arguments).
+
+
+------------------------------------------------------------
+"""
+
+
+hh = _dater_or_ranger_decorator(HalfyearlyDater.from_year_period, )
+hh.__doc__ = \
+"""
+------------------------------------------------------------
+
+
+`hh`
+=====
+
+
+------------------------------------------------------------
+"""
+
+
+qq = _dater_or_ranger_decorator(QuarterlyDater.from_year_period)
+mm = _dater_or_ranger_decorator(MonthlyDater.from_year_period)
+ii = _dater_or_ranger_decorator(IntegerDater)
 
 
 def dd(year: int, month: int | ellipsis, day: int) -> DailyDater:
@@ -653,7 +734,10 @@ def dd(year: int, month: int | ellipsis, day: int) -> DailyDater:
 
 
 class Ranger(_copies.CopyMixin, ):
+    """
+    """
     #[
+
     def __init__(
         self, 
         from_date: Dater | None = None,
@@ -777,6 +861,39 @@ class Ranger(_copies.CopyMixin, ):
 
     def __bool__(self) -> bool:
         return not self.needs_resolve
+
+    #]
+
+
+class EmptyRanger:
+    """
+    """
+    #[
+    start_date = None
+    end_date = None
+    step = None
+    needs_resolve = False
+
+    def __new__(
+        klass,
+        *args,
+        **kwargs,
+    ) -> Self:
+        """
+        """
+        if not hasattr(klass, "_instance"):
+            klass._instance = super().__new__(klass, *args, **kwargs, )
+        return klass._instance
+
+    def __iter__(self, ) -> Iterable:
+        return iter(())
+
+    def __len__(self, ) -> int:
+        return 0
+
+    def shift(self, *args, **kwargs, ) -> None:
+        pass
+
     #]
 
 
@@ -787,12 +904,10 @@ def _sign(x: Number, ) -> int:
 def date_index(dates: Iterable[Dater | None], base: Dater) -> Iterable[int]:
     """
     """
-    #[
     return (
-        x-base if x is not None else None
-        for x in dates
+        (t - base) if t is not None else None
+        for t in dates
     )
-    #]
 
 
 class ContextualDater(Dater, RangeableMixin, ):
@@ -846,12 +961,16 @@ DATER_CLASS_FROM_FREQUENCY_RESOLUTION = {
     Frequency.QUARTERLY: QuarterlyDater,
     Frequency.MONTHLY: MonthlyDater,
     Frequency.DAILY: DailyDater,
+    Frequency.UNKNOWN: UnknownDater,
 }
 
 def daters_from_sdmx_strings(freq: Frequency, sdmx_strings: Iterable[str], ) -> Iterable[Dater]:
     """
     """
-    return (DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_sdmx_string(x) for x in sdmx_strings)
+    return (
+        DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_sdmx_string(i)
+        for i in sdmx_strings
+    )
 
 
 def daters_from_iso_strings(freq: Frequency, iso_strings: Iterable[str], ) -> Iterable[Dater]:
