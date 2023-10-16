@@ -17,7 +17,7 @@ HOW: TypeAlias = Literal["error", "warning", "silent"]
 
 
 _PLAIN_PREFIX = ""
-_LIST_PREFIX = "××× "
+_LIST_PREFIX = "»» "
 
 
 class IrisPieError(Exception):
@@ -36,7 +36,7 @@ class IrisPieWarning(UserWarning):
     pass
 
 
-def throw(
+def _raise(
     how: HOW,
     message: str | Iterable[str],
 ) -> None:
@@ -57,7 +57,7 @@ def _prepare_message(message):
     #]
 
 
-def _throw_as_error(
+def _raise_as_error(
     message: str | Iterable[str],
 ) -> None:
     """
@@ -67,7 +67,7 @@ def _throw_as_error(
     #]
 
 
-def _throw_as_warning(
+def _raise_as_warning(
     message: str | Iterable[str],
 ) -> None:
     """
@@ -75,11 +75,14 @@ def _throw_as_warning(
     #[
     message = _prepare_message(message)
     message = "\nIrisPieWarning: " + message
-    _wa.warn(message, IrisPieWarning, skip_file_prefixes=_WARN_SKIPS, )
+    try:
+        _wa.warn(message, IrisPieWarning, skip_file_prefixes=_WARN_SKIPS, )
+    except TypeError:
+        _wa.warn(message, IrisPieWarning, )
     #]
 
 
-def _throw_as_silent(
+def _raise_as_silent(
     message: str | Iterable[str],
 ) -> None:
     """
@@ -97,16 +100,16 @@ def obsolete(func):
         message = (
             f"Function {func.__name__} is obsolete and will be removed in a future version of IrisPie. "
         )
-        _throw_as_warning(message)
+        _raise_as_warning(message)
         return func(*args, **kwargs)
     return wrapper
     #]
 
 
 _RESOLVE_HOW = {
-    "error": _throw_as_error,
-    "warning": _throw_as_warning,
-    "silent": _throw_as_silent,
+    "error": _raise_as_error,
+    "warning": _raise_as_warning,
+    "silent": _raise_as_silent,
 }
 
 
@@ -131,7 +134,7 @@ class _Stream:
     ) -> None:
         ...
 
-    def throw(self, /, ) -> None:
+    def _raise(self, /, ) -> None:
         ...
 
     @property
@@ -169,11 +172,11 @@ class WarningStream(_Stream):
     ) -> None:
         self.messages += (message, )
 
-    def throw(self, /, ) -> None:
+    def _raise(self, /, ) -> None:
         """
         """
         if self.messages:
-            _throw_as_warning(self.final_message)
+            _raise_as_warning(self.final_message)
 
     #]
 
@@ -186,7 +189,7 @@ class SilentStream(_Stream):
     def add(self, *args, **kwargs, ) -> None:
         pass
 
-    def throw(self, *args, **kwargs, ) -> None:
+    def _raise(self, *args, **kwargs, ) -> None:
         pass
 
     #]

@@ -147,7 +147,7 @@ def _catch_troublemakers(equations, function_context, /, ):
     ]
     if fail:
         message = ["Syntax error in these equations"] + fail
-        _wrongdoings.throw("error", message)
+        _wrongdoings._raise("error", message)
     #]
 
 

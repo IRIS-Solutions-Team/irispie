@@ -98,7 +98,7 @@ class Model(
         if isinstance(request, str):
             return self._getitem_value(request, )
         else:
-            return self._getitem_variant(variant, )
+            return self._getitem_variant(request, )
 
     def _getitem_value(
         self,

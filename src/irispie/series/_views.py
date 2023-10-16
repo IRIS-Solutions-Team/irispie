@@ -18,7 +18,8 @@ class ViewMixin(_views.ViewMixin, ):
         """
         """
         shape = self.data.shape
-        return f"Series {self.frequency.letter} {self.start_date}>>{self.end_date} {shape[0]}-by-{shape[1]}"
+        range_str = f"{self.start_date}>>{self.end_date}" if self.start_date is not None else "None"
+        return f"Series {self.frequency.letter} {range_str} {shape[0]}-by-{shape[1]}"
 
     def _get_content_view_(self, /, ):
         """

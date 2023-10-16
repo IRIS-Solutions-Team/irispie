@@ -12,22 +12,26 @@ import functools as _ft
 import operator as _op
 
 from .. import dates as _dates
+from . import _functionalize
 #]
 
 
-class Mixin:
+__all__ = ()
+
+
+class ConversionMixin:
     """
     """
     #[
 
-    def aggregated(
+    def aggregate(
         self,
         new_freq: _dates.Frequency,
         /,
         method: Literal["mean", "sum", "first", "last", "min", "max"] = "mean",
         remove_missing: bool = False,
         select: list[int] | None = None,
-    ) -> Self:
+    ) -> None:
         """
         ---
 
@@ -54,7 +58,7 @@ class Mixin:
         method_func = _AGGREGATION_METHOD_RESOLUTION[method]
         #
         if new_freq == self.frequency:
-            return self
+            return
         if new_freq > self.frequency or new_freq is _dates.Frequency.UNKNOWN or self.frequency is _dates.Frequency.UNKNOWN:
             raise ValueError(f"Cannot aggregate from {self.frequency} frequency to {new_freq} frequency")
         #
@@ -73,11 +77,9 @@ class Mixin:
             aggregate_func = _aggregate_daily_to_regular
         #
         new_start_date, new_data = aggregate_func(self, new_dater_class, aggregate_within_data_func)
-        return type(self).from_start_date_and_values(new_start_date, new_data, )
+        self._replace_start_date_and_values(new_start_date, new_data, )
 
-    aggregate = aggregated
-
-    def disaggregated(
+    def disaggregate(
         self,
         new_freq: _dates.Frequency,
         /,
@@ -89,17 +91,20 @@ class Mixin:
         method_func = _DISAGGREGATION_METHOD_RESOLUTION[method]
         #
         if new_freq == self.frequency:
-            return self
+            return
         if new_freq < self.frequency or new_freq is _dates.Frequency.UNKNOWN or self.frequency is _dates.Frequency.UNKNOWN:
             raise ValueError(f"Cannot aggregate from {self.frequency} frequency to {new_freq} frequency")
         #
         new_dater_class = _dates.DATER_CLASS_FROM_FREQUENCY_RESOLUTION[new_freq]
         new_start_date, new_data = method_func(self, new_dater_class)
-        return type(self).from_start_date_and_values(new_start_date, new_data, )
-
-    disaggregate = disaggregated
+        self._replace_start_date_and_values(new_start_date, new_data, )
 
     #]
+
+
+for n in ("aggregate", "disaggregate", ):
+    exec(_functionalize.FUNC_STRING.format(n=n, ), globals(), locals(), )
+    __all__ += (n, )
 
 
 def _aggregate_daily_to_regular(

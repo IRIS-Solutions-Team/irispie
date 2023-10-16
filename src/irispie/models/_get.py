@@ -282,5 +282,14 @@ class GetMixin:
             for qid, value in zip(qids, values):
                 insert_value(out_dict, qid_to_name[qid], value)
         return out_dict
+
+    def get_descriptions(self, ) -> dict[str, str]:
+        """
+        """
+        return (
+            _quantities.create_name_to_description(self._invariant.quantities, )
+            | _equations.create_human_to_description(self._invariant.dynamic_equations, )
+        )
+
     #]
 

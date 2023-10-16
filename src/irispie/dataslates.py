@@ -245,13 +245,12 @@ class _Dataslate:
     ) -> None:
         """
         """
-        base_slice = self.base_slice
         for i, n in enumerate(self._names):
             if names is not Ellipsis and n not in names:
                 continue
-            values = self.retrieve_record(i, base_slice, )
+            values = self.retrieve_record(i, self._base_indices, )
             values[_np.isnan(values)] = fill
-            self.store_record(values, i, base_slice, )
+            self.store_record(values, i, self._base_indices, )
 
     #]
 
@@ -340,28 +339,28 @@ class HorizontalDataslate(_Dataslate, ):
         self,
         record_id: int,
         /,
-        slice_: slice | None = None,
+        columns: slice | Iterable[int] | None = None,
     ) -> _np.ndarray:
         """
         """
-        if slice_ is None:
+        if columns is None:
             return self.data[record_id, :]
         else:
-            return self.data[record_id, slice_]
+            return self.data[record_id, columns]
 
     def store_record(
         self,
         values: _np.ndarray,
         record_id: int,
         /,
-        slice_: slice | None = None,
+        columns: slice | Iterable[int] | None = None,
     ) -> None:
         """
         """
-        if slice_ is None:
+        if columns is None:
             self.data[record_id, :] = values
         else:
-            self.data[record_id, slice_] = values
+            self.data[record_id, columns] = values
 
     #]
 
@@ -464,7 +463,8 @@ def get_extended_range(
     max_base_date = max(base_range)
     start_date = min_base_date + min_shift
     end_date = max_base_date + max_shift
-    base_indices = tuple(range(-min_shift, -min_shift+num_base_periods))
+    base_indices = tuple(_dates.date_index(base_range, start_date))
+    # base_indices = tuple(range(-min_shift, -min_shift+num_base_periods))
     extended_dates = tuple(_dates.Ranger(start_date, end_date))
     return extended_dates, base_indices
 

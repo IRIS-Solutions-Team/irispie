@@ -22,6 +22,7 @@ from ..series import main as _series
 from .. import quantities as _quantities
 from .. import dataslates as _dataslates
 from .. import dates as _dates
+from .. import wrongdoings as _wrongdoings
 
 from . import _imports as _imports
 from . import _exports as _exports
@@ -188,7 +189,7 @@ class Databox(
             return new_databox
         context_names = new_databox.get_names()
         source_names, target_names = _resolve_source_target_names(source_names, target_names, context_names)
-        new_databox = new_databox.rename(source_names, target_names)
+        new_databox.rename(source_names, target_names)
         new_databox.keep(target_names)
         return new_databox
 
@@ -241,11 +242,23 @@ class Databox(
         /,
         source_names: SourceNames = None,
         target_names: TargetNames = None,
+        in_place: bool = False,
+        when_fails: Literal["error", "warning", "silent", ] = "error",
     ) -> None:
+        """
+        """
         context_names = self.get_names()
         source_names, target_names = _resolve_source_target_names(source_names, target_names, context_names)
+        stream = _wrongdoings.STREAM_FACTORY[when_fails](f"Error(s) when applying function to Databox items:")
         for s, t in zip(source_names, target_names):
-            self[t] = func(self[s])
+            try:
+                self[t] = self[s]
+                result = func(self[t])
+                if not in_place:
+                    self[t] = result
+            except Exception as e:
+                stream.add(f"{s} --> {t}: {repr(e)}", )
+        stream._raise()
 
     def filter(
         self,
@@ -439,3 +452,15 @@ def _resolve_input_range(
 ) -> tuple[Dater, Dater]:
     return _EXTENDED_RANGE_TUPLE_RESOLUTION[interpret_range](input_range, min_shift, max_shift)
 
+
+def _apply_to_item(
+    func: Callable,
+    source: Any,
+    target: Any,
+    /,
+) -> None:
+    """
+    Apply function to source, capture result in target
+    """
+    target = source
+    return func(target)

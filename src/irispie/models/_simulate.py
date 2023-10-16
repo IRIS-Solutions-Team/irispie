@@ -67,7 +67,7 @@ class SimulateMixin:
         if target_databox is not None:
             out_db = target_databox | out_db
         #
-        info = {"dataslates": dataslates, }
+        info = {}
         return out_db, info
 
     #]

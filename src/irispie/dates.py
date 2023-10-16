@@ -794,6 +794,23 @@ class Ranger(_copies.CopyMixin, ):
     def frequency(self) -> Frequency:
         return self._class.frequency
 
+    def reverse(self, ) -> None:
+        """
+        """
+        #[
+        self._start_date, self._end_date = self._end_date, self._start_date
+        self._step = -self._step
+        #]
+
+    def reversed(self, ) -> Ranger:
+        """
+        """
+        #[
+        new = self.copy()
+        new.reverse()
+        return new
+        #]
+
     def to_plotly_dates(self) -> Iterable[str]:
         return [t.to_plotly_date() for t in self]
 

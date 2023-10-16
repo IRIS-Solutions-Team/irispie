@@ -285,6 +285,6 @@ def _catch_empty(
     """
     #[
     if not frequency_range or all(len(v) == 0 for v in frequency_names.values()):
-        _wrongdoings.throw(when_empty, f"No data exported to {file_name}", )
+        _wrongdoings._raise(when_empty, f"No data exported to {file_name}", )
     #]
 

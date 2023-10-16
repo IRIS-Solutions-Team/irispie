@@ -12,6 +12,7 @@ import json as _js
 import copy as _cp
 import plotly.graph_objects as _pg
 import plotly.subplots as _ps
+import itertools as _it
 
 from .. import dates as _dates
 #]
@@ -28,7 +29,8 @@ with open(_os.path.join(_PLOTLY_STYLES_FOLDER, "plain_layout.json", ), "rt", ) a
 def _line_plot(color: str, **settings) -> _pg.Scatter:
     """
     """
-    return _pg.Scatter(line_color=color, mode="lines", **settings)
+    settings = {"mode": "lines", } | settings
+    return _pg.Scatter(line_color=color, **settings, )
 
 def _bar_plot(color: str, **settings) -> _pg.Bar:
     """
@@ -71,12 +73,13 @@ class Mixin:
         subplot: tuple[int, int] | int | None = None,
         xline = None,
         type: Literal["line", "bar"] = "line",
+        traces: tuple(dict[str, Any], ) | None = None,
     ) -> _pg.Figure:
         """
         """
-        range = self._resolve_dates(range)
+        range = self._resolve_dates(range, )
         range = [ t for t in range ]
-        data = self.get_data(range)
+        data = self.get_data(range, )
         num_columns = data.shape[1]
         date_str = [ t.to_plotly_date() for t in range ]
         date_format = range[0].frequency.plotly_format
@@ -84,18 +87,23 @@ class Mixin:
         axis_id = f"{subplot+1}" if subplot else ""
         subplot = _resolve_subplot(figure, subplot, )
         show_legend = show_legend if show_legend is not None else legend is not None
-        for i in builtin_range(num_columns):
-            color = _COLOR_ORDER[i % len(_COLOR_ORDER)]
+
+        traces = (traces_setting, ) if isinstance(traces, dict) else traces
+        color_cycle = _it.cycle(_COLOR_ORDER)
+        traces_cycle = _it.cycle(traces or ({}, ))
+
+        for i, c, ts in zip(builtin_range(num_columns, ), color_cycle, traces_cycle, ):
             traces_settings = {
                 "x": date_str,
                 "y": data[:, i],
                 "name": legend[i] if legend else None,
                 "showlegend": show_legend,
-                "xhoverformat": "%Y-%q",
+                "xhoverformat": date_format,
                 "xaxis": f"x{axis_id}",
                 "yaxis": f"y{axis_id}",
             }
-            traces_object = _PLOTLY_TRACES_FACTORY[type](color, **traces_settings, )
+            traces_settings |= ts or {}
+            traces_object = _PLOTLY_TRACES_FACTORY[type](c, **traces_settings, )
             figure.add_trace(traces_object, row=subplot[0], col=subplot[1], )
 
         layout = _cp.deepcopy(_PLOTLY_STYLES["layouts"]["plain"])

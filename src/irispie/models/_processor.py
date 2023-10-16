@@ -13,18 +13,37 @@ class ProcessorMixin:
     """
     """
     #[
-    def set_preprocessor(
+
+    @property
+    def preprocessor(self, /, ) -> _sequentials.Sequential:
+        """
+        """
+        return self._invariant.preprocessor
+
+    @property
+    def postprocessor(self, /, ) -> _sequentials.Sequential:
+        """
+        """
+        return self._invariant.postprocessor
+
+    @preprocessor.setter
+    def preprocessor(
         self,
         preprocessor: _sequentials.Sequential,
         /,
     ) -> None:
+        """
+        """
         self._invariant.preprocessor = preprocessor
 
-    def set_postprocessor(
+    @postprocessor.setter
+    def postprocessor(
         self,
         postprocessor: _sequentials.Sequential,
         /,
     ) -> None:
+        """
+        """
         self._invariant.postprocessor = postprocessor
 
     def preprocess(
@@ -32,13 +51,14 @@ class ProcessorMixin:
         *args,
         **kwargs,
     ) -> tuple:
-        return self._invariant.preprocessor.simulate(*args, **kwargs, )
+        return self.preprocessor.simulate(*args, **kwargs, )
 
     def postprocess(
         self,
         *args,
         **kwargs,
     ) -> tuple:
-        return self._invariant.postprocessor.simulate(*args, **kwargs, )
+        return self.postprocessor.simulate(*args, **kwargs, )
+
     #]
 

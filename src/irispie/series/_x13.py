@@ -5,6 +5,7 @@ Interface to X13-ARIMA-TRAMO-SEATS
 
 #[
 from __future__ import annotations
+from typing import (Any, )
 from types import (EllipsisType, )
 import os as _os
 import numpy as _np
@@ -16,7 +17,12 @@ import glob as _gl
 from .. import executables as _executables
 from .. import wrongdoings as _wrongdoings
 from .. import dates as _dates
+from . import main as _series
+from . import _functionalize
 #]
+
+
+__all__ = ()
 
 
 class Mixin:
@@ -32,39 +38,44 @@ class Mixin:
         output: str = "sa",
         mode: Literal["mult", "add", "pseudoadd", "logadd", ] = "mult",
         **kwargs,
-    ) -> tuple[Self, dict]:
+    ) -> dict[str, Any]:
         """
         """
         range = tuple(self._resolve_dates(range))
         base_start_date = range[0]
         settings = _create_settings(base_start_date, output, mode, **kwargs, )
         spc = _create_spc_file(_TEMPLATE_SPC, settings, )
-        #
-        output_data = []
+        new_data = []
         info = []
         for column_data in self.data.T:
-            ith_output_data, ith_info = _x13(spc, base_start_date, column_data, settings["x11_save"], clean_up=clean_up, )
-            output_data.append(ith_output_data.reshape(-1, 1, ))
+            ith_new_data, ith_info = _x13_data(spc, base_start_date, column_data, settings["x11_save"], clean_up=clean_up, )
+            new_data.append(ith_new_data.reshape(-1, 1, ))
             info.append(ith_info)
         if not all(i["success"] for i in info):
-            _wrongdoings.throw(when_error, "X13 failed to produce a result for at least one column.", )
-        output_series = type(self).from_start_date_and_values(base_start_date, _np.hstack(output_data), dtype=float, )
-        return output_series, info
+            _wrongdoings._raise(when_error, "X13 failed to produce a result for at least one column.", )
+        new_data = _np.hstack(new_data, )
+        self._replace_start_date_and_values(base_start_date, new_data, )
+        return info
     #]
 
 
-def _x13(
+for n in ("x13", ):
+    exec(_functionalize.FUNC_STRING.format(n=n, ), globals(), locals(), )
+    __all__ += (n, )
+
+
+def _x13_data(
     spc: str,
     base_start_date: _dates.Date,
     base_column_data: _np.ndarray,
     x11_save: str,
     /,
     clean_up: bool = True,
-):
+) -> tuple[_np.ndarray, dict[str, Any]]:
     """
     """
     #[
-    output_data = _np.full(base_column_data.shape, _np.nan, dtype=float, )
+    new_data = _np.full(base_column_data.shape, _np.nan, dtype=float, )
     start_date, column_data, output_slice = _remove_leading_trailing_nans(base_start_date, base_column_data, )
     year, period = start_date.to_year_period()
     spc = spc.replace("$(series_start)", _X13_DATE_FORMAT_RESOLUTION[start_date.frequency].format(year=year, period=period, ), )
@@ -73,10 +84,10 @@ def _x13(
     system_output = _execute(spc_file_name_without_ext, )
     raw_output_data, info = _collect_outputs(spc_file_name_without_ext, system_output, x11_save, )
     if raw_output_data is not None:
-        output_data[output_slice] = raw_output_data
+        new_data[output_slice] = raw_output_data
     if clean_up:
         _clean_up(spc_file_name_without_ext, )
-    return output_data, info
+    return new_data, info
     #]
 
 

@@ -48,7 +48,7 @@ class SimulateMixin:
         #
         # Run simulation period by period, equation by equation
         #
-        columns_to_simulate = ds.base_columns
+        columns_to_simulate = ds._base_indices
         self._simulate_periods_and_explanatories(
             ds,
             columns_to_simulate,
@@ -68,7 +68,7 @@ class SimulateMixin:
         if target_databox is not None:
             out_db = target_databox | out_db
         #
-        info = {"dataslate": ds, }
+        info = {}
         return out_db, info
 
     def _simulate_periods_and_explanatories(
@@ -100,7 +100,7 @@ class SimulateMixin:
                     info = x.simulate(ds.data, data_column, )
                 _catch_nonfinite(when_nonfinite_stream, info["is_finite"], x.lhs_name, date, )
                 #
-        when_nonfinite_stream.throw()
+        when_nonfinite_stream._raise()
 
     #]
 

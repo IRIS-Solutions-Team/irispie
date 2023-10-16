@@ -13,7 +13,12 @@ from typing import (Self, )
 import numpy as _np
 
 from .. import dates as _dates
+from . import main as _series
+from . import _functionalize
 #]
+
+
+__all__ = ("hpf", )
 
 
 _AUTO_SMOOTH = {
@@ -155,49 +160,69 @@ class Mixin:
     Constrained Hodrick-Prescott filter mixin for Series
     """
     #[
-    def hpf(
-        self,
-        *,
-        range: Iterable[_dates.Dater] | EllipsisType = ...,
-        smooth: Number | None = None,
-        log: bool = False,
-        level: Self | None = None,
-        change: Self | None = None,
-    ) -> tuple[Self, Self, ]:
-        """
-        Constrained Hodrick-Prescott filter
-        """
-        if smooth is None:
-            smooth = _get_default_smooth(self.frequency)
-        #
-        range = self._resolve_dates(range)
-        encompassing_range = _dates.get_encompassing_range(self, level, change, range, )
-        range = [ t for t in encompassing_range ]
-        data = self.get_data(range)
-        num_periods, num_columns = data.shape
-        level_data, level_where = _prepare_constraints(level, range, )
-        change_data, change_where = _prepare_constraints(change, range, )
-        change_data, change_where = _remove_first_date_change(change_data, change_where, )
-        #
-        hp = _ConstrainedHodrickPrescottFilter(
-            num_periods,
-            smooth,
-            level_where=level_where,
-            change_where=change_where,
-            log=log,
-        )
-        trend_data, gap_data = hp.filter_data(data, level_data=level_data, change_data=change_data, )
-        #
-        trend = type(self).from_dates_and_values(range, trend_data, )
-        gap = type(self).from_dates_and_values(range, gap_data, )
-        return trend, gap
 
     def hpf_trend(self, /, *args, **kwargs):
-        return self.hpf(*args, **kwargs, )[0]
+        start_date, trend_data, _ = _hpf_data(self, *args, **kwargs, )
+        self._replace_start_date_and_values(start_date, trend_data, )
 
     def hpf_gap(self, /, *args, **kwargs):
-        return self.hpf(*args, **kwargs, )[1]
+        start_date, _, gap_data = _hpf_data(self, *args, **kwargs, )
+        self._replace_start_date_and_values(start_date, gap_data, )
+
     #]
+
+
+def _hpf_data(
+    self,
+    *,
+    range: Iterable[_dates.Dater] | EllipsisType = ...,
+    smooth: Number | None = None,
+    log: bool = False,
+    level: _series.Series | None = None,
+    change: _series.Series | None = None,
+) -> tuple[_np.ndarray, _np.ndarray, ]:
+    """
+    """
+    #[
+    if smooth is None:
+        smooth = _get_default_smooth(self.frequency)
+    range = self._resolve_dates(range)
+    encompassing_range = _dates.get_encompassing_range(self, level, change, range, )
+    range = [ t for t in encompassing_range ]
+    data = self.get_data(range)
+    num_periods, num_columns = data.shape
+    level_data, level_where = _prepare_constraints(level, range, )
+    change_data, change_where = _prepare_constraints(change, range, )
+    change_data, change_where = _remove_first_date_change(change_data, change_where, )
+    hp = _ConstrainedHodrickPrescottFilter(
+        num_periods,
+        smooth,
+        level_where=level_where,
+        change_where=change_where,
+        log=log,
+    )
+    trend_data, gap_data = hp.filter_data(
+        data, level_data=level_data, change_data=change_data,
+    )
+    start_date = range[0]
+    return start_date, trend_data, gap_data
+    #]
+
+
+def hpf(self, *args, **kwargs, ) -> tuple[_series.Series, _series.Series]:
+    """
+    Constrained Hodrick-Prescott filter
+    """
+    start_date, trend_data, gap_data = _hpf_data(self, *args, **kwargs, )
+    trend = type(self)(start_date=start_date, values=trend_data, )
+    gap = type(self)(start_date=start_date, values=gap_data, )
+    return trend, gap
+
+
+for n in ("hpf_trend", "hpf_gap", ):
+    exec(_functionalize.FUNC_STRING.format(n=n, ), globals(), locals(), )
+    __all__ += (n, )
+
 
 
 def _prepare_constraints(

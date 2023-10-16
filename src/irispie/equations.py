@@ -338,3 +338,7 @@ def stamp_id(equations: Iterable[Equation], /) -> None:
     for i, e in enumerate(equations, ):
         e.id = i
 
+
+def create_human_to_description(equations: Iterable[Equation]) -> dict[str, str]:
+    return { eqn.human: eqn.description for eqn in equations }
+

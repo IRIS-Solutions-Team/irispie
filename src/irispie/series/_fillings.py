@@ -9,12 +9,18 @@ import functools as _ft
 import numpy as _np
 
 from .. import dates as _dates
+from . import _functionalize
 #]
+
+
+__all__ = ()
 
 
 class FillingMixin:
     """
     """
+    #[
+
     def fill_missing(
         self,
         fill_range: Iterable[_dates.Dater],
@@ -32,6 +38,13 @@ class FillingMixin:
             for column in data.T
         )
         self.set_data(fill_range, new_data, )
+
+    #]
+
+
+for n in ("fill_missing", ):
+    exec(_functionalize.FUNC_STRING.format(n=n, ), globals(), locals(), )
+    __all__ += (n, )
 
 
 def _fill_neighbor(

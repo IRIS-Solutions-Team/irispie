@@ -10,7 +10,13 @@ from collections.abc import (Iterable, )
 from typing import (Self, Callable, )
 import numpy as _np
 import functools as _ft
+
+from .. import dates as _dates
+from . import _functionalize
 #]
+
+
+__all__ = ()
 
 
 class MovingMixin:
@@ -52,13 +58,14 @@ class MovingMixin:
         """
         Backend function for moving sum, average, product
         """
-        new = self.copy()
-        window = window \
-            if window is not None \
-            else new._get_default_moving_window()
+        window = (
+            window
+            if window is not None
+            else self._get_default_moving_window()
+        )
         window_length = -window
         data = _np.pad(
-            new.data,
+            self.data,
             pad_width=((window_length-1, 0), (0, 0)),
             mode="constant",
             constant_values=_np.nan,
@@ -69,16 +76,22 @@ class MovingMixin:
             axis=0,
         )
         new_data = func(data_windows, axis=2, )
-        new._replace_data(new_data, )
-        return new
+        self._replace_data(new_data, )
 
     def _get_default_moving_window(self, /, ) -> int:
         """
         Derive default moving window from time series frequency
         """
-        return -self.frequency.value \
-            if self.frequency is not None and self.frequency.value > 0 \
+        return (
+            -self.frequency.value
+            if self.frequency is not None and self.frequency.value > 0
             else -4
+        )
 
     #]
+
+
+for n in ("mov_sum", "mov_avg", "mov_mean", "mov_prod", ):
+    exec(_functionalize.FUNC_STRING.format(n=n, ), globals(), locals(), )
+    __all__ += (n, )
 

@@ -97,6 +97,10 @@ def create_qid_to_description(quantities: Iterable[Quantity]) -> dict[int, str]:
     return { qty.id: qty.description for qty in quantities }
 
 
+def create_name_to_description(quantities: Iterable[Quantity]) -> dict[str, str]:
+    return { qty.human: qty.description for qty in quantities }
+
+
 def create_qid_to_kind(quantities: Iterable[Quantity]) -> dict[int, str]:
     return { qty.id: qty.kind for qty in quantities }
 

@@ -134,8 +134,8 @@ class SteadyMixin:
         levels = _apply_delog_on_vector(levels, qids, qid_to_logly)
         changes = _apply_delog_on_vector(changes, qids, qid_to_logly)
         #
-        v.update_levels_from_array(levels, qids, )
-        v.update_changes_from_array(changes, qids, )
+        variant.update_levels_from_array(levels, qids, )
+        variant.update_changes_from_array(changes, qids, )
         #
         info = {}
         return info
@@ -288,7 +288,7 @@ class SteadyMixin:
         all_status = all(status)
         if not all_status:
             message = "Invalid steady state"
-            _wrongdoings.throw(when_fails, message)
+            _wrongdoings._raise(when_fails, message)
         details = tuple(
             {"discrepancies": d, "max_abs_discrepancy": m, "is_valid": s}
             for d, m, s in zip(dis, max_abs_dis, status)
