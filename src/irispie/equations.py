@@ -14,6 +14,7 @@ import numpy as _np
 import dataclasses as _dc
 import itertools as _it
 import operator as _op
+import copy as _cp
 
 from .incidences import main as _incidence
 from . import quantities as _quantities
@@ -73,6 +74,12 @@ class Equation(
     def create_equator_func(self, /, *, custom_functions: dict[str, Callable]) -> Callable:
         equator_func_string = create_equator_func_string([self.xtring], custom_functions)
         eval(equator_func_string, custom_functions, )
+
+    def copy(self, /, ) -> Self:
+        """
+        Shallow copy of the equation
+        """
+        return _cp.copy(self, )
 
     def __hash__(self, /, ) -> int:
         return hash(self.__repr__)

@@ -811,6 +811,24 @@ class Ranger(_copies.CopyMixin, ):
         return new
         #]
 
+    def shift_end_date(
+        self,
+        k: int,
+        /,
+    ) -> Self:
+        """
+        """
+        return Ranger(self._start_date, self._end_date+k, self._step, )
+
+    def shift_start_date(
+        self,
+        k: int,
+        /,
+    ) -> Self:
+        """
+        """
+        return Ranger(self._start_date+k, self._end_date, self._step, )
+
     def to_plotly_dates(self) -> Iterable[str]:
         return [t.to_plotly_date() for t in self]
 

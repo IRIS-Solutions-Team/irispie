@@ -29,6 +29,7 @@ class Invariant:
     Invariant part of a Model object
     """
     #[
+
     __slots__ = (
         "quantities",
         "dynamic_equations",
@@ -45,6 +46,7 @@ class Invariant:
         "_min_shift",
         "_max_shift",
     )
+
     def __init__(
         self,
         source,
@@ -64,8 +66,8 @@ class Invariant:
         self.preprocessor = None
         self.postprocessor = None
         #
-        _add_stds(self.quantities, _quantities.QuantityKind.TRANSITION_SHOCK, _quantities.QuantityKind.TRANSITION_STD, )
-        _add_stds(self.quantities, _quantities.QuantityKind.MEASUREMENT_SHOCK, _quantities.QuantityKind.MEASUREMENT_STD, )
+        _append_stds(self.quantities, _quantities.QuantityKind.TRANSITION_SHOCK, _quantities.QuantityKind.TRANSITION_STD, )
+        _append_stds(self.quantities, _quantities.QuantityKind.MEASUREMENT_SHOCK, _quantities.QuantityKind.MEASUREMENT_STD, )
         _quantities.check_unique_names(self.quantities)
         #
         quantities = _quantities.reorder_by_kind(self.quantities, )
@@ -122,6 +124,7 @@ class Invariant:
             k: v for k, v in context.items()
             if isinstance(v, Callable)
         } if context else None
+
     #]
 
 
@@ -169,6 +172,7 @@ def _create_shock_qid_to_std_qid(
 ) -> dict[int, int]:
     """
     """
+    #[
     name_to_qid = _quantities.create_name_to_qid(quantities, )
     qid_to_name = _quantities.create_qid_to_name(quantities, )
     kind = _quantities.QuantityKind.SHOCK
@@ -177,9 +181,10 @@ def _create_shock_qid_to_std_qid(
         shock_qid: name_to_qid[_create_std_name(qid_to_name[shock_qid], )]
         for shock_qid in all_shock_qids
     }
+    #]
 
 
-def _add_stds(
+def _append_stds(
     quantities: Iterable[_quantities.Quantity],
     shock_kind: _quantities.QuantityKind,
     std_kind: _quantities.QuantityKind,
@@ -187,6 +192,7 @@ def _add_stds(
 ) -> None:
     """
     """
+    #[
     shocks = (q for q in quantities if q.kind in shock_kind)
     for std_qid, shock in enumerate(shocks, start=len(quantities)):
         std_human = _create_std_name(shock.human, )
@@ -195,6 +201,7 @@ def _add_stds(
         std_entry = len(quantities)
         std_quantity = _quantities.Quantity(std_qid, std_human, std_kind, std_logly, std_description, std_entry, )
         quantities.append(std_quantity, )
+    #]
 
 
 _STD_PREFIX = "std_"

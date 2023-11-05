@@ -11,7 +11,6 @@ import operator as _op
 from collections.abc import (Iterable, )
 
 from .. import quantities as _quantities
-from . import _flags
 #]
 
 
@@ -20,24 +19,25 @@ class Variant:
     Container for parameter variant specific attributes of a model
     """
     #[
-    __slots__ = (
-        "num_quantities", "levels", "changes", "solution",
-    )
+
+    __slots__ = ("levels", "changes", "solution", "num_quantities", )
 
     _missing = _np.nan
 
     def __init__(
         self,
-        quantities: Iterable[_quantities.Quantity], 
-        model_flags: _flags.Flags,
+        quantities: Iterable[_quantities.Quantity],
+        is_flat: bool,
         /,
         **kwargs,
     ) -> None:
+        """
+        """
         max_qid = _quantities.get_max_qid(quantities, )
         self.num_quantities = max_qid + 1
         self.solution = None
         self._initilize_values()
-        if model_flags.is_flat:
+        if is_flat:
             qid_to_logly = _quantities.create_qid_to_logly(quantities, )
             self.zero_changes(qid_to_logly, )
 
@@ -178,6 +178,7 @@ class Variant:
         levels[inx_set_to_0] = 0
         levels[inx_set_to_1] = 1
         return _np.tile(levels, (1, num_columns))
+
     #]
 
 

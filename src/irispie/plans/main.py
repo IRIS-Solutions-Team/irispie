@@ -22,16 +22,20 @@ import copy as _copy
 from ..conveniences import copies as _copies
 from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
-from .. import transforms as _transforms
 from . import _pretty as _pretty
 from . import _indexes as _indexes
+from . import _transforms as _transforms
 #]
+
+
+PlanTransformFactory = _transforms.PlanTransformFactory
 
 
 __all__ = (
     "PlanSimulate",
     "PlanSteady",
     "Plan",
+    "PlanTransformFactory",
 )
 
 
@@ -130,7 +134,7 @@ Tabular view of the simulation plan
     def __init__(
         self,
         plannable: PlannableSimulateProtocol,
-        base_range: Iterable[Dater] | None,
+        base_range: Iterable[_dates.Dater] | None,
         /,
         anticipate: bool = True,
     ) -> None:
@@ -149,10 +153,16 @@ Tabular view of the simulation plan
             setattr(self, f"_{r}_register", register)
 
     @property
-    def start_date(self, /, ) -> Dater:
+    def start_date(self, /, ) -> _dates.Dater:
         """
         """
         return self.base_range[0]
+
+    @property
+    def end_date(self, /, ) -> _dates.Dater:
+        """
+        """
+        return self.base_range[-1]
 
     @property
     def num_periods(self, /, ) -> int:
@@ -167,9 +177,8 @@ Tabular view of the simulation plan
         /,
         new_status: bool | None = None,
     ) -> None:
-        _plan_simulate(
+        self._plan_simulate(
             self._anticipated_register,
-            self.base_range,
             dates,
             names,
             new_status,
@@ -202,10 +211,10 @@ Input arguments
 ----------------
 
 ### `dates` ###
-Dates at which the `names` will be exogenized.
+Dates at which the `names` will be exogenized; use `...` for all simulation dates.
 
 ### `names` ###
-Names of quantities to exogenize at the `dates`.
+Names of quantities to exogenize at the `dates`; use `...` for all exogenizable quantities.
 
 Options
 --------
@@ -215,16 +224,21 @@ Transformation (a string) to be applied to the exogenized quantities; only
 available in simulation plans created for
 [`Sequential`](../Sequential/index.md) objects.
 
+### `when_data=False` ###
+Exogenize the quantities at the dates when the data for the quantities are
+available; only available in simulation plans created for
+[`Sequential`](../Sequential/index.md) objects.
+
 
 ------------------------------------------------------------
         """
-        new_status = _transforms.RESOLVE_TRANSFORM[transform](when_data, )
-        _plan_simulate(
+        transform = _transforms.resolve_transform(transform)
+        transform.when_data = when_data
+        self._plan_simulate(
             self._exogenized_register,
-            self.base_range,
             dates,
             names,
-            new_status,
+            transform,
         )
 
     def endogenize(
@@ -239,10 +253,9 @@ available in simulation plans created for
         """
         transform = None
         when_data = None
-        new_status = _transforms.RESOLVE_TRANSFORM[transform](when_data, )
-        _plan_simulate(
+        new_status = True
+        self._plan_simulate(
             self._endogenized_register,
-            self.base_range,
             dates,
             names,
             new_status,
@@ -264,7 +277,7 @@ available in simulation plans created for
         name: str,
         column: int,
         /,
-    ) -> _transforms.Transform | None:
+    ) -> _transforms.PlanTransformProtocol | None:
         """
         """
         point = self._exogenized_register[name][column]
@@ -275,7 +288,7 @@ available in simulation plans created for
         name: str,
         column: int,
         /,
-    ) -> _transforms.Transform | None:
+    ) -> _transforms.PlanTransformProtocol | None:
         """
         """
         point = self._endogenized_register[name][column]
@@ -296,6 +309,35 @@ available in simulation plans created for
         """
         """
         return self.get_pretty_string()
+
+    def _plan_simulate(
+        self,
+        register: dict,
+        dates: Iterable[_dates.Dater] | Ellipsis,
+        names: Iterable[str] | str | Ellipsis,
+        new_status: Any,
+    ) -> None:
+        """
+        """
+        anticipate = True
+        names = _resolve_and_check_names(register, names, )
+        date_indices = self._get_date_indices(dates, )
+        for n in names:
+            for t in date_indices:
+                register[n][t] = new_status
+
+    def _get_date_indices(
+        self,
+        dates: Iterable[_dates.Dater] | Ellipsis,
+        /,
+    ) -> tuple[int, ...]:
+        """
+        """
+        if dates is Ellipsis:
+            return tuple(range(len(self.base_range)))
+        dates = dates.resolve(self, ) if hasattr(dates, "resolve") else dates
+        catch_invalid_dates(dates, self.base_range, )
+        return tuple(d - self.start_date for d in dates)
 
     #]
 
@@ -388,21 +430,6 @@ def _resolve_and_check_names(
     return names
 
 
-def _resolve_dates(
-    base_range: Iterable[_dates.Dater],
-    dates: Iterable[_dates.Dater] | Ellipsis,
-    /,
-) -> tuple[int, ...]:
-    """
-    """
-    #[
-    if dates is Ellipsis:
-        return tuple(range(len(base_range)))
-    catch_invalid_dates(dates, base_range, )
-    return tuple(d - base_range[0] for d in dates)
-    #]
-
-
 def catch_invalid_dates(
     dates: Iterable[_dates.Dater],
     base_range: tuple[_dates.Dater],
@@ -415,23 +442,4 @@ def catch_invalid_dates(
         raise _wrongdoings.IrisPieError(
             ["These date(s) are out of simulation range:"] + invalid
         )
-
-
-def _plan_simulate(
-    register: dict,
-    base_range: Iterable[_dates.Dater],
-    dates: Iterable[_dates.Dater] | Ellipsis,
-    names: Iterable[str] | str | Ellipsis,
-    new_status: Any,
-) -> None:
-    """
-    """
-    #[
-    names = _resolve_and_check_names(register, names, )
-    date_indexes = _resolve_dates(base_range, dates, )
-    anticipate = True
-    for n in names:
-        for t in date_indexes:
-            register[n][t] = new_status
-    #]
 

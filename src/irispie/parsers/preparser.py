@@ -14,7 +14,10 @@ import itertools as _it
 import copy as _cp
 
 from .. import wrongdoings as _wrongdoings
-from ..parsers import (common as co_, pseudofunctions as pf_, shifts as sh_, )
+from . import pseudofunctions as _pseudofunctions
+from . import common as _common
+from . import shifts as _shifts
+from . import _lists as _lists
 #]
 
 
@@ -42,31 +45,35 @@ def from_string(
     source = _evaluate_contextual_expressions(source, info["context"])
 
     # Replace time shifts {...} by [...]
-    source = sh_.standardize_time_shifts(source)
+    source = _shifts.standardize_time_shifts(source)
 
     # Replace human prefix (!) with processing prefix (¡)
     source = _translate_keywords(source)
 
     # Add blank lines pre and post source
-    source = co_.add_blank_lines(source)
+    source = _common.add_blank_lines(source)
 
     info["preparser_needed"] = _is_preparser_needed(source)
 
-    preparsed_source = \
-        _run_preparser_on_source_string(source, context, ) \
+    preparsed_source = (
+        _run_preparser_on_source_string(source, context, )
         if info["preparser_needed"] else source
+    )
 
-    # Resolve pseudofunctions
-    preparsed_source = pf_.resolve_pseudofunctions(preparsed_source)
+    # Expand lists
+    preparsed_source = _lists.resolve_lists(preparsed_source, )
+
+    # Resolve pseudofunctions: diff(...), ...
+    preparsed_source = _pseudofunctions.resolve_pseudofunctions(preparsed_source, )
 
     if save_preparsed:
-        _save_preparsed_source(preparsed_source, save_preparsed)
+        _save_preparsed_source(preparsed_source, save_preparsed, )
 
     return preparsed_source, info
     #]
 
 
-_GRAMMAR_DEF = co_.GRAMMAR_DEF + r"""
+_GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
 
     source =  (control / text)+
     control = white_spaces (for_do_block / if_then_block / else_keyword / end_keyword)
@@ -100,10 +107,9 @@ _GRAMMAR_DEF = co_.GRAMMAR_DEF + r"""
 
 
 _GRAMMAR = _pa.grammar.Grammar(_GRAMMAR_DEF)
-_KEYWORD_PREFIX = _GRAMMAR["keyword_prefix"].literal
 _KEYWORDS = [ k.members[1].literal for k in _GRAMMAR["keyword"].members ]
-_KEYWORDS_PATTERN = co_.compile_keywords_pattern(_KEYWORDS)
-_translate_keywords = _ft.partial(co_.translate_keywords, _KEYWORDS_PATTERN)
+_KEYWORDS_PATTERN = _common.compile_keywords_pattern(_KEYWORDS, )
+_translate_keywords = _ft.partial(_common.translate_keywords, _KEYWORDS_PATTERN, )
 
 
 class _Visitor(_pa.nodes.NodeVisitor):
@@ -355,7 +361,7 @@ def _strip_lines(text: str) -> str:
     return "\n".join(s for s in split_text if s)
 
 
-_contextual_expression_pattern = _re.compile(r"<([^>]*)>")
+_CONTEXTUAL_EXPRESSION_PATTERN = _re.compile(r"<([^>]*)>")
 
 
 def _stringify(input, /, ):
@@ -377,12 +383,12 @@ def _evaluate_contextual_expressions(text: str, context: dict, /):
             return _stringify(eval(expression, {}, context, ), )
         except:
             raise Exception(f"Failed to evaluate this contextual expression: {expression}")
-    return _re.sub(_contextual_expression_pattern, _replace, text)
+    return _re.sub(_CONTEXTUAL_EXPRESSION_PATTERN, _replace, text)
     #]
 
 
 def _is_preparser_needed(source: str, /, ) -> bool:
-    return _KEYWORD_PREFIX in source
+    return _common.KEYWORD_PREFIX in source
 
 
 def _save_preparsed_source(source: str, file_name: str, /, ) -> None:

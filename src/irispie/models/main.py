@@ -25,8 +25,8 @@ from ..fords import descriptors as _descriptors
 from ..fords import systems as _systems
 from .. import wrongdoings as _wrongdoings
 
-from . import variants as _variants
 from . import invariants as _invariants
+from . import variants as _variants
 from . import _covariances as _covariances
 from . import _flags as _flags
 from . import _simulate as _simulate
@@ -222,7 +222,7 @@ class Model(
     def create_zero_array(
         self,
         /,
-        variant: _variants.Variant|None = None,
+        variant: _variants.Variant | None = None,
         **kwargs,
     ) -> _np.ndarray:
         """
@@ -382,11 +382,12 @@ class Model(
             context=context,
             **kwargs,
         )
-        self._variants = [_variants.Variant(
-            self._invariant.quantities, self._invariant._flags,
-        )]
-        for v in self._variants:
-            self._enforce_auto_values(v, )
+        initial_variant = _variants.Variant(
+            self._invariant.quantities,
+            self._invariant._flags.is_flat,
+        )
+        self._variants = [ initial_variant ]
+        self._enforce_auto_values(self._variants[0], )
         self._assign_default_stds(default_std, )
         return self
 
@@ -455,14 +456,14 @@ def _extract_dict_variant(
     vid: int,
     qid_to_name: dict[int, str],
     /,
-) -> dict[int, tuple[Number|Ellipsis, Number|Ellipsis]]:
+) -> dict[int, tuple[Number | Ellipsis, Number | Ellipsis]]:
     """
     """
     def _extract_value_variant(
         value: list | tuple | Number,
         name: str,
         /,
-    ) -> tuple[Number|Ellipsis, Number|Ellipsis]:
+    ) -> tuple[Number | Ellipsis, Number | Ellipsis]:
         """
         """
         if isinstance(value, Iterable, ) and not isinstance(value, str, ) and not isinstance(value, tuple, ):

@@ -39,6 +39,7 @@ class _AtomFactory:
     """
     """
     #[
+
     @staticmethod
     def create_diff_for_token(
         token: Token,
@@ -66,6 +67,7 @@ class _AtomFactory:
             token.qid,
             slice(columns_to_eval[0]+token.shift, columns_to_eval[1]+token.shift+1),
         )
+
     #]
 
 
@@ -89,12 +91,10 @@ class Descriptor:
         self.system_vectors = SystemVectors(equations, quantities)
         self.solution_vectors = SolutionVectors(self.system_vectors)
         self.system_map = SystemMap(self.system_vectors)
-        #
-        # Create the context for the algorithmic differentiator
-        system_equations = _select_system_equations_from_equations(
+        system_equations = _custom_order_equations_by_eids(
             equations,
-            self.system_vectors.transition_eids,
-            self.system_vectors.measurement_eids,
+            self.system_vectors.transition_eids
+            + self.system_vectors.measurement_eids,
         )
         #
         # Create the evaluation context for the algorithmic differentiator
@@ -496,13 +496,15 @@ def _adjust_for_measurement_equations(
     #]
 
 
-def _select_system_equations_from_equations(
+def _custom_order_equations_by_eids(
     equations: Iterable[_equations.Equation],
-    transition_eids: list[int],
-    measurement_eids: list[int],
-    /
-) -> Iterable[_equations.Equation]:
-    eid_to_equation = { eqn.id:eqn for eqn in equations }
-    system_eids = transition_eids + measurement_eids
-    return ( eid_to_equation[eid] for eid in system_eids )
+    eids: list[int],
+    /,
+) -> tuple[_equations.Equation, ...]:
+    """
+    """
+    #[
+    eid_to_equation = { eqn.id: eqn for eqn in equations }
+    return tuple( eid_to_equation[eid] for eid in eids )
+    #]
 

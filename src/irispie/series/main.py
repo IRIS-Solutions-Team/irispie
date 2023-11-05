@@ -584,7 +584,7 @@ class Series(
         if len(self._column_titles) == 1:
             self._column_titles = tuple(self._column_titles) * self.num_columns
         if len(column_titles) != self.num_columns:
-            raise IrisPieError(
+            raise _wrongdoings.IrisPieError(
                 "Number of column titles must match number of data columns"
             )
 
@@ -765,7 +765,7 @@ class Series(
         elif axis == 0 and new_data.shape == (self.data.shape[1], ):
             return new_data
         else:
-            raise IrisPieError(
+            raise _wrongdoings.IrisPieError(
                 "Function applied on a time series resulted"
                 " in a data array with an unexpected shape"
             )
@@ -791,7 +791,7 @@ class Series(
         if self.data.shape[1] == 1:
             self.data = _np.repeat(self.data, num_columns, axis=1, )
             return
-        raise IrisPieError("Cannot broadcast columns")
+        raise _wrongdoings.IrisPieError("Cannot broadcast columns")
 
     def _replace_data(
         self,

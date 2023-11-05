@@ -35,10 +35,16 @@ class SimulateMixin:
         """
         """
         #
+        # Create the source databox by combining parameters and the input
+        # databox
+        #
+        source_databox = self.get_parameters() | in_databox
+
+        #
         # Arrange input data into a dataslate
         #
         ds = _dataslates.HorizontalDataslate.for_slatable(
-            self, in_databox, base_range,
+            self, source_databox, base_range,
             variant=0, plan=plan,
         )
         #
@@ -93,7 +99,11 @@ class SimulateMixin:
             date = ds.column_dates[data_column]
             #
             for x in self.explanatories:
-                is_exogenized, implied_value = _is_exogenized(x, ds.data, plan, data_column, plan_column, name_to_row, )
+                transform = (
+                    _get_transform(plan, x.lhs_name, plan_column, )
+                    if not x.is_identity else None
+                )
+                is_exogenized, implied_value = _is_exogenized(x.lhs_name, transform, ds.data, data_column, name_to_row, )
                 if is_exogenized:
                     info = x.exogenize(ds.data, data_column, implied_value)
                 else:
@@ -105,31 +115,39 @@ class SimulateMixin:
     #]
 
 
-def _is_exogenized(
-    explanatory: _explanatories.Explanatory,
-    data: _np.ndarray,
+def _get_transform(
     plan: _plans.Plan | None,
-    data_column: int,
+    lhs_name: str,
     plan_column: int,
+) -> _plans.Transform | None:
+    """
+    """
+    return (
+        plan.get_exogenized_point(lhs_name, plan_column, )
+        if plan is not None else None
+    )
+
+
+def _is_exogenized(
+    lhs_name: str,
+    transform: _plans.Transform | None,
+    data: _np.ndarray,
+    data_column: int,
     name_to_row: dict[str, int],
 ) -> tuple[bool, Number | None]:
     """
     """
     #[
-    if plan is None or explanatory.is_identity:
-        return False, None
-    #
-    lhs_name = explanatory.lhs_name
-    transform = plan.get_exogenized_point(lhs_name, plan_column)
     if transform is None:
         return False, None
     #
-    transform_name = transform.resolve_databox_name(lhs_name, )
     lhs_name_row = name_to_row[lhs_name]
-    transform_row = name_to_row[transform_name]
-    transform_value = data[transform_row, data_column]
-    lagged_value = data[lhs_name_row, data_column-1]
-    implied_value = transform.eval_exogenized(transform_value, lagged_value, )
+    values_before = data[lhs_name_row, :data_column]
+    #
+    transform_name = transform.resolve_databox_name(lhs_name, )
+    transform_row = name_to_row.get(transform_name, None, )
+    transform_value = data[transform_row, data_column] if transform_row is not None else None
+    implied_value = transform.eval_exogenized(transform_value, values_before, )
     if transform.when_data and _np.isnan(implied_value):
         return False, None
     return True, implied_value

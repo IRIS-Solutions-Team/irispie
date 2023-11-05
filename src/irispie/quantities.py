@@ -11,6 +11,7 @@ from collections.abc import (Iterable, )
 import enum
 import collections as _co
 import dataclasses as _dc
+import copy as _cp
 
 from . import wrongdoings as _wrongdoings
 from . import attributes as _attributes
@@ -74,6 +75,12 @@ class Quantity(
 
     def print_name_maybe_log(self, /, ) -> str:
         return print_name_maybe_log(self.human, self.logly, )
+
+    def copy(self, /, ) -> Self:
+        """
+        Shallow copy of the quantity
+        """
+        return _cp.copy(self, )
 
     def __hash__(self, /, ) -> int:
         return hash(self.__repr__)

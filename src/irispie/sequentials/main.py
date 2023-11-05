@@ -19,8 +19,10 @@ from ..incidences import main as _incidences
 from ..incidences import blazer as _blazer
 from ..explanatories import main as explanatories
 from ..plans import main as _plans
+from .. import makers as _makers
 
 from . import _simulate as _simulate
+from . import _variants as _variants
 #]
 
 
@@ -52,6 +54,7 @@ class PlannableForSimulate:
 class Sequential(
     _simulate.SimulateMixin,
     _sources.SourceMixin,
+    _variants.VariantMixin,
     _copies.CopyMixin,
     _descriptions.DescriptionMixin,
 ):
@@ -63,6 +66,8 @@ class Sequential(
         "explanatories",
         "all_names",
         "_description",
+        "_invariant",
+        "_variants",
     )
 
     def __init__(
@@ -72,6 +77,8 @@ class Sequential(
         self.explanatories = ()
         self.all_names = ()
         self._description = ""
+        self._invariant = None
+        self._variants = None
 
     @classmethod
     def from_equations(
@@ -79,16 +86,21 @@ class Sequential(
         equations: Iterable[_equations.Equation],
         /,
         custom_functions: dict[str, Callable] | None = None,
+        quantities: Iterable[_quantities.Quantity] | None = None,
     ) -> Self:
         """
         """
         self = cls()
+        custom_functions = _makers.prepare_globals(custom_functions=custom_functions, )
         self.explanatories = tuple(
             explanatories.Explanatory(e, custom_functions=custom_functions, )
             for e in equations
         )
         self._collect_all_names()
         self._finalize_explanatories()
+        #
+        initial_variant = _variants.Variant(quantities, )
+        self._variants = [ initial_variant ]
         return self
 
     @classmethod
@@ -100,7 +112,11 @@ class Sequential(
     ) -> Self:
         """
         """
-        self = cls.from_equations(source.dynamic_equations, custom_functions=context, )
+        self = cls.from_equations(
+            source.dynamic_equations,
+            custom_functions=context,
+            quantities=source.quantities,
+        )
         return self
 
     @property

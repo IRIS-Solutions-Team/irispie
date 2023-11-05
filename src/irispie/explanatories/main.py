@@ -14,9 +14,9 @@ import numpy as _np
 from ..incidences import main as _incidence
 from .. import equations as _equations
 from .. import wrongdoings as _wrongdoings
-from ..aldi import adaptations as _adaptations
+from .. import makers as _makers
 
-from .. import transforms as _transforms
+from . import _transforms as _transforms
 #]
 
 
@@ -57,14 +57,13 @@ class Explanatory:
     ) -> None:
         """
         """
-        self.equation = _cp.deepcopy(equation, )
+        self.equation = equation.copy()
         self._detect_identity()
         self._split_equation()
         self._parse_lhs()
         self._add_residual_to_rhs()
         self._collect_all_names()
-        self._custom_functions = _cp.deepcopy(custom_functions, )
-        self._custom_functions = _adaptations.add_function_adaptations_to_custom_functions(custom_functions, )
+        self._custom_functions = custom_functions
 
     def finalize(
         self,
@@ -137,10 +136,8 @@ class Explanatory:
         self._lhs_human, self._rhs_human = split
 
     def _parse_lhs(self, ) -> None:
-        transform, lhs_name = _transforms.recognize_transform_in_equation(self._lhs_human, )
-        if transform is None:
-            raise _wrongdoings.IrisPieError(f"Could not parse this LHS expression: {self.lhs_name}")
-        self._lhs_transform = transform
+        lhs_transform, lhs_name = _transforms.recognize_transform_in_equation(self._lhs_human, )
+        self._lhs_transform = lhs_transform
         self.lhs_name = lhs_name
 
     def _add_residual_to_rhs(self, /, ) -> None:
@@ -166,11 +163,10 @@ class Explanatory:
         rhs_xtring: str,
         /,
     ) -> None:
-        self._eval_level_str = (
-            "lambda x, t: "
-            + self._lhs_transform.create_eval_level_str(lhs_token, rhs_xtring, )
-        )
-        self.eval_level = eval(self._eval_level_str, self._custom_functions, )
+        args = ("x", "t", )
+        body = self._lhs_transform.create_eval_level_str(lhs_token, rhs_xtring, )
+        self.eval_level, self._eval_level_str, *_ = \
+            _makers.make_lambda(args, body, globals=self._custom_functions, )
 
     def _create_eval_res(
         self,
@@ -178,12 +174,12 @@ class Explanatory:
         rhs_xtring: str,
         /,
     ) -> None:
-        if not self.is_identity:
-            self._eval_res_str = (
-                "lambda x, t: "
-                f"{lhs_xtring}-({rhs_xtring})"
-            )
-            self.eval_res = eval(self._eval_res_str, self._custom_functions, )
+        if self.is_identity:
+            return
+        args = ("x", "t", )
+        body = f"{lhs_xtring}-({rhs_xtring})"
+        self.eval_res, self._eval_res_str, *_ = \
+            _makers.make_lambda(args, body, globals=self._custom_functions, )
 
     def __str__(self, /, ) -> str:
         """
