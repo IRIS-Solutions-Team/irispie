@@ -356,19 +356,10 @@ class Sequential(
         """
         return self.min_shift, self.max_shift
 
-    def get_databox_names(
-        self,
-        plan: _plans.Plan | None = None,
-        /,
-    ) -> tuple[str]:
+    def get_databox_names(self, /, ) -> tuple[str]:
         """
         """
-        all_names = self.all_names
-        if plan is not None:
-            plan_names = set(plan.collect_databox_names())
-            extra_plan_names = tuple(plan_names.difference(all_names))
-            all_names = all_names + extra_plan_names
-        return all_names
+        return tuple(self.all_names)
 
     #
     # ===== Implement SimulatePlannableProtocol =====

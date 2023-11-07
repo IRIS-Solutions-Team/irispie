@@ -401,7 +401,7 @@ class Model(
         return new
 
     #
-    # Implement SimulatableProtocol
+    # Implement SlatableProtocol
     # =============================
     #
 
@@ -410,11 +410,11 @@ class Model(
         """
         return self._invariant._min_shift, self._invariant._max_shift
 
-    def get_databox_names(self, plan, /, ) -> tuple[str, ...]:
+    def get_databox_names(self, /, ) -> tuple[str, ...]:
         """
         """
         qid_to_name = self.create_qid_to_name()
-        return tuple(qid_to_name[qid] for qid in range(len(qid_to_name)))
+        return tuple(qid_to_name[qid] for qid in sorted(qid_to_name))
     #]
 
 

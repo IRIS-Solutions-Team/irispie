@@ -49,21 +49,25 @@ class _Dataslate:
     _record_shape: tuple[int, int] | None = None
 
     @classmethod
-    def for_slatable(
+    def for_slatables(
         klass,
-        slatable: SlatableProtocol,
+        slatables: SlatableProtocol,
         databox: _databoxes.Databox,
         base_range: Iterable[_dates.Dater],
         /,
         variant: int = 0,
-        plan: _plans.Plan | None = None,
     ) -> Self:
         """
         """
         self = klass()
-        self._names = tuple(slatable.get_databox_names(plan, ))
+        self._names = tuple()
+        for s in slatables:
+            self._names += tuple(
+                n for n in s.get_databox_names()
+                if n not in self._names
+            )
         self.missing_names = tuple(databox.get_missing_names(self._names, ))
-        self._resolve_dates(slatable, base_range, )
+        self._dates, self._base_indices = get_extended_range(slatables[0], base_range, )
         self._populate_data(databox, variant, )
         self._populate_descriptions(databox, )
         return self
@@ -167,14 +171,6 @@ class _Dataslate:
         /,
     ) -> dict[str, int]:
         return { name: row for row, name in enumerate(self._names, ) }
-
-    def _resolve_dates(
-        self,
-        slatable: SlatableProtocol,
-        base_range: Iterable[_dates.Dater],
-        /,
-    ) -> None:
-        self._dates, self._base_indices = get_extended_range(slatable, base_range, )
 
     @staticmethod
     def retrieve_vector_from_data_array(

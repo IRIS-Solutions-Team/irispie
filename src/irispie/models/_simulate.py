@@ -35,8 +35,17 @@ class SimulateMixin:
     ) -> tuple[_databoxes.Databox, dict[str, Any]]:
         """
         """
+        input_slatables = (self, )
+        if plan is not None:
+            plan.check_consistency(self, range, )
+            input_slatables += (plan, )
+        #
+        # Create dataslates from input data, one for each variant
+        #
         dataslates = tuple(
-            _dataslates.HorizontalDataslate.for_slatable(self, in_databox, base_range, plan=plan, variant=i, )
+            _dataslates.HorizontalDataslate.for_slatables(
+                input_slatables, in_databox, base_range, variant=i,
+            )
             for i in range(self.num_variants)
         )
         #

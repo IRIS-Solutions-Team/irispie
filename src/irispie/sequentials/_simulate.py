@@ -25,7 +25,7 @@ class SimulateMixin:
     def simulate(
         self,
         in_databox: _databoxes.Databox,
-        base_range: Iterable[Dater],
+        range: Iterable[Dater],
         /,
         plan: _plans.Plan | None = None,
         prepend_input: bool = True,
@@ -35,17 +35,18 @@ class SimulateMixin:
         """
         """
         #
-        # Create the source databox by combining parameters and the input
-        # databox
+        # Check consistency of the plan and the model/simulation
+        #
+        input_slatables = (self, )
+        if plan is not None:
+            plan.check_consistency(self, range, )
+            input_slatables += (plan, )
+        #
+        # Create dataslate from source data
         #
         source_databox = self.get_parameters() | in_databox
-
-        #
-        # Arrange input data into a dataslate
-        #
-        ds = _dataslates.HorizontalDataslate.for_slatable(
-            self, source_databox, base_range,
-            variant=0, plan=plan,
+        ds = _dataslates.HorizontalDataslate.for_slatables(
+            input_slatables, source_databox, range, variant=0,
         )
         #
         # Fill missing residuals with zeros

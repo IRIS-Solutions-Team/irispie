@@ -80,17 +80,17 @@ Plans for dynamic simulations
     """
     #[
 
+    _registers = (
+        "anticipated",
+        "exogenized",
+        "endogenized",
+    )
+
     __slots__ = (
+        *tuple(f"can_be_{r}" for r in _registers),
+        *tuple(f"_{r}_register" for r in _registers),
+        *tuple(f"default_{r}" for r in _registers),
         "base_range",
-        "can_be_anticipated",
-        "can_be_exogenized",
-        "can_be_endogenized",
-        "_exogenized_register",
-        "_endogenized_register",
-        "_anticipated_register",
-        "_default_exogenized",
-        "_default_endogenized",
-        "_default_anticipated",
     )
 
     def properties():
@@ -134,23 +134,38 @@ Tabular view of the simulation plan
     def __init__(
         self,
         plannable: PlannableSimulateProtocol,
-        base_range: Iterable[_dates.Dater] | None,
+        range: Iterable[_dates.Dater] | None,
         /,
         anticipate: bool = True,
     ) -> None:
         """
         """
-        self.base_range = tuple(base_range)
+        self.base_range = tuple(range)
         self._default_exogenized = None
         self._default_endogenized = None
         self._default_anticipated = bool(anticipate)
-        for r in ("exogenized", "endogenized", "anticipated", ):
+        for r in self._registers:
             register = {
                 n: [None] * self.num_periods
                 for n in getattr(plannable, f"simulate_can_be_{r}")
             } if hasattr(plannable, f"simulate_can_be_{r}") else {}
             setattr(self, f"can_be_{r}", tuple(register.keys()))
             setattr(self, f"_{r}_register", register)
+
+    def check_consistency(
+        self,
+        plannable: PlannableSimulateProtocol,
+        range: Iterable[_dates.Dater] | None,
+        /,
+    ) -> None:
+        """
+        """
+        benchmark = type(self)(plannable, range, )
+        if self.base_range != benchmark.base_range:
+            raise _wrongdoings.IrisPieError(f"Plan range must be the same as the simulation range")
+        for r in self._registers:
+            if getattr(self, f"can_be_{r}") != getattr(benchmark, f"can_be_{r}"):
+                raise _wrongdoings.IrisPieError(f"Plan must be created using the simulated model")
 
     @property
     def start_date(self, /, ) -> _dates.Dater:
@@ -294,7 +309,7 @@ available; only available in simulation plans created for
         point = self._endogenized_register[name][column]
         return point if point is not None else self._default_endogenized
 
-    def collect_databox_names(self, /, ) -> tuple[str]:
+    def get_databox_names(self, /, ) -> tuple[str]:
         """
         """
         databox_names = set()
