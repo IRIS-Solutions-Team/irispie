@@ -61,7 +61,7 @@ class Atom(ValueMixin, ):
 
     @classmethod
     def no_context(
-        cls,
+        klass,
         value: Number,
         diff: Number,
         /,
@@ -70,7 +70,7 @@ class Atom(ValueMixin, ):
         """
         Create atom with self-contained data and logly contexts
         """
-        self = cls()
+        self = klass()
         self._value = value
         self._diff = diff
         self._logly = logly if logly is not None else False
@@ -78,7 +78,7 @@ class Atom(ValueMixin, ):
 
     @classmethod
     def in_context(
-        cls,
+        klass,
         /,
         diff: _np.ndarray | Number,
         data_index: tuple[int, slice],
@@ -97,10 +97,11 @@ class Atom(ValueMixin, ):
 
     @classmethod
     def zero(
-        cls,
+        klass,
         diff_shape: tuple[int, int],
+        /,
     ) -> Self:
-        return cls.no_context(0, _np.zeros(diff_shape), False)
+        return klass.no_context(0, _np.zeros(diff_shape, dtype=_np.float64), False)
 
     @property
     def value(self, /, ):
@@ -284,30 +285,16 @@ class Context:
         /,
         eid_to_wrts: dict[int, tuple[Any, ...]],
         qid_to_logly: dict[int, bool] | None,
-        first_column_to_eval: int | None,
-        num_columns_to_eval: int,
         context: dict | None,
     ) -> Self:
         """
         """
         self._eid_to_wrts = eid_to_wrts
         self._qid_to_logly = qid_to_logly or {}
-        self._num_columns_to_eval = num_columns_to_eval
+        self._atom_factory = atom_factory
         self._populate_equations(equations, )
         #
-        all_tokens = set(_equations.generate_all_tokens_from_equations(self._equations, ), )
-        self.min_shift = _incidences.get_min_shift(all_tokens, )
-        self.max_shift = _incidences.get_max_shift(all_tokens, )
-        #
-        # First and last data column to evaluate
-        if first_column_to_eval is None:
-            first_column_to_eval = -self.min_shift
-        self._columns_to_eval = (
-            first_column_to_eval,
-            first_column_to_eval + num_columns_to_eval - 1,
-        )
-        #
-        self._populate_atom_dict(atom_factory, )
+        self._populate_atom_dict()
         #
         context = { 
             k: af_.finite_differentiator(v) 
@@ -326,10 +313,11 @@ class Context:
         """
         return len(self._eid_to_wrts[eid])
 
-    def _get_diff_shape_for_eid(self, eid, /, ) -> tuple[int, int]:
+    def _get_diff_shape_for_eid(self, eid, /, ) -> Atom:
         """
         """
-        return self._get_num_wrts(eid), self._num_columns_to_eval
+        diff = self._atom_factory.create_diff_for_token(None, self._eid_to_wrts[eid], )
+        return diff.shape
 
     def _populate_equations(
         self,
@@ -339,27 +327,20 @@ class Context:
         """
         """
         self._equations = tuple(
-            _adapt_equation_for_aldi(e, self._get_diff_shape_for_eid(e.id), )
+            _adapt_equation_for_aldi(e, self._get_diff_shape_for_eid(e.id, ), )
             for e in equations
         )
 
-    def _populate_atom_dict(
-        self,
-        atom_factory: AtomFactoryProtocol,
-        /,
-    ) -> None:
+    def _populate_atom_dict(self, /, ) -> None:
         """
-        * atom_factory -- Implement create_diff_for_token, create_data_index_for_token, get_logly_for_token
-        * qid_to_logly -- Dictionary of qid to logly
-        * columns_to_eval -- Tuple of (first, last) column indices to be evaluated
         """
         self._x = {}
         for eqn in self._equations:
             self._x[eqn.id] = {}
             for tok in eqn.incidence:
                 atom = Atom.in_context(
-                    diff=atom_factory.create_diff_for_token(tok, self._eid_to_wrts[eqn.id], ),
-                    data_index=atom_factory.create_data_index_for_token(tok, self._columns_to_eval, ),
+                    diff=self._atom_factory.create_diff_for_token(tok, self._eid_to_wrts[eqn.id], ),
+                    data_index=self._atom_factory.create_data_index_for_token(tok, ),
                     logly=self._qid_to_logly.get(tok.qid, False, ),
                 )
                 self._x[eqn.id][(tok.qid, tok.shift)] = atom
@@ -444,7 +425,6 @@ class AtomFactoryProtocol(Protocol, ):
     def create_data_index_for_token(
         self,
         token: _incidences.Token,
-        columns_to_eval: tuple[int, int],
     ) -> tuple[int, slice]:
         """
         Create a data index for an atom representing a given token

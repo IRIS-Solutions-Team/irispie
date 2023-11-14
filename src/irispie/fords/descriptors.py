@@ -20,11 +20,11 @@ $$
 #[
 from __future__ import annotations
 
-from typing import (Self, )
+from typing import (Self, Any, )
 from collections.abc import (Iterable, )
-import itertools as it_
+import itertools as _it
 import dataclasses as _dc
-import numpy as np_
+import numpy as _np
 
 from ..incidences import main as _incidence
 from .. import equations as _equations
@@ -46,18 +46,21 @@ class Descriptor:
         "solution_vectors",
         "system_map",
         "aldi_context",
+        "_column_to_eval",
     )
 
     def __init__(
         self,
         equations: Iterable[_equations.Equation],
         quantities: Iterable[_quantities.Quantity],
-        context: dict | None,
+        column_to_eval: int,
+        context: dict[str, Any] | None,
         /,
     ) -> None:
         self.system_vectors = SystemVectors(equations, quantities)
         self.solution_vectors = SolutionVectors(self.system_vectors)
         self.system_map = SystemMap(self.system_vectors)
+        self._column_to_eval = column_to_eval
         system_equations = _custom_order_equations_by_eids(
             equations,
             self.system_vectors.transition_eids
@@ -65,14 +68,12 @@ class Descriptor:
         )
         #
         # Create the evaluation context for the algorithmic differentiator
-        # Use type(self) as the aldi Atom factory
+        atom_factory = self
         self.aldi_context = _differentiators.Context(
-            type(self),
+            atom_factory,
             system_equations,
             eid_to_wrts=self.system_vectors.eid_to_wrt_tokens,
             qid_to_logly=_quantities.create_qid_to_logly(quantities),
-            first_column_to_eval=None,
-            num_columns_to_eval=1,
             context=context,
         )
 
@@ -83,35 +84,32 @@ class Descriptor:
         return self.system_vectors.get_num_forwards()
 
     # ===== Implement AtomFactoryProtocol =====
-    # This protocol is used to manufacture aldi Atoms
 
-    @staticmethod
     def create_diff_for_token(
+        self,
         token: Token,
         wrt_tokens: tuple[Token, ...],
         /,
-    ) -> np_.ndarray:
+    ) -> _np.ndarray:
         """
         """
+        if token is None:
+            return _np.zeros((len(wrt_tokens), 1, ), )
         try:
-            index = wrt_tokens.index(token)
-            diff = np_.zeros((len(wrt_tokens), 1))
+            index = wrt_tokens.index(token, )
+            diff = _np.zeros((len(wrt_tokens), 1, ), )
             diff[index] = 1
             return diff
         except:
             return 0
 
-    @staticmethod
     def create_data_index_for_token(
+        self,
         token: Token,
-        columns_to_eval: tuple[int, slice],
     ) -> tuple[int, slice]:
         """
         """
-        return (
-            token.qid,
-            slice(columns_to_eval[0]+token.shift, columns_to_eval[1]+token.shift+1),
-        )
+        return ( token.qid, self._column_to_eval + token.shift, )
 
     #]
 
@@ -282,7 +280,7 @@ class SolutionVectors:
         """
         Get tokens representing required initial conditions
         """
-        return list(it_.compress(self.transition_variables, self.initial_conditions))
+        return list(_it.compress(self.transition_variables, self.initial_conditions))
     #]
 
 
@@ -301,7 +299,7 @@ def _create_system_transition_vector(
     #
     vector_for_id = lambda qid: [_incidence.Token(qid, sh) for sh in range(min_shifts[qid]+1, max_shifts[qid]+1)]
     unique_ids = set(t.qid for t in tokens_transition_variables)
-    return it_.chain.from_iterable(vector_for_id(i) for i in unique_ids)
+    return _it.chain.from_iterable(vector_for_id(i) for i in unique_ids)
     #]
 
 
@@ -344,10 +342,10 @@ class SystemMap:
     B: _maps.ArrayMap | None = None
     C: None = None
     D: _maps.ArrayMap | None = None
-    dynid_A: np_.ndarray | None = None
-    dynid_B: np_.ndarray | None = None
-    dynid_C: np_.ndarray | None = None
-    dynid_D: np_.ndarray | None = None
+    dynid_A: _np.ndarray | None = None
+    dynid_B: _np.ndarray | None = None
+    dynid_C: _np.ndarray | None = None
+    dynid_D: _np.ndarray | None = None
     #
     F: _maps.ArrayMap | None = None
     G: _maps.ArrayMap | None = None
@@ -411,8 +409,8 @@ class SystemMap:
         #
         num_dynid_rows = len(system_vectors.transition_variables) - len(system_vectors.transition_eids)
         self.dynid_A, self.dynid_B = _create_dynid_matrices(system_vectors.transition_variables, )
-        self.dynid_C = np_.zeros((num_dynid_rows, system_vectors.shape_C_excl_dynid[1]), dtype=float, )
-        self.dynid_D = np_.zeros((num_dynid_rows, system_vectors.shape_D_excl_dynid[1]), dtype=float, )
+        self.dynid_C = _np.zeros((num_dynid_rows, system_vectors.shape_C_excl_dynid[1]), dtype=float, )
+        self.dynid_D = _np.zeros((num_dynid_rows, system_vectors.shape_D_excl_dynid[1]), dtype=float, )
         #
         # Measurement equations
         #
@@ -471,8 +469,8 @@ def _create_dynid_matrices(system_transition_vector: Iterable[_incidence.Token])
         row_count += 1
     #
     num_columns = len(system_transition_vector)
-    dynid_A = np_.zeros((row_count, num_columns), dtype=float)
-    dynid_B = np_.zeros((row_count, num_columns), dtype=float)
+    dynid_A = _np.zeros((row_count, num_columns), dtype=float)
+    dynid_B = _np.zeros((row_count, num_columns), dtype=float)
     dynid_A[index_A] = 1
     dynid_B[index_B] = -1
     return dynid_A, dynid_B
@@ -488,7 +486,7 @@ def _adjust_for_measurement_equations(
     """
     """
     #[
-    tokens_in_measurement_equations = it_.chain.from_iterable(e.incidence for e in equations if e.kind is _equations.EquationKind.MEASUREMENT_EQUATION)
+    tokens_in_measurement_equations = _it.chain.from_iterable(e.incidence for e in equations if e.kind is _equations.EquationKind.MEASUREMENT_EQUATION)
     pretend_needed = [
         _incidence.Token(t.qid, t.shift-1) for t in tokens_in_measurement_equations
         if qid_to_kind[t.qid] in _quantities.QuantityKind.TRANSITION_VARIABLE

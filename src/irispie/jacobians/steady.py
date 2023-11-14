@@ -16,41 +16,69 @@ from . import _base
 #]
 
 
-def _create_data_index_for_token(
-    token: _incidence.Token,
-    columns_to_eval: tuple[int, int],
-    /,
-) -> tuple[int, slice]:
-    """
-    """
-    return (
-        token.qid,
-        slice(columns_to_eval[0], columns_to_eval[1]+1),
-    )
-
-
-def _create_eid_to_wrt_qids(
-    equations: Iterable[_equations.Equation],
-    all_wrt_qids: Iterable[int],
-    /,
-) -> dict[int, tuple[int, ...]]:
-    """
-    Create {eid: (qid, ... ), ...} where (qid, ... ) are qids wrt which the
-    equation is defined no matter the time shift of the token
-    """
-    return {
-        eqn.id: tuple(
-            qid for qid in all_wrt_qids
-            if _incidence.is_qid_in_tokens(eqn.incidence, qid, )
-        )
-        for eqn in equations
-    }
-
-
-class FlatSteadyJacobian(_base.Jacobian, ):
+class _SteadyJacobian(_base.Jacobian, ):
     """
     """
     #[
+
+    _num_diff_columns = ...
+
+    def _create_eid_to_wrts(
+        self,
+        equations: Iterable[_equations.Equation],
+        all_wrt_qids: Iterable[int],
+        /,
+    ) -> dict[int, tuple[int, ...]]:
+        """
+        Create {eid: (qid, ... ), ...} where (qid, ... ) are qids wrt which the
+        equation is defined no matter the time shift of the token
+        """
+        return {
+            eqn.id: tuple(
+                qid for qid in all_wrt_qids
+                if _incidence.is_qid_in_tokens(eqn.incidence, qid, )
+            )
+            for eqn in equations
+        }
+
+    # ===== Implement AtomFactoryProtocol =====
+
+    def _create_data_index_for_token(
+        self,
+        token: _incidence.Token,
+        /,
+    ) -> tuple[int, slice]:
+        """
+        """
+        return (token.qid, self._first_column_to_eval, )
+
+    def create_diff_for_token(
+        self,
+        token: _incidence.Token,
+        wrt_qids: dict[int, tuple[int]],
+        /,
+    ) -> _np.ndarray:
+        """
+        """
+        if token is None:
+            return _np.zeros((len(wrt_qids), self._num_diff_columns, ))
+        try:
+            index = wrt_qids.index(token.qid)
+            diff = _np.zeros((len(wrt_qids), self._num_diff_columns, ))
+            diff[index, :] = 1, token.shift
+            return diff
+        except:
+            return 0
+
+        #]
+
+
+class FlatSteadyJacobian(_SteadyJacobian, ):
+    """
+    """
+    #[
+
+    _num_diff_columns = 1
 
     def eval(
         self,
@@ -62,42 +90,16 @@ class FlatSteadyJacobian(_base.Jacobian, ):
         diff_array = self._aldi_context.eval_diff_to_array(steady_array, steady_array, )
         return self._create_jacobian(self._shape, diff_array, self._map, )
 
-    _create_eid_to_wrt_something = \
-        staticmethod(_create_eid_to_wrt_qids, )
-
-    #
-    # ===== Implement AtomFactoryProtocol =====
-    # This protocol is used to manufacture aldi Atoms
-    #
-
-    create_data_index_for_token = \
-        staticmethod(_create_data_index_for_token, )
-
-    @staticmethod
-    def create_diff_for_token(
-        token: _incidence.Token,
-        wrt_qids: tuple[int],
-        /,
-    ) -> _np.ndarray:
-        """
-        """
-        try:
-            index = wrt_qids.index(token.qid)
-            diff = _np.zeros((len(wrt_qids), 1))
-            diff[index] = 1
-            return diff
-        except:
-            return 0
-
     #]
 
 
-class NonflatSteadyJacobian(_base.Jacobian, ):
+class NonflatSteadyJacobian(_SteadyJacobian, ):
     """
     """
     #[
 
     NONFLAT_STEADY_SHIFT: int = 1
+    _num_diff_columns = 2
 
     def eval(
         self,
@@ -114,33 +116,6 @@ class NonflatSteadyJacobian(_base.Jacobian, ):
             _np.hstack((A, B, )),
             _np.hstack((A, B+k*A, )),
         ))
-
-    _create_eid_to_wrt_something = \
-        staticmethod(_create_eid_to_wrt_qids, )
-
-    #
-    # ===== Implement AtomFactoryProtocol =====
-    # This protocol is used to manufacture aldi Atoms
-    #
-
-    create_data_index_for_token = \
-        staticmethod(_create_data_index_for_token, )
-
-    @staticmethod
-    def create_diff_for_token(
-        token: _incidence.Token,
-        wrt_qids: dict[int, tuple[int]],
-        /,
-    ) -> _np.ndarray:
-        """
-        """
-        try:
-            index = wrt_qids.index(token.qid)
-            diff = _np.zeros((len(wrt_qids), 2))
-            diff[index, :] = 1, token.shift
-            return diff
-        except:
-            return 0
 
     #]
 

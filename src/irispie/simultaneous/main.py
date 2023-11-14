@@ -240,18 +240,18 @@ class Simultaneous(
         """
         Create unsolved first-order system for one variant
         """
-        ac = descriptor.aldi_context
-        num_columns = -ac.min_shift + 1 + ac.max_shift
+        min_shift, max_shift = self.get_min_max_shifts()
+        num_columns = -min_shift + 1 + max_shift
         qid_to_logly = self.create_qid_to_logly()
         #
         if model_flags.is_linear:
-            data_array = variant.create_zero_array(qid_to_logly, num_columns=num_columns, shift_in_first_column=ac.min_shift, )
+            data_array = variant.create_zero_array(qid_to_logly, num_columns=num_columns, shift_in_first_column=min_shift, )
             data_array_lagged = None
             steady_array = variant.create_steady_array(qid_to_logly, num_columns=1, ).reshape(-1)
         else:
-            data_array = variant.create_steady_array(qid_to_logly, num_columns=num_columns, shift_in_first_column=ac.min_shift, )
-            data_array_lagged = variant.create_steady_array(qid_to_logly, num_columns=num_columns, shift_in_first_column=ac.min_shift-1, )
-            steady_array = data_array[:, -ac.min_shift]
+            data_array = variant.create_steady_array(qid_to_logly, num_columns=num_columns, shift_in_first_column=min_shift, )
+            data_array_lagged = variant.create_steady_array(qid_to_logly, num_columns=num_columns, shift_in_first_column=min_shift-1, )
+            steady_array = data_array[:, -min_shift]
         #
         return _systems.System(descriptor, data_array, steady_array, model_flags, data_array_lagged, )
 

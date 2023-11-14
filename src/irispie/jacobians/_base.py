@@ -51,8 +51,7 @@ class Jacobian:
         #
         # Collect w.r.t. items (tokens, qids) which each equation is to be
         # differentiated
-        eid_to_wrt_something = \
-            self._create_eid_to_wrt_something(equations, wrt_something, )
+        eid_to_wrts = self._create_eid_to_wrts(equations, wrt_something, )
         #
         # Collect all tokens in the euqations, and find the minimum shift
         all_tokens = set(_equations.generate_all_tokens_from_equations(equations, ), )
@@ -62,34 +61,33 @@ class Jacobian:
         # Create the map from eids to rhs offsets; the offset is the number
         # of rows in the Jacobian matrix that precede the equation
         eid_to_rhs_offset = \
-            _maps.create_eid_to_rhs_offset(eids, eid_to_wrt_something, )
+            _maps.create_eid_to_rhs_offset(eids, eid_to_wrts, )
         #
         self._shape = len(eids), len(wrt_something),
         #
         self._map = _maps.ArrayMap.for_equations(
             eids,
-            eid_to_wrt_something,
+            eid_to_wrts,
             wrt_something,
             eid_to_rhs_offset,
             rhs_column=0,
             lhs_column_offset=0,
         )
         #
-        # Use type(self) as the Atom factory
+        # self is the Atom factory
+        atom_factory = self
         self._aldi_context = _differentiators.Context(
-            type(self),
+            atom_factory,
             equations,
-            eid_to_wrts=eid_to_wrt_something,
+            eid_to_wrts=eid_to_wrts,
             qid_to_logly=qid_to_logly,
-            first_column_to_eval=first_column_to_eval,
-            num_columns_to_eval=num_columns_to_eval,
             context=context,
         )
 
-    @staticmethod
-    def _create_eid_to_wrt_something(
+    def _create_eid_to_wrts(
+        self,
         equations: Iterable[_equations.Equation],
-        wrt_something: Iterable[Any],
+        wrts: Iterable[Any],
         /,
     ) -> dict[int, tuple[Any, ...]]:
         """
@@ -121,5 +119,4 @@ def _create_sparse_jacobian(shape, diff_array, map, /, ) -> _sp.sparse.coo_matri
     )
     return J
     #]
-
 

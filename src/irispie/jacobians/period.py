@@ -36,8 +36,8 @@ class PeriodJacobian(_base.Jacobian, ):
         )
         return self._create_jacobian(self._shape, diff_array, self._map, )
 
-    @staticmethod
-    def _create_eid_to_wrt_something(
+    def _create_eid_to_wrts(
+        self,
         equations: Iterable[_equations.Equation],
         all_wrt_qids: Iterable[int],
         /,
@@ -52,39 +52,32 @@ class PeriodJacobian(_base.Jacobian, ):
             for eqn in equations
         }
 
-    #
     # ===== Implement AtomFactoryProtocol =====
-    # This protocol is used to manufacture aldi Atoms
-    #
 
-    @staticmethod
     def create_data_index_for_token(
+        self,
         token: _incidence.Token,
-        columns_to_eval: tuple[int, int],
         /,
     ) -> tuple[int, slice]:
         """
         """
-        # column_index = _np.arange(
-            # columns_to_eval[0]+token.shift,
-            # columns_to_eval[1]+token.shift+1,
-        # )
-        column_index = columns_to_eval[0]+token.shift
-        return (token.qid, column_index, )
+        return (token.qid, token.shift, )
 
-    @staticmethod
     def create_diff_for_token(
+        self,
         token: _incidence.Token,
         wrt_qids: tuple[int],
         /,
     ) -> _np.ndarray:
         """
         """
+        if token is None:
+            return _np.zeros((len(wrt_qids), 1, ), )
+        if token.shift:
+            return 0
         try:
-            if token.shift:
-                return 0
-            index = wrt_qids.index(token.qid)
-            diff = _np.zeros((len(wrt_qids), 1))
+            index = wrt_qids.index(token.qid, )
+            diff = _np.zeros((len(wrt_qids), 1, ), )
             diff[index] = 1
             return diff
         except:
