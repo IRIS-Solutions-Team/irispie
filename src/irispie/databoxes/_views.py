@@ -57,7 +57,7 @@ def _databox_repr(x, /, ) -> str:
     """
     #[
     if hasattr(x, "_databox_repr"):
-        s = f"{{{x._databox_repr()}}}"
+        s = f"<<{x._databox_repr()}>"
     elif x is None:
         s = "None"
     elif x is ...:
@@ -69,7 +69,7 @@ def _databox_repr(x, /, ) -> str:
     elif isinstance(x, _np.ndarray) or isinstance(x, list) or isinstance(x, tuple):
         s = _re.sub(r"\n+ +", " ", repr(x))
     elif hasattr(x, "_get_first_line_view"):
-        s = f"{{{x._get_first_line_view()}}}"
+        s = f"<{x._get_first_line_view()}>"
     else:
         s = repr(type(x))
     return s if len(s)<_REPR_MAX_LEN else s[0:_REPR_MAX_LEN] + _REPR_CONT

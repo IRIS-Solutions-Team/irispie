@@ -25,8 +25,11 @@ from .databoxes.main import __all__ as databoxes_all
 from .dataslates import *
 from .dataslates import __all__ as dataslates_all
 
-from .models import *
-from .models import __all__ as models_all
+from .sources import *
+from .sources import __all__ as sources_all
+
+from .simultaneous import *
+from .simultaneous import __all__ as simultaneous_all
 
 from .quantities import *
 from .quantities import __all__ as quantities_all
@@ -73,7 +76,8 @@ __all__ = (
     *dates_all,
     *series_all,
     *databoxes_all,
-    *models_all,
+    *sources_all,
+    *simultaneous_all,
     *quantities_all,
     *equations_all,
     *sequentials_all,

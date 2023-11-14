@@ -44,7 +44,7 @@ class Explanatory:
     _lhs_transform: TransformProtocol | None = None
     _eval_level_str: str | None = None
     _eval_res_str: str | None = None
-    _custom_functions: dict[str, Callable] | None = None
+    _context: dict[str, Callable] | None = None
     all_names: tuple(str) | None = None
     eval_level: Callable | None = None
     eval_res: Callable | None = None
@@ -53,7 +53,7 @@ class Explanatory:
         self,
         equation: _equations.Equation,
         /,
-        custom_functions: dict[str, Callable] | None = None,
+        context: dict[str, Callable] | None = None,
     ) -> None:
         """
         """
@@ -63,7 +63,7 @@ class Explanatory:
         self._parse_lhs()
         self._add_residual_to_rhs()
         self._collect_all_names()
-        self._custom_functions = custom_functions
+        self._context = context
 
     def finalize(
         self,
@@ -166,7 +166,7 @@ class Explanatory:
         args = ("x", "t", )
         body = self._lhs_transform.create_eval_level_str(lhs_token, rhs_xtring, )
         self.eval_level, self._eval_level_str, *_ = \
-            _makers.make_lambda(args, body, globals=self._custom_functions, )
+            _makers.make_lambda(args, body, self._context, )
 
     def _create_eval_res(
         self,
@@ -179,7 +179,7 @@ class Explanatory:
         args = ("x", "t", )
         body = f"{lhs_xtring}-({rhs_xtring})"
         self.eval_res, self._eval_res_str, *_ = \
-            _makers.make_lambda(args, body, globals=self._custom_functions, )
+            _makers.make_lambda(args, body, self._context, )
 
     def __str__(self, /, ) -> str:
         """
@@ -193,10 +193,6 @@ class Explanatory:
             f"{indented}LHS transform: {str(self._lhs_transform)}",
             f"{indented}Residual name: {self.res_name}",
         ))
-
-    def precopy(self, /, ) -> None:
-        """
-        """
 
     def simulate(
         self,

@@ -6,16 +6,22 @@ Model quantities
 #[
 from __future__ import annotations
 
-from typing import (TypeAlias, )
+from typing import (Self, )
 from collections.abc import (Iterable, )
 import enum
 import collections as _co
 import dataclasses as _dc
 import copy as _cp
+import re as _re
 
 from . import wrongdoings as _wrongdoings
 from . import attributes as _attributes
 #]
+
+
+QUANTITY_OCCURRENCE_PATTERN = _re.compile(
+    r"\b([a-zA-Z]\w*)\b(\[[-+\d]+\])?(?!\()"
+)
 
 
 class QuantityKind(enum.Flag):
@@ -23,6 +29,7 @@ class QuantityKind(enum.Flag):
     Classification of model quantities
     """
     #[
+
     UNSPECIFIED = enum.auto()
     TRANSITION_VARIABLE = enum.auto()
     TRANSITION_SHOCK = enum.auto()
@@ -40,6 +47,29 @@ class QuantityKind(enum.Flag):
     STD = TRANSITION_STD | MEASUREMENT_STD
     PARAMETER_OR_STD = PARAMETER | STD
     SHOCK = TRANSITION_SHOCK | MEASUREMENT_SHOCK
+
+    @classmethod
+    def from_keyword(
+        klass,
+        keyword: str,
+        /,
+    ) -> Self:
+        """
+        """
+        return klass[
+            keyword
+            .replace("-", "_")
+            .replace(" ", "_")
+            .replace("!", "")
+            .strip()
+            .upper()
+            .removesuffix("S")
+        ]
+
+    @property
+    def human(self, /, ) -> str:
+        return self.name.replace("_", " ").title()
+
     #]
 
 
@@ -112,20 +142,44 @@ def create_qid_to_kind(quantities: Iterable[Quantity]) -> dict[int, str]:
     return { qty.id: qty.kind for qty in quantities }
 
 
-def generate_quantities_of_kind(quantities: Iterable[Quantity], kind: QuantityKind | None) -> Iterable[Quantity]:
-    if kind is not None:
-        def is_of_kind(qty: Quantity, /, ) -> bool: return qty.kind in kind
-    else:
-        def is_of_kind(qty: Quantity, /, ) -> bool: return True
-    return ( qty for qty in quantities if is_of_kind(qty) )
+def generate_quantities_of_kind(
+    quantities: Iterable[Quantity],
+    kind: QuantityKind | None,
+    /,
+) -> Iterable[Quantity]:
+    """
+    """
+    return ( qty for qty in quantities if kind is None or qty.kind in kind )
 
 
-def generate_qids_by_kind(quantities: Iterable[Quantity], kind: QuantityKind) -> list[int]:
-    return ( qty.id for qty in quantities if qty.kind in kind )
+def count_quantities_of_kind(
+    quantities: Iterable[Quantity],
+    kind: QuantityKind | None,
+    /,
+) -> int:
+    """
+    """
+    return sum(1 for _ in generate_quantities_of_kind(quantities, kind, ))
 
 
-def generate_quantity_names_by_kind(quantities: Iterable[Quantity], kind: QuantityKind) -> list[str]:
-    return ( qty.human for qty in quantities if qty.kind in kind )
+def generate_qids_by_kind(
+    quantities: Iterable[Quantity],
+    kind: QuantityKind | None,
+    /,
+) -> Iterable[int]:
+    """
+    """
+    return ( qty.id for qty in generate_quantities_of_kind(quantities, kind, ) )
+
+
+def generate_quantity_names_by_kind(
+    quantities: Iterable[Quantity],
+    kind: QuantityKind | None,
+    /,
+) -> Iterable[str]:
+    """
+    """
+    return ( qty.human for qty in generate_quantities_of_kind(quantities, kind, ) )
 
 
 def generate_all_quantity_names(quantities: Iterable[Quantity]) -> Iterable[str]:
@@ -254,7 +308,7 @@ def check_unique_names(quantities: Iterable[Quantity], /, ) -> None:
 
 
 def reorder_by_kind(quantities: Iterable[Quantity], /) -> Iterable[Quantity]:
-    return list(sorted(quantities, key=lambda x: (x.kind.value, x.entry)))
+    return tuple(sorted(quantities, key=lambda x: (x.kind.value, x.entry)))
 
 
 def stamp_id(quantities: Iterable[Quantity], /) -> None:

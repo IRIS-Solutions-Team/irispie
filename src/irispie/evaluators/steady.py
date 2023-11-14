@@ -17,7 +17,7 @@ from .. import equations as _equations
 from .. import quantities as _quantities
 from ..equators import steady as _equators
 from ..jacobians import steady as _jacobians
-from ..models import variants as _variants
+from ..simultaneous import variants as _variants
 
 from . import printers as _printers
 #]
@@ -45,8 +45,8 @@ class SteadyEvaluator:
         wrt_equations: Iterable[_equations.Equation],
         wrt_qids_levels: list[int],
         wrt_qids_changes: list[int],
-        /,
-        custom_functions: dict | None = None,
+        *,
+        context: dict | None = None,
         iter_printer_settings: dict[str, Any] | None = None,
     ) -> None:
         """
@@ -96,13 +96,15 @@ class SteadyEvaluator:
         self._equator = self._equator_factory(
             wrt_equations,
             t_zero,
-            custom_functions=custom_functions,
+            context=context,
         )
         self._jacobian = self._jacobian_factory(
             wrt_equations,
             self.wrt_qids,
             qid_to_logly,
-            custom_functions=custom_functions,
+            context=context,
+            first_column_to_eval = None,
+            num_columns_to_eval = 1,
         )
         iter_printer_settings = iter_printer_settings or {}
         self.iter_printer = self._iter_printer_factory(

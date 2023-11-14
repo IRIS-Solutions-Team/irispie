@@ -12,21 +12,21 @@ from collections.abc import (Iterable, Sequence, )
 import numpy as _np
 import copy as _cp
 
-from ..exceptions import ListException
-
-from ..aldi import finite_differentiators as af_
-from ..aldi import adaptations as _adaptations
 from ..incidences import main as _incidences
 from ..equators import plain as _equators
 from .. import equations as _equations
+from . import finite_differentiators as af_
+from . import adaptations as _adaptations
+from . import _rules as _rules
+
 #]
 
 
 class ValueMixin:
+    """
+    """
     #[
-    @property
-    def value(self):
-        return self._value if self._value is not None else type(self)._data_context[self._data_index]
+
     #]
 
 
@@ -34,9 +34,21 @@ class Atom(ValueMixin, ):
     """
     Atomic value for differentiation
     """
-    _data_context: _np.ndarray | None = None
-    _is_atom: bool = True
     #[
+
+    _data_context: _np.ndarray | None = None
+    _column_offset: int | None = None
+    _is_atom: bool = True
+
+    __slots__ = (
+        '_value',
+        '_diff',
+        '_logly',
+        '_data_index',
+        '_row_index',
+        '_column_index',
+    )
+
     def __init__(self) -> None:
         """
         """
@@ -44,6 +56,8 @@ class Atom(ValueMixin, ):
         self._diff = None
         self._logly = None
         self._data_index = None
+        self._row_index = None
+        self._column_index = None
 
     @classmethod
     def no_context(
@@ -76,6 +90,8 @@ class Atom(ValueMixin, ):
         self = Atom()
         self._diff = diff
         self._data_index = data_index
+        self._row_index = data_index[0]
+        self._column_index = data_index[1]
         self._logly = logly if logly is not None else False
         return self
 
@@ -85,6 +101,18 @@ class Atom(ValueMixin, ):
         diff_shape: tuple[int, int],
     ) -> Self:
         return cls.no_context(0, _np.zeros(diff_shape), False)
+
+    @property
+    def value(self, /, ):
+        if self._value is not None:
+            return self._value
+        else:
+            column_index = (
+                self._column_index + self._column_offset
+                if self._column_offset is not None
+                else self._column_index
+            )
+            return self._data_context[self._row_index, column_index]
 
     @property
     def diff(self):
@@ -98,24 +126,9 @@ class Atom(ValueMixin, ):
         new_diff = -self.diff
         return type(self).no_context(new_value, new_diff, False)
 
-    def __add__(self, other):
-        if hasattr(other, "_is_atom"):
-            new_value = self.value + other.value
-            new_diff = self.diff + other.diff
-        else:
-            new_value = self.value + other
-            new_diff = self.diff
-        return type(self).no_context(new_value, new_diff, False)
+    __add__ = _rules.add_diff
 
-    def __sub__(self, other):
-        if hasattr(other, "_is_atom"):
-            new_value = self.value - other.value
-            new_diff = self.diff - other.diff
-        else:
-            new_value = self.value - other
-            new_diff = self.diff
-        new_logly = False
-        return type(self).no_context(new_value, new_diff, False)
+    __sub__ = _rules.sub_diff
 
     def __mul__(self, other):
         self_value = self.value
@@ -263,15 +276,17 @@ class Context:
     """
     """
     #[
+
     def __init__(
         self,
-        equations: Iterable[_equations.Equation],
         atom_factory: AtomFactoryProtocol,
+        equations: Iterable[_equations.Equation],
         /,
-        eid_to_wrts: dict[int, tuple[Any]],
+        eid_to_wrts: dict[int, tuple[Any, ...]],
         qid_to_logly: dict[int, bool] | None,
+        first_column_to_eval: int | None,
         num_columns_to_eval: int,
-        custom_functions: dict | None,
+        context: dict | None,
     ) -> Self:
         """
         """
@@ -283,40 +298,33 @@ class Context:
         all_tokens = set(_equations.generate_all_tokens_from_equations(self._equations, ), )
         self.min_shift = _incidences.get_min_shift(all_tokens, )
         self.max_shift = _incidences.get_max_shift(all_tokens, )
-        self.shape_data = (
-            1 + (_incidences.get_max_qid(all_tokens) or 0),
-            -self.min_shift + num_columns_to_eval + self.max_shift,
+        #
+        # First and last data column to evaluate
+        if first_column_to_eval is None:
+            first_column_to_eval = -self.min_shift
+        self._columns_to_eval = (
+            first_column_to_eval,
+            first_column_to_eval + num_columns_to_eval - 1,
         )
         #
         self._populate_atom_dict(atom_factory, )
         #
-        custom_functions = { 
+        context = { 
             k: af_.finite_differentiator(v) 
-            for k, v in custom_functions.items()
-        } if custom_functions else None
-        custom_functions = _adaptations.add_function_adaptations_to_custom_functions(custom_functions)
-        custom_functions["Atom"] = Atom
+            for k, v in context.items()
+        } if context else None
+        context = _adaptations.add_function_adaptations_to_context(context)
+        context["Atom"] = Atom
         #
         self._equator = _equators.PlainEquator(
             self._equations,
-            custom_functions=custom_functions,
+            context=context,
         )
-
-    @property
-    def _t_zero(self, /, ) -> int:
-        """
-        """
-        return -self.min_shift
 
     def _get_num_wrts(self, eid, /, ) -> int:
         """
         """
         return len(self._eid_to_wrts[eid])
-
-    def _get_columns_to_eval(self, /, ) -> tuple[int, int]:
-        """
-        """
-        return self._t_zero, self._t_zero + self._num_columns_to_eval - 1
 
     def _get_diff_shape_for_eid(self, eid, /, ) -> tuple[int, int]:
         """
@@ -345,14 +353,13 @@ class Context:
         * qid_to_logly -- Dictionary of qid to logly
         * columns_to_eval -- Tuple of (first, last) column indices to be evaluated
         """
-        columns_to_eval = self._get_columns_to_eval()
         self._x = {}
         for eqn in self._equations:
             self._x[eqn.id] = {}
             for tok in eqn.incidence:
                 atom = Atom.in_context(
                     diff=atom_factory.create_diff_for_token(tok, self._eid_to_wrts[eqn.id], ),
-                    data_index=atom_factory.create_data_index_for_token(tok, columns_to_eval, ),
+                    data_index=atom_factory.create_data_index_for_token(tok, self._columns_to_eval, ),
                     logly=self._qid_to_logly.get(tok.qid, False, ),
                 )
                 self._x[eqn.id][(tok.qid, tok.shift)] = atom
@@ -361,24 +368,28 @@ class Context:
         self,
         data_array: _np.ndarray,
         steady_array: _np.ndarray,
+        /,
+        column_offset: int | None = None,
     ) -> Iterable[Atom]:
         """
         Evaluate and return the list of final atoms, one atom for each equation
         """
-        self._verify_data_array_shape(data_array.shape, )
         Atom._data_context = data_array
+        Atom._column_offset = column_offset
         output = self._equator.eval(self._x, 0, steady_array, )
         Atom._data_context = None
+        Atom._column_offset = None
         return output
 
     def eval_to_arrays(
         self,
         *args,
+        **kwargs,
     ) -> tuple[_np.ndarray, _np.ndarray]:
         """
         Evaluate and return arrays of diffs and values extracted from final atoms
         """
-        output = self.eval(*args)
+        output = self.eval(*args, **kwargs, )
         diff = _np.vstack([x.diff for x in output])
         value = _np.vstack([x.value for x in output])
         return diff, value
@@ -386,21 +397,16 @@ class Context:
     def eval_diff_to_array(
         self,
         *args,
+        **kwargs,
     ) -> _np.array:
         """
         Evaluate and return array of diffs
         """
         return _np.vstack([
-            x.diff for x in self.eval(*args)
+            x.diff for x in self.eval(*args, **kwargs, )
             if hasattr(x, "diff")
         ])
 
-    def _verify_data_array_shape(self, shape_data: _np.ndarray) -> None:
-        """
-        """
-        if shape_data[0]>=self.shape_data[0] and shape_data[1]>=self.shape_data[1]:
-            return
-        raise InvalidInputDataArrayShape(shape_data, self.shape_data)
     #]
 
 
@@ -419,25 +425,12 @@ def _adapt_equation_for_aldi(
     #]
 
 
-class InvalidInputDataArrayShape(ListException, ):
-    """
-    """
-    #[
-    def __init__(
-        self,
-        shape_entered: tuple[int, int],
-        needed: tuple[int, int]
-    ) -> None:
-        messages = [ f"Incorrect size of input data matrix: entered {shape_entered}, needed {needed}" ]
-        super().__init__(messages)
-    #]
-
-
 class AtomFactoryProtocol(Protocol, ):
     """
     Protocol for creating atoms representing tokens
     """
     #[
+
     def create_diff_for_token(
         self,
         token: _incidences.Token,
@@ -457,5 +450,6 @@ class AtomFactoryProtocol(Protocol, ):
         Create a data index for an atom representing a given token
         """
         ...
+
     #]
 

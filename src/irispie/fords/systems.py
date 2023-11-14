@@ -17,7 +17,7 @@ import dataclasses as _dc
 import numpy as _np
 
 from . import descriptors as _descriptors
-from ..models import _flags as _flags
+from ..simultaneous import _flags as _flags
 #]
 
 

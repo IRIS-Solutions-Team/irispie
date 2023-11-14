@@ -1,5 +1,5 @@
 """
-Algebraic source
+Model source
 """
 
 #[
@@ -10,11 +10,17 @@ from typing import (TypeAlias, Literal, )
 from collections.abc import (Iterable, )
 
 from .parsers import preparser as _preparser
-from .parsers import algebraic as _algebraic
+from .parsers import models as _models
 from .parsers import common as _common
 from . import equations as _equations
 from . import quantities as _quantities
+from .conveniences import files as _files
 #]
+
+
+__all__ = (
+    "ModelSource",
+)
 
 
 QuantityInput: TypeAlias = tuple[str, str, tuple[str, ...]]
@@ -32,6 +38,7 @@ class SourceMixin:
     """
     """
     #[
+
     @classmethod
     def from_string(
         klass,
@@ -42,36 +49,29 @@ class SourceMixin:
         **kwargs,
     ) -> Self:
         """
-        Create a new object from algebraic source string
+        Create a new object from model source string
         """
-        source, info = AlgebraicSource.from_string(
+        source, info = ModelSource.from_string(
             source_string, context=context, save_preparsed=save_preparsed,
         )
         return klass.from_source(source, context=context, **kwargs, )
-
-    @classmethod
-    def from_file(
-        klass,
-        source_files: str | Iterable[str],
-        /,
-        **kwargs,
-    ) -> Self:
-        """
-        Create a new object from algebraic source files
-        """
-        source_string = _common.combine_source_files(source_files, )
-        return klass.from_string(source_string, **kwargs, )
     #]
 
 
-class AlgebraicSource:
+class ModelSource(_files.FromFileMixin, ):
     """
     """
     #[
+
     __slots__ = (
-        "quantities", "dynamic_equations", "steady_equations",
-        "log_variables", "all_but", "context", "shock_qid_to_std_qid",
+        "quantities",
+        "dynamic_equations",
+        "steady_equations",
+        "log_variables",
+        "all_but",
+        "context",
     )
+
     def __init__(self, /) -> None:
         self.quantities = []
         self.dynamic_equations = []
@@ -79,7 +79,6 @@ class AlgebraicSource:
         self.log_variables = []
         self.all_but = []
         self.context = None
-        self.shock_qid_to_std_qid = None
 
     @property
     def num_quantities(self, /) -> int:
@@ -205,7 +204,7 @@ class AlgebraicSource:
     ) -> Self:
         """
         """
-        self = AlgebraicSource()
+        self = ModelSource()
         self.add_transition_variables(transition_variables)
         self.add_transition_equations(transition_equations)
         self.add_transition_shocks(transition_shocks)
@@ -228,12 +227,13 @@ class AlgebraicSource:
     ) -> tuple[Self, dict]:
         """
         """
-        preparsed_string, preparser_info = _preparser.from_string(
-            source_string, context=context, save_preparsed=save_preparsed, 
-        )
-        parsed_content = _algebraic.from_string(preparsed_string)
-        #
         self = klass()
+        self.context = context
+        preparsed_string, preparser_info = _preparser.from_string(
+            source_string, context=self.context, save_preparsed=save_preparsed, 
+        )
+        parsed_content = _models.from_string(preparsed_string)
+        #
         self.add_transition_variables(parsed_content.get("transition-variables"))
         self.add_transition_shocks(parsed_content.get("transition-shocks"))
         self.add_transition_equations(parsed_content.get("transition-equations"))
@@ -245,10 +245,10 @@ class AlgebraicSource:
         self.add_log_variables(parsed_content.get("log-variables"))
         for i in parsed_content.get("all-but", []):
             self.add_all_but(i)
-        self.context = preparser_info["context"]
         self.populate_logly()
         #
         return self, preparser_info
+
     #]
 
 

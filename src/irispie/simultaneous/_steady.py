@@ -79,7 +79,7 @@ class SteadyMixin:
         **kwargs,
     ) -> list[dict]:
         """
-        Calculate steady state for each Variant within this Model
+        Calculate steady state for each Variant within this model
         """
         model_flags = _flags.Flags.update_from_kwargs(self.get_flags(), **kwargs)
         solver = self._choose_steady_solver(model_flags.is_linear, model_flags.is_flat, )
@@ -258,7 +258,7 @@ class SteadyMixin:
         tolerance: float = 1e-12,
     ) -> tuple[bool, tuple[dict, ...]]:
         """
-        Verify currently assigned steady state in dynamic or steady equations for each Variant within this Model
+        Verify currently assigned steady state in dynamic or steady equations for each variant within this model
         """
         qid_to_logly = self.create_qid_to_logly()
         equator = self._choose_plain_equator(equation_switch)

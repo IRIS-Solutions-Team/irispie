@@ -35,10 +35,55 @@ from .. import sources as _sources
 #]
 
 
-class _AtomFactory:
+class Descriptor:
     """
+    Descriptor of first-order systems and solutions, and aldi Atom factory provider
     """
     #[
+
+    __slots__ = (
+        "system_vectors",
+        "solution_vectors",
+        "system_map",
+        "aldi_context",
+    )
+
+    def __init__(
+        self,
+        equations: Iterable[_equations.Equation],
+        quantities: Iterable[_quantities.Quantity],
+        context: dict | None,
+        /,
+    ) -> None:
+        self.system_vectors = SystemVectors(equations, quantities)
+        self.solution_vectors = SolutionVectors(self.system_vectors)
+        self.system_map = SystemMap(self.system_vectors)
+        system_equations = _custom_order_equations_by_eids(
+            equations,
+            self.system_vectors.transition_eids
+            + self.system_vectors.measurement_eids,
+        )
+        #
+        # Create the evaluation context for the algorithmic differentiator
+        # Use type(self) as the aldi Atom factory
+        self.aldi_context = _differentiators.Context(
+            type(self),
+            system_equations,
+            eid_to_wrts=self.system_vectors.eid_to_wrt_tokens,
+            qid_to_logly=_quantities.create_qid_to_logly(quantities),
+            first_column_to_eval=None,
+            num_columns_to_eval=1,
+            context=context,
+        )
+
+    def get_num_backwards(self: Self) -> int:
+        return self.system_vectors.get_num_backwards()
+
+    def get_num_forwards(self: Self) -> int:
+        return self.system_vectors.get_num_forwards()
+
+    # ===== Implement AtomFactoryProtocol =====
+    # This protocol is used to manufacture aldi Atoms
 
     @staticmethod
     def create_diff_for_token(
@@ -68,50 +113,6 @@ class _AtomFactory:
             slice(columns_to_eval[0]+token.shift, columns_to_eval[1]+token.shift+1),
         )
 
-    #]
-
-
-@_dc.dataclass(slots=True, )
-class Descriptor:
-    """
-    """
-    #[
-    system_vectors: SystemVectors | None = None
-    solution_vectors: SolutionVectors | None = None
-    system_map: SystemMap | None = None
-    aldi_context: _differentiators.Context | None = None
-
-    def __init__(
-        self,
-        equations: Iterable[_equations.Equation],
-        quantities: Iterable[_quantities.Quantity],
-        custom_functions: dict | None,
-        /,
-    ) -> None:
-        self.system_vectors = SystemVectors(equations, quantities)
-        self.solution_vectors = SolutionVectors(self.system_vectors)
-        self.system_map = SystemMap(self.system_vectors)
-        system_equations = _custom_order_equations_by_eids(
-            equations,
-            self.system_vectors.transition_eids
-            + self.system_vectors.measurement_eids,
-        )
-        #
-        # Create the evaluation context for the algorithmic differentiator
-        self.aldi_context = _differentiators.Context(
-            system_equations,
-            _AtomFactory,
-            eid_to_wrts=self.system_vectors.eid_to_wrt_tokens,
-            qid_to_logly=_quantities.create_qid_to_logly(quantities),
-            num_columns_to_eval=1,
-            custom_functions=custom_functions,
-        )
-
-    def get_num_backwards(self: Self) -> int:
-        return self.system_vectors.get_num_backwards()
-
-    def get_num_forwards(self: Self) -> int:
-        return self.system_vectors.get_num_forwards()
     #]
 
 

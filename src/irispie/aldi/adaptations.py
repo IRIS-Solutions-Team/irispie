@@ -21,7 +21,7 @@ for n in FUNCTION_ADAPTATIONS:
     )
 
 
-def add_function_adaptations_to_custom_functions(context: dict | None) -> dict:
+def add_function_adaptations_to_context(context: dict | None) -> dict:
     """
     """
     #[

@@ -18,6 +18,7 @@ import copy as _cp
 
 from ..conveniences import descriptions as _descriptions
 from ..conveniences import copies as _copies
+from ..conveniences import iterators as _iterators
 from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
 
@@ -105,8 +106,8 @@ class Series(
     """
     Time series objects
     """
-
     #[
+
     __slots__ = (
         "start_date", "data", "data_type", "_column_titles",
         "metadata", "_description", 
@@ -158,16 +159,24 @@ class Series(
         )
 
     @property
-    def shape(self):
+    def shape(self, /, ) -> tuple[int, int]:
         return self.data.shape
 
     @property
-    def num_columns(self):
+    def num_columns(self, /, ) -> int:
         return self.data.shape[1]
 
     @property
+    def num_variants(self, /, ) -> int:
+        return self.num_columns
+
+    @property
     def range(self):
-        return _dates.Ranger(self.start_date, self.end_date) if self.start_date else []
+        return _dates.Ranger(self.start_date, self.end_date, ) if self.start_date else ()
+
+    @property
+    def dates(self, /, ) -> tuple[_dates.Dater, ...]:
+        return tuple(self.range, )
 
     @property
     def end_date(self):
@@ -324,13 +333,24 @@ class Series(
     def get_data_column_from_to(
         self,
         from_to: Iterable[_dates.Dater],
-        column: Number | None = None,
+        column: int | None = None,
         /,
     ) -> _np.ndarray:
         """
         """
         column = column if column and column < self.data.shape[1] else 0
         return self.get_data_from_to(from_to, column, )
+
+    def iter_data_columns_from_to(
+        self,
+        from_to: Iterable[_dates.Dater],
+        /,
+    ) -> Iterator[_np.ndarray]:
+        """
+        Iterate over the columns and yield 1-D arrays for the given time span
+        """
+        data_from_to = self.get_data_from_to(from_to, )
+        yield from data_from_to.T
 
     def extract_columns(
         self,
@@ -339,7 +359,8 @@ class Series(
     ) -> None:
         if not isinstance(columns, Iterable):
             columns = (columns, )
-        columns = [ c for c in columns ]
+        else:
+            columns = tuple(c for c in columns)
         self.data = self.data[:, columns]
         self.column_titles = [ self.column_titles[c] for c in columns ]
 
@@ -814,8 +835,17 @@ class Series(
         self.start_date = new_start_date
         self._replace_data(new_values, )
 
-    def __iter__(self):
+    def __iter__(self, ):
+        """
+        Default iterator is line by line, yielding a tuple of (date, values)
+        """
         return zip(self.range, self.data)
+
+    def iter_data_variants_from_to(self, from_to, /, ) -> Iterator[_np.ndarray]:
+        """
+        Iterates over the data variants from the given start date to the given end date
+        """
+        return _iterators.exhaust_then_last(self.iter_data_columns_from_to(from_to, ))
 
     for n in FUNCTION_ADAPTATIONS:
         exec(f"def _{n}_(self, *args, **kwargs, ): return self.apply(_np.{n}, *args, **kwargs, )")

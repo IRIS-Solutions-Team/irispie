@@ -11,7 +11,7 @@ import datetime as _dt
 import enum as _en
 import functools as _ft
 from typing import (Union, Self, Any, Protocol, TypeAlias, runtime_checkable, )
-from collections.abc import (Iterable, Callable, )
+from collections.abc import (Iterable, Callable, Iterator, )
 from numbers import (Number, )
 
 from .conveniences import copies as _copies
@@ -240,7 +240,7 @@ class Dater(
         str_format = args[0] if args else ""
         return ("{date_str:"+str_format+"}").format(date_str=self.__str__())
 
-    def __iter__(self) -> Iterable[Self]:
+    def __iter__(self) -> Iterator[Self]:
         yield self
 
     def _get_hash_key(self, /, ) -> tuple[int, int]:

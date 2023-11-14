@@ -38,9 +38,9 @@ class SteadyEquator:
         t_zero: int,
         /,
         *,
-        custom_functions: dict[str, Callable] | None = None,
+        context: dict[str, Callable] | None = None,
     ) -> None:
-        self._equator = _plain.PlainEquator(equations, custom_functions=custom_functions, )
+        self._equator = _plain.PlainEquator(equations, context=context, )
         self._t_zero = t_zero
 
     def eval(

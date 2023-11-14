@@ -11,19 +11,24 @@ import numpy as _np
 from .. import dataslates as _dataslates
 from ..fords import solutions as _solutions
 from ..fords import descriptors as _descriptors
-from ..databoxes import main as _databoxes
+from .. import dataslates as _dataslates
 #]
 
 
 def simulate_flat(
     solution: _solutions.Solution,
     solution_vectors: _descriptors.SolutionVectors,
-    boolex_logly: tuple[bool, ...],
-    data: _np.ndarray,
-    columns_to_run: list[int],
+    dataslate: _dataslates.HorizontalDataslate,
     deviation: bool,
     anticipate: bool,
-):
+    /,
+) -> _np.ndarray:
+    """
+    """
+    columns_to_run = dataslate.base_columns
+    boolex_logly = dataslate.boolex_logly
+    working_data = _np.copy(dataslate.data)
+
     column_start = columns_to_run[0]
     column_slice = slice(column_start, column_start+len(columns_to_run))
     column_array = _np.array(range(column_start, column_start+len(columns_to_run)))
@@ -39,10 +44,10 @@ def simulate_flat(
     D = solution.D if not deviation else 0
 
     if any(boolex_logly):
-        data[boolex_logly, :] = _np.log(data[boolex_logly, :])
+        working_data[boolex_logly, :] = _np.log(working_data[boolex_logly, :])
 
     curr_state = _dataslates.HorizontalDataslate.retrieve_vector_from_data_array(
-        data, vec.transition_variables, column_start-1,
+        working_data, vec.transition_variables, column_start-1,
     )
 
     missing_initials = _np.isnan(curr_state)
@@ -65,10 +70,10 @@ def simulate_flat(
     measurement_variables_to_slab = [t.qid for t in vec.measurement_variables]
 
     transition_shocks_in_slab = [t.qid for t in vec.transition_shocks]
-    transition_shocks = data[transition_shocks_in_slab, :]
+    transition_shocks = working_data[transition_shocks_in_slab, :]
 
     measurement_shocks_in_slab = [t.qid for t in vec.measurement_shocks]
-    measurement_shocks = data[[t.qid for t in vec.measurement_shocks], :]
+    measurement_shocks = working_data[[t.qid for t in vec.measurement_shocks], :]
 
     transition_shocks[_np.isnan(transition_shocks)] = 0
     measurement_shocks[_np.isnan(measurement_shocks)] = 0
@@ -98,16 +103,17 @@ def simulate_flat(
             for k, s in enumerate(range(t, shock_column_end+1))
         )
         curr_state = T @ curr_state + shock_impact + K
-        data[no_shift_state_to_slab_lhs, t] = curr_state[no_shift_state_to_slab_rhs].flat
+        working_data[no_shift_state_to_slab_lhs, t] = curr_state[no_shift_state_to_slab_rhs].flat
 
         y = Z @ curr_state + H @ measurement_shocks[:, (t,)] + D
-        data[measurement_variables_to_slab, t] = y.flat
+        working_data[measurement_variables_to_slab, t] = y.flat
 
-    data[transition_shocks_in_slab, :] = transition_shocks
-    data[measurement_shocks_in_slab, :] = measurement_shocks
+    working_data[transition_shocks_in_slab, :] = transition_shocks
+    working_data[measurement_shocks_in_slab, :] = measurement_shocks
 
     if any(boolex_logly):
-        data[boolex_logly, :] = _np.exp(data[boolex_logly, :])
+        working_data[boolex_logly, :] = _np.exp(working_data[boolex_logly, :])
 
-    return data
+    dataslate.data = working_data
+
 

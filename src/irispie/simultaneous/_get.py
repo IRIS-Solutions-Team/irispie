@@ -31,15 +31,6 @@ Quantities that are time series in model databoxes
 _TIME_SERIES_QUANTITY = _quantities.QuantityKind.VARIABLE | _quantities.QuantityKind.SHOCK
 
 
-_DATABANK_OUTPUT_FORMAT_RESOLUTION = {
-    "dict": lambda x: x,
-    "Databox": lambda x: _databoxes.Databox.from_dict(x),
-    "databox": lambda x: _databoxes.Databox.from_dict(x),
-    "json": lambda x: js_.dumps(x),
-    "json4": lambda x: js_.dumps(x, indent=4),
-}
-
-
 def _decorate_output_format(func: Callable, ):
     """
     """
@@ -47,14 +38,16 @@ def _decorate_output_format(func: Callable, ):
     def _wrapper(*args, **kwargs):
         output = func(*args, **kwargs)
         output_format = kwargs.get("output", "Databox")
-        return _DATABANK_OUTPUT_FORMAT_RESOLUTION[output_format](output)
+        if output_format == "Databox":
+            output = _databoxes.Databox.from_dict(output, )
+        return output
     return _wrapper
     #]
 
 
 class GetMixin:
     """
-    Frontend getter methods for Model objects
+    Frontend getter methods for Simultaneous objects
     """
     #[
     @_decorate_output_format
@@ -246,11 +239,11 @@ class GetMixin:
     ) -> _flags.Flags:
         return self._invariant._flags
 
-    def get_custom_functions(
+    def get_context(
         self,
         /,
     ) -> dict[str, Callable]:
-        return self._invariant._function_context
+        return self._invariant._context
 
     def _get_values(
         self,

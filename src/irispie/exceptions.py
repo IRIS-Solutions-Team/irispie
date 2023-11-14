@@ -16,5 +16,5 @@ class UndeclaredName(Exception):
 
 class UnknownName(Exception):
     def __init__(self, name):
-        super().__init__(f"Name not found in Model object: '{name}'")
+        super().__init__(f"Name not found in model object: '{name}'")
 

@@ -53,7 +53,7 @@ class _ImportBlock:
     #]
 
 
-class DataboxImportMixin:
+class ImportMixin:
     """
     """
     #[
@@ -67,24 +67,29 @@ class DataboxImportMixin:
         delimiter: str = ",",
         csv_reader_settings: dict = {},
         numpy_reader_settings: dict = {},
+        name_row_transform: Callable | None = None,
         **kwargs,
     ) -> Self:
         """
         """
         self = klass(**kwargs)
 
-        num_header_lines = 1 + int(description_row)
-        csv_lines = _read_csv(file_name, num_header_lines, **csv_reader_settings, )
-        if not csv_lines:
+        num_header_rows = 1 + int(description_row)
+        csv_rows = _read_csv(file_name, num_header_rows, **csv_reader_settings, )
+        if not csv_rows:
             return self
 
-        header_lines = csv_lines[0:num_header_lines]
-        data_lines = csv_lines[num_header_lines:]
-        name_line = header_lines[0]
-        description_row = header_lines[1] if description_row else [""] * len(name_line)
+        header_rows = csv_rows[0:num_header_rows]
+        data_rows = csv_rows[num_header_rows:]
+        name_row = header_rows[0]
+
+        if name_row_transform:
+            name_row = _apply_name_row_transform(name_row, name_row_transform, )
+
+        description_row = header_rows[1] if description_row else [""] * len(name_row)
         #
-        for b in _block_iterator(name_line, description_row, data_lines, start_date_only, ):
-            array = _read_array_for_block(file_name, b, num_header_lines, delimiter=delimiter, **numpy_reader_settings, )
+        for b in _block_iterator(name_row, description_row, data_rows, start_date_only, ):
+            array = _read_array_for_block(file_name, b, num_header_rows, delimiter=delimiter, **numpy_reader_settings, )
             _add_series_for_block(self, b, array, )
         #
         return self
@@ -103,14 +108,14 @@ class DataboxImportMixin:
     #]
 
 
-def _read_csv(file_name, num_header_lines, /, delimiter=",", **kwargs, ):
+def _read_csv(file_name, num_header_rows, /, delimiter=",", **kwargs, ):
     """
     Read CSV cells into a list of lists
     """
     #[
     with open(file_name, "rt", encoding="utf-8-sig", ) as fid:
-        all_lines = [ line for line in _cs.reader(fid, **kwargs, ) ]
-    return all_lines
+        all_rows = [ line for line in _cs.reader(fid, **kwargs, ) ]
+    return all_rows
     #]
 
 
@@ -125,7 +130,7 @@ def _remove_nonascii_from_start(string, /, ):
     #]
 
 
-def _block_iterator(name_line, description_row, data_lines, start_date_only, /, ):
+def _block_iterator(name_row, description_row, data_rows, start_date_only, /, ):
     """
     """
     #[
@@ -142,20 +147,20 @@ def _block_iterator(name_line, description_row, data_lines, start_date_only, /, 
         except:
             return False
     #
-    name_line += ["__"]
+    name_row += ["__"]
     status = False
     blocks = []
     current_date_column = None
     current_start = None
     current_frequency = None
-    num_columns = len(name_line)
-    for column, cell in enumerate(name_line):
+    num_columns = len(name_row)
+    for column, cell in enumerate(name_row):
         if status and _is_end(cell):
             status = False
             num_columns = column - current_start
-            names = name_line[current_start:column]
+            names = name_row[current_start:column]
             descriptions = description_row[current_start:column]
-            row_index, dates = _extract_dates_from_data_lines(data_lines, current_frequency, current_date_column, start_date_only, )
+            row_index, dates = _extract_dates_from_data_rows(data_rows, current_frequency, current_date_column, start_date_only, )
             yield _ImportBlock(row_index, dates, current_start, num_columns, names, descriptions)
         if not status and _is_start(cell):
             status = True
@@ -165,8 +170,8 @@ def _block_iterator(name_line, description_row, data_lines, start_date_only, /, 
     #]
 
 
-def _extract_dates_from_data_lines(
-    data_lines,
+def _extract_dates_from_data_rows(
+    data_rows,
     frequency,
     column,
     start_date_only,
@@ -175,23 +180,23 @@ def _extract_dates_from_data_lines(
     """
     """
     #[
-    start_date = _dates.Dater.from_sdmx_string(frequency, data_lines[0][column])
+    start_date = _dates.Dater.from_sdmx_string(frequency, data_rows[0][column])
     date_extractor = {
         True: lambda i, line: start_date + i,
         False: lambda i, line: _dates.Dater.from_sdmx_string(frequency, line[column]),
     }[start_date_only]
     row_indices_and_dates = ( 
         (i, date_extractor(i, line))
-        for i, line in enumerate(data_lines)
+        for i, line in enumerate(data_rows)
         if start_date_only or line[column]
     )
     return tuple(zip(*row_indices_and_dates)) or ((), ())
     #]
 
 
-def _read_array_for_block(file_name, block, num_header_lines, /, delimiter=",", **kwargs, ):
+def _read_array_for_block(file_name, block, num_header_rows, /, delimiter=",", **kwargs, ):
     #[
-    skip_header = num_header_lines
+    skip_header = num_header_rows
     usecols = [ c for c in range(block.column_start, block.column_start+block.num_columns) ]
     return _np.genfromtxt(file_name, skip_header=skip_header, usecols=usecols, delimiter=delimiter, ndmin=2, **kwargs)
     #]
@@ -207,4 +212,13 @@ def _add_series_for_block(self, block, array, /, ):
         series.set_data(block.dates, array[:, columns])
         self[name] = series
     #]
+
+def _apply_name_row_transform(
+    name_row: list[str],
+    name_row_transform: Callable,
+    /,
+) -> list[str]:
+    """
+    """
+    return [ name_row_transform(s) for s in name_row ]
 

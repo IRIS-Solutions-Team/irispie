@@ -17,6 +17,10 @@ from .. import dataslates as _dataslates
 #]
 
 
+_DATASLATE_VARIANT_ITERATOR = \
+    _dataslates.HorizontalDataslate.iter_variants_from_databox_for_slatable
+
+
 class SimulateMixin:
     """
     """
@@ -25,7 +29,7 @@ class SimulateMixin:
     def simulate(
         self,
         in_databox: _databoxes.Databox,
-        base_range: Iterable[Dater],
+        span: Iterable[Dater],
         /,
         anticipate: bool = True,
         deviation: bool = False,
@@ -35,48 +39,44 @@ class SimulateMixin:
     ) -> tuple[_databoxes.Databox, dict[str, Any]]:
         """
         """
-        input_slatables = (self, )
+        base_dates = tuple(span, )
         if plan is not None:
-            plan.check_consistency(self, range, )
-            input_slatables += (plan, )
+            plan.check_consistency(self, base_dates, )
         #
-        # Create dataslates from input data, one for each variant
-        #
-        dataslates = tuple(
-            _dataslates.HorizontalDataslate.for_slatables(
-                input_slatables, in_databox, base_range, variant=i,
-            )
-            for i in range(self.num_variants)
+        out_dataslates = []
+        num_variants = self.num_variants
+        zipped = zip(
+            range(num_variants, ),
+            self.iter_variants(),
+            _DATASLATE_VARIANT_ITERATOR(self, in_databox, base_dates, )
         )
         #
-        qid_to_logly = self.create_qid_to_logly()
-        boolex_logly = tuple(
-            qid_to_logly[qid] or False
-            for qid in range(dataslates[0].num_rows)
-        )
-        #
-        for variant, dataslate in zip(self._variants, dataslates):
-            new_data = dataslate.copy_data()
-            new_data = _simulators.simulate_flat(
-                variant.solution, self.get_solution_vectors(), boolex_logly,
-                new_data, dataslate.base_columns, deviation, anticipate,
+        #=======================================================================
+        # Main loop over variants
+        for vid, mdi, dsi in zipped:
+            #
+            # Simulate and write to dataslate
+            _simulators.simulate_flat(
+                mdi._variants[0].solution, mdi.get_solution_vectors(),
+                dsi, deviation, anticipate,
             )
-            dataslate.data = new_data
-            dataslate.remove_periods_from_end(dataslate.base_columns[-1] - dataslate.num_periods + 1)
+            dsi.remove_terminal()
+            out_dataslates.append(dsi, )
+        #=======================================================================
         #
         # Combine resulting dataslates into a databox
-        #
-        out_db = _dataslates.multiple_to_databox(dataslates, )
+        out_db = _dataslates.multiple_to_databox(out_dataslates, )
         if prepend_input:
-            out_db.prepend(in_databox, base_range[0]-1, )
+            out_db.prepend(in_databox, base_dates[0]-1, )
         out_db = out_db | self.get_parameters_stds()
         #
         # Add to custom databox
-        #
         if target_databox is not None:
             out_db = target_databox | out_db
         #
+        # Simulation info
         info = {}
+        #
         return out_db, info
 
     #]

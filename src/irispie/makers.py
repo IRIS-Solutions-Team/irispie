@@ -17,30 +17,28 @@ from .aldi import adaptations as _adaptations
 def make_lambda(
     args: Iterable[str],
     expression: str,
-    globals: dict[str, Any] | None = None,
+    context: dict[str, Any] | None,
+    /,
 ) -> tuple[Callable, str, dict[str, Any]]:
     """
     Create lambda from the list of args and an expression
     """
     #[
+    globals_ = _prepare_globals(context, )
     func_str = f"lambda {', '.join(args, )}: {str(expression)}"
-    func = eval(func_str, globals, )
-    return func, func_str, globals
+    func = eval(func_str, globals_, )
+    return func, func_str, globals_
     #]
 
-
-def prepare_globals(
-    *,
-    custom_functions: dict[str, Any] | None = None,
-    builtins: dict[str, Callable] | None = None,
+def _prepare_globals(
+    context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
-    Create globals dict restricting builtins by default
     """
     #[
-    globals_ = _cp.deepcopy(custom_functions, ) if custom_functions else {}
-    globals_["__builtins__"] = builtins
-    globals_ = _adaptations.add_function_adaptations_to_custom_functions(globals_, )
+    globals_ = _cp.deepcopy(context, ) if context else {}
+    globals_["__builtins__"] = None
+    globals_ = _adaptations.add_function_adaptations_to_context(globals_, )
     return globals_
     #]
 

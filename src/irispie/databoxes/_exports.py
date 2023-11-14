@@ -89,7 +89,7 @@ class _ExportBlock:
     #]
 
 
-class DataboxExportMixin:
+class ExportMixin:
     """
     Databox mixin for exporting data to disk files
     """

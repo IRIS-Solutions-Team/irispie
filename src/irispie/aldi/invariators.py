@@ -9,8 +9,10 @@ from typing import (Self, )
 from numbers import (Number, )
 import numpy as _np
 
-from ..aldi import (differentiators as ad_, )
 from ..incidences import main as _incidence
+from . import differentiators as ad_
+from . import _rules as _rules
+
 #]
 
 
@@ -57,17 +59,9 @@ class Atom(ad_.LoglyMixin):
         self._logly_index = token.qid
         return self
 
-    def __add__(self, other: Self | Number) -> Self:
-        """
-        Invariance of self(x)+other(x) or self(x)+other
-        """
-        if hasattr(other, "_is_atom"):
-            new_diff = self._diff | other._diff
-            new_invariant = self._invariant & other._invariant
-        else:
-            new_diff = self._diff
-            new_invariant = self._invariant
-        return Atom.no_context(new_diff, new_invariant, False)
+    __add__ = _rules.add_invar
+
+    __sub__ = _rules.sub_invar
 
     def __mul__(self, other: Self | Number):
         """
@@ -120,8 +114,6 @@ class Atom(ad_.LoglyMixin):
         new_diff = self._diff
         new_invariant = False & self._invariant
         return Atom.no_context(new_diff, new_invariant, False)
-
-    __sub__ = __add__
 
     __radd__ = __add__
 

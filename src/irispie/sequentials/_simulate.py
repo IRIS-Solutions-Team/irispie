@@ -17,6 +17,10 @@ from .. import dataslates as _dataslates
 #]
 
 
+_DATASLATE_VARIANT_ITERATOR = \
+    _dataslates.HorizontalDataslate.iter_variants_from_databox_for_slatable
+
+
 class SimulateMixin:
     """
     """
@@ -25,7 +29,7 @@ class SimulateMixin:
     def simulate(
         self,
         in_databox: _databoxes.Databox,
-        range: Iterable[Dater],
+        span: Iterable[Dater],
         /,
         plan: _plans.Plan | None = None,
         prepend_input: bool = True,
@@ -36,54 +40,56 @@ class SimulateMixin:
         """
         #
         # Check consistency of the plan and the model/simulation
-        #
-        input_slatables = (self, )
+        # Add extra custom databox names to the model
+        base_dates = tuple(span, )
         if plan is not None:
-            plan.check_consistency(self, range, )
-            input_slatables += (plan, )
+            plan.check_consistency(self, base_dates, )
+            self.set_extra_databox_names(plan.get_databox_names(), )
         #
-        # Create dataslate from source data
+        # Underlie the input databox with the model parameters
+        in_databox = self.get_parameters() | in_databox
         #
-        source_databox = self.get_parameters() | in_databox
-        ds = _dataslates.HorizontalDataslate.for_slatables(
-            input_slatables, source_databox, range, variant=0,
+        #
+        out_dataslates = []
+        num_variants = 1
+        zipped = zip(
+            range(num_variants, ),
+            self.iter_variants(),
+            _DATASLATE_VARIANT_ITERATOR(self, in_databox, base_dates, ),
         )
         #
-        # Fill missing residuals with zeros
-        #
-        ds.fill_missing_in_base_periods(self.res_names, fill=0, )
-        #
-        # Run simulation period by period, equation by equation
-        #
-        columns_to_simulate = ds._base_indices
-        self._simulate_periods_and_explanatories(
-            ds,
-            columns_to_simulate,
-            plan,
-            when_nonfinite=when_nonfinite,
-        )
+        #=======================================================================
+        # Main loop over variants
+        for vid, mdi, dsi in zipped:
+            mdi._simulate_periods_and_explanatories(
+                dsi,
+                plan=plan,
+                when_nonfinite=when_nonfinite,
+            )
+            dsi.remove_terminal()
+            out_dataslates.append(dsi, )
+        #=======================================================================
         #
         # Build output databox
+        self.set_extra_databox_names(None, )
+        out_db = _dataslates.multiple_to_databox(out_dataslates, )
         #
-        ds.remove_terminal()
-        out_db = ds.to_databox()
         if prepend_input:
-            out_db.prepend(in_databox, ds.column_dates[0]-1, )
+            out_db.prepend(in_databox, base_dates[0]-1, )
         #
         # Add to custom databox
-        #
         if target_databox is not None:
             out_db = target_databox | out_db
         #
         info = {}
+        #
         return out_db, info
 
     def _simulate_periods_and_explanatories(
         self,
         ds: _dataslates.HorizontalDataslate,
-        columns: Iterable[int],
-        plan: _plans.Plan | None,
         /,
+        plan: _plans.Plan | None = None,
         when_nonfinite: Literal["error", "warning", "silent", ] = "warning",
     ) -> None:
         """
@@ -93,17 +99,24 @@ class SimulateMixin:
             ("Simulating the following data point(s) resulted in non-finite values:", )
         #
         name_to_row = ds.create_name_to_row()
-        first_base_column = ds.base_columns[0] if ds.base_columns else None
+        first_base_column = (
+            ds.base_columns[0]
+            if ds.base_columns
+            else None
+        )
         #
-        for data_column in columns:
+        for data_column in ds.base_columns:
             plan_column = data_column - first_base_column
             date = ds.column_dates[data_column]
             #
-            for x in self.explanatories:
+            for x in self.iter_explanatories():
+                #
                 transform = (
                     _get_transform(plan, x.lhs_name, plan_column, )
-                    if not x.is_identity else None
+                    if not x.is_identity
+                    else None
                 )
+                #
                 is_exogenized, implied_value = _is_exogenized(x.lhs_name, transform, ds.data, data_column, name_to_row, )
                 if is_exogenized:
                     info = x.exogenize(ds.data, data_column, implied_value)

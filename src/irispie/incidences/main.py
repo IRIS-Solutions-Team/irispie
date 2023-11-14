@@ -92,6 +92,10 @@ def is_qid_in_tokens(tokens: Iterable[Token], qid: int) -> bool:
     return any(tok.qid == qid for tok in tokens)
 
 
+def is_qid_zero_in_tokens(tokens: Iterable[Token], qid: int) -> bool:
+    return any(tok.qid == qid and tok.shift == 0 for tok in tokens)
+
+
 def print_tokens(
     tokens: Iterable[Token],
     qid_to_name: dict[int, str]

@@ -5,7 +5,8 @@
 #[
 from __future__ import annotations
 
-from typing import (Self, Callable, )
+from typing import (Self, Callable, NoReturn, )
+from numbers import (Number, )
 import copy as _cp
 
 from .. import equations as _equations
@@ -13,9 +14,13 @@ from .. import quantities as _quantities
 from .. import wrongdoings as _wrongdoings
 from ..fords import descriptors as _descriptors
 from ..equators import plain as _equators
-
+from .. import makers as _makers
 from . import _flags
 #]
+
+
+_DEFAULT_STD_LINEAR = 1
+_DEFAULT_STD_NONLINEAR = 0.01
 
 
 _PLAIN_EQUATOR_EQUATION = (
@@ -26,78 +31,139 @@ _PLAIN_EQUATOR_EQUATION = (
 
 class Invariant:
     """
-    Invariant part of a Model object
+    Invariant part of a Simultaenous object
     """
     #[
+
+    _DEFAULT_STD_NAME_FORMAT = "std_{}"
+    _DEFAULT_STD_DESCRIPTION_FORMAT = "(Std) {}"
 
     __slots__ = (
         "quantities",
         "dynamic_equations",
         "steady_equations",
-        "preprocessor",
-        "postprocessor",
-        "_flags",
-        "_function_context",
-        "shock_qid_to_std_qid",
         "dynamic_descriptor",
         "steady_descriptor",
-        "_plain_equator_for_dynamic_equations",
-        "_plain_equator_for_steady_equations",
+        "_flags",
+        "_context",
+        "_shock_qid_to_std_qid",
+        "_plain_dynamic_equator",
+        "_plain_steady_equator",
         "_min_shift",
         "_max_shift",
+        "_default_std",
     )
 
     def __init__(
         self,
         source,
         /,
-        context: dict | None = None,
         check_syntax: bool = True,
+        std_name_format: str | None = None,
+        std_description_format: str | None = None,
+        autodeclare_as: str | None = None,
+        default_std: Number | None = None,
         **kwargs,
     ) -> Self:
         """
         """
         self._flags = _flags.Flags.from_kwargs(**kwargs, )
-        self._populate_function_context(context)
+        self._default_std = _resolve_default_std(default_std, self._flags, )
+        self._context = source.context or {}
+        std_name_format = std_name_format or self._DEFAULT_STD_NAME_FORMAT
+        std_description_format = std_description_format or self._DEFAULT_STD_DESCRIPTION_FORMAT
         #
-        self.quantities = _cp.deepcopy(source.quantities)
-        self.dynamic_equations = _cp.deepcopy(source.dynamic_equations)
-        self.steady_equations = _cp.deepcopy(source.steady_equations)
-        self.preprocessor = None
-        self.postprocessor = None
+        self.quantities = tuple(source.quantities)
+        self.dynamic_equations = tuple(source.dynamic_equations)
+        self.steady_equations = tuple(source.steady_equations)
         #
-        _append_stds(self.quantities, _quantities.QuantityKind.TRANSITION_SHOCK, _quantities.QuantityKind.TRANSITION_STD, )
-        _append_stds(self.quantities, _quantities.QuantityKind.MEASUREMENT_SHOCK, _quantities.QuantityKind.MEASUREMENT_STD, )
+        # Create std_ parameters for transition and measurement shocks
+        if self._flags.is_stochastic:
+            transition_shocks = _quantities.generate_quantities_of_kind(self.quantities, _quantities.QuantityKind.TRANSITION_SHOCK, )
+            measurement_shocks = _quantities.generate_quantities_of_kind(self.quantities, _quantities.QuantityKind.MEASUREMENT_SHOCK, )
+            #
+            self.quantities += tuple(_generate_stds(
+                transition_shocks,
+                _quantities.QuantityKind.TRANSITION_STD,
+                std_name_format,
+                std_description_format,
+                entry=len(self.quantities),
+            ))
+            self.quantities += tuple(_generate_stds(
+                measurement_shocks,
+                _quantities.QuantityKind.MEASUREMENT_STD,
+                std_name_format,
+                std_description_format,
+                entry=len(self.quantities),
+            ))
+        #
+        # Look up undeclared names; autodeclare these names or throw an error
+        undeclared_names = _collect_undeclared_names(
+            self.quantities,
+            self.dynamic_equations + self.steady_equations,
+        )
+        if undeclared_names and autodeclare_as is None:
+            raise _wrongdoings.IrisPieError([
+                "These names are used in equations but not declared:",
+                *undeclared_names,
+                ])
+        self.quantities += tuple(_generate_quantities_for_undeclared_names(
+            undeclared_names, autodeclare_as, entry=len(self.quantities),
+        ))
+        #
+        # Verify uniqueness of all quantity names
         _quantities.check_unique_names(self.quantities)
         #
-        quantities = _quantities.reorder_by_kind(self.quantities, )
-        dynamic_equations = _equations.reorder_by_kind(self.dynamic_equations, )
-        steady_equations = _equations.reorder_by_kind(self.steady_equations, )
+        # Number of transition equations must equal number of transition variables
+        _check_numbers_of_variables_equations(
+            self.quantities,
+            self.dynamic_equations,
+            _quantities.QuantityKind.TRANSITION_VARIABLE,
+            _equations.EquationKind.TRANSITION_EQUATION,
+        )
+        #
+        # Number of measurement equations must equal number of measurement variables
+        _check_numbers_of_variables_equations(
+            self.quantities,
+            self.dynamic_equations,
+            _quantities.QuantityKind.MEASUREMENT_VARIABLE,
+            _equations.EquationKind.MEASUREMENT_EQUATION,
+        )
+        #
+        self.quantities = _quantities.reorder_by_kind(self.quantities, )
+        self.dynamic_equations = _equations.reorder_by_kind(self.dynamic_equations, )
+        self.steady_equations = _equations.reorder_by_kind(self.steady_equations, )
         _quantities.stamp_id(self.quantities, )
         _equations.stamp_id(self.dynamic_equations, )
         _equations.stamp_id(self.steady_equations, )
         #
-        self.shock_qid_to_std_qid = _create_shock_qid_to_std_qid(self.quantities, )
+        self._shock_qid_to_std_qid = (
+            _create_shock_qid_to_std_qid(self.quantities, std_name_format, )
+            if self._flags.is_stochastic
+            else {}
+        )
         #
         name_to_qid = _quantities.create_name_to_qid(self.quantities, )
         _equations.finalize_dynamic_equations(self.dynamic_equations, name_to_qid, )
         _equations.finalize_steady_equations(self.steady_equations, name_to_qid, )
         #
         if check_syntax:
-            _check_syntax(self.dynamic_equations, self._function_context, )
-            _check_syntax(self.steady_equations, self._function_context, )
+            _check_syntax(self.dynamic_equations, self._context, )
+            _check_syntax(self.steady_equations, self._context, )
         #
-        self.dynamic_descriptor = _descriptors.Descriptor(self.dynamic_equations, self.quantities, self._function_context, )
-        self.steady_descriptor = _descriptors.Descriptor(self.steady_equations, self.quantities, self._function_context, )
+        self.dynamic_descriptor = _descriptors.Descriptor(self.dynamic_equations, self.quantities, self._context, )
+        self.steady_descriptor = _descriptors.Descriptor(self.steady_equations, self.quantities, self._context, )
         #
-        self._plain_equator_for_dynamic_equations = _equators.PlainEquator(
-            _equations.generate_equations_of_kind( self.dynamic_equations, _PLAIN_EQUATOR_EQUATION, ),
-            custom_functions=self._function_context,
+        # Create a function to evaluate LHS–RHS in dynamic equations
+        self._plain_dynamic_equator = _equators.PlainEquator(
+            _equations.generate_equations_of_kind(self.dynamic_equations, _PLAIN_EQUATOR_EQUATION, ),
+            context=self._context,
         )
         #
-        self._plain_equator_for_steady_equations = _equators.PlainEquator(
+        # Create a function to evaluate LHS–RHS in steady equations
+        self._plain_steady_equator = _equators.PlainEquator(
             _equations.generate_equations_of_kind(self.steady_equations, _PLAIN_EQUATOR_EQUATION, ),
-            custom_functions=self._function_context,
+            context=self._context,
         )
         #
         self._min_shift, self._max_shift = None, None
@@ -113,27 +179,15 @@ class Invariant:
             self.dynamic_equations + self.steady_equations,
         )
 
-    def _populate_function_context(
-        self,
-        context: dict | None,
-        /,
-    ) -> None:
-        """
-        """
-        self._function_context = {
-            k: v for k, v in context.items()
-            if isinstance(v, Callable)
-        } if context else None
-
     #]
 
 
 def _check_syntax(equations, function_context, /, ):
     """
-    Try all equations at once; if this fails, do equation by equation to # catch the troublemakers
+    Try all equations at once; if this fails, do equation by equation to catch the troublemakers
     """
     try:
-        eval(_equations.create_equator_func_string(equations), )
+        eval(_equations.create_equator_func_string(equations, ), )
     except:
         _catch_troublemakers(equations, function_context, )
     #]
@@ -168,6 +222,7 @@ def _success_creating_lambda(equation, function_context):
 
 def _create_shock_qid_to_std_qid(
     quantities: Iterable[_quantities.Quantity],
+    std_name_format: str,
     /,
 ) -> dict[int, int]:
     """
@@ -178,51 +233,111 @@ def _create_shock_qid_to_std_qid(
     kind = _quantities.QuantityKind.SHOCK
     all_shock_qids = tuple(_quantities.generate_qids_by_kind(quantities, kind))
     return {
-        shock_qid: name_to_qid[_create_std_name(qid_to_name[shock_qid], )]
+        shock_qid: name_to_qid[std_name_format.format(qid_to_name[shock_qid], )]
         for shock_qid in all_shock_qids
     }
     #]
 
 
-def _append_stds(
-    quantities: Iterable[_quantities.Quantity],
-    shock_kind: _quantities.QuantityKind,
+def _generate_stds(
+    shocks: tuple[_quantities.Quantity, ...],
     std_kind: _quantities.QuantityKind,
+    std_name_format: str,
+    std_description_format: str,
+    /,
+    *,
+    entry: int,
+) -> tuple[_quantities.Quantity, ...]:
+    """
+    """
+    #[
+    return (
+        _quantities.Quantity(
+            id=None,
+            human=std_name_format.format(shock.human, ),
+            kind=std_kind,
+            logly=None,
+            description=std_description_format.format(shock.description or shock.human, ),
+            entry=entry,
+        )
+        for shock in shocks
+    )
+    #]
+
+
+def _collect_undeclared_names(
+    quantities: tuple[_quantities.Quantity, ...],
+    equations: tuple[_equations.Equation, ...],
+    /,
+) -> tuple[str, ...]:
+    """
+    """
+    #[
+    all_names = set(_quantities.generate_all_quantity_names(quantities, ))
+    all_names_in_equations = set(_equations.generate_all_names_from_equations(equations, ))
+    return tuple(all_names_in_equations - all_names)
+    #]
+
+
+def _generate_quantities_for_undeclared_names(
+    undeclared_names: set[str],
+    autodeclare_as: str | None,
+    /,
+    *,
+    entry: int,
+) -> tuple[_quantities.Quantity, ...] | NoReturn:
+    """
+    """
+    #[
+    if not undeclared_names:
+        return tuple()
+    autodeclare_kind = _quantities.QuantityKind.from_keyword(autodeclare_as, )
+    return (
+        _quantities.Quantity(
+            id=None,
+            human=name,
+            kind=autodeclare_kind,
+            logly=None,
+            description=None,
+            entry=entry,
+        )
+        for name in undeclared_names
+    )
+    #]
+
+
+def _check_numbers_of_variables_equations(
+    quantities: tuple[_quantities.Quantity, ...],
+    equations: tuple[_equations.Equation, ...],
+    quantity_kind: _quantities.QuantityKind,
+    equation_kind: _equations.EquationKind,
     /,
 ) -> None:
     """
     """
     #[
-    shocks = (q for q in quantities if q.kind in shock_kind)
-    for std_qid, shock in enumerate(shocks, start=len(quantities)):
-        std_human = _create_std_name(shock.human, )
-        std_logly = None
-        std_description = _create_std_description(shock.description, shock.human, )
-        std_entry = len(quantities)
-        std_quantity = _quantities.Quantity(std_qid, std_human, std_kind, std_logly, std_description, std_entry, )
-        quantities.append(std_quantity, )
+    num_variables = _quantities.count_quantities_of_kind(quantities, quantity_kind, )
+    num_equations = _equations.count_equations_of_kind(equations, equation_kind, )
+    if num_variables != num_equations:
+        raise _wrongdoings.IrisPieError([
+            f"Number of {quantity_kind.human.lower()}s ({num_variables})"
+            f" does not match number of {equation_kind.human.lower()}s ({num_equations})"
+        ])
     #]
 
 
-_STD_PREFIX = "std_"
-_STD_DESCRIPTION = "(Std) "
-
-
-def _create_std_name(
-    shock_name: str,
-    /,
-) -> str:
+def _resolve_default_std(
+    custom_default_std: Number | None,
+    flags: _flags.Flags,
+) -> Number:
     """
     """
-    return _STD_PREFIX + shock_name
-
-
-def _create_std_description(
-    shock_description: str,
-    shock_human: str,
-    /,
-) -> str:
-    """
-    """
-    return _STD_DESCRIPTION + (shock_description if shock_description else shock_human)
+    #[
+    if custom_default_std is not None:
+        return custom_default_std
+    elif flags.is_linear:
+        return _DEFAULT_STD_LINEAR
+    else:
+        return _DEFAULT_STD_NONLINEAR
+    #]
 

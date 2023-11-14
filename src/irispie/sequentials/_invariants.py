@@ -1,0 +1,135 @@
+"""
+"""
+
+
+#[
+from __future__ import annotations
+
+from collections.abc import (Iterable, )
+from typing import (Any, )
+
+from .. import equations as _equations
+from ..explanatories import main as _explanatories
+from ..conveniences import descriptions as _descriptions
+#]
+
+
+class Invariant(
+    _descriptions.DescriptionMixin,
+):
+    """
+    """
+    #[
+
+    __slots__ = (
+        "explanatories",
+        "all_names",
+        "extra_databox_names",
+        "_context",
+        "_description",
+    )
+
+    def __init__(self, /, ) -> None:
+        """
+        """
+        self.explanatories = ()
+        self.all_names = ()
+        self.extra_databox_names = None
+        self._context = {}
+        self._description = ""
+
+    @classmethod
+    def from_equations(
+        klass,
+        equations: Iterable[_equations.Equation],
+        /,
+        context: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        """
+        self = klass()
+        self._description = ""
+        self._context = context or {}
+        self.explanatories = tuple(
+            _explanatories.Explanatory(e, context=self._context, )
+            for e in equations
+        )
+        self.collect_all_names()
+        self.finalize_explanatories()
+        self.extra_databox_names = ()
+        return self
+
+    @property
+    def lhs_names(self, /, ) -> tuple[str]:
+        """
+        Tuple of names of LHS variables in order of appearance.
+        """
+        return tuple( x.lhs_name for x in self.explanatories )
+
+    @property
+    def res_names(self, /, ) -> tuple[str]:
+        """
+        Tuple of names of LHS variables in order of appearance
+        """
+        return tuple(
+            x.res_name
+            for x in self.explanatories
+            if x.res_name is not None
+        )
+
+    def collect_all_names(
+        self,
+        /,
+    ) -> None:
+        """
+        """
+        all_names = set()
+        for x in self.explanatories:
+            all_names.update(x.all_names)
+        lhs_res_names = self.lhs_names + self.res_names
+        rhs_only_names = tuple(all_names.difference(lhs_res_names, ))
+        self.all_names = self.lhs_names + rhs_only_names + self.res_names
+
+    def finalize_explanatories(
+        self,
+        /,
+    ) -> None:
+        """
+        """
+        name_to_qid = self.create_name_to_qid()
+        for x in self.explanatories:
+            x.finalize(name_to_qid, )
+
+    def reorder_equations(
+        self,
+        order = Iterable[int],
+        /,
+    ) -> None:
+        self.explanatories = [
+            self.explanatories[i]
+            for i in order
+        ]
+        self.collect_all_names()
+        self.finalize_explanatories()
+
+    def set_extra_databox_names(
+        self,
+        names: Iterable[str] | None,
+        /,
+    ) -> None:
+        """
+        """
+        self.extra_databox_names = tuple(names) if names else None
+
+    def create_name_to_qid(self, /, ) -> dict[str, int]:
+        """
+        """
+        return { name: i for i, name in enumerate(self.all_names) }
+
+    def create_name_to_qid(self, /, ) -> dict[str, int]:
+        """
+        """
+        return { name: i for i, name in enumerate(self.all_names) }
+
+    #]
+

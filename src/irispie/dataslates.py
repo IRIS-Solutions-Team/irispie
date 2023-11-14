@@ -8,15 +8,17 @@ from __future__ import annotations
 
 from typing import (Self, Protocol, )
 from numbers import (Number, )
-from collections.abc import (Iterable, )
+from collections.abc import (Iterable, Iterator, )
 import numpy as _np
 import dataclasses as _dc
 import numpy as _np
+import functools as _ft
 
 from .series import main as _series
 from .databoxes import main as _databoxes
 from .plans import main as _plans
 from .incidences import main as _incidences
+from .conveniences import iterators as _iterators
 from . import dates as _dates
 #]
 
@@ -24,14 +26,17 @@ from . import dates as _dates
 __all__ = (
     "HorizontalDataslate",
     "VerticalDataslate",
+    "multiple_to_databox",
 )
 
 
 class SlatableProtocol(Protocol, ):
     """
     """
-    def get_min_max_shift(self, /, ) -> tuple[int, int]:  ...
-    def get_databox_names(self, /, ) -> tuple[str, ...]:  ...
+    def get_min_max_shift(self, /, ) -> tuple[int, int]: ...
+    def get_databox_names(self, /, ) -> tuple[str, ...]: ...
+    def get_autovalues(self, /, ) -> dict[str, Number]: ...
+    def create_qid_to_logly(self, /, ) -> dict[int, bool]: ...
 
 
 @_dc.dataclass
@@ -42,82 +47,194 @@ class _Dataslate:
 
     data: _np.ndarray | None = None
     missing_names: tuple[str, ...] | None = None
-    base_indices: tuple[int, ...] | None = None
+    descriptions: Iterable[str] | None = None
+    boolex_logly: tuple[bool, ...] | None = None
+    _base_indexes: tuple[int, ...] | None = None
     _names: Iterable[str] | None = None
-    _descriptions: Iterable[str] | None = None
     _dates: tuple[_dates.Dater, ...] | None = None
     _record_shape: tuple[int, int] | None = None
+    _min_max_shift: tuple[int, int] | None = None
 
     @classmethod
-    def for_slatables(
+    def from_databox_variant(
         klass,
-        slatables: SlatableProtocol,
-        databox: _databoxes.Databox,
-        base_range: Iterable[_dates.Dater],
+        databox_variant: _databoxes.Databox | dict,
+        names: Iterable[str],
+        dates: Iterable[_dates.Dater],
         /,
+        *,
+        base_indexes: Iterable[int] = None,
+        descriptions: dict[str, str | None] | None = None,
+        autovalues: dict[str, Number] | None = None,
+        qid_to_logly: dict[int, bool | None] | None = None,
+        min_max_shift: tuple[int, int] = (0, 0),
+    ) -> Self:
+        """
+        Create a dataslate from a databox or dict variant
+        """
+        self = klass()
+        self._names = tuple(names)
+        self.missing_names = tuple(_databoxes.Databox.get_missing_names(databox_variant, self._names, ))
+        self._dates = dates
+        self._base_indexes = base_indexes
+        self._populate_data(databox_variant, )
+        self._populate_descriptions(descriptions, )
+        self._populate_boolex_logly(qid_to_logly, )
+        self._fill_autovalues(autovalues, )
+        self._min_max_shift = min_max_shift
+        return self
+
+    @classmethod
+    def iter_variants_from_databox_for_slatable(
+        klass,
+        slatable: SlatableProtocol,
+        databox: _databoxes.Databox | dict,
+        base_span: Iterable[_dates.Dater],
+        /,
+    ) -> Iterator[Self]:
+        """
+        """
+        names = slatable.get_databox_names()
+        dates, base_indexes, *min_max_shift = \
+            _get_extended_range(slatable, base_span, )
+        qid_to_logly = slatable.create_qid_to_logly()
+        return klass.iter_variants_from_databox(
+            databox, names, dates,
+            base_indexes=base_indexes,
+            autovalues=slatable.get_autovalues(),
+            min_max_shift=min_max_shift,
+            qid_to_logly=qid_to_logly,
+        )
+
+    @classmethod
+    def iter_variants_from_databox(
+        klass,
+        databox: _databoxes.Databox | dict,
+        names: Iterable[str] | None,
+        dates: Iterable[_dates.Dater],
+        **kwargs,
+    ) -> Iterator[Self]:
+        """
+        """
+        names = tuple(names or databox.keys())
+        dates = tuple(dates)
+        #
+        from_to = dates[0], dates[-1] if dates else ()
+        item_iterator = \
+            _ft.partial(_slate_value_variant_iterator, from_to=from_to, )
+        #
+        databox_variant_iterator = \
+            _databoxes.Databox.iter_variants(databox, item_iterator=item_iterator, names=names, )
+        #
+        for databox_variant in databox_variant_iterator:
+            yield klass.from_databox_variant(
+                databox_variant, names, dates,
+                descriptions=_retrieve_descriptions(databox_variant, names, ),
+                **kwargs,
+            )
+
+    @classmethod
+    def from_databox_for_slatable(
+        klass,
+        *args,
         variant: int = 0,
+        **kwargs,
     ) -> Self:
         """
         """
-        self = klass()
-        self._names = tuple()
-        for s in slatables:
-            self._names += tuple(
-                n for n in s.get_databox_names()
-                if n not in self._names
-            )
-        self.missing_names = tuple(databox.get_missing_names(self._names, ))
-        self._dates, self._base_indices = get_extended_range(slatables[0], base_range, )
-        self._populate_data(databox, variant, )
-        self._populate_descriptions(databox, )
-        return self
+        iterator = klass.iter_variants_from_databox_for_slatable(*args, **kwargs, )
+        for _ in range(variant, ):
+            next(iterator, )
+        return next(iterator, )
 
     @classmethod
     def from_databox(
         klass,
-        databox: _databoxes.Databox,
-        names: Iterable[str],
-        base_range: Iterable[_dates.Dater],
-        /,
+        *args,
         variant: int = 0,
+        **kwargs,
     ) -> Self:
         """
         """
-        self = klass()
-        self._names = tuple(names)
-        self.missing_names = tuple(databox.get_missing_names(self._names, ))
-        self._dates = tuple(base_range)
-        self._base_indices = tuple(range(len(self._dates)))
-        self._populate_data(databox, variant, )
-        self._populate_descriptions(databox, )
-        return self
+        iterator = klass.iter_variants_from_databox(*args, **kwargs, )
+        for _ in range(variant, ):
+            next(iterator, )
+        return next(iterator, )
+
+    @property
+    def num_initials(self, /, ) -> int:
+        """
+        """
+        return -self._min_max_shift[0]
+
+    @property
+    def num_terminals(self, /, ) -> int:
+        """
+        """
+        return self._min_max_shift[1]
+
+    def remove_initial_data(self, /, ) -> None:
+        """
+        """
+        if self.num_initials:
+            self.data = self.data[:, self.num_initials:]
 
     def _populate_data(
         self,
-        databox: _databoxes.Databox,
-        variant: int,
-    ) -> None:
+        databox: _databoxes.Databox | dict,
+        /,
+        ) -> None:
         """
+        Populate slatable data from databox or dict using the first variant
         """
-        data = tuple(
-            _extract_data_from_record(databox[n], self.from_to, self.num_periods, variant, ).reshape(*self._record_reshape, )
-            if n not in self.missing_names else self.nan_row.reshape(*self._record_reshape, )
-            for n in self._names
-        )
+        data = []
+        for n in self._names:
+            new_data = self.create_nan_vector()
+            if n in databox:
+                new_data[:] = databox[n]
+            data.append(new_data, )
         self.data = self._stack_in(data, )
 
     def _populate_descriptions(
         self,
-        databox: _databoxes.Databox,
+        descriptions: dict[str, str] | None,
+    ) -> None:
+        """
+        """
+        descriptions = descriptions or {}
+        self.descriptions = tuple(
+            descriptions.get(n, "") or ""
+            for n in self._names
+        )
+
+    def _populate_boolex_logly(
+        self,
+        qid_to_logly: dict[int, bool] | None,
         /,
     ) -> None:
         """
         """
-        self._descriptions = tuple(
-            _extract_descriptions_from_record(databox[n], )
-            if n not in self.missing_names else ""
-            for n in self._names
+        qid_to_logly = qid_to_logly or {}
+        self.boolex_logly = tuple(
+            qid_to_logly.get(i, False) or False
+            for i in range(len(self._names), )
         )
+
+    def _fill_autovalues(
+        self,
+        autovalues: dict[str, Number] | None,
+        /,
+    ) -> None:
+        """
+        """
+        if not autovalues:
+            return
+        for record_id, name in enumerate(self._names, ):
+            if name in autovalues:
+                record = self.retrieve_record(record_id, )
+                index_nan = _np.isnan(record)
+                record[index_nan] = _np.float64(autovalues[name])
+                self.store_record(record, record_id, )
 
     def to_databox(self, *args, **kwargs, ) -> _dates.Databox:
         """
@@ -136,11 +253,10 @@ class _Dataslate:
         """
         return self._dates[0], self._dates[-1]
 
-    @property
-    def nan_row(self, /, ) -> int:
+    def create_nan_vector(self, /, ) -> int:
         """
         """
-        return _np.full((self.num_periods, ), _np.nan, dtype=float)
+        return _np.full((self.num_periods, ), _np.nan, dtype=_np.float64, )
 
     @property
     def num_rows(self, /, ) -> int:
@@ -152,14 +268,14 @@ class _Dataslate:
     def base_slice(self, /, ) -> slice:
         """
         """
-        return slice(self._base_indices[0], self._base_indices[-1]+1)
+        return slice(self._base_indexes[0], self._base_indexes[-1]+1)
 
     def remove_terminal(self, /, ) -> None:
         """
         """
-        last_base_index = self._base_indices[-1]
-        self.data = self.data[:, :last_base_index+1]
+        last_base_index = self._base_indexes[-1]
         self._dates = self._dates[:last_base_index+1]
+        self._remove_terminal_data(last_base_index, )
 
     def copy_data(self, /, ) -> _np.ndarray:
         """
@@ -233,20 +349,10 @@ class _Dataslate:
         """
         ...
 
-    def fill_missing_in_base_periods(
-        self,
-        names,
-        /,
-        fill: Number = 0,
-    ) -> None:
+    def _remove_terminal_data(self, /, ) -> None:
         """
         """
-        for i, n in enumerate(self._names):
-            if names is not Ellipsis and n not in names:
-                continue
-            values = self.retrieve_record(i, self._base_indices, )
-            values[_np.isnan(values)] = fill
-            self.store_record(values, i, self._base_indices, )
+        ...
 
     #]
 
@@ -261,7 +367,7 @@ class HorizontalDataslate(_Dataslate, ):
     def _stack_in(data, /, ) -> _np.ndarray:
         """
         """
-        return _np.vstack(data)
+        return _np.vstack(data, )
 
     @staticmethod
     def retrieve_vector_from_data_array(
@@ -313,6 +419,13 @@ class HorizontalDataslate(_Dataslate, ):
             self.data = self.data[:, :remove]
             self._dates = self._dates[:remove]
 
+    def _remove_terminal_data(
+        self,
+        last_base_index: int,
+        /,
+    ) -> None:
+        self.data = self.data[:, :last_base_index+1]
+
     @property
     def column_dates(self, /, ) -> tuple[_dates.Dater, ...]:
         """
@@ -323,7 +436,7 @@ class HorizontalDataslate(_Dataslate, ):
     def base_columns(self, /, ) -> tuple[int, ...]:
         """
         """
-        return self._base_indices
+        return self._base_indexes
 
     @property
     def row_names(self, /, ) -> Iterable[str]:
@@ -385,6 +498,12 @@ class VerticalDataslate(_Dataslate, ):
         """
         return self._names
 
+    @property
+    def base_rows(self, /, ) -> tuple[int, ...]:
+        """
+        """
+        return self._base_indexes
+
     def retrieve_record(
         self,
         record_id: int,
@@ -397,6 +516,13 @@ class VerticalDataslate(_Dataslate, ):
             return self.data[:, record_id]
         else:
             return self.data[slice_, record_id]
+
+    def _remove_terminal_data(
+        self,
+        last_base_index: int,
+        /,
+    ) -> None:
+        self.data = self.data[:last_base_index+1, :]
 
     def store_record(
         self,
@@ -416,7 +542,7 @@ class VerticalDataslate(_Dataslate, ):
 
 
 def multiple_to_databox(
-    slates,
+    dataslates,
     /,
     target_databox: _databoxes.Databox | None = None,
 ) -> _databoxes.Databox:
@@ -426,28 +552,28 @@ def multiple_to_databox(
     #[
     if target_databox is None:
         target_databox = _databoxes.Databox()
-    num_columns = len(slates)
-    start_date = slates[0]._dates[0]
-    for record_id, n in enumerate(slates[0]._names):
+    num_columns = len(dataslates)
+    start_date = dataslates[0]._dates[0]
+    for record_id, n in enumerate(dataslates[0]._names):
         data = _np.hstack(tuple(
             ds.retrieve_record(record_id, ).reshape(-1, 1)
-            for ds in slates
+            for ds in dataslates
         ))
         target_databox[n] = _series.Series(
             num_columns=num_columns,
             start_date=start_date,
             values=data,
-            description=slates[0]._descriptions[record_id],
+            description=dataslates[0].descriptions[record_id],
         )
     return target_databox
     #]
 
 
-def get_extended_range(
+def _get_extended_range(
     slatable: SlatableProtocol,
     base_range: Iterable[_dates.Dater],
     /,
-) -> Iterable[_dates.Dater]:
+) -> tuple[Iterable[_dates.Dater], tuple[int, ...]]:
     """
     """
     base_range = tuple(t for t in base_range)
@@ -459,33 +585,38 @@ def get_extended_range(
     max_base_date = max(base_range)
     start_date = min_base_date + min_shift
     end_date = max_base_date + max_shift
-    base_indices = tuple(_dates.date_index(base_range, start_date))
-    # base_indices = tuple(range(-min_shift, -min_shift+num_base_periods))
+    base_indexes = tuple(_dates.date_index(base_range, start_date))
     extended_dates = tuple(_dates.Ranger(start_date, end_date))
-    return extended_dates, base_indices
+    return extended_dates, base_indexes, min_shift, max_shift
 
 
-def _extract_data_from_record(record, from_to, num_periods, column, /, ):
+def _slate_value_variant_iterator(
+    value: Any,
+    /,
+    from_to: tuple[_dates.Dater, _dates.Dater],
+) -> Iterator[Any]:
     """
     """
-    try:
-        # Record is a time series
-        return record.get_data_column_from_to(from_to, column)
-    except AttributeError:
-        # Record is a numeric scalar
-        return _np.full((num_periods, ), float(record), dtype=float, )
+    #[
+    if hasattr(value, "iter_data_variants_from_to"):
+        yield from value.iter_data_variants_from_to(from_to, )
+    elif isinstance(value, Iterable):
+        yield from _iterators.exhaust_then_last(value, )
+    else:
+        yield from _iterators.exhaust_then_last([], value, )
+    #]
 
 
-def _extract_descriptions_from_record(record, /, ):
+def _retrieve_descriptions(
+    databox: _databoxes.Databox | dict,
+    names: Iterable[str],
+) -> tuple[str]:
     """
     """
-    try:
-        # Record is a time series
-        return str(record.get_description())
-    except AttributeError:
-        # Record is a numeric scalar
-        return ""
-    except ValueError:
-        # Record is a numeric scalar
-        return ""
+    def _retrieve_item_description(n: str, /, ) -> str:
+        if n in databox and hasattr(databox[n], "get_description"):
+            return databox[n].get_description()
+        else:
+            return None
+    return { n: _retrieve_item_description(n, ) for n in names }
 

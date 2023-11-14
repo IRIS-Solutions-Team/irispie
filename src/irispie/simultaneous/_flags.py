@@ -3,19 +3,21 @@
 
 
 #[
-from __future__ import (annotations, )
+from __future__ import annotations
 
-import enum as en_
+import enum as _en
 #]
 
 
-class Flags(en_.IntFlag, ):
+class Flags(_en.IntFlag, ):
     """
     """
     #[
+
     DEFAULT = 0
-    LINEAR = en_.auto()
-    FLAT = en_.auto()
+    LINEAR = _en.auto()
+    FLAT = _en.auto()
+    DETERMINISTIC = _en.auto()
 
     @property
     def is_linear(self, /, ) -> bool:
@@ -33,10 +35,19 @@ class Flags(en_.IntFlag, ):
     def is_nonflat(self, /, ) -> bool:
         return not self.is_flat
 
+    @property
+    def is_deterministic(self, /, ) -> bool:
+        return Flags.DETERMINISTIC in self
+
+    @property
+    def is_stochastic(self, /, ) -> bool:
+        return not self.is_deterministic
+
     def update_from_kwargs(self, /, **kwargs) -> Self:
         linear = kwargs.get("linear") if kwargs.get("linear") is not None else self.is_linear
         flat = kwargs.get("flat") if kwargs.get("flat") is not None else self.is_flat
-        return type(self).from_kwargs(linear=linear, flat=flat)
+        deterministic = kwargs.get("deterministic") if kwargs.get("deterministic") is not None else self.is_deterministic
+        return type(self).from_kwargs(linear=linear, flat=flat, deterministic=deterministic, )
 
     @classmethod
     def from_kwargs(cls: type, **kwargs, ) -> Self:
@@ -45,7 +56,9 @@ class Flags(en_.IntFlag, ):
             self |= cls.LINEAR
         if kwargs.get("flat"):
             self |= cls.FLAT
+        if kwargs.get("deterministic"):
+            self |= cls.DETERMINISTIC
         return self
-    #]
 
+    #]
 

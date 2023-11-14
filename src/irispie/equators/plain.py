@@ -10,25 +10,38 @@ import numpy as _np
 from typing import (Protocol, Callable, Self, )
 from collections.abc import (Iterable, )
 
-from .. import equations as _eq
-from .. import quantities as _qu
-from ..aldi import adaptations as _aa
+from .. import equations as _equations
+from .. import makers as _makers
 #]
+
+
+EQUATOR_ARGS = ("x", "t", "L", )
 
 
 class PlainEquator:
     """
     """
     #[
+
+    __slots__ = (
+        "_equations",
+        "_func",
+        "_func_str",
+        "min_shift",
+        "max_shift",
+    )
+
     def __init__(
         self,
-        equations: Iterable[_eq.Equation],
+        equations: Iterable[_equations.Equation],
         /,
         *,
-        custom_functions: dict[str, Callable] | None = None,
+        context: dict[str, Callable] | None = None,
     ) -> None:
+        """
+        """
         self._equations = tuple(equations)
-        self._create_function(custom_functions, )
+        self._create_function(context, )
         self._populate_min_max_shifts()
 
     @property
@@ -43,21 +56,21 @@ class PlainEquator:
 
     def _create_function(
         self,
-        custom_functions: dict | None = None,
+        context: dict | None = None,
         /,
     ) -> None:
         """
         """
-        custom_functions = _aa.add_function_adaptations_to_custom_functions(custom_functions, )
         joined_xtrings = "  ,  ".join(i.xtring for i in self._equations)
-        self._func_str = _eq.EVALUATOR_PREAMBLE + "(" + joined_xtrings + " , )"
-        self._func = eval(self._func_str, custom_functions, )
+        expression = "(" + joined_xtrings + " , )"
+        self._func, self._func_str, *_ = \
+            _makers.make_lambda(EQUATOR_ARGS, expression, context, )
 
     def _populate_min_max_shifts(self, /, ) -> None:
         """
         """
-        self.min_shift = _eq.get_min_shift_from_equations(self._equations, )
-        self.max_shift = _eq.get_max_shift_from_equations(self._equations, )
+        self.min_shift = _equations.get_min_shift_from_equations(self._equations, )
+        self.max_shift = _equations.get_max_shift_from_equations(self._equations, )
 
     @property
     def min_num_columns(self, /, ) -> int:
@@ -66,12 +79,13 @@ class PlainEquator:
     def eval(
         self,
         data_array: _np.ndarray,
-        columns: int | Iterable[int],
-        steady_array: _np.ndarray,
+        columns: int | _np.ndarray,
+        steady_array: _np.ndarray | None,
         /,
     ) -> _np.ndarray:
         """
         """
+        steady_array = steady_array if steady_array is not None else data_array
         return self._func(data_array, columns, steady_array, )
 
     def eval_as_array(

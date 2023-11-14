@@ -46,33 +46,9 @@ class Variant:
         """
         """
         existing_keys = set(self.parameters.keys())
-        new_keys = set(kwargs.keys())
-        for n in existing_keys & new_keys:
+        custom_keys = set(kwargs.keys())
+        for n in existing_keys & custom_keys:
             self.parameters[n] = kwargs[n]
-
-    #]
-
-
-class VariantMixin:
-    """
-    """
-    #[
-
-    def assign(
-        self,
-        *args,
-        **kwargs,
-    ) -> None:
-        """
-        """
-        for v in self._variants:
-            v.assign(*args, **kwargs, )
-
-    def get_parameters(self, /, ) -> _databoxes.Databox:
-        """
-        """
-        parameters = self._variants[0].parameters
-        return _databoxes.Databox.from_dict(parameters, )
 
     #]
 

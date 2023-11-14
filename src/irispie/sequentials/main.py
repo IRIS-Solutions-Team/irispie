@@ -6,23 +6,25 @@ Sequential models
 #[
 from __future__ import annotations
 
-from collections.abc import (Iterable, )
-from typing import (Self, Any, Callable, NoReturn, )
+from collections.abc import (Iterable, Iterator, )
+from typing import (Self, Any, )
 import numpy as _np
 
 from .. import equations as _equations
 from .. import quantities as _quantities
 from .. import sources as _sources
 from ..conveniences import copies as _copies
-from ..conveniences import descriptions as _descriptions
+from ..conveniences import files as _files
 from ..incidences import main as _incidences
 from ..incidences import blazer as _blazer
-from ..explanatories import main as explanatories
-from ..plans import main as _plans
-from .. import makers as _makers
+from ..explanatories import main as _explanatories
+from .. import iter_variants as _iter_variants
 
-from . import _simulate as _simulate
+from . import _invariants as _invariants
 from . import _variants as _variants
+from . import _simulate as _simulate
+from . import _assigns as _assigns
+
 #]
 
 
@@ -31,42 +33,19 @@ __all__ = (
 )
 
 
-class PlannableForSimulate:
-    """
-    Implement PlannableProtocol
-    """
-    #[
-
-    def __init__(
-        self,
-        sequential,
-        /,
-    ) -> None:
-        """
-        """
-        self.can_be_endogenized = None
-        self.can_be_fixed_level = None
-        self.can_be_fixed_change = None
-
-    #]
-
-
 class Sequential(
     _simulate.SimulateMixin,
-    _sources.SourceMixin,
-    _variants.VariantMixin,
+    _assigns.AssignMixin,
+    _iter_variants.IterVariantsMixin,
     _copies.CopyMixin,
-    _descriptions.DescriptionMixin,
+    _sources.SourceMixin,
+    _files.FromFileMixin,
 ):
     """
     """
     #[
 
     __slots__ = (
-        "explanatories",
-        "all_names",
-        "_description",
-        "_invariant",
         "_variants",
     )
 
@@ -74,47 +53,37 @@ class Sequential(
         self,
         /,
     ) -> None:
-        self.explanatories = ()
-        self.all_names = ()
-        self._description = ""
-        self._invariant = None
-        self._variants = None
+        self._invariant = _invariants.Invariant()
+        self._variants = []
 
     @classmethod
     def from_equations(
-        cls,
+        klass,
         equations: Iterable[_equations.Equation],
         /,
-        custom_functions: dict[str, Callable] | None = None,
         quantities: Iterable[_quantities.Quantity] | None = None,
+        **kwargs,
     ) -> Self:
         """
         """
-        self = cls()
-        custom_functions = _makers.prepare_globals(custom_functions=custom_functions, )
-        self.explanatories = tuple(
-            explanatories.Explanatory(e, custom_functions=custom_functions, )
-            for e in equations
-        )
-        self._collect_all_names()
-        self._finalize_explanatories()
-        #
+        self = klass()
+        self._invariant = _invariants.Invariant.from_equations(equations, **kwargs, )
         initial_variant = _variants.Variant(quantities, )
         self._variants = [ initial_variant ]
         return self
 
     @classmethod
     def from_source(
-        cls,
-        source: _sources.AlgebraicSource,
+        klass,
+        source: _sources.ModelSource,
         /,
-        context: dict[str, Callable] | None = None,
+        context: dict[str, Any] | None = None,
     ) -> Self:
         """
         """
-        self = cls.from_equations(
+        self = klass.from_equations(
             source.dynamic_equations,
-            custom_functions=context,
+            context=context,
             quantities=source.quantities,
         )
         return self
@@ -122,32 +91,25 @@ class Sequential(
     @property
     def lhs_names(self, /, ) -> tuple[str]:
         """
-        Tuple of names of LHS variables in order of appearance.
+        Tuple of names of LHS variables in order of appearance
         """
-        return tuple(
-            x.lhs_name
-            for x in self.explanatories
-        )
+        return self._invariant.lhs_names
 
     @property
     def res_names(self, /, ) -> tuple[str]:
         """
         Tuple of names of LHS variables in order of appearance.
         """
-        return tuple(
-            x.res_name
-            for x in self.explanatories
-            if x.res_name is not None
-        )
+        return self._invariant.res_names
 
     @property
     def rhs_only_names(self, /, ) -> set[str]:
         """
         Set of names of RHS variables no appearing on the LHS.
         """
-        lhs_res_names = self.lhs_names + self.res_names
+        lhs_res_names = self._invariant.lhs_names + self._invariant.res_names
         return tuple(
-            n for n in self.all_names
+            n for n in self._invariant.all_names
             if n not in lhs_res_names
         )
 
@@ -157,7 +119,7 @@ class Sequential(
         Tuple of indices of identities
         """
         return tuple(
-            i for i, x in enumerate(self.explanatories)
+            i for i, x in enumerate(self._invariant.explanatories)
             if x.is_identity
         )
 
@@ -167,7 +129,7 @@ class Sequential(
         Tuple of indices of nonidentities
         """
         return tuple(
-            i for i, x in enumerate(self.explanatories)
+            i for i, x in enumerate(self._invariant.explanatories)
             if not x.is_identity
         )
 
@@ -178,7 +140,7 @@ class Sequential(
         """
         return tuple(
             x.equation
-            for x in self.explanatories
+            for x in self._invariant.explanatories
         )
 
     @property
@@ -186,12 +148,12 @@ class Sequential(
         """
         Tuple of LHS quantities in order of appearance
         """
-        lhs_names = self.lhs_names
+        lhs_names = self._invariant.lhs_names
         kind = _quantities.QuantityKind.LHS_VARIABLE
         logly = False
         return tuple(
             _quantities.Quantity(qid, name, kind, logly, desc, )
-            for (qid, name), desc in zip(enumerate(self.all_names), self.descriptions)
+            for (qid, name), desc in zip(enumerate(self._invariant.all_names), self.descriptions)
             if name in lhs_names
         )
 
@@ -208,7 +170,7 @@ class Sequential(
         """
         return tuple(
             x.equation.description
-            for x in self.explanatories
+            for x in self._invariant.explanatories
         )
 
     @property
@@ -227,7 +189,7 @@ class Sequential(
         """
         return min(
             x.min_shift
-            for x in self.explanatories
+            for x in self._invariant.explanatories
         )
 
     @property
@@ -236,19 +198,13 @@ class Sequential(
         """
         return max(
             x.max_shift
-            for x in self.explanatories
+            for x in self._invariant.explanatories
         )
 
-    def reorder_equations(
-        self,
-        order = Iterable[int],
-    ) -> None:
-        self.explanatories = [
-            self.explanatories[i]
-            for i in order
-        ]
-        self._collect_all_names()
-        self._finalize_explanatories()
+    def reorder_equations(self, *args, **kwargs, ) -> None:
+        """
+        """
+        self._invariant.reorder_equations(*args, **kwargs, )
 
     def sequentialize(
         self,
@@ -263,6 +219,11 @@ class Sequential(
         self.reorder_equations(eids_reordered, )
         return tuple(eids_reordered)
 
+    def iter_explanatories(self, /, ) -> Iterator[_explanatories.Explanatory]:
+        """
+        """
+        yield from self._invariant.explanatories
+
     @property
     def is_sequential(
         self,
@@ -271,6 +232,21 @@ class Sequential(
         """
         """
         return _blazer.is_sequential(self.incidence_matrix, )
+
+    def get_description(self, /, ) -> str:
+        """
+        """
+        return self._invariant.get_description()
+
+    def set_description(self, *args, **kwargs, ) -> None:
+        """
+        """
+        self._invariant.set_description(*args, **kwargs, )
+
+    def set_extra_databox_names(self, *args, **kwargs, ) -> None:
+        """
+        """
+        self._invariant.set_extra_databox_names(*args, **kwargs, )
 
     def get_human_equations(
         self,
@@ -282,76 +258,55 @@ class Sequential(
         """
         return tuple(
             x.equation.human
-            for x in self.explanatories
+            for x in self._invariant.explanatories
         )
 
-    def _collect_all_names(
-        self,
-        /,
-    ) -> None:
+    def create_qid_to_name(self, *args, **kwargs, ) -> dict[int, str]:
         """
         """
-        all_names = set()
-        for x in self.explanatories:
-            all_names.update(x.all_names)
-        lhs_res_names = self.lhs_names + self.res_names
-        rhs_only_names = tuple(all_names.difference(lhs_res_names, ))
-        self.all_names = self.lhs_names + rhs_only_names + self.res_names
+        return self._invariant.create_qid_to_name(*args, **kwargs, )
 
-    def create_qid_to_name(self, ) -> dict[int, str]:
+    def create_name_to_qid(self, *args, **kwargs, ) -> dict[str, int]:
         """
         """
-        return {
-            i: name
-            for i, name in enumerate(self.all_names)
-        }
+        return self._invariant.create_name_to_qid(*args, **kwargs, )
 
-    def create_name_to_qid(self, ) -> dict[str, int]:
-        """
-        """
-        return {
-            name: i
-            for i, name in enumerate(self.all_names)
-        }
-
-    def _finalize_explanatories(
-        self,
-        /,
-    ) -> None:
-        """
-        """
-        name_to_qid = self.create_name_to_qid()
-        for x in self.explanatories:
-            x.finalize(name_to_qid, )
-
-    def __str__(self, /, ) -> str:
+    def __repr__(self, /, ) -> str:
         """
         """
         indented = " " * 4
         return "\n".join((
-            f"{indented}Sequential object",
-            f"{indented}Description: \"{self.get_description()}\"",
-            f"{indented}Number of equations: {self.num_equations}",
-            f"{indented}Number of [nonidentities, identities]: [{len(self.nonidentity_index)}, {len(self.identity_index)}]",
-            f"{indented}Number of RHS-only names (excluding residuals): {len(self.rhs_only_names)}",
-            f"{indented}[Min, Max] time shift: [{self.min_shift:+g}, {self.max_shift:+g}]",
+            f"",
+            f"Sequential model",
+            f"Description: \"{self.get_description()}\"",
+            f"|",
+            f"|- Number of equations: {self.num_equations}",
+            f"|- Number of [nonidentities, identities]: [{len(self.nonidentity_index)}, {len(self.identity_index)}]",
+            f"|- Number of RHS-only names (excluding residuals): {len(self.rhs_only_names)}",
+            f"|- [Min, Max] time shift: [{self.min_shift:+g}, {self.max_shift:+g}]",
         ))
 
-    def precopy(self, /, ) -> None:
+    def __str__(self, /, ) -> str:
         """
         """
-        for x in self.explanatories:
-            x.precopy()
+        return repr(self, )
+
+    def __getitem__(
+        self,
+        request: int,
+        /,
+    ) -> Self:
+        """
+        """
+        return self.get_variant(request, )
 
     #
     # ===== Implement SlatableProtocol =====
-    # This protocal is used in HorizontalDataslate.for_slatable to prepare data arrays
+    # This protocal is used in HorizontalDataslate.for_slatable to prepare
+    # data arrays
     #
 
-    def get_min_max_shifts(
-        self,
-        /,
-    ) -> tuple[int, int]:
+    def get_min_max_shifts(self, /, ) -> tuple[int, int]:
         """
         """
         return self.min_shift, self.max_shift
@@ -359,7 +314,18 @@ class Sequential(
     def get_databox_names(self, /, ) -> tuple[str]:
         """
         """
-        return tuple(self.all_names)
+        extra_databox_names = self._invariant.extra_databox_names or ()
+        return tuple(self._invariant.all_names) + tuple(extra_databox_names)
+
+    def get_autovalues(self, /, ) -> dict[str, Any]:
+        """
+        """
+        return { n: 0 for n in self._invariant.res_names }
+
+    def create_qid_to_logly(self, /, ) -> dict[str, bool]:
+        """
+        """
+        return {}
 
     #
     # ===== Implement SimulatePlannableProtocol =====
@@ -369,7 +335,7 @@ class Sequential(
     @property
     def simulate_can_be_exogenized(self, /, ) -> tuple[str, ...]:
         return tuple(
-            i.lhs_name for i in self.explanatories
+            i.lhs_name for i in self._invariant.explanatories
             if not i.is_identity
         )
 

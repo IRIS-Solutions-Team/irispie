@@ -57,7 +57,7 @@ def _replace_lists(
 
     def replace(match: _re.Match, ) -> str:
         _type, = match.groups()
-        return ", ".join(type_to_names[_type])
+        return ", ".join(type_to_names.get(_type, tuple(), ), )
 
     return _LIST_PATTERN.sub(replace, source, )
     #]

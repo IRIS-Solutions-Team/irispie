@@ -13,11 +13,12 @@ import re as _re
 import operator as _op
 import functools as _ft
 from typing import (Self, TypeAlias, Literal, Sequence, Protocol, Any, )
-from collections.abc import (Iterable, Callable, )
+from collections.abc import (Iterable, Iterator, Callable, )
 from numbers import (Number, )
 
 from ..conveniences import views as _views
 from ..conveniences import descriptions as _descriptions
+from ..conveniences import iterators as _iterators
 from ..series import main as _series
 from .. import quantities as _quantities
 from .. import dataslates as _dataslates
@@ -94,8 +95,8 @@ _ARRAY_TRANSPOSER_FACTORY = {
 
 
 class Databox(
-    _imports.DataboxImportMixin,
-    _exports.DataboxExportMixin,
+    _imports.ImportMixin,
+    _exports.ExportMixin,
     _descriptions.DescriptionMixin,
     _views.ViewMixin,
     dict,
@@ -108,9 +109,10 @@ class Databox(
     def __init__(
         self,
         /,
-        description: str = "",
+        **kwargs,
     ) -> None:
-        self.set_description(description)
+        super().__init__(**kwargs, )
+        self._description = ""
 
     @classmethod
     def from_dict(
@@ -152,6 +154,24 @@ class Databox(
             series = constructor(dates, data, description=description)
             self[name] = series
         return self
+
+    def iter_variants(
+        self,
+        /,
+        *,
+        item_iterator: Iterator[Any] | None = None,
+        names: Iterable[str] | None = None,
+    ) -> Iterator[dict]:
+        """
+        """
+        names = names or self.keys()
+        item_iterator = item_iterator or _default_item_iterator
+        dict_variant_iter = {
+            k: item_iterator(self[k], )
+            for k in names if k in self
+        }
+        while True:
+            yield { k: next(v, ) for k, v in dict_variant_iter.items() }
 
     def get_names(self, /, ) -> list[str]:
         """
@@ -297,8 +317,10 @@ class Databox(
         names = self.get_series_names_by_frequency(frequency)
         if not names:
             return _dates.EmptyRanger()
-        min_start_date = min((self[n].start_date for n in names), key=_op.attrgetter("serial"))
-        max_end_date = max((self[n].end_date for n in names), key=_op.attrgetter("serial"))
+        start_dates = (self[n].start_date for n in names)
+        end_dates = (self[n].end_date for n in names)
+        min_start_date = min(start_dates, key=_op.attrgetter("serial"))
+        max_end_date = max(end_dates, key=_op.attrgetter("serial"))
         return _dates.Ranger(min_start_date, max_end_date)
 
     def to_json(self, **kwargs):
@@ -366,6 +388,20 @@ class Databox(
         prepending = prepending.copy()
         prepending.clip(None, end_prepending, )
         self.underlay(prepending, )
+
+    def eval(
+        self,
+        expression: str,
+        /,
+        context: dict[str, Any] | None,
+    ) -> Any:
+        """
+        """
+        expression = _format_eval_expression(expression, )
+        globals = { k: v for k, v in self.items() }
+        if context:
+            globals |= context
+        return eval(expression, globals, )
 
     @classmethod
     def steady(
@@ -464,3 +500,30 @@ def _apply_to_item(
     """
     target = source
     return func(target)
+
+
+def _format_eval_expression(expression: str, ) -> str:
+    """
+    """
+    #[
+    if "=" in expression:
+        lhs, *rhs = expression.split(expression, "=", )
+        rhs = "=".join(rhs, )
+        expression = "({lhs})-({rhs})"
+    return expression
+    #]
+
+
+def _default_item_iterator(value: Any, /, ) -> Iterator[Any]:
+    """
+    """
+    #[
+    is_value_iterable = (
+        isinstance(value, Iterable)
+        and not isinstance(value, str)
+        and not isinstance(value, bytes)
+    )
+    value = value if is_value_iterable else [value, ]
+    yield from _iterators.exhaust_then_last(value, None, )
+    #]
+

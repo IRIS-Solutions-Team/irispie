@@ -38,8 +38,11 @@ def from_string(
 
     info["context"] = context or {}
 
+    # Remove NON-NESTED block comments #{ ... #} or %{ ... %}
+    source = _remove_block_comments(source, )
+
     # Remove line comments %, #, ..., \
-    source = _remove_comments(source)
+    source = _remove_comments(source, )
 
     # Evaluate <...> expressions in the local context
     source = _evaluate_contextual_expressions(source, info["context"])
@@ -75,14 +78,15 @@ def from_string(
 
 _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
 
-    source =  (control / text)+
+    source =  (control / text / list)+
     control = white_spaces (for_do_block / if_then_block / else_keyword / end_keyword)
     text = ~r"[^¡]+"
 
     keyword = (
         for_keyword / do_keyword / 
         if_keyword / then_keyword / else_keyword /
-        end_keyword
+        end_keyword /
+        list_keyword
     )
 
     for_do_block = for_keyword white_spaces for_control do_keyword
@@ -102,6 +106,10 @@ _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
 
     else_keyword = keyword_prefix "else"
     end_keyword = keyword_prefix "end"
+
+    list = list_keyword "(" list_name ")"
+    list_keyword = keyword_prefix "list"
+    list_name = ~r"`\w+"
 
 """
 
@@ -124,40 +132,43 @@ class _Visitor(_pa.nodes.NodeVisitor):
     def _add(self, new):
         self.content.append(new)
 
-    def visit_source(self, node, visited_children):
+    def visit_source(self, node, visited_children, ):
         return self.content
 
-    def visit_end_keyword(self, node, visited_children):
+    def visit_end_keyword(self, node, visited_children, ):
         self._add(_End())
 
-    def visit_else_keyword(self, node, visited_children):
+    def visit_else_keyword(self, node, visited_children, ):
         self._add(_Else())
 
-    def visit_for_do_block(self, node, visited_children):
+    def visit_for_do_block(self, node, visited_children, ):
         control_name, tokens = visited_children[2]
         self._add(_For(control_name, tokens))
 
-    def visit_for_control(self, node, visited_children):
+    def visit_for_control(self, node, visited_children, ):
         control_name = visited_children[0][0] if visited_children[0] else "?"
         tokens = visited_children[1]
         return [control_name, tokens]
 
-    def visit_for_token_ended(self, node, visited_children):
+    def visit_for_token_ended(self, node, visited_children, ):
         return visited_children[0]
 
-    def visit_for_control_name_equals(self, node, visited_children):
+    def visit_for_control_name_equals(self, node, visited_children, ):
         return visited_children[0]
 
-    def visit_if_then_block(self, node, visited_children):
+    def visit_if_then_block(self, node, visited_children, ):
         condition = visited_children[1].strip()
         self._add(_If(condition))
 
-    def visit_text(self, node, visited_children):
+    def visit_text(self, node, visited_children, ):
         text = _strip_lines(node.text)
         if text:
             self._add(_Text(text))
 
-    def generic_visit(self, node, visited_children):
+    def visit_list(self, node, visited_children, ):
+        self._add(_Text(node.text))
+
+    def generic_visit(self, node, visited_children, ):
         return visited_children or node.text
     #]
 
@@ -302,15 +313,18 @@ class _End:
     #]
 
 
-_COMMENTS_PATTERN = _re.compile(r'"[^"\n]*"|[%#].*|\.\.\.|\\.*')
-
+_LINE_COMMENT_PATTERN = _re.compile(r'"[^"\n]*"|[%#].*|\.\.\.|\\.*')
+_BLOCK_COMMENT_PATTERN = _re.compile(r"([%#]){.*?\1\}", _re.DOTALL)
 
 def _remove_comments(source: str, /, ) -> str:
     return _re.sub(
-        _COMMENTS_PATTERN,
+        _LINE_COMMENT_PATTERN,
         lambda m: m.group(0) if m.group(0).startswith('"') else "",
         source,
     )
+
+def _remove_block_comments(source: str, /, ) -> str:
+    return _re.sub(_BLOCK_COMMENT_PATTERN, "", source, )
 
 def _cumulate_level(sequence: Sequence, /, ) -> int:
     return list(_it.accumulate(s.level for s in sequence))

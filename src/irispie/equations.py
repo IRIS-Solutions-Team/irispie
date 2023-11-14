@@ -6,7 +6,7 @@ Model equations
 #[
 from __future__ import annotations
 
-from typing import (Self, TypeAlias, Callable, )
+from typing import (Self, Callable, )
 from collections.abc import (Iterable, )
 import enum as _en
 import re as _re
@@ -25,12 +25,7 @@ from . import wrongdoings as _wrongdoings
 
 EVALUATOR_PREAMBLE = "lambda x, t, L: "
 _EVALUATOR_FORMAT = EVALUATOR_PREAMBLE + "[{joined_xtrings}]"
-
-_QUANTITY_NAME_PATTERN = _re.compile(r"\b([a-zA-Z]\w*)\b(\[[-+\d]+\])?(?!\()")
 _REPLACE_UKNOWN = "?"
-
-
-_ErrorLogType = list[tuple[str, str]]
 
 
 class EquationKind(_en.Flag):
@@ -40,6 +35,10 @@ class EquationKind(_en.Flag):
     #[
     TRANSITION_EQUATION = _en.auto()
     MEASUREMENT_EQUATION = _en.auto()
+
+    @property
+    def human(self, /, ) -> str:
+        return self.name.replace("_", " ").title()
     #]
 
 
@@ -67,13 +66,16 @@ class Equation(
     entry: int | None = None
     attributes: set[str] = ()
 
-    def finalize(self, name_to_id: dict[str, int]) -> _ErrorLogType:
-        self.xtring, self.incidence, error_log, *_ = xtring_from_human(self.human, name_to_id, )
-        return error_log
+    def finalize(self, name_to_id: dict[str, int], ) -> None:
+        """
+        Finalize the equation by creating an xtring from the human string, and and composing the incidence matrix
+        Any undeclared names are assumed to be caught before this step
+        """
+        self.xtring, self.incidence, *_ = xtring_from_human(self.human, name_to_id, )
 
-    def create_equator_func(self, /, *, custom_functions: dict[str, Callable]) -> Callable:
-        equator_func_string = create_equator_func_string([self.xtring], custom_functions)
-        eval(equator_func_string, custom_functions, )
+    def create_equator_func(self, /, *, context: dict[str, Callable]) -> Callable:
+        equator_func_string = create_equator_func_string([self.xtring], context)
+        eval(equator_func_string, context, )
 
     def copy(self, /, ) -> Self:
         """
@@ -87,24 +89,26 @@ class Equation(
     #]
 
 
-def generate_all_tokens_from_equations(equations: Iterable[Equation]) -> _incidence.Tokens:
+def generate_all_tokens_from_equations(equations: Iterable[Equation], /, ) -> _incidence.Tokens:
     return _it.chain.from_iterable(eqn.incidence for eqn in equations)
 
 
 def finalize_dynamic_equations(
     equations: Iterable[Equation],
     name_to_id: dict[str, int],
+    /,
 ) -> None:
-    _finalize_equations_from_humans(equations, name_to_id)
-    _replace_steady_ref(equations)
+    _finalize_equations_from_humans(equations, name_to_id, )
+    _replace_steady_ref(equations, )
 
 
 def finalize_steady_equations(
     equations: Iterable[Equation],
     name_to_id: dict[str, int],
+    /,
 ) -> None:
-    _finalize_equations_from_humans(equations, name_to_id)
-    _remove_steady_ref(equations)
+    _finalize_equations_from_humans(equations, name_to_id, )
+    _remove_steady_ref(equations, )
 
 
 def _replace_steady_ref(equations: Iterable[Equation]) -> None:
@@ -126,15 +130,8 @@ def _finalize_equations_from_humans(
     """
     """
     #[
-    error_log = tuple(_it.chain.from_iterable(
-        eqn.finalize(name_to_id)
-        for eqn in equations
-    ))
-    if error_log:
-        raise _wrongdoings.IrisPieError(
-            ("These names used in equations are not declared", )
-            + error_log
-        )
+    for eqn in equations:
+        eqn.finalize(name_to_id, )
     #]
 
 
@@ -142,10 +139,10 @@ def generate_names_from_human(human: str) -> Iterable[str]:
     """
     Generate all names from a single human string
     """
-    return (f[0] for f in _QUANTITY_NAME_PATTERN.findall(human))
+    return (f[0] for f in _quantities.QUANTITY_OCCURRENCE_PATTERN.findall(human))
 
 
-def generate_all_names(equations: Iterable[Equation]) -> list[str]:
+def generate_all_names_from_equations(equations: Iterable[Equation]) -> list[str]:
     """
     Extract all names from a list of equations
     """
@@ -155,7 +152,7 @@ def generate_all_names(equations: Iterable[Equation]) -> list[str]:
 def create_name_to_qid_from_equations(equations: Iterable[Equation]) -> dict[str, int]:
     """
     """
-    all_names = sorted(list(set(generate_all_names(equations))))
+    all_names = sorted(list(set(generate_all_names_from_equations(equations))))
     return { name: qid for qid, name in enumerate(all_names) }
 
 
@@ -189,33 +186,27 @@ def create_human_to_eid(
     return { eqn.human: eqn.id for eqn in equations }
 
 
-def xtring_from_human( 
+def xtring_from_human(
     human: str,
     name_to_id: dict[str, int],
-) -> tuple[str, set[_incidence.Token], _ErrorLogType, _incidence.Tokens]:
+) -> tuple[str, set[_incidence.Token]]:
     """
     Convert human string to xtring and retrieve incidence tokens
     """
     #[
     tokens_list: list[_incidence.Token] = []
-    error_log = []
 
-    def _x_from_human(match: _re.Match) -> str:
+    def _replace_human_with_x(match: _re.Match) -> str:
         name = match.group(1)
-        qid = name_to_id.get(name)
-        if qid is not None:
-            shift = _resolve_shift_str(match.group(2))
-            new_token = _incidence.Token(qid, shift)
-            tokens_list.append(new_token)
-            return new_token.print_xtring()
-        else:
-            error_log.append(f"\"{name}\" in {human}")
-            tokens_list.append(_incidence.Token(None, None))
-            return _REPLACE_UKNOWN
+        qid = name_to_id[name]
+        shift = _resolve_shift_str(match.group(2))
+        new_token = _incidence.Token(qid, shift)
+        tokens_list.append(new_token)
+        return new_token.print_xtring()
 
-    xtring = _QUANTITY_NAME_PATTERN.sub(_x_from_human, human)
+    xtring = _quantities.QUANTITY_OCCURRENCE_PATTERN.sub(_replace_human_with_x, human)
     xtring = _postprocess_xtring(xtring)
-    return xtring, set(tokens_list), error_log, tokens_list
+    return xtring, set(tokens_list), tokens_list
     #]
 
 
@@ -227,7 +218,8 @@ def _postprocess_xtring(equation: str) -> str:
     #[
     equation = equation.replace("^", "**")
     equation = equation.replace(" ", "")
-    lhs_rhs = equation.split("=", maxsplit=1)
+    equation = equation.replace("===", "=")
+    lhs_rhs = equation.split("=", maxsplit=1, )
     if len(lhs_rhs)==2:
         equation = "-(" + lhs_rhs[0] + ")+" + lhs_rhs[1]
     return equation
@@ -250,9 +242,18 @@ def generate_eids_by_kind(
 
 def generate_equations_of_kind(
     equations: Iterable[Equation],
-    kind: EquationKind,
+    kind: EquationKind | None,
+    /,
 ) -> Iterable[Equation]:
-    return (eqn for eqn in equations if eqn.kind in kind)
+    return (eqn for eqn in equations if kind is None or eqn.kind in kind)
+
+
+def count_equations_of_kind(
+    equations: Iterable[Equation],
+    kind: EquationKind,
+    /,
+) -> int:
+    return sum(1 for eqn in generate_equations_of_kind(equations, kind, ))
 
 
 def sort_equations(

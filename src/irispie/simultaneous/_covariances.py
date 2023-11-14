@@ -44,8 +44,8 @@ class CoverianceMixin:
         )
         #
         # Tuple element cov_by_order[order] is an N-by-N covariance matrix
-        # (for singleton Models) or an N-by-N-by-num_variants covariance
-        # matrix (for nonsingleton Models)
+        # (for singleton models) or an N-by-N-by-num_variants covariance
+        # matrix (for nonsingleton models)
         #
         stack_func = _STACK_FUNC_FACTORY[self.is_singleton]
         cov_by_order = tuple(
@@ -128,7 +128,7 @@ class CoverianceMixin:
         """
         shocks = getattr(self._invariant.dynamic_descriptor.solution_vectors, f"{kind}_shocks")
         std_qids = tuple(
-            self._invariant.shock_qid_to_std_qid[t.qid]
+            self._invariant._shock_qid_to_std_qid[t.qid]
             for t in shocks
         )
         return variant.retrieve_values("levels", std_qids, )
