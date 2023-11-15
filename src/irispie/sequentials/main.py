@@ -67,8 +67,8 @@ class Sequential(
         """
         """
         self = klass()
-        self._invariant = _invariants.Invariant.from_equations(equations, **kwargs, )
-        initial_variant = _variants.Variant(quantities, )
+        self._invariant = _invariants.Invariant.from_equations(equations, quantities, **kwargs, )
+        initial_variant = _variants.Variant(self._invariant.parameter_names, )
         self._variants = [ initial_variant ]
         return self
 
@@ -77,14 +77,14 @@ class Sequential(
         klass,
         source: _sources.ModelSource,
         /,
-        context: dict[str, Any] | None = None,
+        **kwargs,
     ) -> Self:
         """
         """
         self = klass.from_equations(
             source.dynamic_equations,
-            context=context,
             quantities=source.quantities,
+            **kwargs,
         )
         return self
 
@@ -277,13 +277,14 @@ class Sequential(
         indented = " " * 4
         return "\n".join((
             f"",
-            f"Sequential model",
-            f"Description: \"{self.get_description()}\"",
+            f"{self.__class__.__name__} model",
+            f"Description: \"{self.get_description() or ""}\"",
             f"|",
-            f"|- Number of equations: {self.num_equations}",
-            f"|- Number of [nonidentities, identities]: [{len(self.nonidentity_index)}, {len(self.identity_index)}]",
-            f"|- Number of RHS-only names (excluding residuals): {len(self.rhs_only_names)}",
-            f"|- [Min, Max] time shift: [{self.min_shift:+g}, {self.max_shift:+g}]",
+            f"|» Number of equations: {self.num_equations}",
+            f"|» Number of [nonidentities, identities]: [{len(self.nonidentity_index)}, {len(self.identity_index)}]",
+            f"|» Number of RHS-only names (excluding residuals): {len(self.rhs_only_names)}",
+            f"|» [Min, Max] time shift: [{self.min_shift:+g}, {self.max_shift:+g}]",
+            f"|",
         ))
 
     def __str__(self, /, ) -> str:
@@ -302,8 +303,6 @@ class Sequential(
 
     #
     # ===== Implement SlatableProtocol =====
-    # This protocal is used in HorizontalDataslate.for_slatable to prepare
-    # data arrays
     #
 
     def get_min_max_shifts(self, /, ) -> tuple[int, int]:
@@ -317,10 +316,17 @@ class Sequential(
         extra_databox_names = self._invariant.extra_databox_names or ()
         return tuple(self._invariant.all_names) + tuple(extra_databox_names)
 
-    def get_autovalues(self, /, ) -> dict[str, Any]:
+    def get_fallbacks(self, /, ) -> dict[str, Any]:
         """
         """
-        return { n: 0 for n in self._invariant.res_names }
+        fallbacks = { n: 0 for n in tuple(self._invariant.res_names) }
+        fallbacks.update(self.get_parameters(), )
+        return fallbacks
+
+    def get_overwrites(self, /, ) -> dict[str, Any]:
+        """
+        """
+        return {}
 
     def create_qid_to_logly(self, /, ) -> dict[str, bool]:
         """
@@ -328,8 +334,7 @@ class Sequential(
         return {}
 
     #
-    # ===== Implement SimulatePlannableProtocol =====
-    # This protocol is used to create SimulatePlan objects
+    # ===== Implement PlannableSimulateProtocol =====
     #
 
     @property
@@ -339,8 +344,9 @@ class Sequential(
             if not i.is_identity
         )
 
+    simulate_can_be_when_data = simulate_can_be_exogenized
     simulate_can_be_endogenized = ()
-    simualte_can_be_anticipated = ()
+    simulate_can_be_anticipated = ()
 
     #]
 

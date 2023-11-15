@@ -28,11 +28,17 @@ class AssignMixin:
     def get_parameters(self, /, ) -> _databoxes.Databox:
         """
         """
-        keys = self._variants[0].parameters.keys()
-        return _databoxes.Databox(**{
-            k: [ v.parameters[k] for v in self._variants ]
-            for k in keys
-        })
+        parameter_names = self._invariant.parameter_names
+        if self.is_singleton:
+            return _databoxes.Databox(**{
+                n: self._variants[0].parameters[n]
+                for n in parameter_names
+            })
+        else:
+            return _databoxes.Databox(**{
+                n: [ v.parameters[n] for v in self._variants ]
+                for n in parameter_names
+            })
 
     #]
 

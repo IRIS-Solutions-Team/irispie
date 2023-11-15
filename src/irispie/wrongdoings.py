@@ -17,7 +17,9 @@ HOW: TypeAlias = Literal["error", "warning", "silent"]
 
 
 _PLAIN_PREFIX = ""
-_LIST_PREFIX = "»» "
+
+_BLANK_LINE = "|"
+_LIST_PREFIX = "|» "
 
 
 class IrisPieError(Exception):
@@ -52,7 +54,10 @@ def _prepare_message(message):
     if isinstance(message, str):
         message = _PLAIN_PREFIX + message
     else:
-        message = ("\n"+_LIST_PREFIX).join(message)
+        message = tuple(message)
+        title = message[0]
+        error_list = tuple(_LIST_PREFIX + e for e in message[1:])
+        message = ("\n").join((title, _BLANK_LINE, *error_list, _BLANK_LINE, ), )
     return message
     #]
 
@@ -73,7 +78,7 @@ def _raise_as_warning(
     """
     """
     #[
-    message = _prepare_message(message)
+    message = _prepare_message(message, )
     message = "\nIrisPieWarning: " + message
     try:
         _wa.warn(message, IrisPieWarning, skip_file_prefixes=_WARN_SKIPS, )

@@ -24,16 +24,12 @@ class Variant:
 
     def __init__(
         self,
-        quantities: Iterable[_quantities.Quantity] | None = None,
+        parameter_names: Iterable[str],
         /,
     ) -> None:
         """
         """
-        self.parameters = {
-            qty.human: None
-            for qty in quantities
-            if qty.kind is _quantities.QuantityKind.PARAMETER
-        }
+        self.parameters = { n: None for n in parameter_names }
 
     def assign(self, *args, **kwargs, ) -> None:
         """

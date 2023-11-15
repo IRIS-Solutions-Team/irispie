@@ -23,13 +23,18 @@ class AssignMixin:
     def assign(
         self,
         /,
+        *args,
         **kwargs,
     ) -> None:
         """
+        Assign parameters from dicts or from keyword arguments
         """
+        for arg in args:
+            self.assign(**arg, )
+        if not kwargs:
+            return
         name_to_qid = self.create_name_to_qid()
         qid_to_name = self.create_qid_to_name()
-        #
         qid_to_custom_values = _rekey_dict(kwargs, name_to_qid, )
         qid_to_custom_values_iter = _databoxes.Databox.iter_variants(
             qid_to_custom_values,
@@ -37,7 +42,7 @@ class AssignMixin:
         )
         for variant, values in zip(self._variants, qid_to_custom_values_iter, ):
             variant.update_values_from_dict(values, )
-            self._enforce_autovalues(variant, )
+            self._enforce_assignment_rules(variant, )
 
     #]
 

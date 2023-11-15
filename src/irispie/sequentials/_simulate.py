@@ -46,10 +46,6 @@ class SimulateMixin:
             plan.check_consistency(self, base_dates, )
             self.set_extra_databox_names(plan.get_databox_names(), )
         #
-        # Underlie the input databox with the model parameters
-        in_databox = self.get_parameters() | in_databox
-        #
-        #
         out_dataslates = []
         num_variants = 1
         zipped = zip(

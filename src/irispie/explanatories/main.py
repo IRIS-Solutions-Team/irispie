@@ -220,7 +220,8 @@ class Explanatory:
         res_row = self.res_qid
         data[lhs_row, columns] = values
         data[res_row, columns] = self.eval_res(data, columns, )
-        info = {"is_finite": _np.isfinite(data[res_row, columns]), }
+        is_finite = _np.isfinite(data[res_row, columns])
+        info = {"is_finite": is_finite, }
         return info
 
     #]

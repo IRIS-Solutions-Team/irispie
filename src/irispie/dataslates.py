@@ -35,7 +35,8 @@ class SlatableProtocol(Protocol, ):
     """
     def get_min_max_shift(self, /, ) -> tuple[int, int]: ...
     def get_databox_names(self, /, ) -> tuple[str, ...]: ...
-    def get_autovalues(self, /, ) -> dict[str, Number]: ...
+    def get_fallbacks(self, /, ) -> dict[str, Number]: ...
+    def get_overwrites(self, /, ) -> dict[str, Number]: ...
     def create_qid_to_logly(self, /, ) -> dict[int, bool]: ...
 
 
@@ -65,7 +66,8 @@ class _Dataslate:
         *,
         base_indexes: Iterable[int] = None,
         descriptions: dict[str, str | None] | None = None,
-        autovalues: dict[str, Number] | None = None,
+        fallbacks: dict[str, Number] | None = None,
+        overwrites: dict[str, Number] | None = None,
         qid_to_logly: dict[int, bool | None] | None = None,
         min_max_shift: tuple[int, int] = (0, 0),
     ) -> Self:
@@ -80,7 +82,8 @@ class _Dataslate:
         self._populate_data(databox_variant, )
         self._populate_descriptions(descriptions, )
         self._populate_boolex_logly(qid_to_logly, )
-        self._fill_autovalues(autovalues, )
+        self._fill_fallbacks(fallbacks, )
+        self._fill_overwrites(overwrites, )
         self._min_max_shift = min_max_shift
         return self
 
@@ -101,7 +104,8 @@ class _Dataslate:
         return klass.iter_variants_from_databox(
             databox, names, dates,
             base_indexes=base_indexes,
-            autovalues=slatable.get_autovalues(),
+            fallbacks=slatable.get_fallbacks(),
+            overwrites=slatable.get_overwrites(),
             min_max_shift=min_max_shift,
             qid_to_logly=qid_to_logly,
         )
@@ -220,20 +224,35 @@ class _Dataslate:
             for i in range(len(self._names), )
         )
 
-    def _fill_autovalues(
+    def _fill_fallbacks(
         self,
-        autovalues: dict[str, Number] | None,
+        fallbacks: dict[str, Number] | None,
         /,
     ) -> None:
         """
         """
-        if not autovalues:
+        if not fallbacks:
             return
         for record_id, name in enumerate(self._names, ):
-            if name in autovalues:
+            if name in fallbacks:
                 record = self.retrieve_record(record_id, )
                 index_nan = _np.isnan(record)
-                record[index_nan] = _np.float64(autovalues[name])
+                record[index_nan] = _np.float64(fallbacks[name])
+                self.store_record(record, record_id, )
+
+    def _fill_overwrites(
+        self,
+        overwrites: dict[str, Number] | None,
+        /,
+    ) -> None:
+        """
+        """
+        if not overwrites:
+            return
+        for record_id, name in enumerate(self._names, ):
+            if name in overwrites:
+                record = self.retrieve_record(record_id, )
+                record[:] = _np.float64(overwrites[name])
                 self.store_record(record, record_id, )
 
     def to_databox(self, *args, **kwargs, ) -> _dates.Databox:

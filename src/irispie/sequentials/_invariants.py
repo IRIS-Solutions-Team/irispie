@@ -9,6 +9,7 @@ from collections.abc import (Iterable, )
 from typing import (Any, )
 
 from .. import equations as _equations
+from .. import quantities as _quantities
 from ..explanatories import main as _explanatories
 from ..conveniences import descriptions as _descriptions
 #]
@@ -42,14 +43,16 @@ class Invariant(
     def from_equations(
         klass,
         equations: Iterable[_equations.Equation],
+        quantities: Iterable[_quantities.Quantity] | None,
         /,
         context: dict[str, Any] | None = None,
+        description: str | None = None,
     ) -> None:
         """
         """
         self = klass()
-        self._description = ""
         self._context = context or {}
+        self.set_description(description, )
         self.explanatories = tuple(
             _explanatories.Explanatory(e, context=self._context, )
             for e in equations
@@ -57,6 +60,8 @@ class Invariant(
         self.collect_all_names()
         self.finalize_explanatories()
         self.extra_databox_names = ()
+        quantity_names = _quantities.generate_all_quantity_names(quantities, )
+        self.parameter_names = tuple(n for n in quantity_names if n in self.all_names)
         return self
 
     @property
@@ -119,7 +124,10 @@ class Invariant(
     ) -> None:
         """
         """
-        self.extra_databox_names = tuple(names) if names else None
+        if names is None:
+            self.extra_databox_names = None
+            return
+        self.extra_databox_names = tuple(set(names).difference(self.all_names))
 
     def create_name_to_qid(self, /, ) -> dict[str, int]:
         """

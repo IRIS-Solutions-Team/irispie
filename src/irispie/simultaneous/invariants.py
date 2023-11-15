@@ -9,12 +9,14 @@ from typing import (Self, Callable, NoReturn, )
 from numbers import (Number, )
 import copy as _cp
 
+from ..conveniences import descriptions as _descriptions
+from ..fords import descriptors as _descriptors
+from ..equators import plain as _equators
 from .. import equations as _equations
 from .. import quantities as _quantities
 from .. import wrongdoings as _wrongdoings
-from ..fords import descriptors as _descriptors
-from ..equators import plain as _equators
 from .. import makers as _makers
+
 from . import _flags
 #]
 
@@ -29,7 +31,9 @@ _PLAIN_EQUATOR_EQUATION = (
 )
 
 
-class Invariant:
+class Invariant(
+    _descriptions.DescriptionMixin,
+):
     """
     Invariant part of a Simultaenous object
     """
@@ -52,6 +56,7 @@ class Invariant:
         "_min_shift",
         "_max_shift",
         "_default_std",
+        "_description",
     )
 
     def __init__(
@@ -63,10 +68,12 @@ class Invariant:
         std_description_format: str | None = None,
         autodeclare_as: str | None = None,
         default_std: Number | None = None,
+        description: str | None = None,
         **kwargs,
     ) -> Self:
         """
         """
+        self.set_description(description, )
         self._flags = _flags.Flags.from_kwargs(**kwargs, )
         self._default_std = _resolve_default_std(default_std, self._flags, )
         self._context = source.context or {}
@@ -167,6 +174,24 @@ class Invariant:
         self._plain_steady_equator = _equators.PlainEquator(
             _equations.generate_equations_of_kind(self.steady_equations, _PLAIN_EQUATOR_EQUATION, ),
             context=self._context,
+        )
+
+    @property
+    def num_transition_equations(self, /, ) -> int:
+        """
+        """
+        return sum(
+            1 for e in self.dynamic_equations
+            if e.kind is _equations.EquationKind.TRANSITION_EQUATION
+        )
+
+    @property
+    def num_measurement_equations(self, /, ) -> int:
+        """
+        """
+        return sum(
+            1 for e in self.dynamic_equations
+            if e.kind is _equations.EquationKind.MEASUREMENT_EQUATION
         )
 
     def _populate_min_max_shifts(self, /, ) -> None:

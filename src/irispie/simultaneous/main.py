@@ -47,6 +47,11 @@ __all__ = [
 ]
 
 
+_SIMULATE_CAN_BE_EXOGENIZED = _quantities.QuantityKind.ENDOGENOUS_VARIABLE
+_SIMULATE_CAN_BE_ENDOGENIZED = _quantities.QuantityKind.EXOGENOUS_VARIABLE | _quantities.QuantityKind.SHOCK
+_SIMULATE_CAN_BE_ANTICIPATED = _SIMULATE_CAN_BE_EXOGENIZED | _SIMULATE_CAN_BE_ENDOGENIZED
+
+
 class Simultaneous(
     _sources.SourceMixin,
     _assigns.AssignMixin,
@@ -95,6 +100,31 @@ class Simultaneous(
         else:
             return self.get_variant(request, )
 
+    def __repr__(self, /, ) -> str:
+        """
+        """
+        indented = " " * 4
+        min_shift, max_shift = self.get_min_max_shifts()
+        return "\n".join((
+            f"",
+            f"{self.__class__.__name__} model",
+            f"Description: \"{self.get_description() or ""}\"",
+            f"|",
+            f"|» Number of [transition, measurement] equations: [{self.num_transition_equations}, {self.num_measurement_equations}]",
+            f"|» [Min, Max] time shift: [{min_shift:+g}, {max_shift:+g}]",
+            f"|",
+        ))
+
+    def get_description(self, /, ) -> str:
+        """
+        """
+        return self._invariant.get_description()
+
+    def set_description(self, *args, **kwargs, ) -> None:
+        """
+        """
+        self._invariant.set_description(*args, **kwargs, )
+
     def get_value(
         self,
         name: str,
@@ -141,6 +171,18 @@ class Simultaneous(
         True for models declared as flat
         """
         return self._invariant._flags.is_flat
+
+    @property
+    def num_transition_equations(self, /, ) -> int:
+        """
+        """
+        return self._invariant.num_transition_equations
+
+    @property
+    def num_measurement_equations(self, /, ) -> int:
+        """
+        """
+        return self._invariant.num_measurement_equations
 
     def create_name_to_qid(self, /, ) -> dict[str, int]:
         return _quantities.create_name_to_qid(self._invariant.quantities)
@@ -199,21 +241,25 @@ class Simultaneous(
             True: self.create_zero_array, False: self.create_steady_array,
         }[deviation](**kwargs)
 
-    def _enforce_autovalues(self, variant, /, ) -> None:
+    def _enforce_assignment_rules(self, variant, /, ) -> None:
         """
         """
         #
-        # Reset levels of shocks to zero, remove changes
+        # Reset levels of shocks to zero
         #
         name_to_qid = self.create_name_to_qid()
-        autovalues = self.get_autovalues()
-        autovalues = { name_to_qid[k]: v for k, v in autovalues.items() }
-        variant.update_values_from_dict(autovalues, )
+        shock_qids = _quantities.generate_qids_by_kind(
+            self._invariant.quantities, _quantities.QuantityKind.SHOCK,
+        )
+        zero_shocks = { i: 0 for i in shock_qids }
+        variant.update_values_from_dict(zero_shocks, )
         #
         # Remove changes from quantities that are not logly variables
         #
-        nonloglies = _quantities.generate_qids_by_kind(self._invariant.quantities, ~_sources.LOGLY_VARIABLE, )
-        assign_nonloglies = { qid: (..., _np.nan) for qid in nonloglies }
+        nonloglies = _quantities.generate_qids_by_kind(
+            self._invariant.quantities, ~_sources.LOGLY_VARIABLE,
+        )
+        assign_nonloglies = { qid: (..., _np.nan, ) for qid in nonloglies }
         variant.update_values_from_dict(assign_nonloglies, )
 
     def systemize(
@@ -321,13 +367,12 @@ class Simultaneous(
             self._invariant._flags.is_flat,
         )
         self._variants = [ initial_variant ]
-        self._enforce_autovalues(self._variants[0], )
         self._assign_default_stds()
+        self._enforce_assignment_rules(self._variants[0], )
         return self
 
     #
-    # Implement SlatableProtocol
-    # =============================
+    # ===== Implement SlatableProtocol =====
     #
 
     def get_min_max_shifts(self, ) -> tuple[int, int]:
@@ -341,11 +386,41 @@ class Simultaneous(
         qid_to_name = self.create_qid_to_name()
         return tuple(qid_to_name[qid] for qid in sorted(qid_to_name))
 
-    def get_autovalues(self, /, ) -> dict[str, Number]:
+    def get_fallbacks(self, /, ) -> dict[str, Number]:
         """
         """
         shocks = _quantities.generate_quantity_names_by_kind(self._invariant.quantities, _quantities.QuantityKind.SHOCK)
         return { name: 0 for name in shocks }
+
+    def get_overwrites(self, /, ) -> dict[str, Any]:
+        """
+        """
+        return self.get_parameters_stds()
+
+    #
+    # ===== Implement PlannableSimulateProtocol =====
+    #
+
+    @property
+    def simulate_can_be_exogenized(self, /, ) -> tuple[str, ...]:
+        return tuple(_quantities.generate_quantity_names_by_kind(
+            self._invariant.quantities, _SIMULATE_CAN_BE_EXOGENIZED,
+        ))
+
+    @property
+    def simulate_can_be_endogenized(self, /, ) -> tuple[str, ...]:
+        return tuple(_quantities.generate_quantity_names_by_kind(
+            self._invariant.quantities, _SIMULATE_CAN_BE_ENDOGENIZED,
+        ))
+
+    @property
+    def simulate_can_be_anticipated(self, /, ) -> tuple[str, ...]:
+        return tuple(_quantities.generate_quantity_names_by_kind(
+            self._invariant.quantities, _SIMULATE_CAN_BE_ANTICIPATED,
+        ))
+
+    simulate_can_be_when_data = ()
+
     #]
 
 

@@ -84,6 +84,7 @@ Plans for dynamic simulations
         "anticipated",
         "exogenized",
         "endogenized",
+        "when_data",
     )
 
     __slots__ = (
@@ -144,6 +145,7 @@ Tabular view of the simulation plan
         self._default_exogenized = None
         self._default_endogenized = None
         self._default_anticipated = bool(anticipate)
+        self._default_when_data = None
         for r in self._registers:
             register = {
                 n: [None] * self.num_periods
@@ -189,15 +191,21 @@ Tabular view of the simulation plan
         self,
         dates: Iterable[_dates.Dater] | Ellipsis,
         names: Iterable[str] | str | Ellipsis,
-        /,
         new_status: bool | None = None,
     ) -> None:
-        self._plan_simulate(
-            self._anticipated_register,
-            dates,
-            names,
-            new_status,
-        )
+        """
+        """
+        self._plan_simulate(self._anticipated_register, dates, names, new_status, )
+
+    def when_data(
+        self,
+        dates: Iterable[_dates.Dater] | Ellipsis,
+        names: Iterable[str] | str | Ellipsis,
+        new_status: bool | None = None,
+    ) -> None:
+        """
+        """
+        self._plan_simulate(self._when_data_register, dates, names, new_status, )
 
     def exogenize(
         self,
@@ -206,7 +214,8 @@ Tabular view of the simulation plan
         /,
         *,
         transform: str | None = None,
-        when_data: bool | None = False,
+        when_data: bool | None = None,
+        anticipate: bool | None = None,
     ) -> None:
         """
 ------------------------------------------------------------
@@ -249,32 +258,39 @@ available; only available in simulation plans created for
         """
         transform = _transforms.resolve_transform(transform)
         transform.when_data = when_data
-        self._plan_simulate(
-            self._exogenized_register,
-            dates,
-            names,
-            transform,
-        )
+        self._plan_simulate(self._exogenized_register, dates, names, transform, )
+        if anticipate is not None:
+            self.anticipate(dates, names, anticipate)
+        if when_data is not None:
+            self.when_data(dates, names, when_data)
 
     def endogenize(
         self,
         dates: Iterable[_dates.Dater] | Ellipsis,
         names: Iterable[str] | str | Ellipsis,
+        /,
+        *,
+        anticipate: bool | None = None,
     ) -> None:
         """
+------------------------------------------------------------
 
-        Endogenize
+# `endogenize`
 
+#### Endogenize certain quantities at certain dates ####
+
+Syntax
+-------
+
+
+------------------------------------------------------------
         """
         transform = None
         when_data = None
         new_status = True
-        self._plan_simulate(
-            self._endogenized_register,
-            dates,
-            names,
-            new_status,
-        )
+        self._plan_simulate(self._endogenized_register, dates, names, new_status, )
+        if anticipate is not None:
+            self.anticipate(dates, names, anticipate, )
 
     def get_anticipated_point(
         self,
@@ -286,6 +302,17 @@ available; only available in simulation plans created for
         """
         point = self._anticipated_register[name][column]
         return point if point is not None else self._default_anticipated
+
+    def get_when_data_point(
+        self,
+        name: str,
+        column: int,
+        /,
+    ) -> bool | None:
+        """
+        """
+        point = self._when_data_register[name][column]
+        return point if point is not None else self._default_when_data
 
     def get_exogenized_point(
         self,
@@ -318,7 +345,7 @@ available; only available in simulation plans created for
                 t.resolve_databox_name(k, )
                 for t in v if t is not None
             )
-        return tuple(databox_names)
+        return tuple(n for n in databox_names if n is not None)
 
     def __str__(self, /, ) -> str:
         """

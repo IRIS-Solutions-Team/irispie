@@ -17,7 +17,7 @@ class DescriptionMixin:
         return str(self._description)
 
     def set_description(self, description: str, /, ) -> None:
-        self._description = str(description)
+        self._description = str(description or "")
 
     #]
 
