@@ -348,9 +348,8 @@ class Context:
     def eval(
         self,
         data_array: _np.ndarray,
+        column_offset: int,
         steady_array: _np.ndarray,
-        /,
-        column_offset: int | None = None,
     ) -> Iterable[Atom]:
         """
         Evaluate and return the list of final atoms, one atom for each equation

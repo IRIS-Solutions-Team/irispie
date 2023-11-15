@@ -53,14 +53,12 @@ class Descriptor:
         self,
         equations: Iterable[_equations.Equation],
         quantities: Iterable[_quantities.Quantity],
-        column_to_eval: int,
         context: dict[str, Any] | None,
         /,
     ) -> None:
         self.system_vectors = SystemVectors(equations, quantities)
         self.solution_vectors = SolutionVectors(self.system_vectors)
         self.system_map = SystemMap(self.system_vectors)
-        self._column_to_eval = column_to_eval
         system_equations = _custom_order_equations_by_eids(
             equations,
             self.system_vectors.transition_eids
@@ -109,7 +107,7 @@ class Descriptor:
     ) -> tuple[int, slice]:
         """
         """
-        return ( token.qid, self._column_to_eval + token.shift, )
+        return (token.qid, token.shift, )
 
     #]
 

@@ -154,9 +154,8 @@ class Invariant:
         self._min_shift, self._max_shift = None, None
         self._populate_min_max_shifts()
         #
-        column_to_eval = -self._min_shift
-        self.dynamic_descriptor = _descriptors.Descriptor(self.dynamic_equations, self.quantities, column_to_eval, self._context, )
-        self.steady_descriptor = _descriptors.Descriptor(self.steady_equations, self.quantities, column_to_eval, self._context, )
+        self.dynamic_descriptor = _descriptors.Descriptor(self.dynamic_equations, self.quantities, self._context, )
+        self.steady_descriptor = _descriptors.Descriptor(self.steady_equations, self.quantities, self._context, )
         #
         # Create a function to evaluate LHS–RHS in dynamic equations
         self._plain_dynamic_equator = _equators.PlainEquator(

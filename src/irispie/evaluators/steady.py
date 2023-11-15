@@ -7,7 +7,6 @@ Steady state evaluator
 from __future__ import annotations
 
 from collections.abc import (Iterable, )
-from types import (EllipsisType, )
 from typing import (Any, )
 from numbers import (Number, )
 import itertools as _it
@@ -24,27 +23,23 @@ from . import printers as _printers
 
 
 _NONFLAT_STEADY_SHIFT = 1
-_NonflatSteadyEquator = _equators.NonflatSteadyEquator
-_NonflatSteadyJacobian = _jacobians.NonflatSteadyJacobian
-_NonflatSteadyEquator.NONFLAT_STEADY_SHIFT = _NONFLAT_STEADY_SHIFT
-_NonflatSteadyJacobian.NONFLAT_STEADY_SHIFT = _NONFLAT_STEADY_SHIFT
 
 
 class SteadyEvaluator:
     """
     """
     #[
-    _equator_factory: _equators.SteadyEquatorProtocol | EllipsisType = ...
-    _jacobian_factory: _jacobians.SteadyJacobianProtocol | EllipsisType = ...
-    _iter_printer_factory: _printers.IterPrinter | EllipsisType = ...
+    _equator_factory = ...
+    _jacobian_factory = ...
+    _iter_printer_factory = ...
 
     def __init__(
         self,
-        variant: _variants.Variant,
-        all_quantities: Iterable[_quantities.Quantity],
-        wrt_equations: Iterable[_equations.Equation],
         wrt_qids_levels: list[int],
         wrt_qids_changes: list[int],
+        wrt_equations: Iterable[_equations.Equation],
+        all_quantities: Iterable[_quantities.Quantity],
+        variant: _variants.Variant,
         *,
         context: dict | None = None,
         iter_printer_settings: dict[str, Any] | None = None,
@@ -63,11 +58,17 @@ class SteadyEvaluator:
         qid_to_logly = _quantities.create_qid_to_logly(all_quantities, )
         qid_to_name = _quantities.create_qid_to_name(all_quantities, )
         #
-        shift_vec, t_zero = _prepare_time_shifts(wrt_equations, )
+        # Reset changes to zero (only if flat)
+        self._reset_changes(variant, qid_to_logly, )
+        #
+        shift_vec, self._min_shift = _prepare_time_shifts(wrt_equations, )
         self._shift_vec = shift_vec
         self._num_columns = shift_vec.shape[1]
         #
-        self._index_logly = list(_quantities.generate_index_logly(self.wrt_qids, qid_to_logly, ))
+        # Index of loglies within wrt_qids; needs to be list not tuple
+        # because of numpy indexing
+        self._index_logly = \
+            list(_quantities.generate_index_logly(self.wrt_qids, qid_to_logly, ))
         #
         # Vectors self._maybelog_init_levels and
         # self._maybelog_init_changes are the initial guesses from the
@@ -84,18 +85,17 @@ class SteadyEvaluator:
         self._num_levels = sum(self._bool_index_wrt_levels)
         self._num_changes = sum(self._bool_index_wrt_changes)
         #
-        self.init_guess = _np.hstack((
+        self._init_guess = _np.hstack((
             self._maybelog_init_levels[self._bool_index_wrt_levels],
             self._maybelog_init_changes[self._bool_index_wrt_changes],
         ))
         #
-        self._steady_array = variant.create_steady_array(qid_to_logly, num_columns=shift_vec.shape[1], shift_in_first_column=-t_zero, )
-        self._update_steady_array(self.init_guess)
+        self._steady_array = variant.create_steady_array(qid_to_logly, num_columns=shift_vec.shape[1], shift_in_first_column=self._min_shift, )
+        self._update_steady_array(self._init_guess)
         #
         # Set up components
         self._equator = self._equator_factory(
             wrt_equations,
-            t_zero,
             context=context,
         )
         self._jacobian = self._jacobian_factory(
@@ -103,8 +103,6 @@ class SteadyEvaluator:
             self.wrt_qids,
             qid_to_logly,
             context=context,
-            first_column_to_eval = None,
-            num_columns_to_eval = 1,
         )
         iter_printer_settings = iter_printer_settings or {}
         self.iter_printer = self._iter_printer_factory(
@@ -112,8 +110,19 @@ class SteadyEvaluator:
             self.wrt_qids,
             qid_to_logly,
             qid_to_name,
-            **iter_printer_settings,
+            **(iter_printer_settings or {}),
         )
+
+    @property
+    def _column_offset(self, /, ) -> int:
+        """
+        """
+        return -self._min_shift
+
+    def get_init_guess(self, *args, **kwargs, ) -> _np.ndarray:
+        """
+        """
+        return self._init_guess
 
     def eval(
         self,
@@ -123,8 +132,8 @@ class SteadyEvaluator:
         """
         """
         self._update_steady_array(maybelog_guess, )
-        equator = self._equator.eval(self._steady_array, )
-        jacobian = self._jacobian.eval(self._steady_array, )
+        equator = self._equator.eval(self._steady_array, self._column_offset, )
+        jacobian = self._jacobian.eval(self._steady_array, self._column_offset, )
         jacobian = jacobian[:, self._bool_index_wrt_levels + self._bool_index_wrt_changes]
         self.iter_printer.next(maybelog_guess, equator, True, )
         return equator, jacobian
@@ -184,17 +193,13 @@ class FlatSteadyEvaluator(SteadyEvaluator, ):
     _jacobian_factory = _jacobians.FlatSteadyJacobian
     _iter_printer_factory = _printers.FlatSteadyIterPrinter
 
-    def __init__(
+    def _reset_changes(
         self,
         variant: _variants.Variant,
-        all_quantities: Iterable[_quantities.Quantity],
-        *args,
-        **kwargs,
+        qid_to_logly: dict[int, bool],
     ) -> None:
         """
         """
-        super().__init__(variant, all_quantities, *args, **kwargs, )
-        qid_to_logly = _quantities.create_qid_to_logly(all_quantities, )
         variant.zero_changes(qid_to_logly, )
 
     def _merge_levels_and_changes(
@@ -203,6 +208,8 @@ class FlatSteadyEvaluator(SteadyEvaluator, ):
         wrt_qids_changes: list[int],
         /,
     ) -> None:
+        """
+        """
         self.wrt_qids = list(set(wrt_qids_levels))
         self._bool_index_wrt_levels = [qid in wrt_qids_levels for qid in self.wrt_qids]
         self._bool_index_wrt_changes = []
@@ -246,9 +253,19 @@ class NonflatSteadyEvaluator(SteadyEvaluator, ):
     """
     """
     #[
-    _equator_factory = _NonflatSteadyEquator
-    _jacobian_factory = _NonflatSteadyJacobian
+
+    _equator_factory = _equators.NonflatSteadyEquator
+    _equator_factory.nonflat_steady_shift = _NONFLAT_STEADY_SHIFT
+
+    _jacobian_factory = _jacobians.NonflatSteadyJacobian
+    _jacobian_factory.nonflat_steady_shift = _NONFLAT_STEADY_SHIFT
+
     _iter_printer_factory = _printers.NonflatSteadyIterPrinter
+
+    def _reset_changes(self, *args, **kwargs, ) -> None:
+        """
+        """
+        pass
 
     def _merge_levels_and_changes(
         self,
@@ -328,11 +345,10 @@ def _prepare_time_shifts(
     #
     min_shift = _equations.get_min_shift_from_equations(equations, )
     max_shift = _equations.get_max_shift_from_equations(equations, ) + add_shift
-    num_columns = -min_shift + 1 + max_shift
+    num_columns = -min_shift + _NONFLAT_STEADY_SHIFT + max_shift
     shift_in_first_column = min_shift
     shift_vec = _np.array(range(min_shift, max_shift+1, ), dtype=float, ).reshape(1, -1, )
-    t_zero = -min_shift
-    return shift_vec, t_zero
+    return shift_vec, min_shift
     #]
 
 

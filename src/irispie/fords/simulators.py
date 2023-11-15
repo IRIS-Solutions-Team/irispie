@@ -19,9 +19,11 @@ def simulate_flat(
     solution: _solutions.Solution,
     solution_vectors: _descriptors.SolutionVectors,
     dataslate: _dataslates.HorizontalDataslate,
+    /,
+    *,
     deviation: bool,
     anticipate: bool,
-    /,
+    **kwargs,
 ) -> _np.ndarray:
     """
     """

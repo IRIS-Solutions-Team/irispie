@@ -12,7 +12,7 @@ import numpy as _np
 
 from ..incidences import main as _incidence
 
-from . import _base
+from ..jacobians import _base
 #]
 
 
@@ -24,15 +24,14 @@ class PeriodJacobian(_base.Jacobian, ):
     def eval(
         self,
         data_array: _np.ndarray,
+        column_offset: int,
         steady_array: _np.ndarray | None,
         /,
-        column_offset: int | None = None,
     ) -> _np.ndarray:
         """
         """
         diff_array = self._aldi_context.eval_diff_to_array(
-            data_array, steady_array,
-            column_offset=column_offset,
+            data_array, column_offset, steady_array,
         )
         return self._create_jacobian(self._shape, diff_array, self._map, )
 
@@ -73,7 +72,7 @@ class PeriodJacobian(_base.Jacobian, ):
         """
         if token is None:
             return _np.zeros((len(wrt_qids), 1, ), )
-        if token.shift:
+        if token.shift != 0:
             return 0
         try:
             index = wrt_qids.index(token.qid, )

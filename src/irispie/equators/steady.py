@@ -32,23 +32,24 @@ class SteadyEquator:
     """
     """
     #[
+
     def __init__(
         self,
         equations: Iterable[_equations.Equation],
-        t_zero: int,
         /,
         *,
         context: dict[str, Callable] | None = None,
     ) -> None:
         self._equator = _plain.PlainEquator(equations, context=context, )
-        self._t_zero = t_zero
 
     def eval(
         self,
         steady_array: _np.ndarray,
+        column_offset: int,
         /,
     ) -> _np.ndarray:
         ...
+
     #]
 
 
@@ -56,14 +57,17 @@ class FlatSteadyEquator(SteadyEquator, ):
     """
     """
     #[
+
     def eval(
         self,
         steady_array: _np.ndarray,
+        column_offset: int,
         /,
     ) -> _np.ndarray:
         """
         """
-        return self._equator.eval(steady_array, self._t_zero, steady_array, )
+        return self._equator.eval(steady_array, column_offset, steady_array, )
+
     #]
 
 
@@ -71,19 +75,21 @@ class NonflatSteadyEquator(SteadyEquator, ):
     """
     """
     #[
-    NONFLAT_STEADY_SHIFT: int = 1
+
+    nonflat_steady_shift = None
 
     def eval(
         self,
         steady_array: _np.ndarray,
+        column_offset: int,
         /,
     ) -> _np.ndarray:
         """
         """
-        k = self.NONFLAT_STEADY_SHIFT
+        k = self.nonflat_steady_shift
         return _np.hstack((
-            self._equator.eval(steady_array, self._t_zero, steady_array, ),
-            self._equator.eval(steady_array, self._t_zero+k, steady_array, ),
+            self._equator.eval(steady_array, column_offset, steady_array, ),
+            self._equator.eval(steady_array, column_offset + k, steady_array, ),
         ))
     #]
 

@@ -166,9 +166,11 @@ class SteadyMixin:
     ) -> None:
         """
         """
-        optim_settings = \
-            _DEFAULT_OPTIM_SETTINGS if optim_settings is None \
+        optim_settings = (
+            _DEFAULT_OPTIM_SETTINGS
+            if optim_settings is None
             else _DEFAULT_OPTIM_SETTINGS | optim_settings
+        )
         #
         # REFACTOR: Plan.steady
         #
@@ -180,18 +182,19 @@ class SteadyMixin:
         wrt_qids_changes = \
             _resolve_qids_fixed(fixable_quantities, fix, fix_change, )
         #
+        all_quantities = self.get_quantities()
         steady_evaluator = evaluator_class(
-            variant,
-            self.get_quantities(),
-            wrt_equations,
             wrt_qids_levels,
             wrt_qids_changes,
+            wrt_equations,
+            all_quantities,
+            variant,
             iter_printer_settings=iter_printer_settings,
         )
         #
         optim_result = _sp.optimize.root(
            steady_evaluator.eval,
-           steady_evaluator.init_guess,
+           steady_evaluator.get_init_guess(),
            method="lm",
            jac=True,
            options=optim_settings,
@@ -240,14 +243,14 @@ class SteadyMixin:
         """
         Choose steady solver depending on linear and flat flags
         """
-        match (is_linear, is_flat):
-            case (False, False):
+        match (is_linear, is_flat, ):
+            case (False, False, ):
                 return self._steady_nonlinear_nonflat
-            case (False, True):
+            case (False, True, ):
                 return self._steady_nonlinear_flat
-            case (True, False):
+            case (True, False, ):
                 return self._steady_linear_nonflat
-            case (True, True):
+            case (True, True, ):
                 return self._steady_linear_flat
 
     def check_steady(

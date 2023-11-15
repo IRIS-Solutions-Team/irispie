@@ -43,14 +43,14 @@ class _SteadyJacobian(_base.Jacobian, ):
 
     # ===== Implement AtomFactoryProtocol =====
 
-    def _create_data_index_for_token(
+    def create_data_index_for_token(
         self,
         token: _incidence.Token,
         /,
     ) -> tuple[int, slice]:
         """
         """
-        return (token.qid, self._first_column_to_eval, )
+        return (token.qid, token.shift, )
 
     def create_diff_for_token(
         self,
@@ -64,11 +64,22 @@ class _SteadyJacobian(_base.Jacobian, ):
             return _np.zeros((len(wrt_qids), self._num_diff_columns, ))
         try:
             index = wrt_qids.index(token.qid)
-            diff = _np.zeros((len(wrt_qids), self._num_diff_columns, ))
-            diff[index, :] = 1, token.shift
-            return diff
         except:
+            index = None
+        if index is None:
             return 0
+        diff = _np.zeros((len(wrt_qids), self._num_diff_columns, ))
+        diff[index, :] = self._create_diff_value_for_token(token, )
+        return diff
+
+    def _create_diff_value_for_token(
+        self,
+        token: _incidence.Token,
+        /,
+    ) -> _np.ndarray:
+        """
+        """
+        ...
 
         #]
 
@@ -83,12 +94,24 @@ class FlatSteadyJacobian(_SteadyJacobian, ):
     def eval(
         self,
         steady_array: _np.ndarray,
+        column_offset: int | None,
         /,
     ) -> _np.ndarray:
         """
         """
-        diff_array = self._aldi_context.eval_diff_to_array(steady_array, steady_array, )
+        diff_array = self._aldi_context.eval_diff_to_array(
+            steady_array, column_offset, steady_array,
+        )
         return self._create_jacobian(self._shape, diff_array, self._map, )
+
+    def _create_diff_value_for_token(
+        self,
+        token: _incidence.Token,
+        /,
+    ) -> _np.ndarray:
+        """
+        """
+        return 1
 
     #]
 
@@ -98,24 +121,40 @@ class NonflatSteadyJacobian(_SteadyJacobian, ):
     """
     #[
 
-    NONFLAT_STEADY_SHIFT: int = 1
     _num_diff_columns = 2
+    nonflat_steady_shift = None
 
     def eval(
         self,
         steady_array: _np.ndarray,
+        column_offset: int,
         /,
     ) -> _np.ndarray:
         """
         """
-        diff_array = self._aldi_context.eval_diff_to_array(steady_array, steady_array, )
+        diff_array = self._aldi_context.eval_diff_to_array(
+            steady_array, column_offset, steady_array,
+        )
         A = self._create_jacobian(self._shape, diff_array[:, 0:1], self._map, )
         B = self._create_jacobian(self._shape, diff_array[:, 1:2], self._map, )
-        k = self.NONFLAT_STEADY_SHIFT
+        k = self.nonflat_steady_shift
+        j = _np.vstack((
+            _np.hstack((A, B, )),
+            _np.hstack((A, B+k*A, )),
+        ))
         return _np.vstack((
             _np.hstack((A, B, )),
             _np.hstack((A, B+k*A, )),
         ))
+
+    def _create_diff_value_for_token(
+        self,
+        token: _incidence.Token,
+        /,
+    ) -> _np.ndarray:
+        """
+        """
+        return 1, token.shift
 
     #]
 

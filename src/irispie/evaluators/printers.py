@@ -134,7 +134,7 @@ class IterPrinter:
     #]
 
 
-class FlatSteadyIterPrinter(IterPrinter, ):
+class BasicIterPrinter(IterPrinter, ):
     """
     """
     #[
@@ -160,6 +160,9 @@ class FlatSteadyIterPrinter(IterPrinter, ):
             for i in qids
         }
     #]
+
+
+FlatSteadyIterPrinter = BasicIterPrinter
 
 
 class NonflatSteadyIterPrinter(IterPrinter, ):

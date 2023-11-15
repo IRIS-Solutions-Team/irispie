@@ -48,7 +48,8 @@ class System:
         data_array: _np.ndarray,
         steady_array: _np.ndarray,
         model_flags: _flags.ModelFlags,
-        data_array_lagged: _np.ndarray | None = None,
+        data_array_lagged: _np.ndarray | None,
+        column_offset: int,
         /,
     ) -> None:
         """
@@ -57,7 +58,7 @@ class System:
         # Differentiate and evaluate constant
         #
         td, tc = descriptor.aldi_context.eval_to_arrays(
-            data_array, steady_array,
+            data_array, column_offset, steady_array,
         )
 
         smap = descriptor.system_map
@@ -78,8 +79,8 @@ class System:
         else:
             tokens = descriptor.system_vectors.transition_variables
             logly = descriptor.system_vectors.transition_variables_logly
-            xi = _get_vector(descriptor, data_array, tokens, logly )
-            xi_lagged = _get_vector(descriptor, data_array_lagged, tokens, logly )
+            xi = _get_vector(descriptor, data_array, tokens, logly, column_offset, )
+            xi_lagged = _get_vector(descriptor, data_array_lagged, tokens, logly, column_offset, )
             self.C = -(self.A @ xi + self.B @ xi_lagged)
 
         self.D = _np.zeros(svec.shape_D_excl_dynid, dtype=float)
@@ -98,7 +99,7 @@ class System:
         else:
             tokens = descriptor.system_vectors.measurement_variables
             logly = descriptor.system_vectors.measurement_variables_logly
-            y = _get_vector(descriptor, data_array, tokens, logly )
+            y = _get_vector(descriptor, data_array, tokens, logly, column_offset, )
             self.H = -(self.F @ y + self.G @ xi)
 
         self.J = _np.zeros(svec.shape_J, dtype=float)
@@ -110,14 +111,14 @@ def _get_vector(
     data_array: _np.ndarray,
     tokens: Iterable[_incidence.Token],
     logly: Iterable[bool],
+    column_offset: int,
     /,
 ) -> _np.ndarray:
     """
     """
     #[
-    t = -descriptor.aldi_context.min_shift
     rows = tuple(tok.qid for tok in tokens)
-    columns = tuple(t+tok.shift for tok in tokens)
+    columns = tuple(column_offset + tok.shift for tok in tokens)
     x = data_array[rows, columns].reshape(-1, 1)
     x[logly,:] = _np.log(x[logly,:])
     return x

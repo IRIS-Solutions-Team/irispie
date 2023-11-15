@@ -253,7 +253,12 @@ class Simultaneous(
             data_array_lagged = variant.create_steady_array(qid_to_logly, num_columns=num_columns, shift_in_first_column=min_shift-1, )
             steady_array = data_array[:, -min_shift]
         #
-        return _systems.System(descriptor, data_array, steady_array, model_flags, data_array_lagged, )
+        column_offset = -min_shift
+        return _systems.System(
+            descriptor, data_array, steady_array,
+            model_flags, data_array_lagged,
+            column_offset,
+        )
 
     def solve(
         self,

@@ -11,9 +11,13 @@ from collections.abc import (Iterable, )
 import numpy as _np
 
 from ..databoxes import main as _databoxes
-from ..fords import simulators as _simulators
+from ..fords import simulators as _ford_simulators
+from ..fords import solutions as _solutions
+from ..periods import simulators as _period_simulators
 from ..plans import main as _plans
 from .. import dataslates as _dataslates
+
+from . import main as _simultaneous
 #]
 
 
@@ -31,11 +35,13 @@ class SimulateMixin:
         in_databox: _databoxes.Databox,
         span: Iterable[Dater],
         /,
-        anticipate: bool = True,
-        deviation: bool = False,
-        plan: _plans.Plan | None = None,
+        *,
+        plan: _plans.PlanSimulate | None = None,
+        method: Literal["first_order", "period", "stacked"] = "first_order",
         prepend_input: bool = True,
         target_databox: _databoxes.Databox | None = None,
+        anticipate: bool = True,
+        deviation: bool = False,
     ) -> tuple[_databoxes.Databox, dict[str, Any]]:
         """
         """
@@ -56,9 +62,11 @@ class SimulateMixin:
         for vid, mdi, dsi in zipped:
             #
             # Simulate and write to dataslate
-            _simulators.simulate_flat(
-                mdi._variants[0].solution, mdi.get_solution_vectors(),
-                dsi, deviation, anticipate,
+            _SIMULATE_METHODS[method](
+                mdi, dsi,
+                plan=plan,
+                deviation=deviation,
+                anticipate=anticipate,
             )
             dsi.remove_terminal()
             out_dataslates.append(dsi, )
@@ -80,5 +88,26 @@ class SimulateMixin:
         return out_db, info
 
     #]
+
+
+def _simulate_first_order(
+    model: _simultaneous.Simultaneous,
+    dataslate: _dataslates.Dataslate,
+    **kwargs,
+) -> None:
+    """
+    """
+    _ford_simulators.simulate_flat(
+        model._variants[0].solution,
+        model.get_solution_vectors(),
+        dataslate,
+        **kwargs,
+    )
+
+
+_SIMULATE_METHODS = {
+    "first_order": _simulate_first_order,
+    "period": _period_simulators.simulate,
+}
 
 
