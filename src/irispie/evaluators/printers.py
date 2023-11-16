@@ -108,13 +108,13 @@ class IterPrinter:
         """
         Print header for fuction evaluations
         """
-        top_line = f"{self.header_message or ""}[Dimensions {dimension[0]}×{dimension[1]}]"
+        top_line = f"{str(self.header_message or '')}[Dimension {dimension[0]}×{dimension[1]}]"
         header = f"{'ƒ-count':>8}   {'‖ƒ‖':>11}   {'∇ƒ':>5}   {'max|∆x|':>11}   {' ':10}   {'max|ƒ|':>11}   {''}"
         len_top_line = len(top_line)
         len_header = len(header) + self._MAX_LEN_EQUATION_STRING + 1
         self._divider_line = self._HEADER_DIVIDER_CHAR * max(len_header, len_top_line, )
         upper_divider = self._divider_line
-        upper_divider = self._divider_line[0:2] + top_line + self._divider_line[2 + len(top_line):]
+        upper_divider = self._divider_line[0:1] + top_line + self._divider_line[1 + len(top_line):]
         lower_divider = self._divider_line
         _print_to_width("", upper_divider, header, lower_divider, )
 
