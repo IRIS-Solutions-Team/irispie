@@ -263,13 +263,15 @@ class Databox(
         source_names: SourceNames = None,
         target_names: TargetNames = None,
         in_place: bool = False,
-        when_fails: Literal["error", "warning", "silent", ] = "error",
+        when_fails: Literal["critical", "error", "warning", "silent", ] = "critical",
     ) -> None:
         """
         """
         context_names = self.get_names()
         source_names, target_names = _resolve_source_target_names(source_names, target_names, context_names)
-        stream = _wrongdoings.STREAM_FACTORY[when_fails](f"Error(s) when applying function to Databox items:")
+        when_fails_stream = \
+            _wrongdoings.STREAM_FACTORY[when_fails] \
+            (f"Error(s) when applying function to Databox items:")
         for s, t in zip(source_names, target_names):
             try:
                 self[t] = self[s]
@@ -277,8 +279,8 @@ class Databox(
                 if not in_place:
                     self[t] = result
             except Exception as e:
-                stream.add(f"{s} --> {t}: {repr(e)}", )
-        stream._raise()
+                when_fails_stream.add(f"{s} --> {t}: {repr(e)}", )
+        when_fails_stream._raise()
 
     def filter(
         self,

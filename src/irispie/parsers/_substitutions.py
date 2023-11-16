@@ -38,7 +38,7 @@ def _define_substitutions(substitutions: list, /, ) -> dict[str, str]:
     return dict(_separate_lhs_rhs(s[1][0]) for s in substitutions)
 
 
-_SUBS_NAME = _re.compile("\w+")
+_SUBS_NAME = _re.compile(r"\w+", )
 
 
 def _separate_lhs_rhs(subs_string: str, /, ) -> tuple[str, str]:

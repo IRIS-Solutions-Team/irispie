@@ -20,6 +20,7 @@ class IterPrinter:
     Iterations printer for steady equator
     """
     #[
+
     _NAN_STRING = "•"
     _HEADER_DIVIDER_CHAR = "-"
     _MAX_LEN_EQUATION_STRING = 20
@@ -32,21 +33,34 @@ class IterPrinter:
         qid_to_logly: dict[int, bool],
         qid_to_name: dict[int, str],
         /,
-        every: int = 1,
+        every: int = 5,
+        header_message: str | None = None,
     ) -> None:
         """
         """
-        self._populate_equations(equations)
+        self._populate_equations(equations, )
         self._populate_quantities(qids, qid_to_logly, qid_to_name, )
-        ...
+        self.reset()
+        self.header_message = header_message
+        self._every = every
+
+    def reset(self, /, ) -> None:
+        """
+        """
         self._func_count = 0
         self._curr_f = None
         self._curr_x = None
         self._prev_x = None
         self._prev_f = None
-        self._every = every
+        self.header_message = None
 
-    def next(self, x, f, j_done, /, ) -> None:
+    @property
+    def num_equations(self, /, ) -> int:
+        """
+        """
+        return len(self._equations)
+
+    def next(self, x, f, /, jacobian_calculated, ) -> None:
         """
         Handle next function evaluation
         """
@@ -56,7 +70,7 @@ class IterPrinter:
         if self._func_count == 0:
             dimension = (self._curr_f.size, self._curr_x.size, )
             self.print_header(dimension, )
-        self._last_iter_string = self.get_iter_string(f_norm, j_done, *self.find_worst_diff_x(), *self.find_worst_equation(), )
+        self._last_iter_string = self.get_iter_string(f_norm, jacobian_calculated, *self.find_worst_diff_x(), *self.find_worst_equation(), )
         if self._func_count % self._every == 0:
             _print_to_width(self._last_iter_string)
         self._prev_x = self._curr_x
@@ -69,8 +83,9 @@ class IterPrinter:
         """
         Find the largest function residual and the corresponding equation
         """
-        index = _np.argmax(_np.abs(self._curr_f))
-        worst_f = _np.abs(self._curr_f[index])
+        abs_curr_f = _np.abs(self._curr_f)
+        index = _np.argmax(abs_curr_f)
+        worst_f = abs_curr_f[index]
         worst_equation = self._equations[index].human if self._equations is not None else ""
         worst_equation = _clip_string_exactly(worst_equation, self._MAX_LEN_EQUATION_STRING)
         return f"{worst_f:.5e}", worst_equation
@@ -93,12 +108,13 @@ class IterPrinter:
         """
         Print header for fuction evaluations
         """
-        dim_string = f"Dimension: {dimension[0]}×{dimension[1]}"
+        top_line = f"{self.header_message or ""}[Dimensions {dimension[0]}×{dimension[1]}]"
         header = f"{'ƒ-count':>8}   {'‖ƒ‖':>11}   {'∇ƒ':>5}   {'max|∆x|':>11}   {' ':10}   {'max|ƒ|':>11}   {''}"
+        len_top_line = len(top_line)
         len_header = len(header) + self._MAX_LEN_EQUATION_STRING + 1
-        self._divider_line = self._HEADER_DIVIDER_CHAR * len_header
+        self._divider_line = self._HEADER_DIVIDER_CHAR * max(len_header, len_top_line, )
         upper_divider = self._divider_line
-        upper_divider = self._divider_line[0:2] + dim_string + self._divider_line[2 + len(dim_string):]
+        upper_divider = self._divider_line[0:2] + top_line + self._divider_line[2 + len(top_line):]
         lower_divider = self._divider_line
         _print_to_width("", upper_divider, header, lower_divider, )
 
@@ -111,7 +127,7 @@ class IterPrinter:
     def get_iter_string(
         self,
         f_norm: Number,
-        j_done: bool,
+        jacobian_calculated: bool,
         worst_diff_x: str | None,
         worst_diff_x_name: str | None,
         worst_f: Number,
@@ -121,16 +137,9 @@ class IterPrinter:
         """
         Print info on current iteration
         """
-        j_done_string = "√" if j_done else "×"
+        j_done_string = "√" if jacobian_calculated else "×"
         return f"{self._func_count:8g}   {f_norm:.5e}   {j_done_string:>5}   {worst_diff_x}   {worst_diff_x_name}   {worst_f}   {worst_equation}"
 
-    def reset(self, /, ) -> None:
-        """
-        Reset iterations printer
-        """
-        self._func_count = 0
-        self._prev_x = None
-        self._prev_f = None
     #]
 
 

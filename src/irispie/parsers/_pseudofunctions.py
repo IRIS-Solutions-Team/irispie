@@ -6,27 +6,17 @@ Resolve pseudofunctions in model source string
 #[
 from __future__ import annotations
 
-import re as re_
+import re as _re
 
-from ..parsers import (shifts as sh_, )
+from . import _shifts as _shifts
 #]
-
-
-#••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
-# Exposure
-#••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
 
 
 def resolve_pseudofunctions(source: str, /, ) -> str:
     """
     Substitute expanded pseudofunctions in source string
     """
-    return re_.sub(_PSEUDOFUNC_PATTERN, _expand_pseudofunction, source, )
-
-
-#••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
-# Implementation
-#••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+    return _re.sub(_PSEUDOFUNC_PATTERN, _expand_pseudofunction, source, )
 
 
 def _expand_pseudofunction(match, /, ) -> str:
@@ -41,14 +31,14 @@ def _resolve_shift(shift: str, default_shift: int, /, ) -> int:
     return int(shift) if shift else default_shift
 
 
-_NAME_MAYBE_WITH_SHIFT = re_.compile(
+_NAME_MAYBE_WITH_SHIFT = _re.compile(
     # Name starting with a letter
-    r"(\b[a-zA-Z]\w*\b)" 
+    r"(\b[a-zA-Z]\w*\b)"
     # Optional square bracketed time shift, capture only the shift
     # (part of sh.TIME_SHIFT_INSIDE)
-    r"(?:\[(" + sh_.TIME_SHIFT_INSIDE + r")\])?" 
+    r"(?:\[(" + _shifts.TIME_SHIFT_INSIDE + r")\])?"
     # Not followed by ( or [
-    r"(?![\(\[])" 
+    r"(?![\(\[])"
 )
 
 
@@ -65,7 +55,7 @@ def _shift_all_names(
         shift = eval(shift) if shift else 0
         shift += int(by) if by else 0
         return (name + "[" + str(shift) + "]") if shift else name
-    return re_.sub(_NAME_MAYBE_WITH_SHIFT, _replace, source, )
+    return _re.sub(_NAME_MAYBE_WITH_SHIFT, _replace, source, )
 
 
 def _pseudo_shift(code, shift, /, ) -> str:
@@ -96,7 +86,7 @@ def _pseudo_mov(code, shift, /, ) -> list[str]:
     else:
         step, total = (1, shift) if shift > 0 else (-1, -shift)
         return [
-            "(" + _shift_all_names(code, sh) + ")" 
+            "(" + _shift_all_names(code, sh) + ")"
             for sh in range(0, shift, step)
         ], total
 
@@ -125,9 +115,9 @@ _PSEUDOFUNC_RESOLUTION = {
         (_pseudo_diff_log, -1),
     "difflog":
         (_pseudo_diff_log, -1),
-    "pct": 
+    "pct":
         (_pseudo_pct, -1),
-    "roc": 
+    "roc":
         (_pseudo_roc, -1),
     "mov_sum":
         (_pseudo_mov_sum, -4),
@@ -157,6 +147,6 @@ _PSEUDOFUNC_TIME_SHIFT_PATTERN = r"(?:,([^\(\),]+))?"
 _PSEUDOFUNC_BODY_PATTERN = r"\(" + _PSEUDOFUNC_EXPRESSION_PATTERN + _PSEUDOFUNC_TIME_SHIFT_PATTERN+ r"\)"
 
 # Full pseudofunction pattern
-_PSEUDOFUNC_PATTERN = re_.compile(_PSEUDOFUNC_NAME_PATTERN + _PSEUDOFUNC_BODY_PATTERN)
+_PSEUDOFUNC_PATTERN = _re.compile(_PSEUDOFUNC_NAME_PATTERN + _PSEUDOFUNC_BODY_PATTERN)
 
 

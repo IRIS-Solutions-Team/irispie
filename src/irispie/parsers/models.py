@@ -5,12 +5,13 @@
 #[
 from __future__ import annotations
 
-import parsimonious as pa_
-import functools as ft_
-import re as re_
 from collections.abc import (Iterable, )
+import parsimonious as _pa
+import functools as _ft
+import re as _re
 
-from ..parsers import (common as co_, substitutions as su_, )
+from . import common as _common
+from . import _substitutions as _substitutions
 #]
 
 
@@ -21,15 +22,15 @@ def from_string(source_string: str, /, ) -> sources.Source:
     """
     """
     source_string = _resolve_shortcut_keywords(source_string)
-    source_string = co_.add_blank_lines(source_string)
+    source_string = _common.add_blank_lines(source_string)
     source_string = _translate_keywords(source_string)
     nodes = _GRAMMAR["source"].parse(source_string)
     parsed = _Visitor().visit(nodes)
-    parsed = su_.resolve_substitutions(parsed, _WHERE_SUBSTITUTE)
+    parsed = _substitutions.resolve_substitutions(parsed, _WHERE_SUBSTITUTE)
     return parsed
 
 
-_GRAMMAR_DEF = co_.GRAMMAR_DEF + r"""
+_GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
 
     source = block+
     block = white_spaces (qty_block / log_block / eqn_block) white_spaces
@@ -90,13 +91,13 @@ _GRAMMAR_DEF = co_.GRAMMAR_DEF + r"""
 """
 
 
-_GRAMMAR = pa_.grammar.Grammar(_GRAMMAR_DEF)
+_GRAMMAR = _pa.grammar.Grammar(_GRAMMAR_DEF)
 _KEYWORDS = [ k.members[1].literal for k in _GRAMMAR["keyword"].members ]
-_KEYWORDS_PATTERN = co_.compile_keywords_pattern(_KEYWORDS)
-_translate_keywords = ft_.partial(co_.translate_keywords, _KEYWORDS_PATTERN)
+_KEYWORDS_PATTERN = _common.compile_keywords_pattern(_KEYWORDS)
+_translate_keywords = _ft.partial(_common.translate_keywords, _KEYWORDS_PATTERN)
 
 
-class _Visitor(pa_.nodes.NodeVisitor):
+class _Visitor(_pa.nodes.NodeVisitor):
     """
     """
     #[
@@ -213,15 +214,15 @@ class _Visitor(pa_.nodes.NodeVisitor):
 
 
 _SHORTCUT_KEYWORDS = [
-    ( re_.compile(co_.HUMAN_PREFIX + r"variables\b"), co_.HUMAN_PREFIX + r"transition-variables" ),
-    ( re_.compile(co_.HUMAN_PREFIX + r"shocks\b"), co_.HUMAN_PREFIX + r"transition-shocks" ),
-    ( re_.compile(co_.HUMAN_PREFIX + r"equations\b"), co_.HUMAN_PREFIX + r"transition-equations" ),
+    ( _re.compile(_common.HUMAN_PREFIX + r"variables\b"), _common.HUMAN_PREFIX + r"transition-variables" ),
+    ( _re.compile(_common.HUMAN_PREFIX + r"shocks\b"), _common.HUMAN_PREFIX + r"transition-shocks" ),
+    ( _re.compile(_common.HUMAN_PREFIX + r"equations\b"), _common.HUMAN_PREFIX + r"transition-equations" ),
 ]
 
 
 def _resolve_shortcut_keywords(source_string: str, /, ) -> str:
     for short, long in _SHORTCUT_KEYWORDS:
-        source_string = re_.sub(short, long, source_string)
+        source_string = _re.sub(short, long, source_string)
     return source_string
 
 

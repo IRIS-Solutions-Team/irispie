@@ -7,7 +7,6 @@ from __future__ import absolute_import
 
 from collections.abc import (Iterable, )
 from typing import (Protocol, )
-
 #]
 
 

@@ -12,6 +12,7 @@ from numbers import (Number, )
 import itertools as _it
 import numpy as _np
 
+from .base import (DEFAULT_INIT_GUESS, )
 from .. import equations as _equations
 from .. import quantities as _quantities
 from ..equators import steady as _equators
@@ -135,7 +136,7 @@ class SteadyEvaluator:
         equator = self._equator.eval(self._steady_array, self._column_offset, )
         jacobian = self._jacobian.eval(self._steady_array, self._column_offset, )
         jacobian = jacobian[:, self._bool_index_wrt_levels + self._bool_index_wrt_changes]
-        self.iter_printer.next(maybelog_guess, equator, True, )
+        self.iter_printer.next(maybelog_guess, equator, jacobian_calculated=True, )
         return equator, jacobian
 
     def _merge_levels_and_changes(
@@ -320,7 +321,7 @@ def _fill_missing(
     maybelog_levels: _np.ndarray,
     maybelog_changes: _np.ndarray,
     /,
-    default_level: Number = 1/9,
+    default_level: Number = DEFAULT_INIT_GUESS,
     default_change: Number = 0,
 ) -> tuple[_np.ndarray, _np.ndarray]:
     """

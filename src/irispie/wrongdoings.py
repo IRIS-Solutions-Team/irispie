@@ -19,7 +19,7 @@ HOW: TypeAlias = Literal["error", "warning", "silent"]
 _PLAIN_PREFIX = ""
 
 _BLANK_LINE = "|"
-_LIST_PREFIX = "|» "
+_LIST_PREFIX = "| * "
 
 
 class IrisPieError(Exception):
@@ -32,13 +32,17 @@ class IrisPieError(Exception):
     #]
 
 
+class IrisPieCritical(IrisPieError):
+    pass
+
+
 class IrisPieWarning(UserWarning):
     """
     """
     pass
 
 
-def _raise(
+def raise_as(
     how: HOW,
     message: str | Iterable[str],
 ) -> None:
@@ -149,7 +153,7 @@ class _Stream:
     #]
 
 
-class ErrorStream(_Stream):
+class CriticalStream(_Stream):
     """
     """
     #[
@@ -161,7 +165,27 @@ class ErrorStream(_Stream):
         """
         """
         self.messages += (message, )
-        raise IrisPieError(self.final_message, )
+        raise IrisPieCritical(self.final_message, )
+
+    #]
+
+
+class ErrorStream(_Stream):
+    """
+    """
+    #[
+
+    def add(
+        self,
+        message: str,
+    ) -> None:
+        self.messages += (message, )
+
+    def _raise(self, /, ) -> None:
+        """
+        """
+        if self.messages:
+            _raise_as_error(self.final_message)
 
     #]
 
@@ -201,6 +225,7 @@ class SilentStream(_Stream):
 
 
 STREAM_FACTORY = {
+    "critical": CriticalStream,
     "error": ErrorStream,
     "warning": WarningStream,
     "silent": SilentStream,

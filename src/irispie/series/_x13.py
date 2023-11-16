@@ -52,7 +52,10 @@ class Mixin:
             new_data.append(ith_new_data.reshape(-1, 1, ))
             info.append(ith_info)
         if not all(i["success"] for i in info):
-            _wrongdoings._raise(when_error, "X13 failed to produce a result for at least one column.", )
+            _wrongdoings.raise_as(
+                when_error,
+                "X13 failed to produce a result for at least one column.",
+            )
         new_data = _np.hstack(new_data, )
         self._replace_start_date_and_values(base_start_date, new_data, )
         return info

@@ -103,6 +103,7 @@ class PeriodEvaluator:
         self.update(maybelog_guess, data_array, column_offset, )
         equator = self._equator.eval(data_array, column_offset, steady_array, )
         jacobian = self._jacobian.eval(data_array, column_offset, steady_array, )
+        self.iter_printer.next(maybelog_guess, equator, jacobian_calculated=True, )
         return equator, jacobian
 
     #]

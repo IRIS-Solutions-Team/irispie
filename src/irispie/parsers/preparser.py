@@ -5,7 +5,7 @@
 #[
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import (Iterable, )
 from typing import (Self, Any, NoReturn, TypeAlias, Protocol, )
 import re as _re
 import parsimonious as _pa
@@ -14,9 +14,9 @@ import itertools as _it
 import copy as _cp
 
 from .. import wrongdoings as _wrongdoings
-from . import pseudofunctions as _pseudofunctions
+from . import _pseudofunctions as _pseudofunctions
 from . import common as _common
-from . import shifts as _shifts
+from . import _shifts as _shifts
 from . import _lists as _lists
 #]
 

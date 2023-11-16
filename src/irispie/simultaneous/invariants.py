@@ -229,7 +229,7 @@ def _catch_troublemakers(equations, function_context, /, ):
     ]
     if fail:
         message = ["Syntax error in these equations"] + fail
-        _wrongdoings._raise("error", message)
+        raise _wrongdoings.IrisPieError(message, )
     #]
 
 

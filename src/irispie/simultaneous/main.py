@@ -371,6 +371,11 @@ class Simultaneous(
         self._enforce_assignment_rules(self._variants[0], )
         return self
 
+    def get_context(self, /, ) -> dict[str, Any]:
+        """
+        """
+        return self._invariant._context
+
     #
     # ===== Implement SlatableProtocol =====
     #

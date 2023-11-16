@@ -33,12 +33,16 @@ class EquationKind(_en.Flag):
     Classification of model equations
     """
     #[
+
     TRANSITION_EQUATION = _en.auto()
     MEASUREMENT_EQUATION = _en.auto()
+
+    ENDOGENOUS_EQUATION = TRANSITION_EQUATION | MEASUREMENT_EQUATION
 
     @property
     def human(self, /, ) -> str:
         return self.name.replace("_", " ").title()
+
     #]
 
 

@@ -40,8 +40,7 @@ class SimulateMixin:
         method: Literal["first_order", "period", "stacked"] = "first_order",
         prepend_input: bool = True,
         target_databox: _databoxes.Databox | None = None,
-        anticipate: bool = True,
-        deviation: bool = False,
+        **kwargs,
     ) -> tuple[_databoxes.Databox, dict[str, Any]]:
         """
         """
@@ -63,10 +62,9 @@ class SimulateMixin:
             #
             # Simulate and write to dataslate
             _SIMULATE_METHODS[method](
-                mdi, dsi,
+                mdi, dsi, vid,
                 plan=plan,
-                deviation=deviation,
-                anticipate=anticipate,
+                **kwargs,
             )
             dsi.remove_terminal()
             out_dataslates.append(dsi, )
@@ -93,6 +91,7 @@ class SimulateMixin:
 def _simulate_first_order(
     model: _simultaneous.Simultaneous,
     dataslate: _dataslates.Dataslate,
+    vid: int,
     **kwargs,
 ) -> None:
     """
@@ -101,6 +100,7 @@ def _simulate_first_order(
         model._variants[0].solution,
         model.get_solution_vectors(),
         dataslate,
+        vid,
         **kwargs,
     )
 

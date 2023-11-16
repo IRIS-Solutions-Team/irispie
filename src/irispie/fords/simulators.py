@@ -9,9 +9,9 @@ from typing import (Self, TypeAlias, Literal, )
 import numpy as _np
 
 from .. import dataslates as _dataslates
+from ..plans import main as _plans
 from ..fords import solutions as _solutions
 from ..fords import descriptors as _descriptors
-from .. import dataslates as _dataslates
 #]
 
 
@@ -19,11 +19,12 @@ def simulate_flat(
     solution: _solutions.Solution,
     solution_vectors: _descriptors.SolutionVectors,
     dataslate: _dataslates.HorizontalDataslate,
+    vid: int,
     /,
     *,
-    deviation: bool,
-    anticipate: bool,
-    **kwargs,
+    plan: _plans.PlanSimulate | None = None,
+    anticipate: bool = True,
+    deviation: bool = False,
 ) -> _np.ndarray:
     """
     """

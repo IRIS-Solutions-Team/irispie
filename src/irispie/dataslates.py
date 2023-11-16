@@ -13,6 +13,7 @@ import numpy as _np
 import dataclasses as _dc
 import numpy as _np
 import functools as _ft
+import itertools as _it
 
 from .series import main as _series
 from .databoxes import main as _databoxes
@@ -116,6 +117,10 @@ class _Dataslate:
         databox: _databoxes.Databox | dict,
         names: Iterable[str] | None,
         dates: Iterable[_dates.Dater],
+        /,
+        *,
+        fallbacks: dict[str, Number] | None = None,
+        overwrites: dict[str, Number] | None = None,
         **kwargs,
     ) -> Iterator[Self]:
         """
@@ -130,10 +135,22 @@ class _Dataslate:
         databox_variant_iterator = \
             _databoxes.Databox.iter_variants(databox, item_iterator=item_iterator, names=names, )
         #
-        for databox_variant in databox_variant_iterator:
+        fallbacks_variant_iterator = \
+            _databoxes.Databox.iter_variants(fallbacks, item_iterator=item_iterator, names=names, ) \
+            if fallbacks else _it.repeat(None, )
+        #
+        overwrites_variant_iterator = \
+            _databoxes.Databox.iter_variants(overwrites, item_iterator=item_iterator, names=names, ) \
+            if overwrites else _it.repeat(None, )
+        #
+        for databox_variant, fallbacks_variant, overwrites_variant \
+            in zip(databox_variant_iterator, fallbacks_variant_iterator, overwrites_variant_iterator, ):
+            #
             yield klass.from_databox_variant(
                 databox_variant, names, dates,
                 descriptions=_retrieve_descriptions(databox_variant, names, ),
+                fallbacks=fallbacks_variant,
+                overwrites=overwrites_variant,
                 **kwargs,
             )
 

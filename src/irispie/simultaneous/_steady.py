@@ -84,8 +84,8 @@ class SteadyMixin:
         model_flags = _flags.Flags.update_from_kwargs(self.get_flags(), **kwargs)
         solver = self._choose_steady_solver(model_flags.is_linear, model_flags.is_flat, )
         info = tuple(
-            solver(v, model_flags, **kwargs, )
-            for v in self._variants
+            solver(v, model_flags, vid, **kwargs, )
+            for vid, v in enumerate(self._variants, )
         )
         return info
 
@@ -93,6 +93,7 @@ class SteadyMixin:
         self, 
         variant: _variants.Variant,
         model_flags: _flags.Flags,
+        vid: int,
         /,
         *,
         algorithm: Callable,
@@ -154,22 +155,23 @@ class SteadyMixin:
         self,
         variant: _variants.Variant,
         model_flags: _flags.Flags,
+        vid: int,
         /,
         evaluator_class: type,
         *,
         fix: Iterable[str] | None = None,
         fix_level: Iterable[str] | None = None,
         fix_change: Iterable[str] | None = None,
-        optim_settings: dict[str, Any] | None = None,
+        root_settings: dict[str, Any] | None = None,
         iter_printer_settings: dict[str, Any] | None = None,
         **kwargs,
     ) -> None:
         """
         """
-        optim_settings = (
-            _DEFAULT_OPTIM_SETTINGS
-            if optim_settings is None
-            else _DEFAULT_OPTIM_SETTINGS | optim_settings
+        root_settings = (
+            _DEFAULT_ROOT_SETTINGS
+            if root_settings is None
+            else _DEFAULT_ROOT_SETTINGS | root_settings
         )
         #
         # REFACTOR: Plan.steady
@@ -191,20 +193,23 @@ class SteadyMixin:
             variant,
             iter_printer_settings=iter_printer_settings,
         )
+        block = 0
+        header_message = f"[Variant {vid}][Block {block}]"
+        steady_evaluator.iter_printer.header_message = header_message
         #
-        optim_result = _sp.optimize.root(
+        root_final = _sp.optimize.root(
            steady_evaluator.eval,
            steady_evaluator.get_init_guess(),
-           method="lm",
            jac=True,
-           options=optim_settings,
+           **root_settings,
         )
         #
         steady_evaluator.iter_printer.print_footer()
         #
-        final_guess = optim_result.x
-        func_norm = _sp.linalg.norm(optim_result.fun, 2, )
-        success = func_norm < optim_settings["ftol"]
+        final_guess = root_final.x
+        func_norm = _sp.linalg.norm(root_final.fun, 2, )
+        success = root_final.success and func_norm < root_settings["tol"]
+        #
         if not success:
             raise _wrongdoings.IrisPieError(
                 "Steady state calculations failed to converge"
@@ -217,10 +222,7 @@ class SteadyMixin:
         #
         info = {
             "success": success,
-            "status": optim_result.status,
-            "num_func_evals": optim_result.nfev,
-            "num_jacob_evals": optim_result.njev,
-            "optim_result": optim_result,
+            "root_final": root_final,
         }
         return info
 
@@ -291,7 +293,7 @@ class SteadyMixin:
         all_status = all(status)
         if not all_status:
             message = "Invalid steady state"
-            _wrongdoings._raise(when_fails, message)
+            _wrongdoings.raise_as(when_fails, message)
         details = tuple(
             {"discrepancies": d, "max_abs_discrepancy": m, "is_valid": s}
             for d, m, s in zip(dis, max_abs_dis, status)
@@ -359,10 +361,8 @@ def _resolve_qids_fixed(
     #]
 
 
-_DEFAULT_OPTIM_SETTINGS = {
-    "ftol": 1e-12,
-    "xtol": 1e-12,
-    "gtol": 1e-12,
+_DEFAULT_ROOT_SETTINGS = {
+    "method": "lm",
+    "tol": 1e-12,
 }
-
 

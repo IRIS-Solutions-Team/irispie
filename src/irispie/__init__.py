@@ -88,3 +88,13 @@ __all__ = (
     "__version__",
 )
 
+import dill as _di
+
+def _save(obj, filename, ):
+    with open(filename, "wb+", ) as fid:
+        _di.dump(obj, fid, )
+
+def _load(filename, ):
+    with open(filename, "rb", ) as fid:
+        return _di.load(fid, )
+
