@@ -123,14 +123,15 @@ def _set_up_current_period(
     if plan is None:
         return wrt_qids, base_evaluator
     #
-    current_evaluator = _evaluators.PeriodEvaluator(
-        current_wrt_qids,
-        wrt_equations,
-        all_quantities,
-        context=model.get_context(),
-        iter_printer_settings=iter_printer_settings,
-    )
-    return current_wrt_qids, current_evaluator
+    return wrt_qids, base_evaluator
+    # current_evaluator = _evaluators.PeriodEvaluator(
+        # current_wrt_qids,
+        # wrt_equations,
+        # all_quantities,
+        # context=model.get_context(),
+        # iter_printer_settings=iter_printer_settings,
+    # )
+    # return current_wrt_qids, current_evaluator
 
 
 def _start_iter_from_previous_period(
