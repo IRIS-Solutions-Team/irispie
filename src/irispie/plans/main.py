@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from collections.abc import (Iterable, )
 from typing import (Self, Any, Protocol, NoReturn, )
+from types import (EllipsisType, )
 import warnings as _wa
 import functools as _ft
 import copy as _copy
@@ -130,8 +131,6 @@ Tabular view of the simulation plan
 ------------------------------------------------------------
         """
 
-    #[
-
     def __init__(
         self,
         plannable: PlannableSimulateProtocol,
@@ -189,8 +188,8 @@ Tabular view of the simulation plan
 
     def anticipate(
         self,
-        dates: Iterable[_dates.Dater] | Ellipsis,
-        names: Iterable[str] | str | Ellipsis,
+        dates: Iterable[_dates.Dater] | EllipsisType,
+        names: Iterable[str] | str | EllipsisType,
         new_status: bool | None = None,
     ) -> None:
         """
@@ -199,8 +198,8 @@ Tabular view of the simulation plan
 
     def when_data(
         self,
-        dates: Iterable[_dates.Dater] | Ellipsis,
-        names: Iterable[str] | str | Ellipsis,
+        dates: Iterable[_dates.Dater] | EllipsisType,
+        names: Iterable[str] | str | EllipsisType,
         new_status: bool | None = None,
     ) -> None:
         """
@@ -209,8 +208,8 @@ Tabular view of the simulation plan
 
     def exogenize(
         self,
-        dates: Iterable[_dates.Dater] | Ellipsis,
-        names: Iterable[str] | str | Ellipsis,
+        dates: Iterable[_dates.Dater] | EllipsisType,
+        names: Iterable[str] | str | EllipsisType,
         /,
         *,
         transform: str | None = None,
@@ -264,10 +263,15 @@ available; only available in simulation plans created for
         if when_data is not None:
             self.when_data(dates, names, when_data)
 
+    def get_names_exogenized_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
+        """
+        """
+        return self._get_names_registered_in_period(self._exogenized_register, period, )
+
     def endogenize(
         self,
-        dates: Iterable[_dates.Dater] | Ellipsis,
-        names: Iterable[str] | str | Ellipsis,
+        dates: Iterable[_dates.Dater] | EllipsisType,
+        names: Iterable[str] | str | EllipsisType,
         /,
         *,
         anticipate: bool | None = None,
@@ -291,6 +295,17 @@ Syntax
         self._plan_simulate(self._endogenized_register, dates, names, new_status, )
         if anticipate is not None:
             self.anticipate(dates, names, anticipate, )
+
+    def get_names_endogenized_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
+        """
+        """
+        return self._get_names_registered_in_period(self._endogenized_register, period, )
+
+    def swap(
+        self,
+        dates: Iterable[_dates.Dater] | EllipsisType,
+    ) -> None:
+        pass
 
     def get_anticipated_point(
         self,
@@ -347,6 +362,20 @@ Syntax
             )
         return tuple(n for n in databox_names if n is not None)
 
+    def _get_names_registered_in_period(
+        self,
+        register: dict[str, Any],
+        date: _dates.Dater,
+    ) -> tuple[str, ...]:
+        """
+        """
+        column_index = self.base_range.index(date)
+        return tuple(
+            name
+            for name, status in register.items()
+            if bool(status[column_index])
+        )
+
     def __str__(self, /, ) -> str:
         """
         """
@@ -355,8 +384,8 @@ Syntax
     def _plan_simulate(
         self,
         register: dict,
-        dates: Iterable[_dates.Dater] | Ellipsis,
-        names: Iterable[str] | str | Ellipsis,
+        dates: Iterable[_dates.Dater] | EllipsisType,
+        names: Iterable[str] | str | EllipsisType,
         new_status: Any,
     ) -> None:
         """
@@ -370,7 +399,7 @@ Syntax
 
     def _get_date_indices(
         self,
-        dates: Iterable[_dates.Dater] | Ellipsis,
+        dates: Iterable[_dates.Dater] | EllipsisType,
         /,
     ) -> tuple[int, ...]:
         """
@@ -453,7 +482,7 @@ class PlanSteady():
 
 def _resolve_and_check_names(
     register: dict | None,
-    names: Iterable[str] | str | Ellipsis,
+    names: Iterable[str] | str | EllipsisType,
     /,
 ) -> tuple[str]:
     """

@@ -278,12 +278,13 @@ class Sequential(
         return "\n".join((
             f"",
             f"{self.__class__.__name__} model",
-            f"Description: \"{self.get_description() or ""}\"",
+            f"Description: \"{self.get_description()}\"",
             f"|",
-            f"|» Number of equations: {self.num_equations}",
-            f"|» Number of [nonidentities, identities]: [{len(self.nonidentity_index)}, {len(self.identity_index)}]",
-            f"|» Number of RHS-only names (excluding residuals): {len(self.rhs_only_names)}",
-            f"|» [Min, Max] time shift: [{self.min_shift:+g}, {self.max_shift:+g}]",
+            f"| Number of variants: {self.num_variants}",
+            f"| Number of equations: {self.num_equations}",
+            f"| Number of [nonidentities, identities]: [{len(self.nonidentity_index)}, {len(self.identity_index)}]",
+            f"| Number of RHS-only names (excluding residuals): {len(self.rhs_only_names)}",
+            f"| [Min, Max] time shift: [{self.min_shift:+g}, {self.max_shift:+g}]",
             f"|",
         ))
 

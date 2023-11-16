@@ -108,10 +108,11 @@ class Simultaneous(
         return "\n".join((
             f"",
             f"{self.__class__.__name__} model",
-            f"Description: \"{self.get_description() or ""}\"",
+            f"Description: \"{self.get_description()}\"",
             f"|",
-            f"|» Number of [transition, measurement] equations: [{self.num_transition_equations}, {self.num_measurement_equations}]",
-            f"|» [Min, Max] time shift: [{min_shift:+g}, {max_shift:+g}]",
+            f"| Number of variants: {self.num_variants}",
+            f"| Number of [transition, measurement] equations: [{self.num_transition_equations}, {self.num_measurement_equations}]",
+            f"| [Min, Max] time shift: [{min_shift:+g}, {max_shift:+g}]",
             f"|",
         ))
 
