@@ -266,7 +266,7 @@ available; only available in simulation plans created for
     def get_names_exogenized_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
         """
         """
-        return self._get_names_registered_in_period(self._exogenized_register, period, )
+        return self._get_names_registered_in_period(self._exogenized_register, *args, **kwargs, )
 
     def endogenize(
         self,
@@ -299,13 +299,24 @@ Syntax
     def get_names_endogenized_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
         """
         """
-        return self._get_names_registered_in_period(self._endogenized_register, period, )
+        return self._get_names_registered_in_period(self._endogenized_register, *args, **kwargs, )
 
     def swap(
         self,
         dates: Iterable[_dates.Dater] | EllipsisType,
+        pairs: Iterable[tuple[str, str]] | tuple[str, str],
+        *args, **kwargs,
     ) -> None:
-        pass
+        """
+        """
+        pairs = tuple(pairs)
+        if not pairs:
+            return
+        if len(pairs) == 2 and isinstance(pairs[0], str) and isinstance(pairs[1], str):
+            pairs = (pairs, )
+        for pair in pairs:
+            self.exogenize(dates, pair[0], *args, **kwargs, )
+            self.endogenize(dates, pair[1], *args, **kwargs, )
 
     def get_anticipated_point(
         self,

@@ -7,6 +7,7 @@ Dynamic nonlinear period-by-period simulator
 from __future__ import annotations
 
 from numbers import (Real, )
+from typing import (Callable, Any, Literal, )
 import numpy as _np
 import scipy as _sp
 import functools as _ft
@@ -66,13 +67,15 @@ def simulate(
     if len(wrt_equations) == 0:
         return
 
-    base_evaluator = _evaluators.PeriodEvaluator(
-        wrt_qids,
-        wrt_equations,
-        all_quantities,
+    evaluator_factory = _ft.partial(
+        _evaluators.PeriodEvaluator,
+        wrt_equations=wrt_equations,
+        all_quantities=all_quantities,
         context=model.get_context(),
         iter_printer_settings=iter_printer_settings,
     )
+
+    base_evaluator = evaluator_factory(wrt_qids, )
 
     when_missing_stream = \
         _wrongdoings.STREAM_FACTORY[when_missing] \
@@ -90,7 +93,7 @@ def simulate(
 
     for t in dataslate.base_columns:
         current_wrt_qids, current_evaluator = \
-            _set_up_current_period(plan, wrt_qids, base_evaluator, )
+            _set_up_current_period(plan, evaluator_factory, wrt_qids, dataslate.column_dates[t], base_evaluator, name_to_qid, )
         current_evaluator.iter_printer.header_message = \
             _create_header_message(vid, t, dataslate.column_dates[t], )
         dataslate.data[current_wrt_qids, t] = starter(dataslate.data, current_wrt_qids, t, )
@@ -112,10 +115,14 @@ def simulate(
         current_evaluator.iter_printer.reset()
 
 
+# REFACTOR
 def _set_up_current_period(
     plan: _plans.PlanSimulate | None,
+    evaluator_factory: Callable[..., _evaluators.PeriodEvaluator],
     wrt_qids: tuple[int, ...],
+    current_period: _dates.Dater,
     base_evaluator: _evaluators.PeriodEvaluator,
+    name_to_qid: dict[str, int],
     /,
 ) -> tuple[tuple[int, ...], _evaluators.PeriodEvaluator]:
     """
@@ -123,15 +130,23 @@ def _set_up_current_period(
     if plan is None:
         return wrt_qids, base_evaluator
     #
-    return wrt_qids, base_evaluator
-    # current_evaluator = _evaluators.PeriodEvaluator(
-        # current_wrt_qids,
-        # wrt_equations,
-        # all_quantities,
-        # context=model.get_context(),
-        # iter_printer_settings=iter_printer_settings,
-    # )
-    # return current_wrt_qids, current_evaluator
+    names_exogenized = plan.get_names_exogenized_in_period(current_period, )
+    names_endogenized = plan.get_names_endogenized_in_period(current_period, )
+    if not names_exogenized and not names_endogenized:
+        return wrt_qids, base_evaluator
+    #
+    if len(names_exogenized) != len(names_endogenized):
+        raise _wrongdoings.IrisPieCritical(
+            f"Number of exogenized quantities {len(names_exogenized)}"
+            f" does not match number of endogenized quantities {len(names_endogenized)}"
+            f" in period {current_period}"
+        )
+    #
+    qids_exogenized = tuple(name_to_qid[name] for name in names_exogenized)
+    qids_endogenized = tuple(name_to_qid[name] for name in names_endogenized)
+    current_wrt_qids = tuple(sorted(set(wrt_qids).difference(qids_exogenized).union(qids_endogenized)))
+    current_evaluator = evaluator_factory(current_wrt_qids, )
+    return current_wrt_qids, current_evaluator
 
 
 def _start_iter_from_previous_period(
