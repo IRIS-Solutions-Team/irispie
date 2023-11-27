@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from typing import (Protocol, Callable, )
-from numbers import (Number, )
+from numbers import (Real, )
 import numpy as _np
 
 from ..incidences import main as _incidence
@@ -30,9 +30,9 @@ class PlanTransformProtocol(Protocol, ):
 
     def eval_exogenized(
         self,
-        exogenized_value: Number,
-        lagged: Number,
-    ) -> Number:
+        exogenized_value: Real,
+        lagged: Real,
+    ) -> Real:
         ...
 
     def __str__(self, ) -> str: ...
@@ -82,10 +82,10 @@ class PlanTransformNone(PlanTransform, ):
 
     def eval_exogenized(
         self,
-        exogenized_value: Number,
+        exogenized_value: Real,
         values_before: _np.ndarray,
         /,
-    ) -> Number:
+    ) -> Real:
         return exogenized_value
     #]
 
@@ -99,10 +99,10 @@ class PlanTransformLog(PlanTransform, ):
 
     def eval_exogenized(
         self,
-        exogenized_value: Number,
+        exogenized_value: Real,
         values_before: _np.ndarray,
         /,
-    ) -> Number:
+    ) -> Real:
         return _np.exp(exogenized_value)
     #]
 
@@ -116,10 +116,10 @@ class PlanTransformDiff(PlanTransform, ):
 
     def eval_exogenized(
         self,
-        exogenized_value: Number,
+        exogenized_value: Real,
         values_before: _np.ndarray,
         /,
-    ) -> Number:
+    ) -> Real:
         return values_before[-1] + exogenized_value
     #]
 
@@ -133,10 +133,10 @@ class PlanTransformDiffLog(PlanTransform, ):
 
     def eval_exogenized(
         self,
-        exogenized_value: Number,
+        exogenized_value: Real,
         values_before: _np.ndarray,
         /,
-    ) -> Number:
+    ) -> Real:
         return values_before[-1] * _np.exp(exogenized_value)
     #]
 
@@ -150,10 +150,10 @@ class PlanTransformRoc(PlanTransform, ):
 
     def eval_exogenized(
         self,
-        exogenized_value: Number,
+        exogenized_value: Real,
         values_before: _np.ndarray,
         /,
-    ) -> Number:
+    ) -> Real:
         return values_before[-1] * exogenized_value
     #]
 
@@ -168,10 +168,10 @@ class PlanTransformPct(PlanTransform, ):
 
     def eval_exogenized(
         self,
-        exogenized_value: Number,
+        exogenized_value: Real,
         values_before: _np.ndarray,
         /,
-    ) -> Number:
+    ) -> Real:
         return values_before[-1] * (1 + exogenized_value/100)
 
     #]
@@ -190,7 +190,7 @@ class PlanTransformFlat(PlanTransform, ):
         exogenized_value: None,
         values_before: _np.ndarray,
         /,
-    ) -> Number:
+    ) -> Real:
         return values_before[-1]
 
     #]

@@ -53,16 +53,18 @@ def raise_as(
     #]
 
 
-def _prepare_message(message):
+def _prepare_message(message_in):
     #[
-    if isinstance(message, str):
-        message = _PLAIN_PREFIX + message
+    if isinstance(message_in, str):
+        return _PLAIN_PREFIX + message_in
     else:
-        message = tuple(message)
-        title = message[0]
-        error_list = tuple(_LIST_PREFIX + e for e in message[1:])
-        message = ("\n").join((title, _BLANK_LINE, *error_list, _BLANK_LINE, ), )
-    return message
+        message_in = tuple(message_in)
+        title = (message_in[0], )
+        listing = tuple(_LIST_PREFIX + e for e in message_in[1:])
+        message_out = title
+        if listing:
+            message_out += (_BLANK_LINE, *listing, _BLANK_LINE )
+        return ("\n").join(message_out, )
     #]
 
 
@@ -231,4 +233,13 @@ STREAM_FACTORY = {
     "silent": SilentStream,
 }
 
+
+def create_stream(name: str, /, when_no_stream=None, ) -> _Stream:
+    """
+    """
+    #[
+    if name not in STREAM_FACTORY and when_no_stream:
+        name = when_no_stream
+    return STREAM_FACTORY[name]
+    #]
 

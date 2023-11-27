@@ -9,16 +9,16 @@ from __future__ import annotations
 from collections.abc import (Iterable, Iterator, )
 from typing import (Self, Any, )
 import numpy as _np
+import copy as _co
 
 from .. import equations as _equations
 from .. import quantities as _quantities
 from .. import sources as _sources
-from ..conveniences import copies as _copies
 from ..conveniences import files as _files
 from ..incidences import main as _incidences
 from ..incidences import blazer as _blazer
 from ..explanatories import main as _explanatories
-from .. import iter_variants as _iter_variants
+from .. import has_variants as _has_variants
 
 from . import _invariants as _invariants
 from . import _variants as _variants
@@ -36,8 +36,7 @@ __all__ = (
 class Sequential(
     _simulate.SimulateMixin,
     _assigns.AssignMixin,
-    _iter_variants.IterVariantsMixin,
-    _copies.CopyMixin,
+    _has_variants.HasVariantsMixin,
     _sources.SourceMixin,
     _files.FromFileMixin,
 ):
@@ -46,15 +45,33 @@ class Sequential(
     #[
 
     __slots__ = (
+        "_invariant",
         "_variants",
     )
 
     def __init__(
         self,
         /,
+        skeleton: bool = False,
     ) -> None:
-        self._invariant = _invariants.Invariant()
+        """
+        """
+        self._invariant = None
         self._variants = []
+
+    def copy(self, /, ) -> Self:
+        """
+        """
+        return _co.deepcopy(self, )
+
+    @classmethod
+    def skeleton(
+        klass,
+        /,
+    ) -> Self:
+        """
+        """
+        return klass(skeleton=True, )
 
     @classmethod
     def from_equations(
@@ -89,29 +106,43 @@ class Sequential(
         return self
 
     @property
+    def all_names(self, /, ) -> tuple[str]:
+        """
+        Tuple of names of all variables in order of appearance
+        """
+        return tuple(self._invariant.all_names)
+
+    @property
     def lhs_names(self, /, ) -> tuple[str]:
         """
         Tuple of names of LHS variables in order of appearance
         """
-        return self._invariant.lhs_names
+        return tuple(self._invariant.lhs_names)
 
     @property
     def res_names(self, /, ) -> tuple[str]:
         """
         Tuple of names of LHS variables in order of appearance.
         """
-        return self._invariant.res_names
+        return tuple(self._invariant.res_names)
 
     @property
-    def rhs_only_names(self, /, ) -> set[str]:
+    def rhs_only_names(self, /, ) -> tuple[str]:
         """
         Set of names of RHS variables no appearing on the LHS.
         """
-        lhs_res_names = self._invariant.lhs_names + self._invariant.res_names
+        exclude_names = self._invariant.lhs_names + self._invariant.res_names + self._invariant.parameter_names
         return tuple(
             n for n in self._invariant.all_names
-            if n not in lhs_res_names
+            if n not in exclude_names
         )
+
+    @property
+    def parameter_names(self, /, ) -> tuple[str]:
+        """
+        Tuple of names of parameters in order of appearance
+        """
+        return tuple(self._invariant.parameter_names)
 
     @property
     def identity_index(self, /, ) -> tuple[int]:
@@ -280,11 +311,12 @@ class Sequential(
             f"{self.__class__.__name__} model",
             f"Description: \"{self.get_description()}\"",
             f"|",
-            f"| Number of variants: {self.num_variants}",
-            f"| Number of equations: {self.num_equations}",
-            f"| Number of [nonidentities, identities]: [{len(self.nonidentity_index)}, {len(self.identity_index)}]",
-            f"| Number of RHS-only names (excluding residuals): {len(self.rhs_only_names)}",
-            f"| [Min, Max] time shift: [{self.min_shift:+g}, {self.max_shift:+g}]",
+            f"| Num of variants: {self.num_variants}",
+            f"| Num of equations: {self.num_equations}",
+            f"| Num of [nonidentities, identities]: [{len(self.nonidentity_index)}, {len(self.identity_index)}]",
+            f"| Num of parameters: {len(self.parameter_names)}",
+            f"| Num of rhs-only variables: {len(self.rhs_only_names)}",
+            f"| Time shifts [min, max]: [{self.min_shift:+g}, {self.max_shift:+g}]",
             f"|",
         ))
 
@@ -320,14 +352,17 @@ class Sequential(
     def get_fallbacks(self, /, ) -> dict[str, Any]:
         """
         """
-        fallbacks = { n: 0 for n in tuple(self._invariant.res_names) }
-        fallbacks.update(self.get_parameters(), )
-        return fallbacks
+        return { n: 0 for n in tuple(self._invariant.res_names) }
 
     def get_overwrites(self, /, ) -> dict[str, Any]:
         """
         """
-        return {}
+        return self.get_parameters()
+
+    def get_scalar_names(self, /, ) -> tuple[str]:
+        """
+        """
+        return tuple(self.parameter_names, )
 
     def create_qid_to_logly(self, /, ) -> dict[str, bool]:
         """

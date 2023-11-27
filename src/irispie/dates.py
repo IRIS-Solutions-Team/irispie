@@ -22,7 +22,7 @@ from . import wrongdoings as _wrongdoings
 __all__ = [
     "Frequency", "Freq",
     "yy", "hh", "qq", "mm", "dd", "ii",
-    "Ranger", "start", "end",
+    "Ranger", "EmptyRanger", "start", "end",
     "Dater", "daters_from_sdmx_strings", "daters_from_iso_strings",
 ]
 
@@ -34,6 +34,7 @@ class Frequency(_en.IntEnum):
     #[
     INTEGER = 0
     YEARLY = 1
+    ANNUAL = 1
     HALFYEARLY = 2
     QUARTERLY = 4
     MONTHLY = 12
@@ -95,6 +96,25 @@ class ResolutionContextProtocol(Protocol, ):
     end_date = ...
 
 
+class ResolutionContext:
+    """
+    """
+    #[
+
+    def __init__(
+        self,
+        start_date: _dates.Dater | None = None,
+        end_date: _dates.Dater | None = None,
+        /,
+    ) -> None:
+        """
+        """
+        self.start_date = start_date
+        self.end_date = end_date
+
+    #]
+
+
 @runtime_checkable
 class ResolvableProtocol(Protocol, ):
     """
@@ -138,15 +158,29 @@ def _remove_blanks(func: Callable,) -> Callable:
 
 class RangeableMixin:
     #[
-    def __rshift__(self, end_date: Self) -> Ranger:
+    def __rshift__(self, end_date: Self | None, ) -> Ranger:
         """
+        Dater >> Dater or Dater >> None
         """
         return Ranger(self, end_date, 1)
 
-    def __lshift__(self, start_date: Self) -> Ranger:
+    def __rrshift__(self, start_date: Self | None, ) -> Ranger:
         """
+        None >> Dater
+        """
+        return Ranger(start_date, self, 1)
+
+    def __lshift__(self, start_date: Self | None, ) -> Ranger:
+        """
+        Dater << Dater or Dater << None
         """
         return Ranger(start_date, self, -1) 
+
+    def __rlshift__(self, end_date: Self | None, ) -> Ranger:
+        """
+        None << Dater
+        """
+        return Ranger(self, end_date, -1) 
     #]
 
 
@@ -357,6 +391,13 @@ class DailyDater(Dater, ):
         year, month, day, *_ = sdmx_string.split("-")
         return klass.from_ymd(int(year), int(month), int(day))
 
+    @classmethod
+    def from_iso_string(klass, iso_string: str, ) -> Dater:
+        """
+        """
+        year, month, day, *_ = iso_string.split("-", )
+        return klass.from_ymd(int(year), int(month), int(day), )
+
     @property
     def year(self, /, ) -> int:
         return _dt.date.fromordinal(self.serial).year
@@ -445,6 +486,13 @@ class RegularDaterMixin:
     @classmethod
     def from_ymd(klass, year: int, month: int=1, day: int=1, ) -> YearlyDater:
         return klass.from_year_period(year, klass.month_to_period(month, ), )
+
+    @classmethod
+    def from_iso_string(klass, iso_string: str, ) -> Dater:
+        """
+        """
+        year, month, day, *_ = iso_string.split("-", )
+        return klass.from_ymd(int(year), int(month), int(day), )
 
     @property
     def year(self, ) -> int:
@@ -876,10 +924,10 @@ class Ranger(_copies.CopyMixin, ):
     def __getitem__(self, i: int) -> Dater|None:
         return self._class(self._serials[i]) if not self.needs_resolve else None
 
-    def resolve(self, context: ResolutionContextProtocol) -> Self:
-        resolved_start_date = self._start_date if self._start_date else self._start_date.resolve(context)
-        resolved_end_date = self._end_date if self._end_date else self._end_date.resolve(context)
-        return Ranger(resolved_start_date, resolved_end_date, self._step)
+    def resolve(self, context: ResolutionContextProtocol, /, ) -> Self:
+        resolved_start_date = self._start_date if self._start_date else self._start_date.resolve(context, )
+        resolved_end_date = self._end_date if self._end_date else self._end_date.resolve(context, )
+        return Ranger(resolved_start_date, resolved_end_date, self._step, )
 
     def shift(self, by: int) -> None:
         self._start_date += by
@@ -1002,22 +1050,29 @@ DATER_CLASS_FROM_FREQUENCY_RESOLUTION = {
 def daters_from_sdmx_strings(freq: Frequency, sdmx_strings: Iterable[str], ) -> Iterable[Dater]:
     """
     """
-    return (
-        DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_sdmx_string(i)
-        for i in sdmx_strings
-    )
+    dater_class = DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq]
+    return ( dater_class.from_sdmx_string(i) for i in sdmx_strings )
 
 
 def daters_from_iso_strings(freq: Frequency, iso_strings: Iterable[str], ) -> Iterable[Dater]:
     """
     """
-    return (DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_iso_string(x) for x in iso_strings)
+    dater_class = DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq]
+    return ( dater_class.from_iso_string(x) for x in iso_strings )
 
 
-def get_encompassing_range(*args: ResolutionContextProtocol, ) -> Ranger:
-    start_dates = [x.start_date for x in args if hasattr(x, "start_date") and x.start_date]
-    end_dates = [x.end_date for x in args if hasattr(x, "end_date") and x.end_date]
+def get_encompassing_span(*args: ResolutionContextProtocol, ) -> Ranger:
+    start_dates = [_get_date(x, "start_date", min, ) for x in args if x is not None]
+    end_dates = [_get_date(x, "end_date", max, ) for x in args if x is not None]
     start_date = min(start_dates) if start_dates else None
     end_date = max(end_dates) if end_dates else None
-    return Ranger(start_date, end_date)
+    return Ranger(start_date, end_date), start_date, end_date
+
+def _get_date(something, attr_name, select_func, ) -> Dater | None:
+    if hasattr(something, attr_name, ):
+        return getattr(something, attr_name, )
+    try:
+        return select_func(i for i in something if i is not None)
+    except:
+        return None
 

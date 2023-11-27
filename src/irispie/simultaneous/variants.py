@@ -6,10 +6,12 @@
 import warnings
 from numbers import Number
 from typing import (Self, Literal, Callable, )
+import copy as _co
 import numpy as _np
 import operator as _op
 from collections.abc import (Iterable, )
 
+from ..conveniences import copies as _copies
 from .. import quantities as _quantities
 #]
 
@@ -40,6 +42,11 @@ class Variant:
         if is_flat:
             qid_to_logly = _quantities.create_qid_to_logly(quantities, )
             self.zero_changes(qid_to_logly, )
+
+    def copy(self, /, ) -> Self:
+        """
+        """
+        return _co.deepcopy(self, )
 
     def _initilize_values(self, /, ) -> None:
         """

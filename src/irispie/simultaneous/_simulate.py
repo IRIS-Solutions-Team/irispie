@@ -40,16 +40,21 @@ class SimulateMixin:
         method: Literal["first_order", "period", "stacked"] = "first_order",
         prepend_input: bool = True,
         target_databox: _databoxes.Databox | None = None,
+        num_variants: int | None = None,
         **kwargs,
     ) -> tuple[_databoxes.Databox, dict[str, Any]]:
         """
         """
+        num_variants = (
+            num_variants
+            if num_variants is not None
+            else self.num_variants
+        )
         base_dates = tuple(span, )
         if plan is not None:
             plan.check_consistency(self, base_dates, )
         #
         out_dataslates = []
-        num_variants = self.num_variants
         zipped = zip(
             range(num_variants, ),
             self.iter_variants(),

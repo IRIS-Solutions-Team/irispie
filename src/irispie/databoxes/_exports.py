@@ -98,7 +98,7 @@ class ExportMixin:
         self,
         file_name: str,
         *,
-        frequency_range: dict | None = None,
+        frequency_span: dict | None = None,
         names: Iterable[str] | None = None,
         description_row: bool = False,
         frequency: _dates.Frequency | None = None,
@@ -111,17 +111,17 @@ class ExportMixin:
     ) -> dict[str, Any]:
         """
         """
-        frequency_range = _resolve_frequency_range(self, frequency_range, )
-        frequency_names = _resolve_frequency_names(self, frequency_range, names, )
-        _catch_empty(frequency_range, frequency_names, when_empty, file_name, )
+        frequency_span = _resolve_frequency_span(self, frequency_span, )
+        frequency_names = _resolve_frequency_names(self, frequency_span, names, )
+        _catch_empty(frequency_span, frequency_names, when_empty, file_name, )
         #
-        total_num_data_rows = _get_total_num_data_rows(frequency_range, )
+        total_num_data_rows = _get_total_num_data_rows(frequency_span, )
         export_blocks = (
             _ExportBlock(
-                self, frequency, frequency_range[frequency], frequency_names[frequency],
+                self, frequency, frequency_span[frequency], frequency_names[frequency],
                 total_num_data_rows, description_row, delimiter, numeric_format, nan_str, round,
             )
-            for frequency in frequency_range.keys()
+            for frequency in frequency_span.keys()
         )
         #
         csv_writer_settings = {} if csv_writer_settings is None else csv_writer_settings
@@ -174,41 +174,41 @@ _DEFAULT_FREQUENCY_RANGE = {
 }
 
 
-def _resolve_frequency_range(
+def _resolve_frequency_span(
     self,
-    frequency_range: dict[_dates.Frequency | int: Iterable[_dates.Dater]] | None,
+    frequency_span: dict[_dates.Frequency | int: Iterable[_dates.Dater]] | None,
     /,
 ) -> tuple[dict[_dates.Frequency: tuple[_dates.Dater]], int]:
     """
     """
     #[
     # Remove Nones, ensure Frequency objects
-    frequency_range = {
+    frequency_span = {
         _dates.Frequency(k): v
-        for k, v in (frequency_range or _DEFAULT_FREQUENCY_RANGE).items()
+        for k, v in (frequency_span or _DEFAULT_FREQUENCY_RANGE).items()
         if v is not None
     }
     #
     # Resolve date range for each ...
-    frequency_range = {
+    frequency_span = {
         k: v if v is not ... else self.get_range_by_frequency(k, )
-        for k, v in frequency_range.items()
+        for k, v in frequency_span.items()
     }
     #
     # Expand date ranges into tuples, remove empty ranges
-    frequency_range = {
+    frequency_span = {
         k: tuple(i for i in v)
-        for k, v in frequency_range.items()
+        for k, v in frequency_span.items()
         if v is not _dates.EmptyRanger() or k is _dates.Frequency.UNKNOWN
     }
     #
-    return frequency_range
+    return frequency_span
     #]
 
 
 def _resolve_frequency_names(
     self,
-    frequency_range: _dates.Frequency | None,
+    frequency_span: _dates.Frequency | None,
     custom_names: Iterable[str] | None,
     /,
 ) -> dict[_dates.Frequency: tuple[str, ...]]:
@@ -219,7 +219,7 @@ def _resolve_frequency_names(
     # Get all databox names for each frequency
     frequency_names = {
         k: tuple(self.get_series_names_by_frequency(k, ))
-        for k in frequency_range.keys()
+        for k in frequency_span.keys()
     }
     #
     # Filter names against custom names
@@ -232,14 +232,14 @@ def _resolve_frequency_names(
 
 
 def _get_total_num_data_rows(
-    frequency_range: dict[_dates.Frequency: tuple[_dates.Dater]],
+    frequency_span: dict[_dates.Frequency: tuple[_dates.Dater]],
     /,
 ) -> int:
     """
     """
     #
     # Find maximum number of data rows
-    return max((len(v) for v in frequency_range.values()), default=0, )
+    return max((len(v) for v in frequency_span.values()), default=0, )
 
 
 def _get_descriptions_for_names(
@@ -275,7 +275,7 @@ def _get_data_array_for_names(
 
 
 def _catch_empty(
-    frequency_range: dict[_dates.Frequency: tuple[_dates.Dater]],
+    frequency_span: dict[_dates.Frequency: tuple[_dates.Dater]],
     frequency_names: dict[_dates.Frequency: tuple[str, ...]],
     when_empty: Literal["error", "warning", "silent"],
     file_name: str,
@@ -284,7 +284,7 @@ def _catch_empty(
     """
     """
     #[
-    if not frequency_range or all(len(v) == 0 for v in frequency_names.values()):
+    if not frequency_span or all(len(v) == 0 for v in frequency_names.values()):
         _wrongdoings.raise_as(when_empty, f"No data exported to {file_name}", )
     #]
 

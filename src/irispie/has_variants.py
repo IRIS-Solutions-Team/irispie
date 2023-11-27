@@ -5,14 +5,19 @@
 #[
 from __future__ import annotations
 
+from typing import (Self, Iterable, Iterator, TypeVar, )
 from numbers import (Number, )
 import copy as _co
+import numpy as _np
 
 from .conveniences import iterators as _iterators
 #]
 
 
-class IterVariantsMixin:
+_T = TypeVar("T")
+
+
+class HasVariantsMixin:
     """
     Mixin for handling multiple alternative variants of a single model object
     """
@@ -45,7 +50,7 @@ class IterVariantsMixin:
         self,
         new_num: int,
         /,
-    ) -> Self:
+    ) -> None:
         """
         Alter (expand, shrink) the number of alternative parameter variants in this model object
         """
@@ -53,7 +58,6 @@ class IterVariantsMixin:
             self.shrink_num_variants(new_num, )
         elif new_num > self.num_variants:
             self.expand_num_variants(new_num, )
-        return self
 
     def shrink_num_variants(self, new_num: int, /, ) -> None:
         """
@@ -70,15 +74,22 @@ class IterVariantsMixin:
         """
         """
         for i in range(self.num_variants, new_num):
-            self._variants.append(_co.deepcopy(self._variants[-1]))
+            self._variants.append(self._variants[-1].copy())
+
+    def broadcast_variants(self, other: Self, /, ) -> None:
+        """
+        """
+        if self.num_variants < other.num_variants:
+            self.expand_num_variants(other.num_variants, )
 
     def get_variant(
         self,
         vids: Iterable[int] | int | slice | EllipsisType,
         /,
     ) -> Self:
-        new = self.new_with_shallow_variants()
-        variant_iter = _resolve_vids(new, vids, )
+        new = type(self).skeleton()
+        new._invariant = self._invariant
+        variant_iter = _resolve_vids(self, vids, )
         new._variants = [ new._variants[i] for i in variant_iter ]
         return new
 
@@ -88,14 +99,18 @@ class IterVariantsMixin:
     ) -> Iterator[Self]:
         """
         """
-        yield from _iterators.exhaust_then_last(self, )
+        return _iterators.exhaust_then_last(self, )
 
-    def _new_with_single_variant(
-        self,
-        variant: _variants.Variant,
-        /,
-    ) -> Self:
-        new = self.new_with_shallow_variants()
+    def iter_extract_variants(self, /, ) -> Iterator:
+        """
+        """
+        return _iterators.exhaust_then_last(self._variants, )
+
+    def _new_with_single_variant(self: _T, variant, /, ) -> _T:
+        """
+        """
+        new = type(self).skeleton()
+        new._invariant = self._invariant
         new._variants = [ variant ]
         return new
 
@@ -104,7 +119,7 @@ class IterVariantsMixin:
         /,
     ) -> Iterator[Self]:
         """
-        Iterate over alternative variants of this model object
+        Iterate over alternative variants of this object
         """
         for v in self._variants:
             yield self._new_with_single_variant(v, )
@@ -129,4 +144,17 @@ def _resolve_vids(
     else:
         return tuple(int(i) for i in vids)
     #]
+
+
+def iter_variants(anything: _T, ) -> Iterator[_T]:
+    """
+    """
+    if hasattr(anything, "iter_variants", ):
+        return anything.iter_variants()
+    elif isinstance(anything, _np.ndarray, ) and anything.ndim:
+        return _iterators.exhaust_then_last(anything.reshape(anything.shape[0], -1, ).T)
+    elif isinstance(anything, list, ):
+        return _iterators.exhaust_then_last(anything, )
+    else:
+        return _iterators.exhaust_then_last((anything, ), )
 

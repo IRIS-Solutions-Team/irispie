@@ -38,6 +38,7 @@ class SlatableProtocol(Protocol, ):
     def get_databox_names(self, /, ) -> tuple[str, ...]: ...
     def get_fallbacks(self, /, ) -> dict[str, Number]: ...
     def get_overwrites(self, /, ) -> dict[str, Number]: ...
+    def get_scalar_names(self, /, ) -> Iterable[str, ...]: ...
     def create_qid_to_logly(self, /, ) -> dict[int, bool]: ...
 
 
@@ -56,6 +57,7 @@ class _Dataslate:
     _dates: tuple[_dates.Dater, ...] | None = None
     _record_shape: tuple[int, int] | None = None
     _min_max_shift: tuple[int, int] | None = None
+    _boolex_scalar: tuple[bool, ...] | None = None
 
     @classmethod
     def from_databox_variant(
@@ -69,6 +71,7 @@ class _Dataslate:
         descriptions: dict[str, str | None] | None = None,
         fallbacks: dict[str, Number] | None = None,
         overwrites: dict[str, Number] | None = None,
+        scalar_names: Iterable[str] | None = None,
         qid_to_logly: dict[int, bool | None] | None = None,
         min_max_shift: tuple[int, int] = (0, 0),
     ) -> Self:
@@ -86,6 +89,7 @@ class _Dataslate:
         self._fill_fallbacks(fallbacks, )
         self._fill_overwrites(overwrites, )
         self._min_max_shift = min_max_shift
+        self._populate_boolex_scalar(scalar_names, )
         return self
 
     @classmethod
@@ -107,6 +111,7 @@ class _Dataslate:
             base_indexes=base_indexes,
             fallbacks=slatable.get_fallbacks(),
             overwrites=slatable.get_overwrites(),
+            scalar_names=slatable.get_scalar_names(),
             min_max_shift=min_max_shift,
             qid_to_logly=qid_to_logly,
         )
@@ -121,6 +126,7 @@ class _Dataslate:
         *,
         fallbacks: dict[str, Number] | None = None,
         overwrites: dict[str, Number] | None = None,
+        scalar_names: Iterable[str] | None = None,
         **kwargs,
     ) -> Iterator[Self]:
         """
@@ -151,6 +157,7 @@ class _Dataslate:
                 descriptions=_retrieve_descriptions(databox_variant, names, ),
                 fallbacks=fallbacks_variant,
                 overwrites=overwrites_variant,
+                scalar_names=scalar_names,
                 **kwargs,
             )
 
@@ -181,6 +188,12 @@ class _Dataslate:
         for _ in range(variant, ):
             next(iterator, )
         return next(iterator, )
+
+    @property
+    def num_names(self, /, ) -> int:
+        """
+        """
+        return len(self._names)
 
     @property
     def num_initials(self, /, ) -> int:
@@ -239,6 +252,20 @@ class _Dataslate:
         self.boolex_logly = tuple(
             qid_to_logly.get(i, False) or False
             for i in range(len(self._names), )
+        )
+
+    def _populate_boolex_scalar(
+        self,
+        scalar_names: Iterable[str] | None,
+        /,
+    ) -> None:
+        """
+        """
+        if not scalar_names:
+            return
+        self._boolex_scalar = tuple(
+            n in scalar_names
+            for n in self._names
         )
 
     def _fill_fallbacks(
@@ -588,19 +615,25 @@ def multiple_to_databox(
     #[
     if target_databox is None:
         target_databox = _databoxes.Databox()
-    num_columns = len(dataslates)
+    num_names = dataslates[0].num_names
+    num_variants = len(dataslates)
     start_date = dataslates[0]._dates[0]
-    for record_id, n in enumerate(dataslates[0]._names):
+    boolex_scalar = dataslates[0]._boolex_scalar or _it.repeat(False, )
+    for record_id, name, is_scalar in zip(range(num_names), dataslates[0]._names, boolex_scalar, ):
         data = _np.hstack(tuple(
             ds.retrieve_record(record_id, ).reshape(-1, 1)
             for ds in dataslates
         ))
-        target_databox[n] = _series.Series(
-            num_columns=num_columns,
-            start_date=start_date,
-            values=data,
-            description=dataslates[0].descriptions[record_id],
-        )
+        if is_scalar:
+            value = list(data[0, :])
+        else:
+            value = _series.Series(
+                num_variants=num_variants,
+                start_date=start_date,
+                values=data,
+                description=dataslates[0].descriptions[record_id],
+            )
+        target_databox[name] = value
     return target_databox
     #]
 
@@ -635,11 +668,11 @@ def _slate_value_variant_iterator(
     """
     #[
     if hasattr(value, "iter_data_variants_from_to"):
-        yield from value.iter_data_variants_from_to(from_to, )
+        return value.iter_data_variants_from_to(from_to, )
     elif isinstance(value, Iterable):
-        yield from _iterators.exhaust_then_last(value, )
+        return _iterators.exhaust_then_last(value, )
     else:
-        yield from _iterators.exhaust_then_last([], value, )
+        return _iterators.exhaust_then_last([], value, )
     #]
 
 

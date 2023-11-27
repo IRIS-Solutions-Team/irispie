@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import (Any, )
 from collections.abc import (Iterable, )
+import copy as _co
 
 from .. import quantities as _quantities
 from ..databoxes import main as _databoxes
@@ -30,6 +31,11 @@ class Variant:
         """
         """
         self.parameters = { n: None for n in parameter_names }
+
+    def copy(self, /, ) -> Self:
+        """
+        """
+        return _co.deepcopy(self, )
 
     def assign(self, *args, **kwargs, ) -> None:
         """

@@ -47,14 +47,14 @@ class Mixin:
         spc = _create_spc_file(_TEMPLATE_SPC, settings, )
         new_data = []
         info = []
-        for column_data in self.data.T:
-            ith_new_data, ith_info = _x13_data(spc, base_start_date, column_data, settings["x11_save"], clean_up=clean_up, )
+        for variant_data in self.data.T:
+            ith_new_data, ith_info = _x13_data(spc, base_start_date, variant_data, settings["x11_save"], clean_up=clean_up, )
             new_data.append(ith_new_data.reshape(-1, 1, ))
             info.append(ith_info)
         if not all(i["success"] for i in info):
             _wrongdoings.raise_as(
                 when_error,
-                "X13 failed to produce a result for at least one column.",
+                "X13 failed to produce a result for at least one variant.",
             )
         new_data = _np.hstack(new_data, )
         self._replace_start_date_and_values(base_start_date, new_data, )
@@ -70,7 +70,7 @@ for n in ("x13", ):
 def _x13_data(
     spc: str,
     base_start_date: _dates.Date,
-    base_column_data: _np.ndarray,
+    base_variant_data: _np.ndarray,
     x11_save: str,
     /,
     clean_up: bool = True,
@@ -78,11 +78,11 @@ def _x13_data(
     """
     """
     #[
-    new_data = _np.full(base_column_data.shape, _np.nan, dtype=float, )
-    start_date, column_data, output_slice = _remove_leading_trailing_nans(base_start_date, base_column_data, )
+    new_data = _np.full(base_variant_data.shape, _np.nan, dtype=float, )
+    start_date, variant_data, output_slice = _remove_leading_trailing_nans(base_start_date, base_variant_data, )
     year, period = start_date.to_year_period()
     spc = spc.replace("$(series_start)", _X13_DATE_FORMAT_RESOLUTION[start_date.frequency].format(year=year, period=period, ), )
-    spc = spc.replace("$(series_data)", _print_series_data(column_data, ), )
+    spc = spc.replace("$(series_data)", _print_series_data(variant_data, ), )
     spc_file_name_without_ext = _write_spc_to_file(spc, )
     system_output = _execute(spc_file_name_without_ext, )
     raw_output_data, info = _collect_outputs(spc_file_name_without_ext, system_output, x11_save, )
@@ -95,12 +95,12 @@ def _x13_data(
 
 
 def _print_series_data(
-    column_data: _np.ndarray,
+    variant_data: _np.ndarray,
     /,
 ) -> str:
     """
     """
-    return "\n".join(f"        {v:g}" for v in column_data)
+    return "\n".join(f"        {v:g}" for v in variant_data)
 
 
 def _execute(
@@ -181,23 +181,23 @@ def _write_spc_to_file(
 
 def _remove_leading_trailing_nans(
     base_start_date: _dates.Date,
-    column_data: _np.ndarray,
+    variant_data: _np.ndarray,
     /,
 ) -> tuple[_dates.Date, _np.ndarray, slice]:
     """
     """
     #[
     start_date = base_start_date.copy()
-    num_rows = column_data.shape[0]
+    num_rows = variant_data.shape[0]
     num_leading = 0
     num_trailing = 0
-    while _np.isnan(column_data[0]):
+    while _np.isnan(variant_data[0]):
         num_leading += 1
-        column_data = column_data[1:]
-    while _np.isnan(column_data[-1]):
+        variant_data = variant_data[1:]
+    while _np.isnan(variant_data[-1]):
         num_trailling += 1
-        column_data = column_data[:-1]
-    return start_date + num_leading, column_data, slice(num_leading, num_rows-num_trailing, )
+        variant_data = variant_data[:-1]
+    return start_date + num_leading, variant_data, slice(num_leading, num_rows-num_trailing, )
     #]
 
 

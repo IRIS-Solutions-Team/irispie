@@ -34,8 +34,8 @@ class FillingMixin:
         fill_func = _METHOD_FACTORY[method]
         data = self.get_data(fill_range, )
         new_data = tuple(
-            fill_func(column, *args, **kwargs, ).T
-            for column in data.T
+            fill_func(variant, *args, **kwargs, ).T
+            for variant in data.T
         )
         self.set_data(fill_range, new_data, )
 

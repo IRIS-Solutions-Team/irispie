@@ -20,7 +20,8 @@ from .. import quantities as _quantities
 from .. import sources as _sources
 from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
-from .. import iter_variants as _iter_variants
+from .. import has_invariant as _has_invariant
+from .. import has_variants as _has_variants
 from ..conveniences import iterators as _iterators
 from ..conveniences import files as _files
 from ..parsers import common as _pc
@@ -55,7 +56,8 @@ _SIMULATE_CAN_BE_ANTICIPATED = _SIMULATE_CAN_BE_EXOGENIZED | _SIMULATE_CAN_BE_EN
 class Simultaneous(
     _sources.SourceMixin,
     _assigns.AssignMixin,
-    _iter_variants.IterVariantsMixin,
+    _has_invariant.HasInvariantMixin,
+    _has_variants.HasVariantsMixin,
     _simulate.SimulateMixin,
     _steady.SteadyMixin,
     _covariances.CoverianceMixin,
@@ -75,13 +77,23 @@ class Simultaneous(
     def __init__(
         self,
         /,
+        skeleton: bool = False,
     ) -> None:
         """
         """
         self._invariant = None
-        self._variants = None
+        self._variants = []
 
-    def copy(self) -> Self:
+    @classmethod
+    def skeleton(
+        klass,
+        /,
+    ) -> Self:
+        """
+        """
+        return klass(skeleton=True, )
+
+    def copy(self, /, ) -> Self:
         """
         Create a deep copy of this model
         """
@@ -100,6 +112,17 @@ class Simultaneous(
         else:
             return self.get_variant(request, )
 
+    def __setitem__(
+        self,
+        reference,
+        value: Any,
+        /,
+    ) -> None:
+        """
+        """
+        if isinstance(reference, str):
+            self.assign(**{reference: value}, )
+
     def __repr__(self, /, ) -> str:
         """
         """
@@ -110,21 +133,11 @@ class Simultaneous(
             f"{self.__class__.__name__} model",
             f"Description: \"{self.get_description()}\"",
             f"|",
-            f"| Number of variants: {self.num_variants}",
-            f"| Number of [transition, measurement] equations: [{self.num_transition_equations}, {self.num_measurement_equations}]",
-            f"| [Min, Max] time shift: [{min_shift:+g}, {max_shift:+g}]",
+            f"| Num of variants: {self.num_variants}",
+            f"| Num of equations [transition, measurement]: [{self.num_transition_equations}, {self.num_measurement_equations}]",
+            f"| Time shifts [min, max]: [{min_shift:+g}, {max_shift:+g}]",
             f"|",
         ))
-
-    def get_description(self, /, ) -> str:
-        """
-        """
-        return self._invariant.get_description()
-
-    def set_description(self, *args, **kwargs, ) -> None:
-        """
-        """
-        self._invariant.set_description(*args, **kwargs, )
 
     def get_value(
         self,
@@ -402,6 +415,14 @@ class Simultaneous(
         """
         """
         return self.get_parameters_stds()
+
+    def get_scalar_names(self, /, ) -> tuple[str, ...]:
+        """
+        """
+        return _quantities.generate_quantity_names_by_kind(
+            self._invariant.quantities,
+            _quantities.QuantityKind.PARAMETER | _quantities.QuantityKind.STD,
+        )
 
     #
     # ===== Implement PlannableSimulateProtocol =====

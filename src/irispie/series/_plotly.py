@@ -29,7 +29,7 @@ with open(_os.path.join(_PLOTLY_STYLES_FOLDER, "plain_layout.json", ), "rt", ) a
 def _line_plot(color: str, **settings) -> _pg.Scatter:
     """
     """
-    settings = {"mode": "lines", } | settings
+    settings = {"mode": "lines+markers", } | settings
     return _pg.Scatter(line_color=color, **settings, )
 
 def _bar_plot(color: str, **settings) -> _pg.Bar:
@@ -41,9 +41,6 @@ _PLOTLY_TRACES_FACTORY = {
     "line": _line_plot,
     "bar": _bar_plot,
 }
-
-
-builtin_range = range
 
 
 _COLOR_ORDER = [
@@ -65,7 +62,7 @@ class Mixin:
     def plot(
         self,
         *,
-        range: Iterable[_dates.Dater] | EllipsisType = ...,
+        span: Iterable[_dates.Dater] | EllipsisType = ...,
         title: str | None = None,
         legend: Iterable[str] | None = None,
         show_legend: bool | None = None,
@@ -77,22 +74,25 @@ class Mixin:
     ) -> _pg.Figure:
         """
         """
-        range = self._resolve_dates(range, )
-        range = [ t for t in range ]
-        data = self.get_data(range, )
-        num_columns = data.shape[1]
-        date_str = [ t.to_plotly_date() for t in range ]
-        date_format = range[0].frequency.plotly_format
+        span = self._resolve_dates(span, )
+        span = [ t for t in span ]
+        data = self.get_data(span, )
+        num_variants = data.shape[1]
+        date_str = [ t.to_plotly_date() for t in span ]
+        date_format = span[0].frequency.plotly_format
         figure = _pg.Figure() if figure is None else figure
         axis_id = f"{subplot+1}" if subplot else ""
         subplot = _resolve_subplot(figure, subplot, )
         show_legend = show_legend if show_legend is not None else legend is not None
 
-        traces = (traces_setting, ) if isinstance(traces, dict) else traces
+        minor_dtick_months = min(12//span[0].frequency, 1, )
+        minor_dtick_string = f"M{12//span[0].frequency}"
+
+        traces = (traces, ) if isinstance(traces, dict) else traces
         color_cycle = _it.cycle(_COLOR_ORDER)
         traces_cycle = _it.cycle(traces or ({}, ))
 
-        for i, c, ts in zip(builtin_range(num_columns, ), color_cycle, traces_cycle, ):
+        for i, c, ts in zip(range(num_variants, ), color_cycle, traces_cycle, ):
             traces_settings = {
                 "x": date_str,
                 "y": data[:, i],
@@ -113,12 +113,18 @@ class Mixin:
             del layout["xaxis"]
             del layout["yaxis"]
         layout[f"xaxis{axis_id}"]["tickformat"] = date_format
+        layout[f"xaxis{axis_id}"]["ticklabelmode"] = "period"
+        layout[f"xaxis{axis_id}"]["minor"] = {"showgrid": True, "dtick": "M3", }
         layout["title"]["text" ] = title
         figure.update_layout(layout, )
 
         if xline:
-            xline = xline.to_plotly_date()
-            figure.add_vline(xline)
+            xline = (
+                xline.to_plotly_date()
+                if hasattr(xline, "to_plotly_date")
+                else xline
+            )
+            figure.add_vline(xline, )
         return figure
 
     #]
@@ -141,6 +147,6 @@ def _resolve_subplot(
         num_rows = len(rows)
         num_columns = len(columns)
         row = position // num_columns + 1
-        column = position % num_columns + 1
-        return row, column
+        variant = position % num_columns + 1
+        return row, variant
 

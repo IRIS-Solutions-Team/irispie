@@ -27,6 +27,8 @@ from .. import wrongdoings as _wrongdoings
 
 from . import _imports as _imports
 from . import _exports as _exports
+from . import _merge as _merge
+from . import _fred as _fred
 from . import _views as _views
 #]
 
@@ -97,6 +99,8 @@ _ARRAY_TRANSPOSER_FACTORY = {
 class Databox(
     _imports.ImportMixin,
     _exports.ExportMixin,
+    _merge.MergeMixin,
+    _fred.FredMixin,
     _descriptions.DescriptionMixin,
     _views.ViewMixin,
     dict,
@@ -104,8 +108,8 @@ class Databox(
     """
     Unstructured data storage class
     """
-
     #[
+
     def __init__(
         self,
         /,
@@ -224,7 +228,9 @@ class Databox(
         context_names = self.get_names()
         source_names, target_names = _resolve_source_target_names(source_names, target_names, context_names)
         for old_name, new_name in (
-            z for z in zip(source_names, target_names) if z[0] in context_names and z[0]!=z[1]
+            z
+            for z in zip(source_names, target_names)
+            if z[0] in context_names and z[0] != z[1]
         ):
             self[new_name] = self.pop(old_name)
 
@@ -451,6 +457,7 @@ class Databox(
         new = _co.deepcopy(self)
         new.update(other, )
         return new
+
     #]
 
 

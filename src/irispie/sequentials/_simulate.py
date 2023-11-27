@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from typing import (Any, )
-from numbers import (Number, )
+from numbers import (Real, )
 import numpy as _np
 
 from .. import wrongdoings as _wrongdoings
@@ -144,7 +144,7 @@ def _is_exogenized(
     data: _np.ndarray,
     data_column: int,
     name_to_row: dict[str, int],
-) -> tuple[bool, Number | None]:
+) -> tuple[bool, Real | None]:
     """
     """
     #[

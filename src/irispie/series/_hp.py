@@ -6,7 +6,7 @@ Univariate time series filters
 #[
 from __future__ import annotations
 
-from numbers import (Number, )
+from numbers import (Real, )
 from collections.abc import (Iterable, Callable, )
 from types import (EllipsisType, )
 from typing import (Self, )
@@ -44,7 +44,7 @@ class _ConstrainedHodrickPrescottFilter:
     def __init__(
         self,
         num_periods: int,
-        smooth: Number,
+        smooth: Real,
         /,
         level_where: list[int] | None = None,
         change_where: list[int] | None = None,
@@ -67,6 +67,7 @@ class _ConstrainedHodrickPrescottFilter:
     ) -> tuple[_np.ndarray, _np.ndarray]:
         """
         """
+        data = data.reshape(-1, 1)
         F = self._add_eye_for_observations(data, )
         extended_data = self._extend_data(data, level_data, change_data, )
         if self._log:
@@ -118,7 +119,6 @@ class _ConstrainedHodrickPrescottFilter:
     def _create_plain_filter_matrix(self, ) -> None:
         """
         """
-        I = _np.eye(self._num_periods, dtype=float)
         K = _np.zeros((self._num_periods-2, self._num_periods), dtype=float)
         for i in range(self._num_periods-2):
             K[i,i] = 1
@@ -133,24 +133,24 @@ class _ConstrainedHodrickPrescottFilter:
         num_constraints = len(level_where)
         self._num_extra_rows += num_constraints
         extra_rows = _np.zeros((num_constraints, self._num_periods, ), dtype=float)
-        extra_columns = _np.zeros((self._num_periods + num_constraints, num_constraints, ), dtype=float)
+        extra_variants = _np.zeros((self._num_periods + num_constraints, num_constraints, ), dtype=float)
         for i, j in enumerate(level_where, ):
             extra_rows[i, j] = 1
-            extra_columns[j, i] = 1
+            extra_variants[j, i] = 1
         self._F = _np.vstack((self._F, extra_rows, ))
-        self._F = _np.hstack((self._F, extra_columns, ))
+        self._F = _np.hstack((self._F, extra_variants, ))
 
     def _add_change_constraints(self, change_where: list[int], /, ):
         if not change_where:
             return
         num_constraints = len(change_where)
         extra_rows = _np.zeros((num_constraints, self._F.shape[1], ), dtype=float, )
-        extra_columns = _np.zeros((self._F.shape[0] + num_constraints, num_constraints, ), dtype=float, )
+        extra_variants = _np.zeros((self._F.shape[0] + num_constraints, num_constraints, ), dtype=float, )
         for i, j in enumerate(change_where, ):
             extra_rows[i, [j-1, j]] = (-1, 1)
-            extra_columns[[j-1, j], i] = (-1, 1)
+            extra_variants[[j-1, j], i] = (-1, 1)
         self._F = _np.vstack((self._F, extra_rows, ))
-        self._F = _np.hstack((self._F, extra_columns, ))
+        self._F = _np.hstack((self._F, extra_variants, ))
         self._num_extra_rows += num_constraints
     #]
 
@@ -162,38 +162,38 @@ class Mixin:
     #[
 
     def hpf_trend(self, /, *args, **kwargs):
-        start_date, trend_data, _ = _hpf_data(self, *args, **kwargs, )
+        start_date, trend_data, _ = _data_hpf(self, *args, **kwargs, )
         self._replace_start_date_and_values(start_date, trend_data, )
 
     def hpf_gap(self, /, *args, **kwargs):
-        start_date, _, gap_data = _hpf_data(self, *args, **kwargs, )
+        start_date, _, gap_data = _data_hpf(self, *args, **kwargs, )
         self._replace_start_date_and_values(start_date, gap_data, )
 
     #]
 
 
-def _hpf_data(
+def _data_hpf(
     self,
     *,
-    range: Iterable[_dates.Dater] | EllipsisType = ...,
-    smooth: Number | None = None,
+    span: Iterable[_dates.Dater] | EllipsisType = ...,
+    smooth: Real | None = None,
     log: bool = False,
     level: _series.Series | None = None,
     change: _series.Series | None = None,
 ) -> tuple[_np.ndarray, _np.ndarray, ]:
     """
+    Hodrick-Prescott filter run on a multi-variant data matrix
     """
     #[
     if smooth is None:
-        smooth = _get_default_smooth(self.frequency)
-    range = self._resolve_dates(range)
-    encompassing_range = _dates.get_encompassing_range(self, level, change, range, )
-    range = [ t for t in encompassing_range ]
-    data = self.get_data(range)
-    num_periods, num_columns = data.shape
-    level_data, level_where = _prepare_constraints(level, range, )
-    change_data, change_where = _prepare_constraints(change, range, )
+        smooth = _get_default_smooth(self.frequency, )
+    span = self._resolve_dates(span, )
+    encompassing_span, *from_to = _dates.get_encompassing_span(self, level, change, span, )
+    num_periods = len(encompassing_span, )
+    level_data, level_where = _prepare_constraints(level, from_to, )
+    change_data, change_where = _prepare_constraints(change, from_to, )
     change_data, change_where = _remove_first_date_change(change_data, change_where, )
+    #
     hp = _ConstrainedHodrickPrescottFilter(
         num_periods,
         smooth,
@@ -201,11 +201,22 @@ def _hpf_data(
         change_where=change_where,
         log=log,
     )
-    trend_data, gap_data = hp.filter_data(
-        data, level_data=level_data, change_data=change_data,
-    )
-    start_date = range[0]
-    return start_date, trend_data, gap_data
+    #
+    trend_data = []
+    gap_data = []
+    for data_variant in self.iter_own_data_variants_from_to(from_to, ):
+        trend_data_variant, gap_data_variant = hp.filter_data(
+            data_variant,
+            level_data=level_data,
+            change_data=change_data,
+        )
+        trend_data.append(trend_data_variant, )
+        gap_data.append(gap_data_variant, )
+    trend_data = _np.hstack(trend_data, )
+    gap_data = _np.hstack(gap_data, )
+    #
+    new_start_date = from_to[0]
+    return new_start_date, trend_data, gap_data
     #]
 
 
@@ -213,7 +224,7 @@ def hpf(self, *args, **kwargs, ) -> tuple[_series.Series, _series.Series]:
     """
     Constrained Hodrick-Prescott filter
     """
-    start_date, trend_data, gap_data = _hpf_data(self, *args, **kwargs, )
+    start_date, trend_data, gap_data = _data_hpf(self, *args, **kwargs, )
     trend = type(self)(start_date=start_date, values=trend_data, )
     gap = type(self)(start_date=start_date, values=gap_data, )
     return trend, gap
@@ -227,13 +238,13 @@ for n in ("hpf_trend", "hpf_gap", ):
 
 def _prepare_constraints(
     constraint: Self | None,
-    range: list[_dates.Dater],
+    from_to: tuple[_dates.Dater, _dates.Dater, ],
     /,
 ) -> tuple[_np.ndarray | None, list[int] | None, ]:
     #[
     if constraint is None:
         return None, None
-    data = constraint.get_data(range, 0)
+    data = constraint.get_data_from_to(from_to, 0, )
     where = list(_np.where(~_np.isnan(data.reshape(-1, ), ), )[0])
     data = data[where, :]
     return data, where

@@ -110,7 +110,7 @@ class Invariant(
             self.dynamic_equations + self.steady_equations,
         )
         if undeclared_names and autodeclare_as is None:
-            raise _wrongdoings.IrisPieError([
+            raise _wrongdoings.IrisPieCritical([
                 "These names are used in equations but not declared:",
                 *undeclared_names,
                 ])
@@ -229,7 +229,7 @@ def _catch_troublemakers(equations, function_context, /, ):
     ]
     if fail:
         message = ["Syntax error in these equations"] + fail
-        raise _wrongdoings.IrisPieError(message, )
+        raise _wrongdoings.IrisPieCritical(message, )
     #]
 
 
@@ -344,9 +344,10 @@ def _check_numbers_of_variables_equations(
     num_variables = _quantities.count_quantities_of_kind(quantities, quantity_kind, )
     num_equations = _equations.count_equations_of_kind(equations, equation_kind, )
     if num_variables != num_equations:
-        raise _wrongdoings.IrisPieError([
-            f"Number of {quantity_kind.human.lower()}s ({num_variables})"
-            f" does not match number of {equation_kind.human.lower()}s ({num_equations})"
+        raise _wrongdoings.IrisPieCritical([
+            "Inconsistent numbers of variables and equations",
+            f"Number of {quantity_kind.human.lower()}s: {num_variables}",
+            f"Number of {equation_kind.human.lower()}s: {num_equations}",
         ])
     #]
 

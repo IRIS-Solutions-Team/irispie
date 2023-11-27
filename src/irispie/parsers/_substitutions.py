@@ -28,8 +28,8 @@ def resolve_substitutions(
     make_substitutions = lambda source: _re.sub(subs_pattern, replace, source)
     for wh in where_substitute:
         parsed[wh] = [
-            (label, (make_substitutions(dynamic), make_substitutions(steady)))
-            for label, (dynamic, steady) in parsed[wh]
+            (label, (make_substitutions(dynamic), make_substitutions(steady)), attributes)
+            for label, (dynamic, steady), attributes in parsed[wh]
         ]
     return parsed
 

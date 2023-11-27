@@ -6,7 +6,7 @@ Main time series class definition
 #[
 from __future__ import annotations
 
-from numbers import Number
+from numbers import Real
 from collections.abc import (Iterable, Callable, )
 from typing import (Self, Any, TypeAlias, NoReturn, )
 from types import (EllipsisType, )
@@ -109,8 +109,11 @@ class Series(
     #[
 
     __slots__ = (
-        "start_date", "data", "data_type", "_column_titles",
-        "metadata", "_description", 
+        "start_date",
+        "data",
+        "data_type",
+        "metadata",
+        "_description", 
     )
 
     _numeric_format: str = "15g"
@@ -124,10 +127,9 @@ class Series(
         self,
         /,
         *,
-        num_columns: int = 1,
+        num_variants: int = 1,
         data_type: type = _np.float64,
         description: str = "",
-        column_titles: Iterable[str] | None = None,
         start_date: _dates.Dater | None = None,
         dates: Iterable[_dates.Dater] | None = None,
         values: Any | None = None,
@@ -135,17 +137,15 @@ class Series(
     ) -> None:
         self.start_date = None
         self.data_type = data_type
-        self.data = _np.full((0, num_columns), self._missing, dtype=self.data_type)
+        self.data = _np.full((0, num_variants), self._missing, dtype=self.data_type)
         self.metadata = {}
         self._description = description
-        self.column_titles = column_titles
-        self._reset_column_titles_if_needed()
         test = (x is not None for x in (start_date, dates, values, func))
         _SERIES_FACTORY.get(tuple(test), _invalid_constructor)(self, start_date=start_date, dates=dates, values=values, func=func, )
 
     def reset(self, /, ) -> None:
         self.__init__(
-            num_columns=self.num_columns,
+            num_variants=self.num_variants,
             data_type=self.data_type,
         )
 
@@ -163,12 +163,12 @@ class Series(
         return self.data.shape
 
     @property
-    def num_columns(self, /, ) -> int:
-        return self.data.shape[1]
+    def num_periods(self, /, ) -> int:
+        return self.data.shape[0]
 
     @property
     def num_variants(self, /, ) -> int:
-        return self.num_columns
+        return self.data.shape[1]
 
     @property
     def range(self):
@@ -239,11 +239,11 @@ class Series(
         self,
         dates: Dates,
         data: Any | Series,
-        columns: ColumnsRequestType = None,
+        variants: ColumnsRequestType = None,
         /,
     ) -> None:
         dates = self._resolve_dates(dates)
-        columns = self._resolve_columns(columns)
+        variants = self._resolve_variants(variants)
         if not self.start_date:
             self.start_date = next(iter(dates), None, )
             self.data = self._create_periods_of_missing_values(num_rows=1, )
@@ -258,7 +258,7 @@ class Series(
             return
         if not isinstance(data, tuple):
             data = _it.repeat(data)
-        for c, d in zip(columns, data):
+        for c, d in zip(variants, data):
             self.data[pos, c] = d
 
     def _get_data_and_recreate(
@@ -267,56 +267,94 @@ class Series(
     ) -> _np.ndarray:
         """
         """
-        dates, pos, columns, expanded_data = self._resolve_dates_and_positions(*args, )
-        data = expanded_data[_np.ix_(pos, columns)]
-        num_columns = data.shape[1]
-        new = Series(num_columns=num_columns, data_type=self.data_type)
+        dates, pos, variants, expanded_data = self._resolve_dates_and_positions(*args, )
+        data = expanded_data[_np.ix_(pos, variants)]
+        num_variants = data.shape[1]
+        new = Series(num_variants=num_variants, data_type=self.data_type)
         new.set_data(dates, data)
         return new
 
     def _resolve_dates_and_positions(
         self,
         dates: Dates,
-        columns: ColumnsRequestType = None,
+        variants: ColumnsRequestType = None,
         /,
     ) -> tuple[Iterable[_dates.Dater], Iterable[int], Iterable[int], _np.ndarray]:
         """
         """
         dates = self._resolve_dates(dates, )
         dates = [ t for t in dates ]
-        columns = self._resolve_columns(columns)
+        variants = self._resolve_variants(variants)
         if not dates:
             dates = ()
             pos = ()
-            data = self._create_periods_of_missing_values(num_rows=0, )[:, columns]
-            return dates, pos, columns, data
+            data = self._create_periods_of_missing_values(num_rows=0, )[:, variants]
+            return dates, pos, variants, data
         #
         base_date = self.start_date or _builtin_min(dates, )
         pos, add_before, add_after = _get_date_positions(dates, base_date, self.shape[0]-1)
         data = self._create_expanded_data(add_before, add_after, )
         if not isinstance(pos, Iterable):
             pos = (pos, )
-        return dates, pos, columns, data
+        return dates, pos, variants, data
+
+    def alter_num_variants(
+        self,
+        new_num: int,
+        /,
+    ) -> Self:
+        """
+        Alter (expand, shrink) the number of variants in this time series object
+        """
+        if new_num < self.num_variants:
+            self.shrink_num_variants(new_num, )
+        elif new_num > self.num_variants:
+            self.expand_num_variants(new_num, )
+
+    def expand_num_variants(
+        self,
+        new_num: int,
+        /,
+    ) -> None:
+        """
+        """
+        add = new_num - self.num_variants
+        if add < 0:
+            raise ValueError("Use shrink_num_variants to shrink the number of variants")
+        data = _np.tile(self.data[:, (-1, )], (1, add, ))
+        self.data = _np.hstack((self.data, data, ), )
+
+    def shrink_num_variants(
+        self,
+        new_num: int,
+        /,
+    ) -> None:
+        """
+        """
+        remove = self.num_variants - new_num
+        if remove < 0:
+            raise ValueError("Use expand_num_variants to expand the number of variants")
+        self.data = self.data[:, :-remove]
 
     def get_data(
         self,
         dates = ...,
         *args,
     ) -> _np.ndarray:
-        dates, pos, columns, expanded_data = self._resolve_dates_and_positions(dates, *args, )
-        data = expanded_data[_np.ix_(pos, columns)]
+        dates, pos, variants, expanded_data = self._resolve_dates_and_positions(dates, *args, )
+        data = expanded_data[_np.ix_(pos, variants)]
         return data
 
-    def get_data_column(
+    def get_data_variant(
         self,
         dates: Dates,
-        column: Number | None = None,
+        variant: Real | None = None,
         /,
     ) -> _np.ndarray:
         """
         """
-        column = column if column and column<self.data.shape[1] else 0
-        return self.get_data(dates, column, )
+        variant = variant if variant and variant<self.data.shape[1] else 0
+        return self.get_data(dates, variant, )
 
     def get_data_from_to(
         self,
@@ -325,44 +363,32 @@ class Series(
     ) -> _np.ndarray:
         """
         """
-        _, pos, columns, expanded_data \
+        _, pos, variants, expanded_data \
             = self._resolve_dates_and_positions(from_to, *args, )
         from_pos, to_pos = pos[0], pos[-1]+1
-        return expanded_data[from_pos:to_pos, columns]
+        return expanded_data[from_pos:to_pos, variants]
 
-    def get_data_column_from_to(
+    def get_data_variant_from_to(
         self,
         from_to: Iterable[_dates.Dater],
-        column: int | None = None,
+        variant: int | None = None,
         /,
     ) -> _np.ndarray:
         """
         """
-        column = column if column and column < self.data.shape[1] else 0
-        return self.get_data_from_to(from_to, column, )
+        variant = variant if variant and variant < self.data.shape[1] else 0
+        return self.get_data_from_to(from_to, variant, )
 
-    def iter_data_columns_from_to(
+    def extract_variants(
         self,
-        from_to: Iterable[_dates.Dater],
-        /,
-    ) -> Iterator[_np.ndarray]:
-        """
-        Iterate over the columns and yield 1-D arrays for the given time span
-        """
-        data_from_to = self.get_data_from_to(from_to, )
-        yield from data_from_to.T
-
-    def extract_columns(
-        self,
-        columns,
+        variants,
         /,
     ) -> None:
-        if not isinstance(columns, Iterable):
-            columns = (columns, )
+        if not isinstance(variants, Iterable):
+            variants = (variants, )
         else:
-            columns = tuple(c for c in columns)
-        self.data = self.data[:, columns]
-        self.column_titles = [ self.column_titles[c] for c in columns ]
+            variants = tuple(c for c in variants)
+        self.data = self.data[:, variants]
 
     def set_start_date(
         self,
@@ -390,25 +416,25 @@ class Series(
             for d in dates
         )
 
-    def _resolve_columns(
+    def _resolve_variants(
         self,
-        columns: ColumnsRequestType,
+        variants: ColumnsRequestType,
         /,
     ) -> Iterable[int]:
         """
-        Resolve column request to an iterable of integers
+        Resolve variant request to an iterable of integers
         """
-        if columns is None or columns is Ellipsis:
-            columns = slice(None)
-        if isinstance(columns, slice):
-            columns = range(*columns.indices(self.num_columns))
-        if not isinstance(columns, Iterable):
-            columns = (columns, )
-        return columns
+        if variants is None or variants is Ellipsis:
+            variants = slice(None)
+        if isinstance(variants, slice):
+            variants = range(*variants.indices(self.num_variants))
+        if not isinstance(variants, Iterable):
+            variants = (variants, )
+        return variants
 
     def __call__(self, *args):
         """
-        Get data self[dates] or self[dates, columns]
+        Get data self[dates] or self[dates, variants]
         """
         return self.get_data(*args)
 
@@ -461,7 +487,7 @@ class Series(
 
     def __getitem__(self, index):
         """
-        Create a new time series based on date retrieved by self[dates] or self[dates, columns]
+        Create a new time series based on date retrieved by self[dates] or self[dates, variants]
         """
         if isinstance(index, int):
             new = self.copy()
@@ -473,7 +499,7 @@ class Series(
 
     def __setitem__(self, index, data):
         """
-        Set data self[dates] = ... or self[dates, columns] = ...
+        Set data self[dates] = ... or self[dates, variants] = ...
         """
         if not isinstance(index, tuple):
             index = (index, None, )
@@ -482,17 +508,17 @@ class Series(
     def hstack(self, *args):
         if not args:
             return self.copy()
-        encompassing_range = _dates.get_encompassing_range(self, *args, )
-        new_data = self.get_data(encompassing_range, )
+        encompassing_span, *from_to = _dates.get_encompassing_span(self, *args, )
+        new_data = self.get_data_from_to(from_to, )
         add_data = (
-            x.get_data(encompassing_range, )
+            x.get_data_from_to(from_to, )
             if hasattr(x, "get_data")
-            else _create_data_column_from_number(x, encompassing_range, self.data_type)
+            else _create_data_variant_from_number(x, encompassing_span, self.data_type)
             for x in args
         )
         new_data = _np.hstack((new_data, *add_data))
-        new = Series(num_columns=new_data.shape[1], )
-        new.set_data(encompassing_range, new_data, )
+        new = Series(num_variants=new_data.shape[1], )
+        new.set_data(encompassing_span, new_data, )
         new.trim()
         return new
 
@@ -516,10 +542,10 @@ class Series(
     def empty(
         self,
         *,
-        num_columns: int | None = None
+        num_variants: int | None = None
     ) -> None:
-        num_columns = num_columns if num_columns is not None else self.num_columns
-        self.data = _np.empty((0, num_columns), dtype=self.data_type)
+        num_variants = num_variants if num_variants is not None else self.num_variants
+        self.data = _np.empty((0, num_variants), dtype=self.data_type)
 
     def overlay_by_range(
         self,
@@ -535,7 +561,7 @@ class Series(
         /,
         method = "by_range",
     ) -> Self:
-        _broadcast_columns_if_needed(self, other, )
+        _broadcast_variants_if_needed(self, other, )
         self._LAY_METHOD_RESOLUTION[method]["overlay"](self, other, )
 
     def underlay_by_range(
@@ -555,7 +581,7 @@ class Series(
         /,
         method = "by_range",
     ) -> Self:
-        _broadcast_columns_if_needed(self, other, )
+        _broadcast_variants_if_needed(self, other, )
         self._LAY_METHOD_RESOLUTION[method]["underlay"](self, other, )
 
     _LAY_METHOD_RESOLUTION = {
@@ -584,40 +610,6 @@ class Series(
         for n in ("start_date", "data", "data_type", ):
             setattr(self, n, getattr(other, n, ))
 
-    @property
-    def column_titles(self, ) -> tuple[str, ...]:
-        """
-        """
-        return self._column_titles
-
-    @column_titles.setter
-    def column_titles(
-        self,
-        column_titles: Iterable[str] | str,
-    ) -> None:
-        """
-        """
-        if not column_titles:
-            self._column_titles = ("", ) * self.num_columns
-            return
-        if isinstance(column_titles, str):
-            column_titles = (column_titles, )
-        if len(self._column_titles) == 1:
-            self._column_titles = tuple(self._column_titles) * self.num_columns
-        if len(column_titles) != self.num_columns:
-            raise _wrongdoings.IrisPieError(
-                "Number of column titles must match number of data columns"
-            )
-
-    def _reset_column_titles_if_needed(
-        self,
-        /,
-    ) -> None:
-        """
-        """
-        if not self._column_titles or self.num_columns != len(self._column_titles):
-            self._column_titles = ("", ) * self.num_columns
-
     def __or__(self, other):
         """
         Implement the | operator
@@ -644,7 +636,6 @@ class Series(
         if num_leading == self.data.shape[0]:
             self.reset()
             return self
-        self._reset_column_titles_if_needed()
         num_trailing = _get_num_leading_missing_rows(self.data[::-1], self._test_missing_period)
         if not num_leading and not num_trailing:
             return self
@@ -663,7 +654,7 @@ class Series(
 
     def _check_data_shape(self, data, /, ):
         if data.shape[1] != self.data.shape[1]:
-            raise Exception("Time series data being assigned must preserve the number of columns")
+            raise Exception("Time series data being assigned must preserve the number of variants")
 
     def __neg__(self):
         """
@@ -795,24 +786,23 @@ class Series(
         if not isinstance(other, type(self)):
             return self.apply(lambda data: func(data, other))
         # FIXME: empty encompassing range
-        encompassing_range = _dates.get_encompassing_range(self, other)
-        new_start_date = encompassing_range[0]
-        self_data = self.get_data(encompassing_range, )
-        other_data = other.get_data(encompassing_range, )
+        _, *from_to = _dates.get_encompassing_span(self, other)
+        self_data = self.get_data_from_to(from_to, )
+        other_data = other.get_data_from_to(from_to, )
         new_data = func(self_data, other_data)
-        new = Series(num_columns=new_data.shape[1], ) if new is None else new
-        new._replace_start_date_and_values(new_start_date, new_data, )
+        new = Series(num_variants=new_data.shape[1], ) if new is None else new
+        new._replace_start_date_and_values(from_to[0], new_data, )
         return new
 
-    def _broadcast_columns(self, num_columns, /, ) -> None:
+    def _broadcast_variants(self, num_variants, /, ) -> None:
         """
         """
-        if self.data.shape[1] == num_columns:
+        if self.data.shape[1] == num_variants:
             return
         if self.data.shape[1] == 1:
-            self.data = _np.repeat(self.data, num_columns, axis=1, )
+            self.data = _np.repeat(self.data, num_variants, axis=1, )
             return
-        raise _wrongdoings.IrisPieError("Cannot broadcast columns")
+        raise _wrongdoings.IrisPieError("Cannot broadcast variants")
 
     def _replace_data(
         self,
@@ -841,11 +831,26 @@ class Series(
         """
         return zip(self.range, self.data)
 
+    def iter_variants(self, /, ) -> Iterator[Self]:
+        """
+        """
+        for data in self.iter_data_variants_from_to(..., ):
+            new = self.copy()
+            new._replace_data(data, )
+            yield new
+
+    def iter_own_data_variants_from_to(self, from_to, /, ) -> Iterator[_np.ndarray]:
+        """
+        Iterates over the data variants from the given start date to the given end date
+        """
+        data_from_to = self.data if from_to == ... else self.get_data_from_to(from_to, )
+        return iter(data_from_to.T, )
+
     def iter_data_variants_from_to(self, from_to, /, ) -> Iterator[_np.ndarray]:
         """
         Iterates over the data variants from the given start date to the given end date
         """
-        return _iterators.exhaust_then_last(self.iter_data_columns_from_to(from_to, ))
+        return _iterators.exhaust_then_last(self.iter_own_data_variants_from_to(from_to, ), )
 
     for n in FUNCTION_ADAPTATIONS:
         exec(f"def _{n}_(self, *args, **kwargs, ): return self.apply(_np.{n}, *args, **kwargs, )")
@@ -879,8 +884,8 @@ def hstack(first, *args) -> Self:
     return first.hstack(*args)
 
 
-def _create_data_column_from_number(
-    number: Number,
+def _create_data_variant_from_number(
+    number: Real,
     range: _dates.Ranger,
     data_type: type,
     /,
@@ -892,7 +897,7 @@ def _conform_data(data, /, data_type, ) -> _np.ndarray:
     """
     """
     #[
-    # Tuple means columns
+    # Tuple means variants
     if isinstance(data, tuple, ):
         return _np.hstack(tuple(
             _conform_data(d, data_type=data_type, ) for d in data
@@ -948,8 +953,8 @@ def _from_dates_and_values(
     """
     #[
     values = _conform_data(values, data_type=self.data_type, )
-    num_columns = values.shape[1] if hasattr(values, "shape") else 1
-    self.empty(num_columns=num_columns, )
+    num_variants = values.shape[1] if hasattr(values, "shape") else 1
+    self.empty(num_variants=num_variants, )
     self.set_data(dates, values, )
     #]
 
@@ -966,7 +971,7 @@ def _from_dates_and_func(
     #[
     dates = tuple(dates)
     data = [
-        [func() for j in range(self.num_columns)]
+        [func() for j in range(self.num_variants)]
         for i in range(len(dates))
     ]
     data = _np.array(data, dtype=self.data_type)
@@ -990,7 +995,7 @@ def _from_start_date_and_values(
     #]
 
 
-def _broadcast_columns_if_needed(
+def _broadcast_variants_if_needed(
     self: Series,
     other: Series,
     /,
@@ -998,16 +1003,16 @@ def _broadcast_columns_if_needed(
     """
     """
     #[
-    if self.num_columns == other.num_columns:
+    if self.num_variants == other.num_variants:
         return self, other
     #
-    if self.num_columns == 1:
-        return self._broadcast_columns(other.num_coluns, ), other
+    if self.num_variants == 1:
+        return self._broadcast_variants(other.num_coluns, ), other
     #
-    if other.num_columns == 1:
-        return self, other._broadcast_columns(self.num_columns, )
+    if other.num_variants == 1:
+        return self, other._broadcast_variants(self.num_variants, )
     #
-    raise _wrongdoings.IrisPieError("Cannot broadcast time series columns")
+    raise _wrongdoings.IrisPieError("Cannot broadcast time series variants")
     #]
 
 

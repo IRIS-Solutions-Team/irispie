@@ -37,7 +37,7 @@ $$
 from __future__ import annotations
 
 from typing import (Self, Callable, )
-from numbers import (Number, )
+from numbers import (Real, )
 import dataclasses as _dc
 
 import enum as _en
@@ -114,7 +114,7 @@ class Solution:
     X: _np.ndarray | None = None
     Xa: _np.ndarray | None = None
 
-    eigen_values: tuple[Number, ...] | None = None
+    eigen_values: tuple[Real, ...] | None = None
     eigen_values_stability: tuple[EigenValueKind, ...] | None = None
     system_stability: SystemStabilityKind | None = None
     transition_vector_stability: VariableStability | None = None
@@ -130,11 +130,11 @@ class Solution:
     ) -> Self:
         """
         """
-        def is_alpha_beta_stable_or_unit_root(alpha: Number, beta: Number, /, ) -> bool:
+        def is_alpha_beta_stable_or_unit_root(alpha: Real, beta: Real, /, ) -> bool:
             return abs(beta) < (1 + tolerance)*abs(alpha)
-        def is_stable_root(root: Number, /, ) -> bool:
+        def is_stable_root(root: Real, /, ) -> bool:
             return abs(root) < (1 - tolerance)
-        def is_unit_root(root: Number, /, ) -> bool:
+        def is_unit_root(root: Real, /, ) -> bool:
             return abs(root) >= (1 - tolerance) and abs(root) < (1 + tolerance)
         #
         # Detach unstable from (stable + unit) roots and solve out expectations
@@ -260,8 +260,8 @@ class Solution:
 
     def _classify_eigen_values_stability(
         self,
-        is_stable_root: Callable[[Number], bool],
-        is_unit_root: Callable[[Number], bool],
+        is_stable_root: Callable[[Real], bool],
+        is_unit_root: Callable[[Real], bool],
         /,
     ) -> None:
         self.eigen_values_stability = tuple(
@@ -345,7 +345,7 @@ def _square_from_triangular(
 
 def detach_stable_from_unit_roots(
     transition_solution_prelim: tuple[_np.ndarray, ...],
-    is_unit_root: Callable[[Number], bool],
+    is_unit_root: Callable[[Real], bool],
     /,
 ) -> tuple[_np.ndarray, ...]:
     """
@@ -444,7 +444,7 @@ def _solve_ordqz(
     is_stable_root,
     is_unit_root,
     /,
-) -> tuple[tuple[_np.ndarray, ...], tuple[Number, ], ]:
+) -> tuple[tuple[_np.ndarray, ...], tuple[Real, ], ]:
     """
     """
     #[

@@ -5,11 +5,8 @@ Incidence tokens and wrt tokens
 
 #[
 from collections.abc import (Iterable, )
-from numbers import (Number, )
-from typing import (
-    NamedTuple, Callable, Self, 
-    Protocol, TypeAlias,
-)
+from numbers import (Real, )
+from typing import (NamedTuple, Callable, Self, Protocol, TypeAlias, )
 import operator as _op
 import itertools as _it
 import numpy as _np

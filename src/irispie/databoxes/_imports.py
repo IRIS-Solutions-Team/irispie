@@ -208,7 +208,7 @@ def _add_series_for_block(self, block, array, /, ):
     #[
     array = array[block.row_index, :]
     for columns, name, description in block.column_iterator():
-        series = _series.Series(num_columns=len(columns), description=description)
+        series = _series.Series(num_variants=len(columns), description=description)
         series.set_data(block.dates, array[:, columns])
         self[name] = series
     #]

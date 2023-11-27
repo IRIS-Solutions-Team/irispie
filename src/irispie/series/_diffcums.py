@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from typing import (Callable, )
+from numbers import (Real, )
 import numpy as _np
 
 from .. import dates as _dates
@@ -132,7 +133,7 @@ class CumMixin:
         self,
         func_name: str,
         shift: int | str = -1,
-        initial: Number | _series.Series | None = None,
+        initial: Real | _series.Series | None = None,
         range: _dates.Ranger | None = None,
     ) -> None:
         """
