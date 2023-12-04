@@ -21,6 +21,7 @@ from ..conveniences import copies as _copies
 from ..conveniences import iterators as _iterators
 from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
+from .. import has_variants as _has_variants
 
 from . import _diffcums
 from . import _fillings
@@ -66,7 +67,7 @@ __all__ = (
 )
 
 Dates: TypeAlias = _dates.Dater | Iterable[_dates.Dater] | _dates.Ranger | EllipsisType | None
-ColumnsRequestType: TypeAlias = int | Iterable[int] | slice | None
+VariantsRequestType: TypeAlias = int | Iterable[int] | slice | None
 
 
 def _get_date_positions(dates, base, num_periods):
@@ -171,8 +172,14 @@ class Series(
         return self.data.shape[1]
 
     @property
-    def range(self):
+    def span(self, ):
         return _dates.Ranger(self.start_date, self.end_date, ) if self.start_date else ()
+
+    range = span
+
+    @property
+    def from_to(self, ):
+        return self.start_date, self.end_date
 
     @property
     def dates(self, /, ) -> tuple[_dates.Dater, ...]:
@@ -239,11 +246,11 @@ class Series(
         self,
         dates: Dates,
         data: Any | Series,
-        variants: ColumnsRequestType = None,
+        variants: VariantsRequestType = None,
         /,
     ) -> None:
         dates = self._resolve_dates(dates)
-        variants = self._resolve_variants(variants)
+        vids = self._resolve_variants(variants, )
         if not self.start_date:
             self.start_date = next(iter(dates), None, )
             self.data = self._create_periods_of_missing_values(num_rows=1, )
@@ -253,12 +260,9 @@ class Series(
             self.start_date -= add_before
         if hasattr(data, "get_data"):
             data = data.get_data(dates)
-        if isinstance(data, _np.ndarray):
-            self.data[pos, :] = data
-            return
-        if not isinstance(data, tuple):
-            data = _it.repeat(data)
-        for c, d in zip(variants, data):
+        #
+        data_variants = _has_variants.iter_variants(data, )
+        for c, d in zip(vids, data_variants, ):
             self.data[pos, c] = d
 
     def _get_data_and_recreate(
@@ -277,7 +281,7 @@ class Series(
     def _resolve_dates_and_positions(
         self,
         dates: Dates,
-        variants: ColumnsRequestType = None,
+        variants: VariantsRequestType = None,
         /,
     ) -> tuple[Iterable[_dates.Dater], Iterable[int], Iterable[int], _np.ndarray]:
         """
@@ -418,14 +422,14 @@ class Series(
 
     def _resolve_variants(
         self,
-        variants: ColumnsRequestType,
+        variants: VariantsRequestType,
         /,
     ) -> Iterable[int]:
         """
         Resolve variant request to an iterable of integers
         """
         if variants is None or variants is Ellipsis:
-            variants = slice(None)
+            variants = slice(None, )
         if isinstance(variants, slice):
             variants = range(*variants.indices(self.num_variants))
         if not isinstance(variants, Iterable):
@@ -503,7 +507,7 @@ class Series(
         """
         if not isinstance(index, tuple):
             index = (index, None, )
-        return self.set_data(index[0], data, index[1])
+        return self.set_data(index[0], data, index[1], )
 
     def hstack(self, *args):
         if not args:
@@ -893,23 +897,6 @@ def _create_data_variant_from_number(
     return _np.full((len(range), 1), number, dtype=data_type)
 
 
-def _conform_data(data, /, data_type, ) -> _np.ndarray:
-    """
-    """
-    #[
-    # Tuple means variants
-    if isinstance(data, tuple, ):
-        return _np.hstack(tuple(
-            _conform_data(d, data_type=data_type, ) for d in data
-        ))
-    #
-    if not isinstance(data, _np.ndarray, ):
-        return _np.array(data, dtype=data_type, ndmin=2, ).T
-    #
-    return _np.array(data, dtype=data_type, ndmin=2, )
-    #]
-
-
 for n in FUNCTION_ADAPTATIONS_NUMPY:
     exec(
         f"@_ft.singledispatch"
@@ -952,9 +939,9 @@ def _from_dates_and_values(
     """
     """
     #[
-    values = _conform_data(values, data_type=self.data_type, )
-    num_variants = values.shape[1] if hasattr(values, "shape") else 1
-    self.empty(num_variants=num_variants, )
+    # values = _has_variants.iter_variants(values, )
+    # num_variants = values.shape[1] if hasattr(values, "shape") else 1
+    # self.empty(num_variants=num_variants, )
     self.set_data(dates, values, )
     #]
 
@@ -988,8 +975,13 @@ def _from_start_date_and_values(
     """
     """
     #[
-    values = _conform_data(values, data_type=self.data_type, )
     self.start_date = start_date
+    if not isinstance(values, _np.ndarray):
+        values = _has_variants.iter_variants(values, )
+        values = _np.column_stack(tuple(
+            v for v, _ in zip(values, range(self.num_variants), )
+        ))
+    values = values.astype(self.data_type, )
     self.data = values
     self.trim()
     #]
@@ -1007,7 +999,7 @@ def _broadcast_variants_if_needed(
         return self, other
     #
     if self.num_variants == 1:
-        return self._broadcast_variants(other.num_coluns, ), other
+        return self._broadcast_variants(other.num_variants, ), other
     #
     if other.num_variants == 1:
         return self, other._broadcast_variants(self.num_variants, )

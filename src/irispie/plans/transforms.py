@@ -25,13 +25,14 @@ class PlanTransformProtocol(Protocol, ):
     """
     #[
 
-    _DATABOX_NAME: str
+    _DEFAULT_NAME_FORMAT: str
     _SYMBOL: str
 
     def eval_exogenized(
         self,
-        exogenized_value: Real,
-        lagged: Real,
+        exogenized_values_after: _np.ndarray | None,
+        values_before: _np.ndarray,
+        /,
     ) -> Real:
         ...
 
@@ -49,8 +50,12 @@ class PlanTransform:
         self,
         /,
         when_data: bool | None = False,
+        name_format: str | None = None,
+        shift: int = -1,
     ) -> None:
-        self.when_data = when_data
+        self.when_data = when_data or False
+        self._name_format = name_format or self._DEFAULT_NAME_FORMAT
+        self._shift = shift
 
     def __str__(self, /, ) -> str:
         return _WHEN_DATA_SYMBOL[self.when_data] + self._SYMBOL
@@ -66,9 +71,17 @@ class PlanTransform:
         """
         """
         return (
-            self._DATABOX_NAME.format(base_name, )
-            if self._DATABOX_NAME is not None else None
+            self._name_format.format(base_name, )
+            if self._name_format is not None else None
         )
+
+    def eval_exogenized(
+        self,
+        exogenized_values_after: _np.ndarray | None,
+        values_before: _np.ndarray,
+        /,
+    ) -> Real:
+        ...
 
     #]
 
@@ -77,16 +90,16 @@ class PlanTransformNone(PlanTransform, ):
     """
     """
     #[
-    _DATABOX_NAME = "{}"
+    _DEFAULT_NAME_FORMAT = "{}"
     _SYMBOL = "[•]"
 
     def eval_exogenized(
         self,
-        exogenized_value: Real,
+        exogenized_values_after: _np.ndarray,
         values_before: _np.ndarray,
         /,
     ) -> Real:
-        return exogenized_value
+        return exogenized_values_after[0]
     #]
 
 
@@ -94,16 +107,16 @@ class PlanTransformLog(PlanTransform, ):
     """
     """
     #[
-    _DATABOX_NAME = "log_{}"
+    _DEFAULT_NAME_FORMAT = "log_{}"
     _SYMBOL = "[log]"
 
     def eval_exogenized(
         self,
-        exogenized_value: Real,
+        exogenized_values_after: _np.ndarray,
         values_before: _np.ndarray,
         /,
     ) -> Real:
-        return _np.exp(exogenized_value)
+        return _np.exp(exogenized_values_after[0])
     #]
 
 
@@ -111,16 +124,16 @@ class PlanTransformDiff(PlanTransform, ):
     """
     """
     #[
-    _DATABOX_NAME = "diff_{}"
+    _DEFAULT_NAME_FORMAT = "diff_{}"
     _SYMBOL = "[diff]"
 
     def eval_exogenized(
         self,
-        exogenized_value: Real,
+        exogenized_values_after: _np.ndarray,
         values_before: _np.ndarray,
         /,
     ) -> Real:
-        return values_before[-1] + exogenized_value
+        return values_before[self._shift] + exogenized_values_after[0]
     #]
 
 
@@ -128,16 +141,16 @@ class PlanTransformDiffLog(PlanTransform, ):
     """
     """
     #[
-    _DATABOX_NAME = "diff_log_{}"
+    _DEFAULT_NAME_FORMAT = "diff_log_{}"
     _SYMBOL = "[diff_log]"
 
     def eval_exogenized(
         self,
-        exogenized_value: Real,
+        exogenized_values_after: _np.ndarray,
         values_before: _np.ndarray,
         /,
     ) -> Real:
-        return values_before[-1] * _np.exp(exogenized_value)
+        return values_before[self._shift] * _np.exp(exogenized_values_after[0])
     #]
 
 
@@ -145,16 +158,16 @@ class PlanTransformRoc(PlanTransform, ):
     """
     """
     #[
-    _DATABOX_NAME = "roc_{}"
+    _DEFAULT_NAME_FORMAT = "roc_{}"
     _SYMBOL = "[roc]"
 
     def eval_exogenized(
         self,
-        exogenized_value: Real,
+        exogenized_values_after: _np.ndarray | None,
         values_before: _np.ndarray,
         /,
     ) -> Real:
-        return values_before[-1] * exogenized_value
+        return values_before[self._shift] * exogenized_values_after[0]
     #]
 
 
@@ -163,16 +176,16 @@ class PlanTransformPct(PlanTransform, ):
     """
     #[
 
-    _DATABOX_NAME = "pct_{}"
+    _DEFAULT_NAME_FORMAT = "pct_{}"
     _SYMBOL = "[pct]"
 
     def eval_exogenized(
         self,
-        exogenized_value: Real,
+        exogenized_values_after: _np.ndarray,
         values_before: _np.ndarray,
         /,
     ) -> Real:
-        return values_before[-1] * (1 + exogenized_value/100)
+        return values_before[self._shift] * (1 + exogenized_values_after[0]/100)
 
     #]
 
@@ -182,43 +195,21 @@ class PlanTransformFlat(PlanTransform, ):
     """
     #[
 
-    _DATABOX_NAME = None
+    _DEFAULT_NAME_FORMAT = None
     _SYMBOL = "[flat]"
 
     def eval_exogenized(
         self,
-        exogenized_value: None,
+        exogenized_values_after: _np.ndarray,
         values_before: _np.ndarray,
         /,
     ) -> Real:
-        return values_before[-1]
+        return values_before[self._shift]
 
     #]
 
 
-class PlanTransformFactory(PlanTransformNone, ):
-    """
-    """
-    #[
-
-    def __init__(
-        self,
-        eval_exogenized: Callable,
-        databox_name: str,
-        /,
-        symbol: str = "[custom]",
-        when_data: bool | None = False,
-    ) -> None:
-        """
-        """
-        self.eval_exogenized = eval_exogenized
-        self._DATABOX_NAME = databox_name
-        self._SYMBOL = symbol
-        self.when_data = when_data
-    #]
-
-
-_TRANFORM_CLASS_FACTORY = {
+_CHOOSE_TRANSFORM_CLASS = {
     None: PlanTransformNone,
     "level": PlanTransformNone,
     "none": PlanTransformNone,
@@ -232,12 +223,12 @@ _TRANFORM_CLASS_FACTORY = {
 }
 
 
-def resolve_transform(transform, ) -> PlanTransformProtocol:
+def resolve_transform(transform, **kwargs, ) -> PlanTransformProtocol:
     """
     """
     #[
     if transform is None or isinstance(transform, str):
-        return _TRANFORM_CLASS_FACTORY[transform]()
+        return _CHOOSE_TRANSFORM_CLASS[transform](**kwargs, )
     else:
         return transform
     #]

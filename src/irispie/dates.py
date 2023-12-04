@@ -23,7 +23,8 @@ __all__ = [
     "Frequency", "Freq",
     "yy", "hh", "qq", "mm", "dd", "ii",
     "Ranger", "EmptyRanger", "start", "end",
-    "Dater", "daters_from_sdmx_strings", "daters_from_iso_strings",
+    "Dater", "daters_from_sdmx_strings", "daters_from_iso_strings", "daters_from_to",
+    "YEARLY", "HALFYEARLY", "QUARTERLY", "MONTHLY", "WEEKLY", "DAILY",
 ]
 
 
@@ -71,6 +72,14 @@ class Frequency(_en.IntEnum):
 
 
 Freq = Frequency
+
+
+YEARLY = Frequency.YEARLY
+HALFYEARLY = Frequency.HALFYEARLY
+QUARTERLY = Frequency.QUARTERLY
+MONTHLY = Frequency.MONTHLY
+WEEKLY = Frequency.WEEKLY
+DAILY = Frequency.DAILY
 
 
 PLOTLY_FORMATS = {
@@ -124,7 +133,7 @@ class ResolvableProtocol(Protocol, ):
     def resolve(self, context: ResolutionContextProtocol) -> Any: ...
 
 
-def _check_daters(first, second) -> None:
+def _check_daters(first, second, ) -> None:
     if type(first) != type(second):
         raise _wrongdoings.IrisPieError(
             "Cannot handle dates of different types in this context"
@@ -1068,6 +1077,7 @@ def get_encompassing_span(*args: ResolutionContextProtocol, ) -> Ranger:
     end_date = max(end_dates) if end_dates else None
     return Ranger(start_date, end_date), start_date, end_date
 
+
 def _get_date(something, attr_name, select_func, ) -> Dater | None:
     if hasattr(something, attr_name, ):
         return getattr(something, attr_name, )
@@ -1075,4 +1085,17 @@ def _get_date(something, attr_name, select_func, ) -> Dater | None:
         return select_func(i for i in something if i is not None)
     except:
         return None
+
+
+def daters_from_to(
+    start_date: Dater,
+    end_date: Dater,
+    /,
+) -> tuple[Dater, ...]:
+    """
+    """
+    _check_daters(start_date, end_date, )
+    serials = range(start_date.serial, end_date.serial+1, )
+    dater_class = type(start_date)
+    return tuple(dater_class(x) for x in serials)
 

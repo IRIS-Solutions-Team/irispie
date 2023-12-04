@@ -156,5 +156,18 @@ def iter_variants(anything: _T, ) -> Iterator[_T]:
     elif isinstance(anything, list, ):
         return _iterators.exhaust_then_last(anything, )
     else:
-        return _iterators.exhaust_then_last((anything, ), )
+        return _iterators.exhaust_then_last([anything, ], )
+
+
+def iter_own_variants(anything: _T, ) -> Iterator[_T]:
+    """
+    """
+    if hasattr(anything, "iter_own_variants", ):
+        return anything.iter_own_variants()
+    elif isinstance(anything, _np.ndarray, ) and anything.ndim:
+        return anything.reshape(anything.shape[0], -1, ).T
+    elif isinstance(anything, list, ):
+        return anything
+    else:
+        return [anything, ]
 

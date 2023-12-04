@@ -213,8 +213,8 @@ class Databox(
             return new_databox
         context_names = new_databox.get_names()
         source_names, target_names = _resolve_source_target_names(source_names, target_names, context_names)
-        new_databox.rename(source_names, target_names)
-        new_databox.keep(target_names)
+        new_databox.rename(source_names, target_names, )
+        new_databox.keep(target_names, )
         return new_databox
 
     def rename(
@@ -331,8 +331,11 @@ class Databox(
         max_end_date = max(end_dates, key=_op.attrgetter("serial"))
         return _dates.Ranger(min_start_date, max_end_date)
 
-    def to_json(self, **kwargs):
-        return _js.dumps(self, **kwargs)
+    def to_json(self, file_name, **kwargs):
+        """
+        """
+        with open(file_name, "wt+") as f:
+            return _js.dump(self, f, **kwargs)
 
     def overlay(
         self,
@@ -401,11 +404,11 @@ class Databox(
         self,
         expression: str,
         /,
-        context: dict[str, Any] | None,
+        context: dict[str, Any] | None = None,
     ) -> Any:
         """
         """
-        expression = _format_eval_expression(expression, )
+        expression = _reformat_eval_expression(expression, )
         globals = { k: v for k, v in self.items() }
         if context:
             globals |= context
@@ -511,7 +514,7 @@ def _apply_to_item(
     return func(target)
 
 
-def _format_eval_expression(expression: str, ) -> str:
+def _reformat_eval_expression(expression: str, ) -> str:
     """
     """
     #[

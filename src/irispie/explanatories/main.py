@@ -25,45 +25,52 @@ __all__ = (
 )
 
 
+_RESIDUAL_NAME_FORMAT = "res_{lhs_name}"
+
+
 @_dc.dataclass
 class Explanatory:
     """
     """
     #[
 
-    _RESIDUAL_PREFIX = "res_"
     _IDENTITY_EQUAL_SIGN = "==="
     equation: _equations.Equation | None = None
     is_identity: bool | None = None
     _lhs_human: str | None = None
     lhs_name: str | None = None
-    res_name: str | None = None
-    res_name: str | None = None
+    residual_name: str | None = None
     lhs_qid: int | None = None
     _rhs_human: str | None = None
     _lhs_transform: TransformProtocol | None = None
     _eval_level_str: str | None = None
-    _eval_res_str: str | None = None
+    _eval_residual_str: str | None = None
     _context: dict[str, Callable] | None = None
     all_names: tuple(str) | None = None
     eval_level: Callable | None = None
-    eval_res: Callable | None = None
+    eval_residual: Callable | None = None
 
     def __init__(
         self,
         equation: _equations.Equation,
         /,
         context: dict[str, Callable] | None = None,
+        residual_name_format: str | None = None,
+        **kwargs,
     ) -> None:
         """
         """
+        self._residual_name_format = (
+            residual_name_format
+            if residual_name_format
+            else _RESIDUAL_NAME_FORMAT
+        )
         self.equation = equation.copy()
         self._detect_identity()
         self._split_equation()
         self._parse_lhs()
         self._add_residual_to_rhs()
         self._collect_all_names()
-        self._context = context
 
     def finalize(
         self,
@@ -74,12 +81,12 @@ class Explanatory:
         """
         self.equation.finalize(name_to_qid, )
         self.lhs_qid = name_to_qid[self.lhs_name]
-        self.res_qid = name_to_qid[self.res_name] if self.res_name is not None else None
+        self.res_qid = name_to_qid[self.residual_name] if self.residual_name is not None else None
         rhs_xtring, *_ = _equations.xtring_from_human(self._rhs_human, name_to_qid, )
         lhs_xtring, *_ = _equations.xtring_from_human(self._lhs_human, name_to_qid, )
         lhs_token = _incidence.Token(self.lhs_qid, 0, )
         self._create_eval_level(lhs_token, rhs_xtring, )
-        self._create_eval_res(lhs_xtring, rhs_xtring, )
+        self._create_eval_residual(lhs_xtring, rhs_xtring, )
 
     @property
     def min_shift(self, /, ) -> int:
@@ -144,18 +151,18 @@ class Explanatory:
         """
         """
         if self.is_identity:
-            self.res_name = None
+            self.residual_name = None
         else:
-            self.res_name = f"{self._RESIDUAL_PREFIX}{self.lhs_name}"
-            self._rhs_human += f"+{self.res_name}"
-            self.equation.human += f"+{self.res_name}"
+            self.residual_name = self._residual_name_format.format(lhs_name=self.lhs_name, )
+            self._rhs_human += f"+{self.residual_name}"
+            self.equation.human += f"+{self.residual_name}"
 
     def _collect_all_names(self, /, ) -> None:
         """
         """
         self.all_names = tuple(set(
             _equations.generate_names_from_human(self.equation.human, )
-        )) + ((self.res_name, ) if self.res_name is not None else ())
+        )) + ((self.residual_name, ) if self.residual_name is not None else ())
 
     def _create_eval_level(
         self,
@@ -168,7 +175,7 @@ class Explanatory:
         self.eval_level, self._eval_level_str, *_ = \
             _makers.make_lambda(args, body, self._context, )
 
-    def _create_eval_res(
+    def _create_eval_residual(
         self,
         lhs_xtring: str,
         rhs_xtring: str,
@@ -178,7 +185,7 @@ class Explanatory:
             return
         args = ("x", "t", )
         body = f"{lhs_xtring}-({rhs_xtring})"
-        self.eval_res, self._eval_res_str, *_ = \
+        self.eval_residual, self._eval_residual_str, *_ = \
             _makers.make_lambda(args, body, self._context, )
 
     def __str__(self, /, ) -> str:
@@ -191,7 +198,7 @@ class Explanatory:
             f"{indented}Equation: {self.equation.human}",
             f"{indented}LHS name: {self.lhs_name}",
             f"{indented}LHS transform: {str(self._lhs_transform)}",
-            f"{indented}Residual name: {self.res_name}",
+            f"{indented}Residual name: {self.residual_name}",
         ))
 
     def simulate(
@@ -219,7 +226,7 @@ class Explanatory:
         lhs_row = self.lhs_qid
         res_row = self.res_qid
         data[lhs_row, columns] = values
-        data[res_row, columns] = self.eval_res(data, columns, )
+        data[res_row, columns] = self.eval_residual(data, columns, )
         is_finite = _np.isfinite(data[res_row, columns])
         info = {"is_finite": is_finite, }
         return info

@@ -120,18 +120,18 @@ class Sequential(
         return tuple(self._invariant.lhs_names)
 
     @property
-    def res_names(self, /, ) -> tuple[str]:
+    def residual_names(self, /, ) -> tuple[str]:
         """
         Tuple of names of LHS variables in order of appearance.
         """
-        return tuple(self._invariant.res_names)
+        return tuple(self._invariant.residual_names)
 
     @property
     def rhs_only_names(self, /, ) -> tuple[str]:
         """
         Set of names of RHS variables no appearing on the LHS.
         """
-        exclude_names = self._invariant.lhs_names + self._invariant.res_names + self._invariant.parameter_names
+        exclude_names = self._invariant.lhs_names + self._invariant.residual_names + self._invariant.parameter_names
         return tuple(
             n for n in self._invariant.all_names
             if n not in exclude_names
@@ -352,7 +352,7 @@ class Sequential(
     def get_fallbacks(self, /, ) -> dict[str, Any]:
         """
         """
-        return { n: 0 for n in tuple(self._invariant.res_names) }
+        return { n: 0 for n in tuple(self._invariant.residual_names) }
 
     def get_overwrites(self, /, ) -> dict[str, Any]:
         """
@@ -375,14 +375,20 @@ class Sequential(
 
     @property
     def simulate_can_be_exogenized(self, /, ) -> tuple[str, ...]:
-        return tuple(
+        return tuple(set(
             i.lhs_name for i in self._invariant.explanatories
             if not i.is_identity
-        )
+        ))
 
-    simulate_can_be_when_data = simulate_can_be_exogenized
-    simulate_can_be_endogenized = ()
+    @property
+    def simulate_can_be_endogenized(self, /, ) -> tuple[str, ...]:
+        return tuple(set(
+            i.residual_name for i in self._invariant.explanatories
+            if not i.is_identity
+        ))
+
     simulate_can_be_anticipated = ()
+    simulate_can_be_when_data = simulate_can_be_exogenized
 
     #]
 

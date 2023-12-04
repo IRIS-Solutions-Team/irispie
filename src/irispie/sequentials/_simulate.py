@@ -156,8 +156,8 @@ def _is_exogenized(
     #
     transform_name = transform.resolve_databox_name(lhs_name, )
     transform_row = name_to_row.get(transform_name, None, )
-    transform_value = data[transform_row, data_column] if transform_row is not None else None
-    implied_value = transform.eval_exogenized(transform_value, values_before, )
+    transform_values_after = data[transform_row, data_column:] if transform_row is not None else None
+    implied_value = transform.eval_exogenized(transform_values_after, values_before, )
     if transform.when_data and _np.isnan(implied_value):
         return False, None
     return True, implied_value

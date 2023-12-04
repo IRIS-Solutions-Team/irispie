@@ -14,8 +14,8 @@ import operator as _op
 import statistics as _st
 
 from .. import dates as _dates
+from . import arip as _arip
 from . import _functionalize
-from . import _arip as _arip
 #]
 
 
@@ -117,7 +117,7 @@ class ConversionMixin:
             )
         #
         new_dater_class = _dates.DATER_CLASS_FROM_FREQUENCY_RESOLUTION[target_freq]
-        new_start_date, new_data = method_func(self, new_dater_class, **kwargs, )
+        new_start_date, new_data, *_ = method_func(self, new_dater_class, **kwargs, )
         self._replace_start_date_and_values(new_start_date, new_data, )
 
     #]
@@ -203,7 +203,37 @@ def _disaggregate_flat(
     high_start_date = high_dater_class.from_ymd(*self.start_date.to_ymd(position="start", ), )
     factor = high_freq.value // self.frequency.value
     high_data = _np.repeat(self.data, factor, axis=0, )
+    return high_start_date, high_data, factor
+    #]
+
+
+def _disaggregate_first(
+    self,
+    high_dater_class: type,
+    /,
+) -> tuple[Dater, _np.ndarray]:
+    """
+    """
+    #[
+    high_start_date, high_data, factor = _disaggregate_flat(self, high_dater_class, )
+    for i in range(1, factor, ):
+        high_data[i::factor, :] = _np.nan
     return high_start_date, high_data
+    #]
+
+
+def _disaggregate_last(
+    self,
+    high_dater_class: type,
+    /,
+) -> tuple[Dater, _np.ndarray]:
+    """
+    """
+    #[
+    high_start_date, high_data, factor = _disaggregate_flat(self, high_dater_class, )
+    for i in range(0, factor-1, ):
+        high_data[i::factor, :] = _np.nan
+    return high_start_date, high_data, factor
     #]
 
 
@@ -239,6 +269,8 @@ _AGGREGATION_METHOD_RESOLUTION = {
 
 _CHOOSE_DISAGGREGATION_METHOD = {
     "flat": _disaggregate_flat,
+    "first": _disaggregate_first,
+    "last": _disaggregate_last,
     "arip": _arip.disaggregate_arip,
 }
 

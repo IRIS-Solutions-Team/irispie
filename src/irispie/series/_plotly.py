@@ -32,10 +32,12 @@ def _line_plot(color: str, **settings) -> _pg.Scatter:
     settings = {"mode": "lines+markers", } | settings
     return _pg.Scatter(line_color=color, **settings, )
 
+
 def _bar_plot(color: str, **settings) -> _pg.Bar:
     """
     """
     return _pg.Bar(marker_color=color, **settings, )
+
 
 _PLOTLY_TRACES_FACTORY = {
     "line": _line_plot,
@@ -65,6 +67,7 @@ class Mixin:
         span: Iterable[_dates.Dater] | EllipsisType = ...,
         title: str | None = None,
         legend: Iterable[str] | None = None,
+        show_figure: bool = True,
         show_legend: bool | None = None,
         figure = None,
         subplot: tuple[int, int] | int | None = None,
@@ -125,6 +128,10 @@ class Mixin:
                 else xline
             )
             figure.add_vline(xline, )
+
+        if show_figure:
+            figure.show()
+
         return figure
 
     #]

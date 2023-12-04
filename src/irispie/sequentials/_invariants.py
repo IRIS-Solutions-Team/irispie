@@ -47,6 +47,7 @@ class Invariant(
         /,
         context: dict[str, Any] | None = None,
         description: str | None = None,
+        **kwargs,
     ) -> None:
         """
         """
@@ -54,7 +55,7 @@ class Invariant(
         self._context = context or {}
         self.set_description(description, )
         self.explanatories = tuple(
-            _explanatories.Explanatory(e, context=self._context, )
+            _explanatories.Explanatory(e, context=self._context, **kwargs, )
             for e in equations
         )
         self.collect_all_names()
@@ -72,14 +73,14 @@ class Invariant(
         return tuple( x.lhs_name for x in self.explanatories )
 
     @property
-    def res_names(self, /, ) -> tuple[str]:
+    def residual_names(self, /, ) -> tuple[str]:
         """
         Tuple of names of LHS variables in order of appearance
         """
         return tuple(
-            x.res_name
+            x.residual_name
             for x in self.explanatories
-            if x.res_name is not None
+            if x.residual_name is not None
         )
 
     def collect_all_names(
@@ -91,9 +92,8 @@ class Invariant(
         all_names = set()
         for x in self.explanatories:
             all_names.update(x.all_names)
-        lhs_res_names = self.lhs_names + self.res_names
-        rhs_only_names = tuple(all_names.difference(lhs_res_names, ))
-        self.all_names = self.lhs_names + rhs_only_names + self.res_names
+        rhs_only_names = tuple(all_names.difference(self.lhs_names + self.residual_names, ))
+        self.all_names = self.lhs_names + rhs_only_names + self.residual_names
 
     def finalize_explanatories(
         self,

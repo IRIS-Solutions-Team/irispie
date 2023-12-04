@@ -25,18 +25,14 @@ from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
 from . import _pretty as _pretty
 from . import _indexes as _indexes
-from . import _transforms as _transforms
+from . import transforms as _transforms
 #]
-
-
-PlanTransformFactory = _transforms.PlanTransformFactory
 
 
 __all__ = (
     "PlanSimulate",
     "PlanSteady",
     "Plan",
-    "PlanTransformFactory",
 )
 
 
@@ -186,6 +182,13 @@ Tabular view of the simulation plan
         """
         return len(self.base_range) if self.base_range is not None else 1
 
+    @property
+    def frequency(self, /, ) -> str:
+        """
+        Date frequency of simulation span
+        """
+        return self.start_date.frequency
+
     def anticipate(
         self,
         dates: Iterable[_dates.Dater] | EllipsisType,
@@ -213,8 +216,9 @@ Tabular view of the simulation plan
         /,
         *,
         transform: str | None = None,
-        when_data: bool | None = None,
         anticipate: bool | None = None,
+        # when_data: bool | None = None,
+        **kwargs,
     ) -> None:
         """
 ------------------------------------------------------------
@@ -255,13 +259,12 @@ available; only available in simulation plans created for
 
 ------------------------------------------------------------
         """
-        transform = _transforms.resolve_transform(transform)
-        transform.when_data = when_data
+        transform = _transforms.resolve_transform(transform, **kwargs, )
         self._plan_simulate(self._exogenized_register, dates, names, transform, )
         if anticipate is not None:
             self.anticipate(dates, names, anticipate)
-        if when_data is not None:
-            self.when_data(dates, names, when_data)
+        #if when_data is not None:
+        #    self.when_data(dates, names, when_data)
 
     def get_names_exogenized_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
         """
