@@ -33,6 +33,7 @@ class Frequency(_en.IntEnum):
     Enumeration of date frequencies
     """
     #[
+
     INTEGER = 0
     YEARLY = 1
     ANNUAL = 1
@@ -64,10 +65,11 @@ class Frequency(_en.IntEnum):
 
     @property
     def is_regular(self, /, ) -> bool:
-        return self in [self.YEARLY, self.HALFYEARLY, self.QUARTERLY, self.MONTHLY]
+        return self in (self.YEARLY, self.HALFYEARLY, self.QUARTERLY, self.MONTHLY, )
 
     def __str__(self, /, ) -> str:
         return self.name
+
     #]
 
 
@@ -298,8 +300,8 @@ class Dater(
 
     __radd__ = __add__
 
-    def __sub__(self, other: Union[Self, int]) -> Union[Self, int]:
-        if isinstance(other, Dater):
+    def __sub__(self, other: Self | int) -> Self | int:
+        if _is_dater(other, ):
             return self._sub_dater(other)
         else:
             return self.__add__(-int(other))
@@ -915,14 +917,14 @@ class Ranger(_copies.CopyMixin, ):
 
     __radd__ = __add__
 
-    def __sub__(self, offset: Union[Dater, int]) -> Union[range, Self]:
-        if isinstance(offset, Dater):
+    def __sub__(self, offset: Dater | int) -> range | Self:
+        if _is_dater(offset, ):
             return range(self._start_date-offset, self._end_date-offset, self._step) if not self.needs_resolve else None
         else:
             return Ranger(self._start_date-offset, self._end_date-offset, self._step)
 
     def __rsub__(self, ather: Dater) -> range|None:
-        if isinstance(other, Dater):
+        if _is_dater(other, ):
             return range(other-self._start_date, other-self._end_date, -self._step) if not self.needs_resolve else None
         else:
             return None
@@ -1071,8 +1073,8 @@ def daters_from_iso_strings(freq: Frequency, iso_strings: Iterable[str], ) -> It
 
 
 def get_encompassing_span(*args: ResolutionContextProtocol, ) -> Ranger:
-    start_dates = [_get_date(x, "start_date", min, ) for x in args if x is not None]
-    end_dates = [_get_date(x, "end_date", max, ) for x in args if x is not None]
+    start_dates = [_get_date(x, "start_date", min, ) for x in args if hasattr(x, "start_date")]
+    end_dates = [_get_date(x, "end_date", max, ) for x in args if hasattr(x, "end_date")]
     start_date = min(start_dates) if start_dates else None
     end_date = max(end_dates) if end_dates else None
     return Ranger(start_date, end_date), start_date, end_date
@@ -1098,4 +1100,8 @@ def daters_from_to(
     serials = range(start_date.serial, end_date.serial+1, )
     dater_class = type(start_date)
     return tuple(dater_class(x) for x in serials)
+
+
+def _is_dater(x: Any, ) -> bool:
+    return isinstance(x, Dater, )
 

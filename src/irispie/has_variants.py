@@ -90,7 +90,7 @@ class HasVariantsMixin:
         new = type(self).skeleton()
         new._invariant = self._invariant
         variant_iter = _resolve_vids(self, vids, )
-        new._variants = [ new._variants[i] for i in variant_iter ]
+        new._variants = [ self._variants[i] for i in variant_iter ]
         return new
 
     def iter_variants(

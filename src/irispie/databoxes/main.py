@@ -313,10 +313,10 @@ class Databox(
             return isinstance(x, _series.Series) and x.frequency == frequency
         return self.filter(value_test=_is_series_with_frequency, )
 
-    def get_range_by_frequency(
+    def get_span_by_frequency(
         self,
         frequency: _dates.Frequency,
-    ) -> Ranger:
+    ) -> _dates.Ranger:
         """
         Get the encompassing date range for all time series with the given frequency
         """

@@ -11,6 +11,7 @@ from collections.abc import (Iterable, Callable, )
 from typing import (Self, Any, TypeAlias, NoReturn, )
 from types import (EllipsisType, )
 import numpy as _np
+import scipy as _sp
 import itertools as _it
 import functools as _ft
 import operator as _op
@@ -51,9 +52,30 @@ from ._conversions import *
 #]
 
 
-FUNCTION_ADAPTATIONS_NUMPY = ("log", "exp", "sqrt", "maximum", "minimum", "mean", "median", )
+_ELEMENTWISE_FUNCTIONS = {
+    "log": _np.log,
+    "exp": _np.exp,
+    "sqrt": _np.sqrt,
+    "abs": _np.abs,
+    "sign": _np.sign,
+    "sin": _np.sin,
+    "cos": _np.cos,
+    "tan": _np.tan,
+    "logistic": _sp.special.expit,
+    "normal_cdf": _sp.stats.norm.cdf,
+    "normal_pdf": _sp.stats.norm.pdf,
+}
+
+
+# FIXME
+FUNCTION_ADAPTATIONS_ELEMENTWISE = tuple(_ELEMENTWISE_FUNCTIONS.keys())
+FUNCTION_ADAPTATIONS_NUMPY_APPLY = () # ("maximum", "minimum", "mean", "median", "abs", )
 FUNCTION_ADAPTATIONS_BUILTINS = ("max", "min", )
-FUNCTION_ADAPTATIONS = tuple(set(FUNCTION_ADAPTATIONS_NUMPY + FUNCTION_ADAPTATIONS_BUILTINS))
+FUNCTION_ADAPTATIONS = tuple(set(
+    FUNCTION_ADAPTATIONS_ELEMENTWISE
+    # + FUNCTION_ADAPTATIONS_NUMPY
+    # + FUNCTION_ADAPTATIONS_BUILTINS
+))
 
 
 __all__ = (
@@ -764,6 +786,9 @@ class Series(
         """
         return self.apply(lambda data: data.__rmod__(other))
 
+    for n in ["gt", "lt", "ge", "le", "eq", "ne", ]:
+        exec(f"def __{n}__(self, other): return self._binop(other, _op.{n}, )", )
+
     def apply(self, func, /, *args, **kwargs, ):
         new_data = func(self.data, *args, **kwargs, )
         axis = kwargs.get("axis", )
@@ -856,8 +881,13 @@ class Series(
         """
         return _iterators.exhaust_then_last(self.iter_own_data_variants_from_to(from_to, ), )
 
-    for n in FUNCTION_ADAPTATIONS:
-        exec(f"def _{n}_(self, *args, **kwargs, ): return self.apply(_np.{n}, *args, **kwargs, )")
+    def logistic(self, /, ) -> Self:
+        """
+        """
+        self.data = 1 / (1 + _np.exp(-self.data))
+
+    for n in FUNCTION_ADAPTATIONS_ELEMENTWISE:
+        exec(f"def {n}(self, *args, **kwargs, ): self.data = _ELEMENTWISE_FUNCTIONS['{n}'](self.data, *args, **kwargs, )")
 
     #]
 
@@ -897,18 +927,18 @@ def _create_data_variant_from_number(
     return _np.full((len(range), 1), number, dtype=data_type)
 
 
-for n in FUNCTION_ADAPTATIONS_NUMPY:
+for n in FUNCTION_ADAPTATIONS_ELEMENTWISE:
     exec(
-        f"@_ft.singledispatch"
-        f"\n"
-        f"def {n}(x, *args, **kwargs): "
-        f"return _np.{n}(x, *args, **kwargs)"
+        f"@_ft.singledispatch\n"
+        f"def {n}(x, *args, **kwargs):\n"
+        f"    return _ELEMENTWISE_FUNCTIONS['{n}'](x, *args, **kwargs)\n"
     )
     exec(
-        f"@{n}.register(Series, )"
-        f"\n"
-        f"def _(x, *args, **kwargs): "
-        f"return x._{n}_(*args, **kwargs)"
+        f"@{n}.register(Series, )\n"
+        f"def _(x, *args, **kwargs):\n"
+        f"    new = x.copy()\n"
+        f"    new.{n}(*args, **kwargs)\n"
+        f"    return new\n"
     )
 
 
@@ -916,18 +946,18 @@ for n in FUNCTION_ADAPTATIONS_BUILTINS:
     exec(
         f"_builtin_{n} = {n}"
     )
-    exec(
-        f"@_ft.singledispatch"
-        f"\n"
-        f"def {n}(x, *args, **kwargs): "
-        f"return _builtin_{n}(x, *args, **kwargs)"
-    )
-    exec(
-        f"@{n}.register(Series, )"
-        f"\n"
-        f"def {n}(x, *args, **kwargs): "
-        f"return x._{n}_(*args, **kwargs)"
-    )
+#     exec(
+#         f"@_ft.singledispatch"
+#         f"\n"
+#         f"def {n}(x, *args, **kwargs): "
+#         f"return _builtin_{n}(x, *args, **kwargs)"
+#     )
+#     exec(
+#         f"@{n}.register(Series, )"
+#         f"\n"
+#         f"def {n}(x, *args, **kwargs): "
+#         f"return x._{n}_(*args, **kwargs)"
+#     )
 
 
 def _from_dates_and_values(

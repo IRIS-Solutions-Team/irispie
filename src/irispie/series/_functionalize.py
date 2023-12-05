@@ -1,3 +1,5 @@
+"""
+"""
 
 
 FUNC_STRING = """
@@ -6,5 +8,4 @@ def {n}(self, *args, **kwargs, ) -> _series.Series:
     new.{n}(*args, **kwargs, )
     return new
 """
-
 

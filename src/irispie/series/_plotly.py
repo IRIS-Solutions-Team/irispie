@@ -67,7 +67,7 @@ class Mixin:
         span: Iterable[_dates.Dater] | EllipsisType = ...,
         title: str | None = None,
         legend: Iterable[str] | None = None,
-        show_figure: bool = True,
+        show_figure: bool = False,
         show_legend: bool | None = None,
         figure = None,
         subplot: tuple[int, int] | int | None = None,
@@ -79,6 +79,7 @@ class Mixin:
         """
         span = self._resolve_dates(span, )
         span = [ t for t in span ]
+        frequency = span[0].frequency
         data = self.get_data(span, )
         num_variants = data.shape[1]
         date_str = [ t.to_plotly_date() for t in span ]
@@ -88,8 +89,10 @@ class Mixin:
         subplot = _resolve_subplot(figure, subplot, )
         show_legend = show_legend if show_legend is not None else legend is not None
 
-        minor_dtick_months = min(12//span[0].frequency, 1, )
-        minor_dtick_string = f"M{12//span[0].frequency}"
+        minor_dtick_string = None
+        if frequency.is_regular:
+            minor_dtick_months = min(12//frequency, 1, )
+            minor_dtick_string = f"M{minor_dtick_months}"
 
         traces = (traces, ) if isinstance(traces, dict) else traces
         color_cycle = _it.cycle(_COLOR_ORDER)
@@ -117,7 +120,7 @@ class Mixin:
             del layout["yaxis"]
         layout[f"xaxis{axis_id}"]["tickformat"] = date_format
         layout[f"xaxis{axis_id}"]["ticklabelmode"] = "period"
-        layout[f"xaxis{axis_id}"]["minor"] = {"showgrid": True, "dtick": "M3", }
+        layout[f"xaxis{axis_id}"]["minor"] = {"showgrid": True, "dtick": minor_dtick_string, }
         layout["title"]["text" ] = title
         figure.update_layout(layout, )
 

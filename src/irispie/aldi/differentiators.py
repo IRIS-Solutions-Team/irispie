@@ -10,6 +10,7 @@ from typing import (Self, Callable, Protocol, )
 from numbers import (Number, )
 from collections.abc import (Iterable, Sequence, )
 import numpy as _np
+import scipy as _sp
 import copy as _cp
 
 from ..incidences import main as _incidences
@@ -211,7 +212,7 @@ class Atom(ValueMixin, ):
         """
         return self.__neg__().__add__(other)
 
-    def _log_(self, /, ) -> Self:
+    def log(self, /, ) -> Self:
         """
         Differentiate log(self)
         """
@@ -219,7 +220,7 @@ class Atom(ValueMixin, ):
         new_diff = 1 / self.value * self.diff
         return type(self).no_context(new_value, new_diff, False)
 
-    def _exp_(self, /, ) -> Self:
+    def exp(self, /, ) -> Self:
         """
         Differentiate exp(self)
         """
@@ -227,7 +228,7 @@ class Atom(ValueMixin, ):
         new_diff = new_value * self.diff
         return type(self).no_context(new_value, new_diff, False)
 
-    def _sqrt_(self, /, ) -> Self:
+    def sqrt(self, /, ) -> Self:
         """
         Differentiate sqrt(self)
         """
@@ -235,7 +236,15 @@ class Atom(ValueMixin, ):
         new_diff = 0.5 / _np.sqrt(self.diff)
         return type(self).no_context(new_value, new_diff, False)
 
-    def _maximum_(
+    def logistic(self, /, ) -> Self:
+        """
+        Differentiate logistic(self)
+        """
+        new_value = _sp.special.expit(self.value, )
+        new_diff = new_value * (1 - new_value) * self.diff
+        return type(self).no_context(new_value, new_diff, False)
+
+    def maximum(
         self,
         floor: Number = 0,
         /, 
@@ -261,7 +270,7 @@ class Atom(ValueMixin, ):
         new_diff = orig_diff * multiplier
         return type(self).no_context(new_value, new_diff, False)
 
-    def _mininum_(
+    def mininum(
         self,
         ceiling: Number = 0,
         /,

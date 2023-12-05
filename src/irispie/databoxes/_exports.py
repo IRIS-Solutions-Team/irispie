@@ -189,13 +189,13 @@ def _resolve_frequency_span(
         if v is not None
     }
     #
-    # Resolve date range for each ...
+    # Resolve date span for each ...
     frequency_span = {
-        k: v if v is not ... else self.get_range_by_frequency(k, )
+        k: v if v is not ... else self.get_span_by_frequency(k, )
         for k, v in frequency_span.items()
     }
     #
-    # Expand date ranges into tuples, remove empty ranges
+    # Expand date spans into tuples, remove empty spans
     frequency_span = {
         k: tuple(i for i in v)
         for k, v in frequency_span.items()
