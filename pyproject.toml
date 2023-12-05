@@ -4,7 +4,7 @@
 
 [project]
     name = "irispie"
-    version = "0.25.0"
+    version = "0.25.1"
     authors = [
       { name="Jaromir Benes", email="jaromir.benes@gmail.com" },
     ]
@@ -32,6 +32,7 @@
         "prettytable >= 3.9",
         "pandas >= 2.1.2",
         "dill >= 0.3.7",
+        "requests >= 2.31.0",
     ]
 
 [project.urls]
