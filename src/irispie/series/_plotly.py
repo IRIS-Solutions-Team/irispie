@@ -6,12 +6,12 @@ Plotly interface to time series objects
 #[
 from __future__ import annotations
 
+from typing import (Self, Sequence, Iterable, Any, )
 from types import EllipsisType
 import os as _os
 import json as _js
 import copy as _cp
 import plotly.graph_objects as _pg
-import plotly.subplots as _ps
 import itertools as _it
 
 from .. import dates as _dates
@@ -65,7 +65,8 @@ class Mixin:
         self,
         *,
         span: Iterable[_dates.Dater] | EllipsisType = ...,
-        title: str | None = None,
+        figure_title: str | None = None,
+        subplot_title: str | None = None,
         legend: Iterable[str] | None = None,
         show_figure: bool = False,
         show_legend: bool | None = None,
@@ -74,6 +75,7 @@ class Mixin:
         xline = None,
         type: Literal["line", "bar"] = "line",
         traces: tuple(dict[str, Any], ) | None = None,
+        layout: dict[str, Any] | None = None,
     ) -> _pg.Figure:
         """
         """
@@ -85,8 +87,7 @@ class Mixin:
         date_str = [ t.to_plotly_date() for t in span ]
         date_format = span[0].frequency.plotly_format
         figure = _pg.Figure() if figure is None else figure
-        axis_id = f"{subplot+1}" if subplot else ""
-        subplot = _resolve_subplot(figure, subplot, )
+        tile, index = _resolve_subplot(figure, subplot, )
         show_legend = show_legend if show_legend is not None else legend is not None
 
         minor_dtick_string = None
@@ -105,24 +106,27 @@ class Mixin:
                 "name": legend[i] if legend else None,
                 "showlegend": show_legend,
                 "xhoverformat": date_format,
-                "xaxis": f"x{axis_id}",
-                "yaxis": f"y{axis_id}",
             }
             traces_settings |= ts or {}
             traces_object = _PLOTLY_TRACES_FACTORY[type](c, **traces_settings, )
-            figure.add_trace(traces_object, row=subplot[0], col=subplot[1], )
+            figure.add_trace(traces_object, row=tile[0]+1, col=tile[1]+1, )
 
+        # REFACTOR
+        xaxis = _cp.deepcopy(_PLOTLY_STYLES["layouts"]["plain"]["xaxis"])
+        yaxis = _cp.deepcopy(_PLOTLY_STYLES["layouts"]["plain"]["yaxis"])
         layout = _cp.deepcopy(_PLOTLY_STYLES["layouts"]["plain"])
-        layout[f"xaxis{axis_id}"] = layout["xaxis"]
-        layout[f"yaxis{axis_id}"] = layout["yaxis"]
-        if axis_id:
-            del layout["xaxis"]
-            del layout["yaxis"]
-        layout[f"xaxis{axis_id}"]["tickformat"] = date_format
-        layout[f"xaxis{axis_id}"]["ticklabelmode"] = "period"
-        layout[f"xaxis{axis_id}"]["minor"] = {"showgrid": True, "dtick": minor_dtick_string, }
-        layout["title"]["text" ] = title
-        figure.update_layout(layout, )
+        del layout["xaxis"]
+        del layout["yaxis"]
+
+        xaxis["tickformat"] = date_format
+        xaxis["ticklabelmode"] = "period"
+        xaxis["minor"] = {"showgrid": True, "dtick": minor_dtick_string, }
+        figure.update_xaxes(xaxis, row=tile[0]+1, col=tile[1]+1, )
+        figure.update_layout(title={"text": figure_title}, )
+        figure.update_layout(layout or {}, )
+
+        if subplot_title:
+            _update_subplot_title(figure, subplot_title, index, )
 
         if xline:
             xline = (
@@ -144,19 +148,39 @@ def _resolve_subplot(
     figure: _pg.Figure,
     subplot: tuple[int, int] | int | None,
     /,
-) -> tuple[int, int]:
+) -> tuple[tuple[int, int], int]:
     """
     """
+    rows, columns = figure._get_subplot_rows_columns()
+    num_rows = len(rows)
+    num_columns = len(columns)
     if subplot is None:
-        return None, None
-    if isinstance(subplot, tuple) or isinstance(subplot, list):
-        return subplot[0], subplot[1]
-    if isinstance(subplot, int):
-        position = subplot
-        rows, columns = figure._get_subplot_rows_columns()
-        num_rows = len(rows)
-        num_columns = len(columns)
-        row = position // num_columns + 1
-        column = position % num_columns + 1
-        return row, column
+        tile = None
+        index = None
+    elif isinstance(subplot, Sequence):
+        row = subplot[0]
+        column = subplot[1]
+        index = row * num_columns + column
+        tile = row, column,
+    elif isinstance(subplot, int):
+        index = subplot
+        row = index // num_columns
+        column = index % num_columns
+        tile = row, column,
+    else:
+        raise TypeError(f"Invalid subplot type: {type(subplot)}")
+    return tile, index
+
+
+def _update_subplot_title(
+    figure: _pg.Figure,
+    subplot_title: str,
+    index: int,
+    /,
+) -> None:
+    """
+    """
+    annotation = next(figure.select_annotations(index, ), None, )
+    if annotation:
+        annotation.text = subplot_title
 

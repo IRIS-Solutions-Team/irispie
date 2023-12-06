@@ -19,6 +19,9 @@ from .dates import __all__ as dates_all
 from .series import *
 from .series import __all__ as series_all
 
+from .plotly import *
+from .plotly import __all__ as plotly_all
+
 from .databoxes.main import *
 from .databoxes.main import __all__ as databoxes_all
 
@@ -75,6 +78,7 @@ def _convert_version(version_str: str) -> tuple[int, ...]:
 __all__ = (
     *dates_all,
     *series_all,
+    *plotly_all,
     *databoxes_all,
     *sources_all,
     *simultaneous_all,

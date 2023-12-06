@@ -28,6 +28,7 @@
     "modebar": {
         "add": "hovercompare"
     },
-    "hovermode": "x"
+    "hovermode": "x",
+    "plot_bgcolor": "#E7F2F8"
 }
 
