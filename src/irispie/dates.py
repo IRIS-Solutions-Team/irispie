@@ -25,6 +25,7 @@ __all__ = [
     "Ranger", "EmptyRanger", "start", "end",
     "Dater", "daters_from_sdmx_strings", "daters_from_iso_strings", "daters_from_to",
     "YEARLY", "HALFYEARLY", "QUARTERLY", "MONTHLY", "WEEKLY", "DAILY",
+    "DATER_CLASS_FROM_FREQUENCY_RESOLUTION",
 ]
 
 

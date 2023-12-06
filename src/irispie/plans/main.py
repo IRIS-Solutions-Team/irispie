@@ -29,10 +29,14 @@ from . import transforms as _transforms
 #]
 
 
+CHOOSE_TRANSFORM_CLASS = _transforms.CHOOSE_TRANSFORM_CLASS
+
+
 __all__ = (
     "PlanSimulate",
     "PlanSteady",
     "Plan",
+    "CHOOSE_TRANSFORM_CLASS",
 )
 
 
@@ -88,7 +92,7 @@ Plans for dynamic simulations
         *tuple(f"can_be_{r}" for r in _registers),
         *tuple(f"_{r}_register" for r in _registers),
         *tuple(f"default_{r}" for r in _registers),
-        "base_range",
+        "base_span",
     )
 
     def properties():
@@ -100,13 +104,13 @@ Properties of `PlanSimulate` objects
 =====================================
 
 #### `start_date` ####
-Start date of the simulation range
+Start date of the simulation span
 
 #### `num_periods` ####
-Number of periods in the simulation range
+Number of periods in the simulation span
 
-#### `base_range` ####
-Simulation range
+#### `base_span` ####
+Simulation span
 
 #### `anticipate` ####
 Default anticipation status
@@ -130,13 +134,13 @@ Tabular view of the simulation plan
     def __init__(
         self,
         plannable: PlannableSimulateProtocol,
-        range: Iterable[_dates.Dater] | None,
+        span: Iterable[_dates.Dater] | None,
         /,
         anticipate: bool = True,
     ) -> None:
         """
         """
-        self.base_range = tuple(range)
+        self.base_span = tuple(span)
         self._default_exogenized = None
         self._default_endogenized = None
         self._default_anticipated = bool(anticipate)
@@ -152,14 +156,14 @@ Tabular view of the simulation plan
     def check_consistency(
         self,
         plannable: PlannableSimulateProtocol,
-        range: Iterable[_dates.Dater] | None,
+        span: Iterable[_dates.Dater] | None,
         /,
     ) -> None:
         """
         """
-        benchmark = type(self)(plannable, range, )
-        if self.base_range != benchmark.base_range:
-            raise _wrongdoings.IrisPieError(f"Plan range must be the same as the simulation range")
+        benchmark = type(self)(plannable, span, )
+        if self.base_span != benchmark.base_span:
+            raise _wrongdoings.IrisPieError(f"Plan span must be the same as the simulation span")
         for r in self._registers:
             if getattr(self, f"can_be_{r}") != getattr(benchmark, f"can_be_{r}"):
                 raise _wrongdoings.IrisPieError(f"Plan must be created using the simulated model")
@@ -168,19 +172,19 @@ Tabular view of the simulation plan
     def start_date(self, /, ) -> _dates.Dater:
         """
         """
-        return self.base_range[0]
+        return self.base_span[0]
 
     @property
     def end_date(self, /, ) -> _dates.Dater:
         """
         """
-        return self.base_range[-1]
+        return self.base_span[-1]
 
     @property
     def num_periods(self, /, ) -> int:
         """
         """
-        return len(self.base_range) if self.base_range is not None else 1
+        return len(self.base_span) if self.base_span is not None else 1
 
     @property
     def frequency(self, /, ) -> str:
@@ -383,7 +387,7 @@ Syntax
     ) -> tuple[str, ...]:
         """
         """
-        column_index = self.base_range.index(date)
+        column_index = self.base_span.index(date)
         return tuple(
             name
             for name, status in register.items()
@@ -419,9 +423,9 @@ Syntax
         """
         """
         if dates is Ellipsis:
-            return tuple(range(len(self.base_range)))
+            return tuple(range(len(self.base_span)))
         dates = dates.resolve(self, ) if hasattr(dates, "resolve") else dates
-        catch_invalid_dates(dates, self.base_range, )
+        catch_invalid_dates(dates, self.base_span, )
         return tuple(d - self.start_date for d in dates)
 
     #]
@@ -517,14 +521,14 @@ def _resolve_and_check_names(
 
 def catch_invalid_dates(
     dates: Iterable[_dates.Dater],
-    base_range: tuple[_dates.Dater],
+    base_span: tuple[_dates.Dater],
     /,
 ) -> NoReturn | None:
     """
     """
-    invalid = [repr(d) for d in dates if d not in base_range]
+    invalid = [repr(d) for d in dates if d not in base_span]
     if invalid:
         raise _wrongdoings.IrisPieError(
-            ["These date(s) are out of simulation range:"] + invalid
+            ["These date(s) are out of simulation span:"] + invalid
         )
 

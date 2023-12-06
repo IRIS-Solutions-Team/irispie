@@ -37,7 +37,7 @@ class ItemMixin:
         """
         if isinstance(column_index, int):
             column_index = slice(column_index, column_index + 1, )
-        self.base_range = self.base_range[column_index]
+        self.base_span = self.base_span[column_index]
         for r in ("exogenized", "endogenized", "anticipated", ):
             register = getattr(self, f"_{r}_register")
             for k, v in register.items():

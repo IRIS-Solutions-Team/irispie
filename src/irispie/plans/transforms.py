@@ -57,8 +57,12 @@ class PlanTransform:
         self._name_format = name_format or self._DEFAULT_NAME_FORMAT
         self._shift = shift
 
-    def __str__(self, /, ) -> str:
+    @property
+    def symbol(self, /, ) -> str:
         return _WHEN_DATA_SYMBOL[self.when_data] + self._SYMBOL
+
+    def __str__(self, /, ) -> str:
+        return self.symbol
 
     def __repr__(self, /, ) -> self:
         return self.__str__()
@@ -91,7 +95,7 @@ class PlanTransformNone(PlanTransform, ):
     """
     #[
     _DEFAULT_NAME_FORMAT = "{}"
-    _SYMBOL = "[•]"
+    _SYMBOL = "[=]"
 
     def eval_exogenized(
         self,
@@ -209,7 +213,7 @@ class PlanTransformFlat(PlanTransform, ):
     #]
 
 
-_CHOOSE_TRANSFORM_CLASS = {
+CHOOSE_TRANSFORM_CLASS = {
     None: PlanTransformNone,
     "level": PlanTransformNone,
     "none": PlanTransformNone,
@@ -228,7 +232,7 @@ def resolve_transform(transform, **kwargs, ) -> PlanTransformProtocol:
     """
     #[
     if transform is None or isinstance(transform, str):
-        return _CHOOSE_TRANSFORM_CLASS[transform](**kwargs, )
+        return CHOOSE_TRANSFORM_CLASS[transform](**kwargs, )
     else:
         return transform
     #]

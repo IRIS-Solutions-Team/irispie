@@ -77,7 +77,7 @@ class _RateForm:
         low_roc = (
             (low_data_variant[where_finite[-1]] / low_data_variant[where_finite[0]])
             ** (1 / num_low_roc_periods)
-        )
+        ) if num_low_roc_periods else 1
         return _conversions.convert_roc(low_roc, low_freq, high_freq, )
 
     @staticmethod
@@ -102,6 +102,7 @@ class _DiffForm:
         """
         return 1
 
+    @staticmethod
     def get_constant(low_freq, high_freq, low_data_variant, ) -> Real:
         """
         """
@@ -110,8 +111,12 @@ class _DiffForm:
         low_diff = (
             (low_data_variant[where_finite[-1]] - low_data_variant[where_finite[0]])
             / num_low_diff_periods
-        )
+        ) if num_low_diff_periods else 0
         return _conversions.convert_diff(low_diff, low_freq, high_freq, )
+
+    @staticmethod
+    def get_sigma_vector(rho, num_high_periods, ) -> _np.ndarray:
+        return _np.ones((num_high_periods, ), dtype=float, )
 
     #]
 

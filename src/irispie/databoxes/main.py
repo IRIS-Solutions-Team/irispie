@@ -28,6 +28,7 @@ from .. import wrongdoings as _wrongdoings
 from . import _imports as _imports
 from . import _exports as _exports
 from . import _merge as _merge
+from . import _dotters as _dotters
 from . import _fred as _fred
 from . import _views as _views
 #]
@@ -60,7 +61,7 @@ class EmptyDateRange(Exception):
         super().__init__("Empty date range is not allowed in this context.")
 
 
-def _extended_range_tuple_from_base_range(input_range, min_shift, max_shift):
+def _extended_range_tuple_from_base_span(input_range, min_shift, max_shift):
     """
     """
     range_list = [t for t in input_range]
@@ -79,7 +80,7 @@ def _extended_range_tuple_from_extended_range(input_range, min_shift, max_shift)
 
 
 _EXTENDED_RANGE_TUPLE_RESOLUTION = {
-    "base": _extended_range_tuple_from_base_range,
+    "base": _extended_range_tuple_from_base_span,
     "extended": _extended_range_tuple_from_extended_range,
 }
 
@@ -100,6 +101,7 @@ class Databox(
     _imports.ImportMixin,
     _exports.ExportMixin,
     _merge.MergeMixin,
+    _dotters.DotterMixin,
     _fred.FredMixin,
     _descriptions.DescriptionMixin,
     _views.ViewMixin,
@@ -117,6 +119,7 @@ class Databox(
     ) -> None:
         super().__init__(**kwargs, )
         self._description = ""
+        self._dotters = []
 
     @classmethod
     def from_dict(

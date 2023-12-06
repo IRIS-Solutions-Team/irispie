@@ -640,21 +640,21 @@ def multiple_to_databox(
 
 def _get_extended_range(
     slatable: SlatableProtocol,
-    base_range: Iterable[_dates.Dater],
+    base_span: Iterable[_dates.Dater],
     /,
 ) -> tuple[Iterable[_dates.Dater], tuple[int, ...]]:
     """
     """
-    base_range = tuple(t for t in base_range)
-    num_base_periods = len(base_range)
+    base_span = tuple(t for t in base_span)
+    num_base_periods = len(base_span)
     min_shift, max_shift = slatable.get_min_max_shifts()
     if min_shift == 0:
         min_shift = -1
-    min_base_date = min(base_range)
-    max_base_date = max(base_range)
+    min_base_date = min(base_span)
+    max_base_date = max(base_span)
     start_date = min_base_date + min_shift
     end_date = max_base_date + max_shift
-    base_indexes = tuple(_dates.date_index(base_range, start_date))
+    base_indexes = tuple(_dates.date_index(base_span, start_date))
     extended_dates = tuple(_dates.Ranger(start_date, end_date))
     return extended_dates, base_indexes, min_shift, max_shift
 

@@ -26,21 +26,20 @@ class PrettyMixin:
     def get_pretty(
         self,
         /,
-        full: bool = False,
     ) -> _pt.PrettyTable:
         """
         """
         table = _pt.PrettyTable()
-        table.field_names = ("", ) + tuple("{:>10}".format(table) for table in self.base_range)
+        table.field_names = ("NAME", "PERIOD", "REGISTER", "TRANSFORM", )
         table.align = "r"
-        table.align[""] = "l"
+        table.align["NAME"] = "l"
         for r in ("exogenized", "endogenized", "anticipated", ):
             if getattr(self, f"_{r}_register"):
                 _add_register_to_table(
                     table,
+                    self.base_span,
                     getattr(self, f"_{r}_register"),
-                    getattr(self, f"_default_{r}"),
-                    full,
+                    r,
                 )
         return table
 
@@ -57,29 +56,25 @@ class PrettyMixin:
 
 def _add_register_to_table(
     table,
+    base_span,
     register,
-    default,
-    full,
+    action,
 ) -> None:
     """
     """
     #[
-    previous = None
     for k, v in register.items():
-        if full or any(v):
-            points = [ _PRETTY_SYMBOL.get(i, _PRETTY_SYMBOL[Any]) for i in v ]
-            if previous:
-                table.add_row(previous, )
-            previous = [k] + points
-    if previous:
-        table.add_row(previous, divider=True, )
+        for status, date in zip(v, base_span):
+            if not status:
+                continue
+            symbol = status.symbol if hasattr(status, "symbol") else _PRETTY_SYMBOL.get(status, "")
+            table.add_row((k, str(date), action, symbol, ))
     #]
 
 
 _PRETTY_SYMBOL = {
     None: "",
-    True: "T",
-    False: "F",
-    Any: "◼︎",
+    True: "*",
+    False: "",
 }
 

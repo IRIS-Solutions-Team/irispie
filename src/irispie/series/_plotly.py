@@ -157,6 +157,6 @@ def _resolve_subplot(
         num_rows = len(rows)
         num_columns = len(columns)
         row = position // num_columns + 1
-        variant = position % num_columns + 1
-        return row, variant
+        column = position % num_columns + 1
+        return row, column
 
