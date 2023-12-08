@@ -1105,8 +1105,12 @@ def daters_from_iso_strings(freq: Frequency, iso_strings: Iterable[str], ) -> It
 
 
 def get_encompassing_span(*args: ResolutionContextProtocol, ) -> Ranger:
-    start_dates = [_get_date(x, "start_date", min, ) for x in args if hasattr(x, "start_date")]
-    end_dates = [_get_date(x, "end_date", max, ) for x in args if hasattr(x, "end_date")]
+    """
+    """
+    start_dates = tuple( _get_date(x, "start_date", min, ) for x in args if hasattr(x, "start_date") )
+    end_dates = tuple( _get_date(x, "end_date", max, ) for x in args if hasattr(x, "end_date") )
+    start_dates = tuple(d for d in start_dates if d is not None)
+    end_dates = tuple(d for d in end_dates if d is not None)
     start_date = min(start_dates) if start_dates else None
     end_date = max(end_dates) if end_dates else None
     return Ranger(start_date, end_date), start_date, end_date

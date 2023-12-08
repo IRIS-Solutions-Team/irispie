@@ -91,14 +91,15 @@ class Mixin:
         type: Literal["line", "bar"] = "line",
         traces: tuple(dict[str, Any], ) | None = None,
         freeze_span: bool = False,
+        reverse_plot_order: bool = False,
     ) -> _pg.Figure:
         """
         """
         span = self._resolve_dates(span, )
         span = [ t for t in span ]
         frequency = span[0].frequency
+        num_variants = self.num_variants
         data = self.get_data(span, )
-        num_variants = data.shape[1]
         date_strings = [ t.to_plotly_date() for t in span ]
         date_format = span[0].frequency.plotly_format
         figure = _pg.Figure() if figure is None else figure
@@ -115,7 +116,11 @@ class Mixin:
         color_cycle = _it.cycle(_COLOR_ORDER)
         traces_cycle = _it.cycle(traces or ({}, ))
 
-        for i, c, ts in zip(range(num_variants, ), color_cycle, traces_cycle, ):
+        loop = zip(range(num_variants, ), color_cycle, traces_cycle, )
+        if reverse_plot_order:
+            loop = reversed(list(loop))
+
+        for i, color, ts in loop:
             traces_settings = {
                 "x": date_strings,
                 "y": data[:, i],
@@ -124,7 +129,7 @@ class Mixin:
                 "xhoverformat": date_format,
             }
             traces_settings |= ts or {}
-            traces_object = _PLOTLY_TRACES_FACTORY[type](c, **traces_settings, )
+            traces_object = _PLOTLY_TRACES_FACTORY[type](color, **traces_settings, )
             figure.add_trace(traces_object, row=row, col=column, )
 
         # REFACTOR

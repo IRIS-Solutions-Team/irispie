@@ -535,6 +535,10 @@ class Series(
     def hstack(self, *args):
         if not args:
             return self.copy()
+        self_args = (self, *args, )
+        if all(i.is_empty() for i in self_args):
+            num_variants = sum(i.num_variants for i in self_args)
+            return Series(num_variants=num_variants, )
         encompassing_span, *from_to = _dates.get_encompassing_span(self, *args, )
         new_data = self.get_data_from_to(from_to, )
         add_data = (

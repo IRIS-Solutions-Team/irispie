@@ -42,6 +42,7 @@ class Chartpack(
         self.transforms = kwargs.get("transforms", None, )
         self.highlight = kwargs.get("highlight", None, )
         self.legend = kwargs.get("legend", None, )
+        self.reverse_plot_order = kwargs.get("reverse_plot_order", False, )
         self._figures = []
         self._description = None
 
@@ -182,6 +183,7 @@ class _Figure:
         show_charts: bool = True,
         highlight: tuple[_dates.Dater, ...] | None = None,
         legend: Iterable[str, ...] | None = None,
+        reverse_plot_order: bool = False,
         **kwargs,
     ) -> None:
         """
@@ -199,6 +201,7 @@ class _Figure:
                 span=span,
                 transforms=transforms,
                 legend=legend if i==0 else None,
+                reverse_plot_order=reverse_plot_order,
             )
             if highlight is not None:
                 _plotly.highlight(figure, highlight, subplot=i, )
@@ -313,6 +316,7 @@ class _Chart:
         span: Iterable[_dates.Dater] | EllipsisType = ...,
         transforms: dict[str, Callable] | None = None,
         legend: Iterable[str, ...] | None = None,
+        reverse_plot_order: bool = False,
     ) -> None:
         """
         """
@@ -325,6 +329,7 @@ class _Chart:
             show_figure=False,
             freeze_span=True,
             legend=legend,
+            reverse_plot_order=reverse_plot_order,
         )
 
     def _apply_transform(self, x, transforms, ):
