@@ -403,6 +403,20 @@ class Databox(
         prepending.clip(None, end_prepending, )
         self.underlay(prepending, )
 
+    def evaluate_expression(
+        self,
+        expression: str,
+        /,
+        context: dict[str, Any] | None = None,
+    ) -> Any:
+        """
+        """
+        expression = expression.strip()
+        if expression in self:
+            return self[expression]
+        else:
+            return self.eval(expression, context, )
+
     def eval(
         self,
         expression: str,

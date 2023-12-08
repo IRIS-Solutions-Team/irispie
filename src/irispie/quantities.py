@@ -76,6 +76,7 @@ class QuantityKind(enum.Flag):
 _export_kinds  = [
     "TRANSITION_VARIABLE", "TRANSITION_SHOCK", "TRANSITION_STD",
     "MEASUREMENT_VARIABLE", "MEASUREMENT_SHOCK", "MEASUREMENT_STD",
+    "SHOCK", "VARIABLE",
 ]
 
 for n in _export_kinds:

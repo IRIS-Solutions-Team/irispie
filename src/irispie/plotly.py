@@ -5,14 +5,17 @@
 #[
 from __future__ import absolute_import
 
-from typing import (Sequence, )
+from typing import (Sequence, Iterable, )
 import plotly.graph_objects as _pg
 import plotly.subplots as _ps
+
+from . import dates as _dates
 #]
 
 
 __all__ = (
     "make_subplots",
+    "highlight",
 )
 
 
@@ -23,7 +26,9 @@ def make_subplots(
     rows: int,
     columns: int | None = None,
     cols: int | None = None,
-    subplot_titles: Sequence[str] | bool | None = None,
+    subplot_titles: Sequence[str] | bool | None = True,
+    vertical_spacing: float | None = 0.1,
+    horizontal_spacing: float | None = 0.05,
     **kwargs,
 ) -> _pg.Figure:
     """
@@ -37,6 +42,64 @@ def make_subplots(
         rows=rows,
         cols=columns,
         subplot_titles=subplot_titles or None,
+        vertical_spacing=vertical_spacing,
+        horizontal_spacing=horizontal_spacing,
         **kwargs,
     )
+
+
+def highlight(
+    figure: _pg.Figure,
+    span: Iterable[_dates.Dater],
+    /,
+    subplot: tuple[int, int] | int | None = None,
+    fill_color: str = "rgba(0, 0, 0, 0.15)",
+) -> _pg.Figure:
+    """
+    """
+    span = tuple(span)
+    _, index = resolve_subplot(figure, subplot, )
+    xref = f"x{index+1}" if index else "x"
+    yref = f"y{index+1} domain" if index else "y domain"
+    shape = {
+        "type": "rect",
+        "xref": xref,
+        "x0": span[0].to_plotly_date(position="start", ),
+        "x1": span[-1].to_plotly_date(position="end", ),
+        "yref": yref,
+        "y0": 0,
+        "y1": 1,
+        "fillcolor": fill_color,
+        "line": {"width": 0, },
+    }
+    figure.add_shape(shape, )
+
+
+def resolve_subplot(
+    figure: _pg.Figure,
+    subplot: tuple[int, int] | int | None,
+    /,
+) -> tuple[tuple[int, int], int]:
+    """
+    """
+    rows, columns = figure._get_subplot_rows_columns()
+    num_rows = len(rows)
+    num_columns = len(columns)
+    if subplot is None:
+        tile = None
+        index = None
+        return tile, index,
+    if isinstance(subplot, Sequence):
+        row = subplot[0]
+        column = subplot[1]
+        index = row * num_columns + column
+        tile = row, column,
+        return tile, index,
+    if isinstance(subplot, int):
+        index = subplot
+        row = index // num_columns
+        column = index % num_columns
+        tile = row, column,
+        return tile, index,
+    raise TypeError(f"Invalid subplot type: {type(subplot)}")
 

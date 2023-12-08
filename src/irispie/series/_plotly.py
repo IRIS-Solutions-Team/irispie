@@ -15,6 +15,7 @@ import plotly.graph_objects as _pg
 import itertools as _it
 
 from .. import dates as _dates
+from .. import plotly as _plotly
 #]
 
 
@@ -45,14 +46,28 @@ _PLOTLY_TRACES_FACTORY = {
 }
 
 
+#_COLOR_ORDER = [
+#    "rgb(  0,   114,   189)",
+#    "rgb(217,    83,    25)",
+#    "rgb(237,   177,    32)",
+#    "rgb(126,    47,   142)",
+#    "rgb(119,   172,    48)",
+#    "rgb( 77,   190,   238)",
+#    "rgb(162,    20,    47)",
+#]
+
+
 _COLOR_ORDER = [
-  "rgb(  0,   114,   189)",
-  "rgb(217,    83,    25)",
-  "rgb(237,   177,    32)",
-  "rgb(126,    47,   142)",
-  "rgb(119,   172,    48)",
-  "rgb( 77,   190,   238)",
-  "rgb(162,    20,    47)",
+    "#1f77b4",
+    "#ff7f0e",
+    "#2ca02c",
+    "#d62728",
+    "#9467bd",
+    "#8c564b",
+    "#e377c2",
+    "#7f7f7f",
+    "#bcbd22",
+    "#17becf",
 ]
 
 
@@ -65,17 +80,17 @@ class Mixin:
         self,
         *,
         span: Iterable[_dates.Dater] | EllipsisType = ...,
+        figure: _pg.Figure | None = None,
         figure_title: str | None = None,
         subplot_title: str | None = None,
         legend: Iterable[str] | None = None,
         show_figure: bool = False,
         show_legend: bool | None = None,
-        figure = None,
         subplot: tuple[int, int] | int | None = None,
         xline = None,
         type: Literal["line", "bar"] = "line",
         traces: tuple(dict[str, Any], ) | None = None,
-        layout: dict[str, Any] | None = None,
+        freeze_span: bool = False,
     ) -> _pg.Figure:
         """
         """
@@ -84,16 +99,16 @@ class Mixin:
         frequency = span[0].frequency
         data = self.get_data(span, )
         num_variants = data.shape[1]
-        date_str = [ t.to_plotly_date() for t in span ]
+        date_strings = [ t.to_plotly_date() for t in span ]
         date_format = span[0].frequency.plotly_format
         figure = _pg.Figure() if figure is None else figure
-        tile, index = _resolve_subplot(figure, subplot, )
-        show_legend = show_legend if show_legend is not None else legend is not None
+        tile, index = _plotly.resolve_subplot(figure, subplot, )
 
-        minor_dtick_string = None
-        if frequency.is_regular:
-            minor_dtick_months = min(12//frequency, 1, )
-            minor_dtick_string = f"M{minor_dtick_months}"
+        show_legend = (
+            show_legend
+            if show_legend is not None
+            else legend is not None
+        )
 
         traces = (traces, ) if isinstance(traces, dict) else traces
         color_cycle = _it.cycle(_COLOR_ORDER)
@@ -101,7 +116,7 @@ class Mixin:
 
         for i, c, ts in zip(range(num_variants, ), color_cycle, traces_cycle, ):
             traces_settings = {
-                "x": date_str,
+                "x": date_strings,
                 "y": data[:, i],
                 "name": legend[i] if legend else None,
                 "showlegend": show_legend,
@@ -120,9 +135,13 @@ class Mixin:
 
         xaxis["tickformat"] = date_format
         xaxis["ticklabelmode"] = "period"
-        xaxis["minor"] = {"showgrid": True, "dtick": minor_dtick_string, }
+        if freeze_span:
+            xaxis["range"] = [date_strings[0], date_strings[-1], ]
+            xaxis["autorange"] = False
+
         figure.update_xaxes(xaxis, row=tile[0]+1, col=tile[1]+1, )
-        figure.update_layout(title={"text": figure_title}, )
+        if figure_title is not None:
+            figure.update_layout(title={"text": figure_title}, )
         figure.update_layout(layout or {}, )
 
         if subplot_title:
@@ -142,34 +161,6 @@ class Mixin:
         return figure
 
     #]
-
-
-def _resolve_subplot(
-    figure: _pg.Figure,
-    subplot: tuple[int, int] | int | None,
-    /,
-) -> tuple[tuple[int, int], int]:
-    """
-    """
-    rows, columns = figure._get_subplot_rows_columns()
-    num_rows = len(rows)
-    num_columns = len(columns)
-    if subplot is None:
-        tile = None
-        index = None
-    elif isinstance(subplot, Sequence):
-        row = subplot[0]
-        column = subplot[1]
-        index = row * num_columns + column
-        tile = row, column,
-    elif isinstance(subplot, int):
-        index = subplot
-        row = index // num_columns
-        column = index % num_columns
-        tile = row, column,
-    else:
-        raise TypeError(f"Invalid subplot type: {type(subplot)}")
-    return tile, index
 
 
 def _update_subplot_title(

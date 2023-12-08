@@ -229,9 +229,17 @@ class GetMixin:
         kind: _quantities.QuantityKind | None = None,
     ) -> _quantities.Quantities:
         return tuple(
-            _quantities.generate_quantities_of_kind(self._invariant.quantities, kind)
+            _quantities.generate_quantities_of_kind(self._invariant.quantities, kind, )
             if kind else self._invariant.quantities
         )
+
+    def get_names(
+        self,
+        /,
+        *,
+        kind: _quantities.QuantityKind | None = None,
+    ) -> _quantities.Quantities:
+        return tuple(q.human for q in self.get_quantities(kind=kind, ))
 
     def get_flags(
         self,

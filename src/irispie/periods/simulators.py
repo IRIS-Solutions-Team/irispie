@@ -224,6 +224,7 @@ def _create_header_message(
     """
     return f"[Variant {vid}][Period {current_period}]"
 
+
 _ITER_STARTER = {
     "previous_period": _start_iter_from_previous_period,
     "data": _start_iter_from_data,

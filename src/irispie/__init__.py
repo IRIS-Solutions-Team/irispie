@@ -25,6 +25,9 @@ from .plotly import __all__ as plotly_all
 from .databoxes.main import *
 from .databoxes.main import __all__ as databoxes_all
 
+from .chartpacks.main import *
+from .chartpacks.main import __all__ as chartpacks_all
+
 from .dataslates import *
 from .dataslates import __all__ as dataslates_all
 

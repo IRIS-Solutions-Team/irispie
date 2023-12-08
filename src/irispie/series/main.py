@@ -428,7 +428,8 @@ class Series(
         """
         """
         if dates is None:
-            dates = []
+            # dates = []
+            dates = ...
         if isinstance(dates, slice) and dates == slice(None, ):
             dates = ...
         if dates is ... and self.start_date is not None:
