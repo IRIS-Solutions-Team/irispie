@@ -103,6 +103,7 @@ class Mixin:
         date_format = span[0].frequency.plotly_format
         figure = _pg.Figure() if figure is None else figure
         tile, index = _plotly.resolve_subplot(figure, subplot, )
+        row, column = (tile[0]+1, tile[1]+1, ) if tile is not None else (None, None, )
 
         show_legend = (
             show_legend
@@ -124,7 +125,7 @@ class Mixin:
             }
             traces_settings |= ts or {}
             traces_object = _PLOTLY_TRACES_FACTORY[type](c, **traces_settings, )
-            figure.add_trace(traces_object, row=tile[0]+1, col=tile[1]+1, )
+            figure.add_trace(traces_object, row=row, col=column, )
 
         # REFACTOR
         xaxis = _cp.deepcopy(_PLOTLY_STYLES["layouts"]["plain"]["xaxis"])
@@ -139,7 +140,7 @@ class Mixin:
             xaxis["range"] = [date_strings[0], date_strings[-1], ]
             xaxis["autorange"] = False
 
-        figure.update_xaxes(xaxis, row=tile[0]+1, col=tile[1]+1, )
+        figure.update_xaxes(xaxis, row=row, col=column, )
         if figure_title is not None:
             figure.update_layout(title={"text": figure_title}, )
         figure.update_layout(layout or {}, )

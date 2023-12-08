@@ -82,13 +82,13 @@ def resolve_subplot(
 ) -> tuple[tuple[int, int], int]:
     """
     """
-    rows, columns = figure._get_subplot_rows_columns()
-    num_rows = len(rows)
-    num_columns = len(columns)
     if subplot is None:
         tile = None
         index = None
         return tile, index,
+    rows, columns = figure._get_subplot_rows_columns()
+    num_rows = len(rows)
+    num_columns = len(columns)
     if isinstance(subplot, Sequence):
         row = subplot[0]
         column = subplot[1]

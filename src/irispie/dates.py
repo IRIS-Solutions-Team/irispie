@@ -56,6 +56,25 @@ class Frequency(_en.IntEnum):
         letter = string.replace("_", "").upper()[0]
         return next( x for x in klass if x.name.startswith(letter) )
 
+    @classmethod
+    def from_sdmx_string(
+        klass,
+        sdmx_string: str,
+        /,
+    ) -> Self:
+        """
+        """
+        try:
+            return next(
+                freq for freq, (length, pattern, ) in SDMX_REXP_FORMATS.items()
+                if (length is None or len(sdmx_string) == length) and pattern.fullmatch(sdmx_string, )
+            )
+        except StopIteration:
+            raise _wrongdoings.IrisPieCritical(
+                f"Cannot determine date frequency from \"{sdmx_string}\"; "
+                f"probably not a valid SDMX string"
+            )
+
     @property
     def letter(self, /, ) -> str:
         return self.name[0] if self is not self.UNKNOWN else "?"
@@ -86,13 +105,24 @@ DAILY = Frequency.DAILY
 
 
 PLOTLY_FORMATS = {
-    Frequency.INTEGER: None,
     Frequency.YEARLY: "%Y",
     Frequency.HALFYEARLY: "%Y-%m",
     Frequency.QUARTERLY: "%Y-Q%q",
     Frequency.MONTHLY: "%Y-%m",
     Frequency.WEEKLY: "%Y-%W",
     Frequency.DAILY: "%Y-%m-%d",
+    Frequency.INTEGER: None,
+}
+
+
+SDMX_REXP_FORMATS = {
+    Frequency.YEARLY: (4, _re.compile(r"\d\d\d\d", ), ),
+    Frequency.HALFYEARLY: (7, _re.compile(r"\d\d\d\d-H\d", ), ),
+    Frequency.QUARTERLY: (7, _re.compile(r"\d\d\d\d-Q\d", ), ),
+    Frequency.MONTHLY: (7, _re.compile(r"\d\d\d\d-\d\d", ), ),
+    Frequency.WEEKLY: (8, _re.compile(r"\d\d\d\d-W\d\d", ), ),
+    Frequency.DAILY: (10, _re.compile(r"\d\d\d\d-\d\d-\d\d", ), ),
+    Frequency.INTEGER: (None, _re.compile(r"\([\-\+]?\d+\),", ), ),
 }
 
 
@@ -217,6 +247,7 @@ class Dater(
     def from_sdmx_string(freq: Frequency, sdmx_string: str, ) -> Dater:
         """
         """
+        freq = Frequency.from_sdmx_string(sdmx_string, ) if freq is None else freq
         return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_sdmx_string(sdmx_string)
 
     @staticmethod

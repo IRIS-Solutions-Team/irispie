@@ -1006,7 +1006,10 @@ def _from_start_date_and_values(
     """
     """
     #[
-    self.start_date = start_date
+    self.start_date = (
+        start_date if not isinstance(start_date, str)
+        else _dates.Dater.from_sdmx_string(None, start_date, )
+    )
     if not isinstance(values, _np.ndarray):
         values = _has_variants.iter_variants(values, )
         values = _np.column_stack(tuple(
