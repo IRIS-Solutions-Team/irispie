@@ -6,6 +6,7 @@ Merge mixin
 #[
 from __future__ import annotations
 
+from typing import (Self, Iterable, Literal, )
 from .. import wrongdoings as _wrongdoings
 from ..series import main as _series
 from . import main as _databoxes
@@ -19,7 +20,7 @@ class MergeMixin:
 
     def merge(
         self: Self,
-        they: Iterable[Self],
+        they: Iterable[Self] | Self,
         action: Literal["hstack", "replace", "discard", "silent", "warning", "error", "critical", ] = "hstack",
         **kwargs,
     ) -> None:
@@ -29,6 +30,8 @@ class MergeMixin:
         stream = _wrongdoings.create_stream(action, when_no_stream="silent", )(
             "Duplicate keys when merging databoxes",
         )
+        if hasattr(they, "items", ):
+            they = (they, )
         for t in they:
             for key, value in t.items():
                 if key in self:

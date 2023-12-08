@@ -5,7 +5,7 @@
     },
     "yaxis": {
         "zeroline": true,
-        "zerolinecolor": "#aaa"
+        "zerolinecolor": "#9aa"
     },
     "legend": {
         "yanchor": "bottom",

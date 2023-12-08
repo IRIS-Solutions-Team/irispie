@@ -141,6 +141,7 @@ class Mixin:
             xaxis["autorange"] = False
 
         figure.update_xaxes(xaxis, row=row, col=column, )
+        figure.update_yaxes(yaxis, row=row, col=column, )
         if figure_title is not None:
             figure.update_layout(title={"text": figure_title}, )
         figure.update_layout(layout or {}, )

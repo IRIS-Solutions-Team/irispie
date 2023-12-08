@@ -12,6 +12,8 @@ import re as _re
 import math as _ma
 import plotly.graph_objects as _pg
 
+from ..conveniences import descriptions as _descriptions
+from ..conveniences import copies as _copies
 from .. import plotly as _plotly
 from .. import dates as _dates
 from ..databoxes import main as _databoxes
@@ -23,7 +25,10 @@ __all__ =  (
 )
 
 
-class Chartpack:
+class Chartpack(
+    _descriptions.DescriptionMixin,
+    _copies.CopyMixin,
+):
     """
     """
     #[
@@ -38,13 +43,14 @@ class Chartpack:
         self.highlight = kwargs.get("highlight", None, )
         self.legend = kwargs.get("legend", None, )
         self._figures = []
+        self._description = None
 
     def plot(
         self,
         input_db: _databoxes.Databox,
         /,
         transforms: dict[str, Callable] | None = None,
-        show_figure: bool = True,
+        show_charts: bool = True,
     ) -> tuple[_pg.Figure, ...]:
         """
         """
@@ -53,6 +59,15 @@ class Chartpack:
             figure.plot(input_db, **self.__dict__, )
             for figure in self
         )
+
+    def format_figure_titles(
+        self,
+        **kwargs,
+    ) -> None:
+        """
+        """
+        for figure in self:
+            figure.format_figure_title(**kwargs, )
 
     @property
     def num_figures(self, ) -> int:
@@ -70,10 +85,11 @@ class Chartpack:
         """
         self._add_figure(_Figure.from_string(*args, **kwargs, ), )
 
-    def add_figure(self, figure_strings: Iterable[str] | str, ) -> None:
+    def add_figure(self, *args, ) -> None:
         """
         """
-        _add_strings(self, figure_strings, self._add_figure_from_string, )
+        for figure_strings in args:
+            _add_strings(self, figure_strings, self._add_figure_from_string, )
 
     add_figures = add_figure
     __add__ = add_figure
@@ -163,7 +179,7 @@ class _Figure:
         span: Iterable[_dates.Dater] | EllipsisType = ...,
         tiles: Sequence[int] | int | None = None,
         transforms: dict[str, Callable] | None = None,
-        show_figure: bool = True,
+        show_charts: bool = True,
         highlight: tuple[_dates.Dater, ...] | None = None,
         legend: Iterable[str, ...] | None = None,
         **kwargs,
@@ -187,9 +203,17 @@ class _Figure:
             if highlight is not None:
                 _plotly.highlight(figure, highlight, subplot=i, )
         figure.update_layout(title={"text": self.title, }, )
-        if show_figure:
+        if show_charts:
             figure.show()
         return figure
+
+    def format_figure_title(
+        self,
+        **kwargs,
+    ) -> None:
+        """
+        """
+        self.title = self.title.format(**kwargs, )
 
     def __str__(self, /, ) -> str:
         """
@@ -219,10 +243,11 @@ class _Figure:
         """
         self._add_chart(_Chart.from_string(input_string, ), )
 
-    def add_chart(self, chart_strings: Iterable[str] | str, ) -> None:
+    def add_chart(self, *args, ) -> None:
         """
         """
-        _add_strings(self, chart_strings, self._add_chart_from_string, )
+        for chart_strings in args:
+            _add_strings(self, chart_strings, self._add_chart_from_string, )
 
     add_charts = add_chart
     __lshift__ = add_chart
