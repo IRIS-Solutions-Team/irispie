@@ -101,7 +101,7 @@ class ConversionMixin:
         **kwargs,
     ) -> Self:
         """
-        Disaggregate time series to a higher frequency
+Disaggregate time series to a higher frequency
         """
         method_func = _CHOOSE_DISAGGREGATION_METHOD[method]
         #

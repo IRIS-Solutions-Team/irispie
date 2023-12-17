@@ -84,14 +84,14 @@ class Invariant(
         self.dynamic_equations = tuple(source.dynamic_equations)
         self.steady_equations = tuple(source.steady_equations)
         #
-        # Create std_ parameters for transition and measurement shocks
+        # Create std_ parameters for unanticipated and measurement shocks
         if self._flags.is_stochastic:
-            transition_shocks = _quantities.generate_quantities_of_kind(self.quantities, _quantities.QuantityKind.TRANSITION_SHOCK, )
+            unanticipated_shocks = _quantities.generate_quantities_of_kind(self.quantities, _quantities.QuantityKind.UNANTICIPATED_SHOCK, )
             measurement_shocks = _quantities.generate_quantities_of_kind(self.quantities, _quantities.QuantityKind.MEASUREMENT_SHOCK, )
             #
             self.quantities += tuple(_generate_stds(
-                transition_shocks,
-                _quantities.QuantityKind.TRANSITION_STD,
+                unanticipated_shocks,
+                _quantities.QuantityKind.UNANTICIPATED_STD,
                 std_name_format,
                 std_description_format,
                 entry=len(self.quantities),
@@ -255,7 +255,7 @@ def _create_shock_qid_to_std_qid(
     #[
     name_to_qid = _quantities.create_name_to_qid(quantities, )
     qid_to_name = _quantities.create_qid_to_name(quantities, )
-    kind = _quantities.QuantityKind.SHOCK
+    kind = _quantities.QuantityKind.STOCHASTIC_SHOCK
     all_shock_qids = tuple(_quantities.generate_qids_by_kind(quantities, kind))
     return {
         shock_qid: name_to_qid[std_name_format.format(qid_to_name[shock_qid], )]

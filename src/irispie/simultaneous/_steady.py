@@ -83,10 +83,10 @@ class SteadyMixin:
         """
         model_flags = _flags.Flags.update_from_kwargs(self.get_flags(), **kwargs)
         solver = self._choose_steady_solver(model_flags.is_linear, model_flags.is_flat, )
-        info = tuple(
+        info = [
             solver(v, model_flags, vid, **kwargs, )
             for vid, v in enumerate(self._variants, )
-        )
+        ]
         return info
 
     def _steady_linear(

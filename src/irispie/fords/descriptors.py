@@ -4,7 +4,7 @@
 ## Unsolved system
 
 $$
-A E[x_{t}] + B E[x_{t-1}] + C + D v_{t} = 0 \\
+A E[x_{t}] + B E[x_{t-1}] + C + D u_{t} + E v_{t} = 0 \\
 F y_{t} + G x_{t} + H + J w_{t} = 0
 $$
 
@@ -117,7 +117,8 @@ Quantity kinds that can be used in the transition part of a first-order system
 """
 _TRANSITION_SYSTEM_QUANTITY = (
     _quantities.QuantityKind.TRANSITION_VARIABLE
-    | _quantities.QuantityKind.TRANSITION_SHOCK
+    | _quantities.QuantityKind.UNANTICIPATED_SHOCK
+    | _quantities.QuantityKind.ANTICIPATED_SHOCK
 )
 
 
@@ -153,7 +154,8 @@ class SystemVectors:
     transition_variables: Iterable[_incidence.Token] | None = None
     transition_variables_logly: tuple[bool, ...] | None = None
     initial_conditions: Iterable[bool] | None = None,
-    transition_shocks: tuple[_incidence.Token, ...] | None = None 
+    unanticipated_shocks: tuple[_incidence.Token, ...] | None = None 
+    anticipated_shocks: tuple[_incidence.Token, ...] | None = None 
     measurement_variables: Iterable[_incidence.Token] | None = None
     measurement_variables_logly: tuple[bool, ...] | None = None
     measurement_shocks: tuple[_incidence.Token, ...] | None = None 
@@ -162,6 +164,7 @@ class SystemVectors:
     shape_B_excl_dynid: tuple[int, int] | None = None
     shape_C_excl_dynid: tuple[int, int] | None = None
     shape_D_excl_dynid: tuple[int, int] | None = None
+    shape_E_excl_dynid: tuple[int, int] | None = None
     shape_F: tuple[int, int] | None = None
     shape_G: tuple[int, int] | None = None
     shape_H: tuple[int, int] | None = None
@@ -207,11 +210,18 @@ class SystemVectors:
             for t in self.transition_variables
         ]
         #
-        # Transition shocks
+        # Unanticipated shocks
         #
-        self.transition_shocks \
+        self.unanticipated_shocks \
             = tuple(_incidence.sort_tokens(_incidence.generate_tokens_of_kinds(
-                all_tokens, qid_to_kind, _quantities.QuantityKind.TRANSITION_SHOCK,
+                all_tokens, qid_to_kind, _quantities.QuantityKind.UNANTICIPATED_SHOCK,
+            )))
+        #
+        # Anticipated shocks
+        #
+        self.anticipated_shocks \
+            = tuple(_incidence.sort_tokens(_incidence.generate_tokens_of_kinds(
+                all_tokens, qid_to_kind, _quantities.QuantityKind.ANTICIPATED_SHOCK,
             )))
         #
         # Measurement variables
@@ -235,7 +245,8 @@ class SystemVectors:
         self.shape_A_excl_dynid = (len(self.transition_eids), len(self.transition_variables), )
         self.shape_B_excl_dynid = self.shape_A_excl_dynid
         self.shape_C_excl_dynid = (len(self.transition_eids), 1, )
-        self.shape_D_excl_dynid = (len(self.transition_eids), len(self.transition_shocks), )
+        self.shape_D_excl_dynid = (len(self.transition_eids), len(self.unanticipated_shocks), )
+        self.shape_E_excl_dynid = (len(self.transition_eids), len(self.anticipated_shocks), )
         self.shape_F = (len(self.measurement_eids), len(self.measurement_variables), )
         self.shape_G = (len(self.measurement_eids), len(self.transition_variables), )
         self.shape_H = (len(self.measurement_eids), 1, )
@@ -257,7 +268,8 @@ class SolutionVectors:
     #[
     transition_variables: tuple[_incidence.Token] | None = None
     initial_conditions: tuple[bool] | None = None,
-    transition_shocks: tuple[_incidence.Token] | None = None 
+    unanticipated_shocks: tuple[_incidence.Token] | None = None 
+    anticipated_shocks: tuple[_incidence.Token] | None = None 
     measurement_variables: tuple[_incidence.Token] | None = None
     measurement_shocks: tuple[_incidence.Token] | None = None 
 
@@ -267,7 +279,8 @@ class SolutionVectors:
         """
         self.transition_variables, self.initial_conditions = \
             _solution_vector_from_system_vector(system_vectors.transition_variables, system_vectors.initial_conditions)
-        self.transition_shocks = tuple(system_vectors.transition_shocks)
+        self.unanticipated_shocks = tuple(system_vectors.unanticipated_shocks)
+        self.anticipated_shocks = tuple(system_vectors.anticipated_shocks)
         self.measurement_variables = tuple(system_vectors.measurement_variables)
         self.measurement_shocks = tuple(system_vectors.measurement_shocks)
 
@@ -340,10 +353,13 @@ class SystemMap:
     B: _maps.ArrayMap | None = None
     C: None = None
     D: _maps.ArrayMap | None = None
+    E: _maps.ArrayMap | None = None
+    #
     dynid_A: _np.ndarray | None = None
     dynid_B: _np.ndarray | None = None
     dynid_C: _np.ndarray | None = None
     dynid_D: _np.ndarray | None = None
+    dynid_E: _np.ndarray | None = None
     #
     F: _maps.ArrayMap | None = None
     G: _maps.ArrayMap | None = None
@@ -398,7 +414,17 @@ class SystemMap:
         self.D = _maps.ArrayMap.for_equations(
             system_vectors.transition_eids,
             system_vectors.eid_to_wrt_tokens,
-            system_vectors.transition_shocks,
+            system_vectors.unanticipated_shocks,
+            eid_to_rhs_offset,
+            #
+            rhs_column=0,
+            lhs_column_offset=0,
+        )
+        #
+        self.E = _maps.ArrayMap.for_equations(
+            system_vectors.transition_eids,
+            system_vectors.eid_to_wrt_tokens,
+            system_vectors.anticipated_shocks,
             eid_to_rhs_offset,
             #
             rhs_column=0,
@@ -409,6 +435,7 @@ class SystemMap:
         self.dynid_A, self.dynid_B = _create_dynid_matrices(system_vectors.transition_variables, )
         self.dynid_C = _np.zeros((num_dynid_rows, system_vectors.shape_C_excl_dynid[1]), dtype=float, )
         self.dynid_D = _np.zeros((num_dynid_rows, system_vectors.shape_D_excl_dynid[1]), dtype=float, )
+        self.dynid_E = _np.zeros((num_dynid_rows, system_vectors.shape_E_excl_dynid[1]), dtype=float, )
         #
         # Measurement equations
         #
@@ -425,7 +452,7 @@ class SystemMap:
         self.G = _maps.ArrayMap.for_equations(
             system_vectors.measurement_eids,
             system_vectors.eid_to_wrt_tokens,
-            system_vectors.transition_variables, 
+            system_vectors.transition_variables,
             eid_to_rhs_offset,
             #
             rhs_column=0,

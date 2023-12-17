@@ -6,7 +6,7 @@ r"""
 
 $$
 \begin{gathered}
-\xi_t = T \, \xi_{t-1} + R \, v_t + K
+\xi_t = T \, \xi_{t-1} + P \, u_t + R \, v_t + K
 \\
 y_t = Z \, \xi_t + H \, w_t + D
 \end{gathered}
@@ -17,7 +17,7 @@ $$
 
 $$
 \begin{gathered}
-\alpha_t = T_\alpha \, \alpha_{t-1} + R_\alpha \, v_t + K_\alpha
+\alpha_t = T_\alpha \, \alpha_{t-1} + P_\alpha \, u_t + R_\alpha \, v_t + K_\alpha
 \\
 y_t = Z_\alpha \, \alpha_t + D + H \, w_t
 \\
@@ -29,6 +29,7 @@ $$
 ## Forward expansion:
 
 $$
+\cdots
 $$
 """
 
@@ -72,7 +73,8 @@ class Solution:
     ## Square solution:
 
     T: Transition matrix
-    R: Impact matrix of transition shocks
+    P: Impact matrix of unanticipated shocks
+    R: Impact matrix of anticipated shocks
     K: Intercept in transition equation
     Z: Measurement matrix
     H: Impact matrix of measurement shocks
@@ -82,7 +84,8 @@ class Solution:
     ## Equivalent block-triangular solution:
 
     Ta: Transition matrix in triangular system
-    Ra: Impact matrix of transition shocks in triangular system
+    Pa: Impact matrix of unanticipated shocks in triangular system
+    Ra: Impact matrix of anticipated shocks in triangular system
     Ka: Intercept in transition equation in triangular system
     Za: Measurement matrix in triangular system
     Ua: Rotation matrix from triangular to square system
@@ -97,6 +100,7 @@ class Solution:
     """
     #[
     T: _np.ndarray | None = None
+    P: _np.ndarray | None = None
     R: _np.ndarray | None = None
     K: _np.ndarray | None = None
     Z: _np.ndarray | None = None
@@ -104,6 +108,7 @@ class Solution:
     D: _np.ndarray | None = None
 
     Ta: _np.ndarray | None = None
+    Pa: _np.ndarray | None = None
     Ra: _np.ndarray | None = None
     Ka: _np.ndarray | None = None
     Za: _np.ndarray | None = None
@@ -151,8 +156,8 @@ class Solution:
             detach_stable_from_unit_roots(triangular_solution_prelim, is_unit_root, )
         square_solution = \
             _square_from_triangular(triangular_solution, )
-        self.Ua, self.Ta, self.Ra, self.Ka, self.Xa, self.J, self.Ru = triangular_solution
-        self.T, self.R, self.K, self.X = square_solution
+        self.Ua, self.Ta, self.Pa, self.Ra, self.Ka, self.Xa, self.J, self.Ru = triangular_solution
+        self.T, self.P, self.R, self.K, self.X = square_solution
         #
         # Solve measurement equations
         self.Z, self.H, self.D, self.Za = _solve_measurement_equations(descriptor, system, self.Ua, )
@@ -174,6 +179,13 @@ class Solution:
         Number of y vector elements
         """
         return self.Z.shape[0]
+
+    @property
+    def num_u(self, /, ) -> int:
+        """
+        Number of v vector elements
+        """
+        return self.P.shape[1]
 
     @property
     def num_v(self, /, ) -> int:
@@ -203,6 +215,14 @@ class Solution:
         """
         num_unit_roots = self.num_unit_roots
         return self.Ta[num_unit_roots:, num_unit_roots:]
+
+    @property
+    def Pa_stable(self, /, ) -> _np.ndarray:
+        """
+        Stable part of impact matrix of transition shocks
+        """
+        num_unit_roots = self.num_unit_roots
+        return self.Pa[num_unit_roots:, :]
 
     @property
     def Ra_stable(self, /, ) -> _np.ndarray:
@@ -254,7 +274,7 @@ class Solution:
         # k = 1, ..., forward or k-1 = 0, ..., forward-1
         #
         return [
-            -X @ _np.linalg.matrix_power(J, k_minus_1) @ Ru 
+            -X @ _np.linalg.matrix_power(J, k_minus_1) @ Ru
             for k_minus_1 in range(0, forward)
         ]
 
@@ -328,18 +348,20 @@ def _square_from_triangular(
 ) -> tuple[_np.ndarray, ...]:
     r"""
     T <- Ua • Ta / Ua
+    P <- Ua • Pa
     R <- Ua • Ra
     X <- Xa • Ra
     K <- Ua • Ka
     xi[t] = ... -X J**(k-1) Ru e[t+k]
     """
     #[
-    Ua, Ta, Ra, Ka, Xa, *_ = triangular_solution
+    Ua, Ta, Pa, Ra, Ka, Xa, *_ = triangular_solution
     T = Ua @ _right_div(Ta, Ua) # Ua • Ta • inv(Ua)
+    P = Ua @ Pa
     R = Ua @ Ra
     K = Ua @ Ka
     X = Ua @ Xa
-    return T, R, K, X
+    return T, P, R, K, X
     #]
 
 
@@ -352,14 +374,15 @@ def detach_stable_from_unit_roots(
     Apply a secondary Schur decomposition to detach stable eigenvalues from unit roots
     """
     #[
-    Ug, Tg, Rg, Kg, Xg, J, Ru = transition_solution_prelim
+    Ug, Tg, Pg, Rg, Kg, Xg, J, Ru = transition_solution_prelim
     num_xib = Tg.shape[0]
     Ta, u, check_num_unit_roots = _sp.linalg.schur(Tg, sort=is_unit_root, ) # Tg = u @ Ta @ u.T
     Ua = Ug @ u if Ug is not None else u
+    Pa = u.T @ Pg
     Ra = u.T @ Rg
     Ka = u.T @ Kg
     Xa = u.T @ Xg if Xg is not None else None
-    return Ua, Ta, Ra, Ka, Xa, J, Ru
+    return Ua, Ta, Pa, Ra, Ka, Xa, J, Ru
     #]
 
 
@@ -390,7 +413,7 @@ def _solve_transition_equations(
     num_forwards = descriptor.get_num_forwards()
     num_stable = num_backwards
     S, T, Q, Z = qz
-    A, B, C, D = system.A, system.B, system.C, system.D
+    A, B, C, D, E = system.A, system.B, system.C, system.D, system.E
     #
     S11 = S[:num_stable, :num_stable]
     S12 = S[:num_stable, num_stable:]
@@ -411,10 +434,15 @@ def _solve_transition_equations(
     QD1 = QD[:num_stable, ...]
     QD2 = QD[num_stable:, ...]
     #
+    QE = Q @ E
+    QE1 = QE[:num_stable, ...]
+    QE2 = QE[num_stable:, ...]
+    #
     # Unstable block
     #
     G = _left_div(-Z21, Z22) # -Z21 \ Z22
-    Ru = _left_div(-T22, QD2) # -T22 \ QD2
+    Pu = _left_div(-T22, QD2) # -T22 \ QD2
+    Ru = _left_div(-T22, QE2) # -T22 \ QE2
     Ku = _left_div(-(S22 + T22), QC2) # -(S22+T22) \ QC2
     #
     # Transform stable block==transform backward-looking variables:
@@ -424,7 +452,8 @@ def _solve_transition_equations(
     Xg1 = G + _left_div(S11, S12)
     #
     Tg = _left_div(-S11, T11)
-    Rg = -Xg0 @ Ru - _left_div(S11, QD1)
+    Pg = -Xg0 @ Pu - _left_div(S11, QD1)
+    Rg = -Xg0 @ Ru - _left_div(S11, QE1)
     Kg = -(Xg0 + Xg1) @ Ku - _left_div(S11, QC1)
     Ug = Z21 # xib = Ug @ gamma
     #
@@ -434,7 +463,7 @@ def _solve_transition_equations(
     J = _left_div(-T22, S22) # -T22 \ S22
     Xg = Xg1 + Xg0 @ J
     #
-    return Ug, Tg, Rg, Kg, Xg, J, Ru
+    return Ug, Tg, Pg, Rg, Kg, Xg, J, Ru
     #]
 
 

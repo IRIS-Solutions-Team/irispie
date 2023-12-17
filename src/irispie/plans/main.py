@@ -70,22 +70,31 @@ class PlanSimulate(
     _copies.CopyMixin,
 ):
     """
-------------------------------------------------------------
+----------------------------------------------------------------------
 
 
-Plans for dynamic simulations
-===============================
+Dynamic simulation plans
+=========================
+
+Dynamic simulation plans are used to set up assumptions about
+[`Simultaneous`](../simultaneous_models/index.md) or
+[`Sequential`](../sequential_models/index.md) model simulations:
+
+* what variables to exogenize in what periods
+* what shocks to endogenized in what periods (`Simultaneous` models only)
+
+The plans only contain meta information, not any actual data. The actual
+data (the exogenized data points, the values of shocks) need to be included
+in the input databox.
 
 
-------------------------------------------------------------
+----------------------------------------------------------------------
     """
     #[
 
     _registers = (
-        "anticipated",
         "exogenized",
         "endogenized",
-        "when_data",
     )
 
     __slots__ = (
@@ -95,38 +104,23 @@ Plans for dynamic simulations
         "base_span",
     )
 
-    def properties():
+    def _properties():
         """
 ------------------------------------------------------------
 
 
-Properties of `PlanSimulate` objects
-=====================================
+Directly accessible properties of `PlanSimulate` objects
+=========================================================
 
-#### `start_date` ####
-Start date of the simulation span
-
-#### `num_periods` ####
-Number of periods in the simulation span
-
-#### `base_span` ####
-Simulation span
-
-#### `anticipate` ####
-Default anticipation status
-
-#### `can_be_exogenized` ####
-Names of quantities that can be exogenized
-
-#### `can_be_endogenized` ####
-Names of quantities that can be endogenized
-
-#### `can_be_anticipated` ####
-Names of quantities that have anticipation status
-
-#### `pretty` ####
-Tabular view of the simulation plan
-
+Property | Description
+---|---
+`start_date` | Start date of the simulation span
+`end_date` | End date of the simulation span
+`num_periods` | Number of periods in the simulation span
+`base_span` | Simulation span
+`can_be_exogenized` | Names of quantities that can be exogenized
+`can_be_endogenized` | Names of quantities that can be endogenized
+`pretty` | Tabular view of the simulation plan
 
 ------------------------------------------------------------
         """
@@ -135,16 +129,12 @@ Tabular view of the simulation plan
         self,
         plannable: PlannableSimulateProtocol,
         span: Iterable[_dates.Dater] | None,
-        /,
-        anticipate: bool = True,
     ) -> None:
         """
         """
         self.base_span = tuple(span)
         self._default_exogenized = None
         self._default_endogenized = None
-        self._default_anticipated = bool(anticipate)
-        self._default_when_data = None
         for r in self._registers:
             register = {
                 n: [None] * self.num_periods
@@ -193,26 +183,6 @@ Tabular view of the simulation plan
         """
         return self.start_date.frequency
 
-    def anticipate(
-        self,
-        dates: Iterable[_dates.Dater] | EllipsisType,
-        names: Iterable[str] | str | EllipsisType,
-        new_status: bool | None = None,
-    ) -> None:
-        """
-        """
-        self._plan_simulate(self._anticipated_register, dates, names, new_status, )
-
-    def when_data(
-        self,
-        dates: Iterable[_dates.Dater] | EllipsisType,
-        names: Iterable[str] | str | EllipsisType,
-        new_status: bool | None = None,
-    ) -> None:
-        """
-        """
-        self._plan_simulate(self._when_data_register, dates, names, new_status, )
-
     def exogenize(
         self,
         dates: Iterable[_dates.Dater] | EllipsisType,
@@ -220,7 +190,6 @@ Tabular view of the simulation plan
         /,
         *,
         transform: str | None = None,
-        anticipate: bool | None = None,
         # when_data: bool | None = None,
         **kwargs,
     ) -> None:
@@ -255,20 +224,11 @@ Transformation (a string) to be applied to the exogenized quantities; only
 available in simulation plans created for
 [`Sequential`](../Sequential/index.md) objects.
 
-### `when_data=False` ###
-Exogenize the quantities at the dates when the data for the quantities are
-available; only available in simulation plans created for
-[`Sequential`](../Sequential/index.md) objects.
-
 
 ------------------------------------------------------------
         """
         transform = _transforms.resolve_transform(transform, **kwargs, )
         self._plan_simulate(self._exogenized_register, dates, names, transform, )
-        if anticipate is not None:
-            self.anticipate(dates, names, anticipate)
-        #if when_data is not None:
-        #    self.when_data(dates, names, when_data)
 
     def get_names_exogenized_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
         """
@@ -280,8 +240,6 @@ available; only available in simulation plans created for
         dates: Iterable[_dates.Dater] | EllipsisType,
         names: Iterable[str] | str | EllipsisType,
         /,
-        *,
-        anticipate: bool | None = None,
     ) -> None:
         """
 ------------------------------------------------------------
@@ -297,11 +255,8 @@ Syntax
 ------------------------------------------------------------
         """
         transform = None
-        when_data = None
         new_status = True
         self._plan_simulate(self._endogenized_register, dates, names, new_status, )
-        if anticipate is not None:
-            self.anticipate(dates, names, anticipate, )
 
     def get_names_endogenized_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
         """
@@ -324,28 +279,6 @@ Syntax
         for pair in pairs:
             self.exogenize(dates, pair[0], *args, **kwargs, )
             self.endogenize(dates, pair[1], *args, **kwargs, )
-
-    def get_anticipated_point(
-        self,
-        name: str,
-        column: int,
-        /,
-    ) -> bool | None:
-        """
-        """
-        point = self._anticipated_register[name][column]
-        return point if point is not None else self._default_anticipated
-
-    def get_when_data_point(
-        self,
-        name: str,
-        column: int,
-        /,
-    ) -> bool | None:
-        """
-        """
-        point = self._when_data_register[name][column]
-        return point if point is not None else self._default_when_data
 
     def get_exogenized_point(
         self,
@@ -408,7 +341,6 @@ Syntax
     ) -> None:
         """
         """
-        anticipate = True
         names = _resolve_and_check_names(register, names, )
         date_indices = self._get_date_indices(dates, )
         for n in names:

@@ -50,7 +50,6 @@ __all__ = [
 
 _SIMULATE_CAN_BE_EXOGENIZED = _quantities.QuantityKind.ENDOGENOUS_VARIABLE
 _SIMULATE_CAN_BE_ENDOGENIZED = _quantities.QuantityKind.EXOGENOUS_VARIABLE | _quantities.QuantityKind.SHOCK
-_SIMULATE_CAN_BE_ANTICIPATED = _SIMULATE_CAN_BE_EXOGENIZED | _SIMULATE_CAN_BE_ENDOGENIZED
 
 
 class Simultaneous(
@@ -324,13 +323,15 @@ class Simultaneous(
         self,
         /,
         **kwargs,
-    ) -> None:
+    ) -> dict[str, Any]:
         """
         Calculate first-order solution for each variant within this model
         """
         model_flags = self._invariant._flags.update_from_kwargs(**kwargs, )
         for variant in self._variants:
             self._solve(variant, model_flags, )
+        info = {}
+        return info
 
     def _solve(
         self,
@@ -438,12 +439,6 @@ class Simultaneous(
     def simulate_can_be_endogenized(self, /, ) -> tuple[str, ...]:
         return tuple(_quantities.generate_quantity_names_by_kind(
             self._invariant.quantities, _SIMULATE_CAN_BE_ENDOGENIZED,
-        ))
-
-    @property
-    def simulate_can_be_anticipated(self, /, ) -> tuple[str, ...]:
-        return tuple(_quantities.generate_quantity_names_by_kind(
-            self._invariant.quantities, _SIMULATE_CAN_BE_ANTICIPATED,
         ))
 
     simulate_can_be_when_data = ()

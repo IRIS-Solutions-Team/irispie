@@ -12,7 +12,7 @@ import enum as _en
 import functools as _ft
 from typing import (Union, Self, Any, Protocol, TypeAlias, runtime_checkable, )
 from collections.abc import (Iterable, Callable, Iterator, )
-from numbers import (Number, )
+from numbers import (Real, )
 
 from .conveniences import copies as _copies
 from . import wrongdoings as _wrongdoings
@@ -280,7 +280,7 @@ class Dater(
     ) -> str:
         return _dt.date(*self.to_ymd(position=position, ))
 
-    to_plotly_date = _ft.partialmethod(to_iso_string, position="middle")
+    to_plotly_date = _ft.partialmethod(to_iso_string, position="middle", )
 
     def __init__(self, serial=0, ) -> None:
         self.serial = int(serial)
@@ -388,10 +388,18 @@ class Dater(
 
 
 class IntegerDater(Dater, ):
+    """
+    """
     #[
+
     frequency = Frequency.INTEGER
     needs_resolve = False
     origin = 0
+    _PLOTLY_DATE_FACTORY = {
+        "start": lambda x: x - 0.5,
+        "middle": lambda x: x,
+        "end": lambda x: x + 0.5,
+    }
 
     @classmethod
     def from_sdmx_string(klass, sdmx_string: str) -> IntegerDater:
@@ -401,19 +409,24 @@ class IntegerDater(Dater, ):
     def to_sdmx_string(self) -> str:
         return f"({self.serial})"
 
-    def to_plotly_date(self) -> str:
-        return str(self.serial)
-
     def __repr__(self) -> str:
         return f"ii({self.serial})"
 
-    def to_plotly_date(self):
-        return self.serial
+    def to_plotly_date(
+        self,
+        /,
+        position: Literal["start", "middle", "end", ] = "middle",
+    ) -> Real:
+        return self._PLOTLY_DATE_FACTORY[position](self.serial, )
+
     #]
 
 
 class DailyDater(Dater, ):
+    """
+    """
     #[
+
     frequency: Frequency = Frequency.DAILY
     needs_resolve = False
     origin = _dt.date(BASE_YEAR, 1, 1).toordinal()
@@ -507,6 +520,7 @@ class DailyDater(Dater, ):
 
     def to_daily(self, /, **kwargs, ) -> Self:
         return self
+
     #]
 
 
@@ -515,7 +529,10 @@ def _serial_from_ypf(year: int, per: int, freq: int) -> int:
 
 
 class RegularDaterMixin:
+    """
+    """
     #[
+
     @classmethod
     def from_year_period(
             klass: type,
@@ -589,11 +606,15 @@ class RegularDaterMixin:
             return DailyDater.from_ymd(*self.to_ymd(position=position, ), )
         except:
             from IPython import embed; embed()
+
     #]
 
 
 class YearlyDater(RegularDaterMixin, Dater, ):
+    """
+    """
     #[
+
     frequency: Frequency = Frequency.YEARLY
     needs_resolve: bool = False
     origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.YEARLY)
@@ -616,6 +637,7 @@ class YearlyDater(RegularDaterMixin, Dater, ):
     @staticmethod
     def month_to_period(month: int, ) -> int:
         return 1
+
     #]
 
 
@@ -920,8 +942,8 @@ class Ranger(_copies.CopyMixin, ):
         """
         return Ranger(self._start_date+k, self._end_date, self._step, )
 
-    def to_plotly_dates(self) -> Iterable[str]:
-        return [t.to_plotly_date() for t in self]
+    def to_plotly_dates(self, *args, **kwargs, ) -> Iterable[str]:
+        return [t.to_plotly_date(*args, **kwargs, ) for t in self]
 
     def to_iso_strings(self, *args, **kwargs, ) -> Iterable[str]:
         return [t.to_iso_string(*args, **kwargs, ) for t in self]
@@ -1023,7 +1045,7 @@ class EmptyRanger:
     #]
 
 
-def _sign(x: Number, ) -> int:
+def _sign(x: Real, ) -> int:
     return 1 if x>0 else (0 if x==0 else -1)
 
 
@@ -1075,7 +1097,7 @@ def resolve_dater_or_integer(input_date: Any) -> Dater:
     """
     Convert non-dater to integer dater
     """
-    if isinstance(input_date, Number):
+    if isinstance(input_date, Real):
         input_date = IntegerDater(int(input_date))
     return input_date
 

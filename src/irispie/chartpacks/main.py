@@ -8,13 +8,15 @@ from __future__ import annotations
 
 from typing import (Self, Iterator, Iterable, Sequence, Callable, )
 from types import (EllipsisType, )
+import functools as _ft
 import re as _re
 import math as _ma
 import plotly.graph_objects as _pg
+import dataclasses as _dc
 
 from ..conveniences import descriptions as _descriptions
 from ..conveniences import copies as _copies
-from .. import plotly as _plotly
+from .. import plotly_wrap as _plotly_wrap
 from .. import dates as _dates
 from ..databoxes import main as _databoxes
 #]
@@ -25,6 +27,7 @@ __all__ =  (
 )
 
 
+@_dc.dataclass
 class Chartpack(
     _descriptions.DescriptionMixin,
     _copies.CopyMixin,
@@ -33,16 +36,17 @@ class Chartpack(
     """
     #[
 
-    def __init__(self, title: str = "", /, **kwargs, ) -> None:
+    title: str = ""
+    span: Iterable[_dates.Dater] | EllipsisType = ...
+    tiles: tuple[int, int] | None = None
+    transforms: dict[str, Callable] | None = None
+    highlight: Iterable[_dates.Dater] | None = None
+    legend: Iterable[str] | None = None
+    reverse_plot_order: bool = False
+
+    def __init__(self, /, **kwargs, ) -> None:
         """
         """
-        self.title = title
-        self.span = kwargs.get("span", ..., )
-        self.tiles = kwargs.get("tiles", None, )
-        self.transforms = kwargs.get("transforms", None, )
-        self.highlight = kwargs.get("highlight", None, )
-        self.legend = kwargs.get("legend", None, )
-        self.reverse_plot_order = kwargs.get("reverse_plot_order", False, )
         self._figures = []
         self._description = None
 
@@ -84,15 +88,21 @@ class Chartpack(
     def _add_figure_from_string(self, *args, **kwargs, ) -> None:
         """
         """
-        self._add_figure(_Figure.from_string(*args, **kwargs, ), )
+        new_figure = _Figure.from_string(*args, **kwargs, )
+        self._add_figure(new_figure, )
+        return new_figure
 
-    def add_figure(self, *args, ) -> None:
+    def add_figure(self, figure_string: str, ) -> None:
+        """
+        """
+        return self._add_figure_from_string(figure_string, )
+
+    def add_figures(self, *args, ) -> None:
         """
         """
         for figure_strings in args:
             _add_strings(self, figure_strings, self._add_figure_from_string, )
 
-    add_figures = add_figure
     __add__ = add_figure
 
     def add_chart(self, *args, **kwargs, ) -> None:
@@ -111,15 +121,10 @@ class Chartpack(
     def __repr__(self, /, ) -> str:
         """
         """
-        return self._repr()
+        return _tree_repr(self, )
 
-    def _repr(self, /, indent: str = "", ) -> str:
-        """
-        """
-        child_indent = indent + "   |"
-        lines = [f"{indent}Chartpack({self.title!r}, )", ]
-        lines.extend(f"{c._repr(child_indent, )}" for c in self)
-        return "\n".join(lines)
+    def _one_liner(self, /, ) -> str:
+        return f"Chartpack({self.title!r}, )"
 
     def __getitem__(self, item: str | int, ) -> _Figure:
         """
@@ -189,7 +194,7 @@ class _Figure:
         """
         """
         tiles = _resolve_tiles(tiles, self.num_charts, )
-        figure = _plotly.make_subplots(
+        figure = _plotly_wrap.make_subplots(
             rows=tiles[0], columns=tiles[1],
             subplot_titles=tuple(c.caption for c in self),
         )
@@ -204,7 +209,7 @@ class _Figure:
                 reverse_plot_order=reverse_plot_order,
             )
             if highlight is not None:
-                _plotly.highlight(figure, highlight, subplot=i, )
+                _plotly_wrap.highlight(figure, highlight, subplot=i, )
         figure.update_layout(title={"text": self.title, }, )
         if show_charts:
             figure.show()
@@ -226,15 +231,10 @@ class _Figure:
     def __repr__(self, /, ) -> str:
         """
         """
-        return self._repr()
+        return _tree_repr(self, )
 
-    def _repr(self, /, indent: str = "", ) -> str:
-        """
-        """
-        child_indent = indent + "   |"
-        lines = [f"{indent}_Figure({self.title!r}, )", ]
-        lines.extend(f"{c._repr(child_indent, )}" for c in self)
-        return "\n".join(lines)
+    def _one_liner(self, /, ) -> str:
+        return f"Figure({self.title!r}, )"
 
     def _add_chart(self, chart: _Chart, ) -> None:
         """
@@ -259,6 +259,12 @@ class _Figure:
         """
         """
         return iter(self._charts, )
+
+    def __enter__(self, /, ) -> Self:
+        return self
+
+    def __exit__(self, *args, **kwargs, ) -> None:
+        pass
 
     #]
 
@@ -350,12 +356,13 @@ class _Chart:
     def __repr__(self, /, ) -> str:
         """
         """
-        return self._repr()
+        return _tree_repr(self, )
 
-    def _repr(self, /, indent: str = "", ) -> str:
-        """
-        """
-        return f"{indent}_Chart({self.title!r}, {self._expression!r}, {self._transform!r}, )"
+    def _one_liner(self, /, ) -> str:
+        return f"Chart({self.title!r}, {self._expression!r}, {self._transform!r}, )"
+
+    def __iter__(self, ) -> NoReturn:
+        yield from ()
 
     #]
 
@@ -395,4 +402,35 @@ def _auto_tiles(num_charts, ) -> tuple[int, int]:
     return (n, n, )
     #]
 
+
+_TREE_INDENT = "    |"
+_TREE_BULLET = "--"
+
+
+def _tree_repr(self, /, indent: tuple[str] = (), is_last: bool = False, ) -> str:
+    """
+    """
+    #[
+    child_indent = _create_child_indent(indent, is_last, )
+    child_repr_func = _ft.partial(_tree_repr, indent=child_indent, )
+    child_objects = tuple(c for c in self)
+    num_child_objects = len(child_objects)
+    child_tree_repr = tuple(
+        _tree_repr(c, indent=child_indent, is_last=(i+1 == len(child_objects)), )
+        for i, c in enumerate(child_objects)
+    )
+    indent_str = "".join(indent, )
+    header = indent_str + (_TREE_BULLET if indent_str else "") + self._one_liner()
+    return "\n".join((header, *child_tree_repr))
+    #]
+
+
+def _create_child_indent(indent: tuple[str], is_last: bool, ) -> str:
+    """
+    """
+    #[
+    if is_last and indent:
+        indent = indent[:-1] + (" "*len(_TREE_INDENT), )
+    return indent + (_TREE_INDENT, )
+    #]
 

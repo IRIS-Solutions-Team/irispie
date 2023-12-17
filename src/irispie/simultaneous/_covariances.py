@@ -38,10 +38,10 @@ class CoverianceMixin:
         # Tuple element cov_by_variant[variant_index][order] is an N-by-N
         # covariance matrix
         #
-        cov_by_variant = tuple(
+        cov_by_variant = [
             self.getv_autocov(v, boolex_zero_shift, up_to_order=up_to_order, )
             for v in self._variants
-        )
+        ]
         #
         # Tuple element cov_by_order[order] is an N-by-N covariance matrix
         # (for singleton models) or an N-by-N-by-num_variants covariance
@@ -86,42 +86,42 @@ class CoverianceMixin:
             cov = cov[boolex_zero_shift, :]
             cov = cov[:, boolex_zero_shift]
             return cov
-        cov_v = self._getv_cov_shocks(variant, "transition", )
+        cov_u = self._getv_cov_shocks(variant, "unanticipated", )
         cov_w = self._getv_cov_shocks(variant, "measurement", )
-        cov_by_order = _covariances.get_autocov_square(variant.solution, cov_v, cov_w, up_to_order, )
+        cov_by_order = _covariances.get_autocov_square(variant.solution, cov_u, cov_w, up_to_order, )
         return tuple(select(cov, ) for cov in cov_by_order)
 
-    def get_std_transition_shocks(self, /, ):
+    def get_std_unanticipated_shocks(self, /, ):
         """
         """
-        return tuple(
+        return [
             self._get_std_shocks(v, "transition", )
             for v in self._variants
-        )
+        ]
 
     def get_std_measurement_shocks(self, /, ):
         """
         """
-        return tuple(
+        return [
             self._get_std_shocks(v, "measurement", )
             for v in self._variants
-        )
+        ]
 
     def get_cov_transition_shocks(self, /, ):
         """
         """
-        return tuple(
+        return [
             self._get_cov_shocks(v, "transition", )
             for v in self._variants
-        )
+        ]
 
     def get_cov_measurement_shocks(self, /, ):
         """
         """
-        return tuple(
+        return [
             self._get_cov_shocks(v, "measurement", )
             for v in self._variants
-        )
+        ]
 
     def _getv_std_shocks(self, variant, kind, /, ):
         """

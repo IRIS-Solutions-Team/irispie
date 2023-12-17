@@ -35,9 +35,12 @@ _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
     source = block+
     block = white_spaces (qty_block / log_block / eqn_block) white_spaces
 
-    keyword = 
+    keyword =
         transition_equations_keyword / measurement_equations_keyword
-        / transition_variables_keyword / transition_shocks_keyword / measurement_variables_keyword / measurement_shocks_keyword / parameters_keyword / exogenous_variables_keyword
+        / transition_variables_keyword
+        / anticipated_shocks_keyword / unanticipated_shocks_keyword
+        / measurement_variables_keyword / measurement_shocks_keyword
+        / parameters_keyword / exogenous_variables_keyword
         / log_keyword / all_but_keyword
         / substitutions_keyword / autoswaps_simulate_keyword / autoswaps_steady_keyword
         / preprocessor_keyword / postprocessor_keyword
@@ -62,7 +65,11 @@ _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
     eqn_version = ~r"[\?\w\.,\(\)=:\+\^\-\*\{\}\[\]/ \t\n&\$]+"
 
     qty_block = qty_keyword block_attributes? qty_ended*
-    qty_keyword = transition_variables_keyword / transition_shocks_keyword / measurement_variables_keyword / measurement_shocks_keyword / parameters_keyword / exogenous_variables_keyword
+    qty_keyword =
+        transition_variables_keyword
+        / anticipated_shocks_keyword / unanticipated_shocks_keyword
+        / measurement_variables_keyword / measurement_shocks_keyword
+        / parameters_keyword / exogenous_variables_keyword
     qty_ended = white_spaces description white_spaces qty_name qty_end
     qty_name = ~r"\b[\?a-zA-Z]\w*\b"
     qty_end = ~r"[,;\s\n]+"
@@ -72,7 +79,8 @@ _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
     log_ended = white_spaces qty_name qty_end
 
     transition_variables_keyword = keyword_prefix "transition-variables"
-    transition_shocks_keyword = keyword_prefix "transition-shocks"
+    anticipated_shocks_keyword = keyword_prefix "anticipated-shocks"
+    unanticipated_shocks_keyword = keyword_prefix "unanticipated-shocks"
     measurement_variables_keyword = keyword_prefix "measurement-variables"
     measurement_shocks_keyword = keyword_prefix "measurement-shocks"
     parameters_keyword = keyword_prefix "parameters"
@@ -166,7 +174,8 @@ class _Visitor(_pa.nodes.NodeVisitor):
         return "transition-" + visited_children[1]
 
     visit_transition_variables_keyword = _visit_keyword
-    visit_transition_shocks_keyword = _visit_keyword
+    visit_anticipated_shocks_keyword = _visit_keyword
+    visit_unanticipated_shocks_keyword = _visit_keyword
     visit_measurement_variables_keyword = _visit_keyword
     visit_measurement_shocks_keyword = _visit_keyword
     visit_parameters_keyword = _visit_keyword
@@ -215,9 +224,10 @@ class _Visitor(_pa.nodes.NodeVisitor):
 
 _SHORTCUT_KEYWORDS = [
     ( _re.compile(_common.HUMAN_PREFIX + r"variables\b"), _common.HUMAN_PREFIX + r"transition-variables" ),
-    ( _re.compile(_common.HUMAN_PREFIX + r"shocks\b"), _common.HUMAN_PREFIX + r"transition-shocks" ),
     ( _re.compile(_common.HUMAN_PREFIX + r"equations\b"), _common.HUMAN_PREFIX + r"transition-equations" ),
 ]
+
+# ( _re.compile(_common.HUMAN_PREFIX + r"shocks\b"), _common.HUMAN_PREFIX + r"transition-shocks" ),
 
 
 def _resolve_shortcut_keywords(source_string: str, /, ) -> str:

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import (Literal, Callable, )
 from collections.abc import (Iterable, )
-from numbers import (Number, )
+from numbers import (Real, )
 import functools as _ft
 import json as _js
 import numpy as _np
@@ -50,13 +50,15 @@ class GetMixin:
     Frontend getter methods for Simultaneous objects
     """
     #[
+
     @_decorate_output_format
     def get_steady_levels(
         self,
         /,
         **kwargs,
-    ) -> dict[str, Number]:
-        qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _sources.LOGLY_VARIABLE, )
+    ) -> dict[str, Real]:
+        kind = _resolve_steady_kind(**kwargs, )
+        qids = _quantities.generate_qids_by_kind(self._invariant.quantities, kind, )
         return self._get_values("levels", qids, **kwargs, )
 
     @_decorate_output_format
@@ -64,8 +66,9 @@ class GetMixin:
         self,
         /,
         **kwargs,
-    ) -> dict[str, Number]:
-        qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _sources.LOGLY_VARIABLE, )
+    ) -> dict[str, Real]:
+        kind = _resolve_steady_kind(**kwargs, )
+        qids = _quantities.generate_qids_by_kind(self._invariant.quantities, kind, )
         return self._get_values("changes", qids, **kwargs, )
 
     @_decorate_output_format
@@ -73,10 +76,11 @@ class GetMixin:
         self,
         /,
         **kwargs,
-    ) -> dict[str, Number]:
+    ) -> dict[str, Real]:
         """
         """
-        qids = tuple(_quantities.generate_qids_by_kind(self._invariant.quantities, _sources.LOGLY_VARIABLE, ))
+        kind = _resolve_steady_kind(**kwargs, )
+        qids = tuple(_quantities.generate_qids_by_kind(self._invariant.quantities, kind, ))
         levels = self._get_values("levels", qids, **kwargs, )
         changes = self._get_values("changes", qids, **kwargs, )
         if self.is_singleton:
@@ -95,7 +99,7 @@ class GetMixin:
         self,
         /,
         **kwargs,
-    ) -> dict[str, Number]:
+    ) -> dict[str, Real]:
         qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _quantities.QuantityKind.PARAMETER, )
         return self._get_values("levels", qids, **kwargs, )
 
@@ -104,7 +108,7 @@ class GetMixin:
         self,
         /,
         **kwargs,
-    ) -> dict[str, Number]:
+    ) -> dict[str, Real]:
         qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _quantities.QuantityKind.STD, )
         return self._get_values("levels", qids, **kwargs, )
 
@@ -113,7 +117,7 @@ class GetMixin:
         self,
         /,
         **kwargs,
-    ) -> dict[str, Number]:
+    ) -> dict[str, Real]:
         qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _quantities.QuantityKind.PARAMETER_OR_STD, )
         return self._get_values("levels", qids, **kwargs, )
 
@@ -263,7 +267,7 @@ class GetMixin:
         """
         """
         custom_round = kwargs.pop("round", None, )
-        def apply(value: Number) -> Number:
+        def apply(value: Real) -> Real:
             value = float(value)
             return round(value, custom_round) if custom_round is not None else value
         #
@@ -292,5 +296,19 @@ class GetMixin:
             | _equations.create_human_to_description(self._invariant.dynamic_equations, )
         )
 
+    #]
+
+
+def _resolve_steady_kind(
+    include_shocks: bool = False,
+    **kwargs,
+) -> _quantities.QuantityKind:
+    """
+    """
+    #[
+    return (
+        _sources.LOGLY_VARIABLE if not include_shocks
+        else _sources.LOGLY_VARIABLE_OR_SHOCK
+    )
     #]
 

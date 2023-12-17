@@ -19,8 +19,8 @@ from .dates import __all__ as dates_all
 from .series import *
 from .series import __all__ as series_all
 
-from .plotly import *
-from .plotly import __all__ as plotly_all
+from .plotly_wrap import *
+from .plotly_wrap import __all__ as plotly_wrap_all
 
 from .databoxes.main import *
 from .databoxes.main import __all__ as databoxes_all
@@ -81,7 +81,7 @@ def _convert_version(version_str: str) -> tuple[int, ...]:
 __all__ = (
     *dates_all,
     *series_all,
-    *plotly_all,
+    *plotly_wrap_all,
     *databoxes_all,
     *sources_all,
     *simultaneous_all,
@@ -104,4 +104,12 @@ def _save(obj, filename, ):
 def _load(filename, ):
     with open(filename, "rb", ) as fid:
         return _di.load(fid, )
+
+
+def _test_docs_():
+    """
+# Testing docs
+    """
+    pass
+
 

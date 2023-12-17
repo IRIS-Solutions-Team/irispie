@@ -444,8 +444,8 @@ class Databox(
         """
         self = klass()
         min_shift, max_shift = steady_databoxable.get_min_max_shifts()
-        start_date, end_date = _resolve_input_range(input_range, min_shift, max_shift, interpret_range)
-        items = steady_databoxable.generate_steady_items(start_date, end_date, deviation=deviation)
+        start_date, end_date = _resolve_input_range(input_range, min_shift, max_shift, interpret_range, )
+        items = steady_databoxable.generate_steady_items(start_date, end_date, deviation=deviation, )
         for name, value in items:
             self[name] = value
         return self

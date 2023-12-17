@@ -39,6 +39,7 @@ class MergeMixin:
                 else:
                     self[key] = value
         stream._raise()
+
     #]
 
 

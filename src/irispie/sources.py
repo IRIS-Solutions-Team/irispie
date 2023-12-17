@@ -35,6 +35,12 @@ LOGLY_VARIABLE = (
 )
 
 
+LOGLY_VARIABLE_OR_SHOCK = (
+    LOGLY_VARIABLE
+    | _quantities.QuantityKind.SHOCK
+)
+
+
 class SourceMixin:
     """
     """
@@ -98,8 +104,11 @@ class ModelSource(_files.FromFileMixin, ):
     def add_transition_variables(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
         self._add_quantities(quantity_inputs, _quantities.QuantityKind.TRANSITION_VARIABLE)
 
-    def add_transition_shocks(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
-        self._add_quantities(quantity_inputs, _quantities.QuantityKind.TRANSITION_SHOCK)
+    def add_anticipated_shocks(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
+        self._add_quantities(quantity_inputs, _quantities.QuantityKind.ANTICIPATED_SHOCK)
+
+    def add_unanticipated_shocks(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
+        self._add_quantities(quantity_inputs, _quantities.QuantityKind.UNANTICIPATED_SHOCK)
 
     def add_transition_equations(self, equation_inputs: Iterable[EquationInput] | None) -> None:
         self._add_equations(equation_inputs, _equations.EquationKind.TRANSITION_EQUATION)
@@ -195,7 +204,8 @@ class ModelSource(_files.FromFileMixin, ):
         /,
         transition_variables: Iterable[QuantityInput],
         transition_equations: Iterable[EquationInput], 
-        transition_shocks: Iterable[QuantityInput] | None = None,
+        anticipated_shocks: Iterable[QuantityInput] | None = None,
+        unanticipated_shocks: Iterable[QuantityInput] | None = None,
         measurement_variables: Iterable[QuantityInput] | None = None,
         measurement_equations: Iterable[EquationInput] | None = None,
         measurement_shocks: Iterable[QuantityInput] | None = None,
@@ -206,15 +216,16 @@ class ModelSource(_files.FromFileMixin, ):
         """
         """
         self = ModelSource()
-        self.add_transition_variables(transition_variables)
-        self.add_transition_equations(transition_equations)
-        self.add_transition_shocks(transition_shocks)
-        self.add_measurement_variables(measurement_variables)
-        self.add_measurement_equations(measurement_equations)
-        self.add_measurement_shocks(measurement_shocks)
-        self.add_parameters(parameters)
-        self.add_exogenous_variables(exogenous_variables)
-        self.add_log_variables(log_variables)
+        self.add_transition_variables(transition_variables, )
+        self.add_transition_equations(transition_equations, )
+        self.add_anticipated_shocks(anticipated_shocks, )
+        self.add_unanticipated_shocks(unanticipated_shocks, )
+        self.add_measurement_variables(measurement_variables, )
+        self.add_measurement_equations(measurement_equations, )
+        self.add_measurement_shocks(measurement_shocks, )
+        self.add_parameters(parameters, )
+        self.add_exogenous_variables(exogenous_variables, )
+        self.add_log_variables(log_variables, )
         self.populate_logly()
         return self
 
@@ -236,7 +247,8 @@ class ModelSource(_files.FromFileMixin, ):
         parsed_content = _models.from_string(preparsed_string)
         #
         self.add_transition_variables(parsed_content.get("transition-variables"))
-        self.add_transition_shocks(parsed_content.get("transition-shocks"))
+        self.add_anticipated_shocks(parsed_content.get("anticipated-shocks"))
+        self.add_unanticipated_shocks(parsed_content.get("unanticipated-shocks"))
         self.add_transition_equations(parsed_content.get("transition-equations"))
         self.add_measurement_variables(parsed_content.get("measurement-variables"))
         self.add_measurement_shocks(parsed_content.get("measurement-shocks"))

@@ -15,7 +15,7 @@ import plotly.graph_objects as _pg
 import itertools as _it
 
 from .. import dates as _dates
-from .. import plotly as _plotly
+from .. import plotly_wrap as _plotly_wrap
 #]
 
 
@@ -103,7 +103,7 @@ class Mixin:
         date_strings = [ t.to_plotly_date() for t in span ]
         date_format = span[0].frequency.plotly_format
         figure = _pg.Figure() if figure is None else figure
-        tile, index = _plotly.resolve_subplot(figure, subplot, )
+        tile, index = _plotly_wrap.resolve_subplot(figure, subplot, )
         row, column = (tile[0]+1, tile[1]+1, ) if tile is not None else (None, None, )
 
         show_legend = (

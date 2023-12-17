@@ -4,7 +4,10 @@
 ## Unsolved system
 
 $$
-A E[x_t] + B E[x_{t-1}] + C + D v_t = 0 \\
+A E[x_t] + B E[x_{t-1}] + C + D u_t + E v_t = 0 \\
+$$
+
+$$
 F y_t + G x_t + H + J w_t = 0
 $$
 """
@@ -33,9 +36,9 @@ class System:
     B: _np.ndarray | None = None
     C: _np.ndarray | None = None
     D: _np.ndarray | None = None
+    E: _np.ndarray | None = None
     #
     # Measurement equations
-    # F y + G xi + H + J e = 0
     #
     F: _np.ndarray | None = None
     G: _np.ndarray | None = None
@@ -86,6 +89,10 @@ class System:
         self.D = _np.zeros(svec.shape_D_excl_dynid, dtype=float)
         self.D[smap.D.lhs] = td[smap.D.rhs]
         self.D = _np.vstack((self.D, smap.dynid_D))
+
+        self.E = _np.zeros(svec.shape_E_excl_dynid, dtype=float)
+        self.E[smap.E.lhs] = td[smap.E.rhs]
+        self.E = _np.vstack((self.E, smap.dynid_E))
 
         self.F = _np.zeros(svec.shape_F, dtype=float)
         self.F[smap.F.lhs] = td[smap.F.rhs]

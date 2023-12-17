@@ -2,6 +2,7 @@
 First-order system simulators
 """
 
+
 #[
 from __future__ import annotations
 
@@ -23,7 +24,6 @@ def simulate_flat(
     /,
     *,
     plan: _plans.PlanSimulate | None = None,
-    anticipate: bool = True,
     deviation: bool = False,
 ) -> _np.ndarray:
     """
@@ -39,6 +39,7 @@ def simulate_flat(
     vec = solution_vectors
 
     T = solution.T
+    P = solution.P
     R = solution.R
     K = solution.K if not deviation else 0
 
@@ -70,28 +71,20 @@ def simulate_flat(
         if t.shift == 0
     ]
 
-    measurement_variables_to_slab = [t.qid for t in vec.measurement_variables]
+    measurement_variables_index = [t.qid for t in vec.measurement_variables]
 
-    transition_shocks_in_slab = [t.qid for t in vec.transition_shocks]
-    transition_shocks = working_data[transition_shocks_in_slab, :]
-
-    measurement_shocks_in_slab = [t.qid for t in vec.measurement_shocks]
-    measurement_shocks = working_data[[t.qid for t in vec.measurement_shocks], :]
-
-    transition_shocks[_np.isnan(transition_shocks)] = 0
-    measurement_shocks[_np.isnan(measurement_shocks)] = 0
+    unanticipated_shocks = _extract_shock_values(working_data, vec.unanticipated_shocks, )
+    anticipated_shocks = _extract_shock_values(working_data, vec.anticipated_shocks, )
+    measurement_shocks = _extract_shock_values(working_data, vec.measurement_shocks, )
 
     Rx = [R]
     forward = None
 
-    shock_column_incidence = list(_np.any(transition_shocks[:, column_array] != 0, axis=0))
-    if any(shock_column_incidence):
+    anticipated_shock_column_incidence = list(_np.any(anticipated_shocks[:, column_array] != 0, axis=0))
+    if any(anticipated_shock_column_incidence):
         # Last shock at t+forward
-        forward = len(shock_column_incidence) - shock_column_incidence[::-1].index(True) - 1
-        if anticipate:
-            Rk = solution.expand_square_solution(forward)
-        else:
-            Rk = [None]*forward
+        forward = len(anticipated_shock_column_incidence) - anticipated_shock_column_incidence[::-1].index(True) - 1
+        Rk = solution.expand_square_solution(forward, )
         Rx = Rx + (Rk if Rk is not None else [])
 
     shock_column_end = (
@@ -101,22 +94,41 @@ def simulate_flat(
     )
 
     for t in column_array:
-        shock_impact = sum( 
-            Rx[k] @ transition_shocks[:, (s,)] if Rx[k] is not None else 0 
+        anticipated_shock_impact = sum(
+            Rx[k] @ anticipated_shocks[:, (s,)] if Rx[k] is not None else 0 
             for k, s in enumerate(range(t, shock_column_end+1))
         )
-        curr_state = T @ curr_state + shock_impact + K
+        curr_state = T @ curr_state + P @ unanticipated_shocks[:, (t,)] + anticipated_shock_impact + K
         working_data[no_shift_state_to_slab_lhs, t] = curr_state[no_shift_state_to_slab_rhs].flat
 
         y = Z @ curr_state + H @ measurement_shocks[:, (t,)] + D
-        working_data[measurement_variables_to_slab, t] = y.flat
+        working_data[measurement_variables_index, t] = y.flat
 
-    working_data[transition_shocks_in_slab, :] = transition_shocks
-    working_data[measurement_shocks_in_slab, :] = measurement_shocks
+    _store_shock_values(unanticipated_shocks, working_data, vec.unanticipated_shocks, )
+    _store_shock_values(anticipated_shocks, working_data, vec.anticipated_shocks, )
+    _store_shock_values(measurement_shocks, working_data, vec.measurement_shocks, )
 
     if any(boolex_logly):
         working_data[boolex_logly, :] = _np.exp(working_data[boolex_logly, :])
 
     dataslate.data = working_data
 
+
+def _extract_shock_values(working_data, shock_vector, ) -> _np.ndarray:
+    """
+    """
+    #[
+    shock_qids = [t.qid for t in shock_vector]
+    shock_values = working_data[shock_qids, :]
+    _np.nan_to_num(shock_values, copy=False, nan=0.0, posinf=0.0, neginf=0.0, )
+    return shock_values
+    #]
+
+def _store_shock_values(shock_values, working_data, shock_vector, ) -> None:
+    """
+    """
+    #[
+    shock_qids = [t.qid for t in shock_vector]
+    working_data[shock_qids, :] = shock_values
+    #]
 
