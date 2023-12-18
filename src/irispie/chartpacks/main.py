@@ -55,15 +55,18 @@ class Chartpack(
         input_db: _databoxes.Databox,
         /,
         transforms: dict[str, Callable] | None = None,
-        show_charts: bool = True,
+        show_figures: bool = True,
     ) -> tuple[_pg.Figure, ...]:
         """
         """
         transforms = transforms if transforms is not None else self.transforms
-        return tuple(
+        figures = tuple(
             figure.plot(input_db, **self.__dict__, )
             for figure in self
         )
+        if show_figures:
+            for f in figures: f.show()
+        return figures
 
     def format_figure_titles(
         self,
@@ -85,33 +88,12 @@ class Chartpack(
         """
         self._figures.append(figure, )
 
-    def _add_figure_from_string(self, *args, **kwargs, ) -> None:
+    def add_figure(self, figure_string: str, **kwargs, ) -> None:
         """
         """
-        new_figure = _Figure.from_string(*args, **kwargs, )
+        new_figure = _Figure.from_string(figure_string, **kwargs, )
         self._add_figure(new_figure, )
         return new_figure
-
-    def add_figure(self, figure_string: str, ) -> None:
-        """
-        """
-        return self._add_figure_from_string(figure_string, )
-
-    def add_figures(self, *args, ) -> None:
-        """
-        """
-        for figure_strings in args:
-            _add_strings(self, figure_strings, self._add_figure_from_string, )
-
-    __add__ = add_figure
-
-    def add_chart(self, *args, **kwargs, ) -> None:
-        """
-        """
-        self._figures[-1].add_chart(*args, **kwargs, )
-
-    add_charts = add_chart
-    __lshift__ = add_chart
 
     def __str__(self, /, ) -> str:
         """
@@ -185,7 +167,6 @@ class _Figure:
         span: Iterable[_dates.Dater] | EllipsisType = ...,
         tiles: Sequence[int] | int | None = None,
         transforms: dict[str, Callable] | None = None,
-        show_charts: bool = True,
         highlight: tuple[_dates.Dater, ...] | None = None,
         legend: Iterable[str, ...] | None = None,
         reverse_plot_order: bool = False,
@@ -211,8 +192,6 @@ class _Figure:
             if highlight is not None:
                 _plotly_wrap.highlight(figure, highlight, subplot=i, )
         figure.update_layout(title={"text": self.title, }, )
-        if show_charts:
-            figure.show()
         return figure
 
     def format_figure_title(
@@ -241,19 +220,16 @@ class _Figure:
         """
         self._charts.append(chart, )
 
-    def _add_chart_from_string(self, input_string: str, /, ) -> None:
+    def add_charts(self, chart_strings: Iterable[str], **kwargs, ) -> None:
         """
         """
-        self._add_chart(_Chart.from_string(input_string, ), )
+        for chart_string in chart_strings:
+            self.add_chart(chart_string, **kwargs, )
 
-    def add_chart(self, *args, ) -> None:
+    def add_chart(self, chart_string: str, ) -> None:
         """
         """
-        for chart_strings in args:
-            _add_strings(self, chart_strings, self._add_chart_from_string, )
-
-    add_charts = add_chart
-    __lshift__ = add_chart
+        self._add_chart(_Chart.from_string(chart_string, ), )
 
     def __iter__(self, /, ) -> Iterator[_Chart]:
         """
@@ -367,7 +343,12 @@ class _Chart:
     #]
 
 
-def _add_strings(self, input_strings: Iterable[str] | str, call: Callable ) -> None:
+def _add_strings(
+    self,
+    input_strings: Iterable[str] | str,
+    call: Callable,
+    **kwargs,
+) -> None:
     """
     """
     #[

@@ -84,7 +84,7 @@ class Mixin:
         figure_title: str | None = None,
         subplot_title: str | None = None,
         legend: Iterable[str] | None = None,
-        show_figure: bool = False,
+        show_figure: bool = True,
         show_legend: bool | None = None,
         subplot: tuple[int, int] | int | None = None,
         xline = None,
