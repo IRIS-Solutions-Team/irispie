@@ -16,6 +16,7 @@ import itertools as _it
 import dataclasses as _dc
 import functools as _ft
 
+from .. import pages as _pages
 from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
 from ..databoxes import main as _databoxes
@@ -94,6 +95,7 @@ class ExportMixin:
     Databox mixin for exporting data to disk files
     """
     #[
+    @_pages.reference(category="import_export", )
     def to_sheet(
         self,
         file_name: str,
@@ -110,6 +112,11 @@ class ExportMixin:
         when_empty: Literal["error", "warning", "silent"] = "warning",
     ) -> dict[str, Any]:
         """
+················································································
+
+==Export `Databox` to a CSV or spreadsheet file==
+
+················································································
         """
         frequency_span = _resolve_frequency_span(self, frequency_span, )
         frequency_names = _resolve_frequency_names(self, frequency_span, names, )

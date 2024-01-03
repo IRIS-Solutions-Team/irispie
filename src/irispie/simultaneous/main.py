@@ -53,7 +53,7 @@ _SIMULATE_CAN_BE_ENDOGENIZED = _quantities.QuantityKind.EXOGENOUS_VARIABLE | _qu
 
 
 @_pages.reference(
-    path=("structural_models", "simultaneous_models.md", ),
+    path=("structural_models", "simultaneous_models", "reference.md", ),
     categories={
         "constructor": "Creating new simultaneous models",
         "property": None,
@@ -71,10 +71,8 @@ class Simultaneous(
     """
 ················································································
 
-Simultaneous models
-====================
-
-`Simultaneous` models...
+`Simultaneous` model objects
+==============================
 
 ················································································
     """

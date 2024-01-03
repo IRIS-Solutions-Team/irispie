@@ -35,12 +35,14 @@ __all__ = (
 
 
 @_pages.reference(
-    path=("structural_models", "sequential_models.md", ),
+    path=("structural_models", "sequential_models", "reference.md", ),
     categories={
-        "constructor": "Creating new sequential models",
+        "constructor": "Creating new `Sequential` models",
         "property": None,
-        "simulation": "Simulating sequential models",
-        "manipulation": "Manipulating sequential models",
+        "simulation": "Simulating `Sequential` models",
+        "parameters": "Manipulating `Sequential` model parameters",
+        "information": "Information about `Sequential` models",
+        "manipulation": "Manipulating `Sequential` models",
     },
 )
 class Sequential(
@@ -52,11 +54,8 @@ class Sequential(
     """
 ......................................................................
 
-Sequential models
-==================
-
-`Sequential` models are non-simultaneous systems of equations that are
-simulated period by period, equation by equation.
+`Sequential` model objects
+============================
 
 ......................................................................
     """
@@ -280,7 +279,7 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
     @property
     @_pages.reference(category="property", )
     def identity_index(self, /, ) -> tuple[int]:
-        """==Index of identity equations=="""
+        """==Indexes of identity equations=="""
         return tuple(
             i for i, x in enumerate(self._invariant.explanatories)
             if x.is_identity
@@ -289,7 +288,7 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
     @property
     @_pages.reference(category="property", )
     def nonidentity_index(self, /, ) -> tuple[int]:
-        """==Index of nonidentity equations=="""
+        """==Indexes of nonidentity equations=="""
         return tuple(
             i for i, x in enumerate(self._invariant.explanatories)
             if not x.is_identity
@@ -459,13 +458,63 @@ sequentially. The reordered equation indexes are returned as a tuple.
         """
         yield from self._invariant.explanatories
 
+    @_pages.reference(category="information", )
     def get_description(self, /, ) -> str:
         """
+················································································
+
+==Get model description text==
+
+```
+description = self.get_description()
+```
+
+### Input arguments ###
+
+
+???+ input "self"
+
+    `Sequential` model object whose description will be returned.
+
+
+### Returns ###
+
+
+???+ returns " "
+
+    Description of `self`.
+
+················································································
         """
         return self._invariant.get_description()
 
+    @_pages.reference(category="information", )
     def set_description(self, *args, **kwargs, ) -> None:
         """
+················································································
+
+==Set model description text==
+
+```
+self.set_description(description, )
+```
+
+...
+
+
+### Input arguments ###
+
+
+???+ input "self"
+
+    `Sequential` model object whose description will be set.
+
+
+???+ input "description"
+
+    New description of `self`.
+
+················································································
         """
         self._invariant.set_description(*args, **kwargs, )
 
@@ -515,13 +564,73 @@ sequentially. The reordered equation indexes are returned as a tuple.
     # ===== Implement SlatableProtocol =====
     #
 
+    @_pages.reference(category="information", )
     def get_min_max_shifts(self, /, ) -> tuple[int, int]:
         """
+················································································
+
+==Get minimum and maximum shifts==
+
+```
+min_shift, max_shift = self.get_min_max_shifts()
+```
+
+Get the minimum shift (i.e., the maximum lag) and the maximum shift (i.e.,
+the maximum lead) among all variables occuring in the model equations.
+
+
+### Input arguments ###
+
+
+???+ input "self"
+
+    `Sequential` model object whose minimum and maximum shifts will be
+    returned.
+
+
+### Returns ###
+
+
+???+ returns "min_shift"
+
+    Minimum shift (i.e., the maximum lag).
+
+???+ returns "max_shift"
+
+    Maximum shift (i.e., the maximum lead).
+
+················································································
         """
         return self.min_shift, self.max_shift
 
+    @_pages.reference(category="information", )
     def get_databox_names(self, /, ) -> tuple[str]:
         """
+················································································
+
+==Get list of names that are extracted from databox for simulation==
+
+```
+names = self.get_databox_names()
+```
+
+
+### Input arguments ###
+
+
+???+ input "self"
+
+    `Sequential` model object whose databox names will be returned.
+
+
+### Returns ###
+
+
+???+ returns "names"
+
+    List of names that are extracted from databox when the model is simulated.
+
+················································································
         """
         return tuple(self._invariant.all_names)
 

@@ -10,18 +10,21 @@ import plotly.graph_objects as _pg
 import plotly.subplots as _ps
 
 from . import dates as _dates
+from . import pages as _pages
 #]
 
 
 __all__ = (
     "make_subplots",
     "highlight",
+    "PlotlyWrapper",
 )
 
 
 _EMPTY_SUBPLOT_TITLE = " "
 
 
+@_pages.reference(category="arrange", )
 def make_subplots(
     rows: int,
     columns: int | None = None,
@@ -32,6 +35,11 @@ def make_subplots(
     **kwargs,
 ) -> _pg.Figure:
     """
+················································································
+
+==Create a figure with multiple subplots==
+
+················································································
     """
     if cols is not None and columns is None:
         columns = cols
@@ -48,6 +56,7 @@ def make_subplots(
     )
 
 
+@_pages.reference(category="custom", )
 def highlight(
     figure: _pg.Figure,
     span: Iterable[_dates.Dater],
@@ -56,6 +65,11 @@ def highlight(
     fill_color: str = "rgba(0, 0, 0, 0.15)",
 ) -> _pg.Figure:
     """
+················································································
+
+==Highlight a certain date span in charts==
+
+················································································
     """
     span = tuple(span)
     _, index = resolve_subplot(figure, subplot, )
@@ -102,4 +116,25 @@ def resolve_subplot(
         tile = row, column,
         return tile, index,
     raise TypeError(f"Invalid subplot type: {type(subplot)}")
+
+
+@_pages.reference(
+    path=("visualization_reporting", "plotly_wrapper.md", ),
+    categories={
+        "arrange": "Arranging charts",
+        "custom": "Customizing charts",
+    },
+)
+class PlotlyWrapper:
+    """
+················································································
+
+Plotly wrapper
+===============
+
+················································································
+    """
+    make_subplots = staticmethod(make_subplots)
+    highlight = staticmethod(highlight)
+
 

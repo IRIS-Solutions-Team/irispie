@@ -23,6 +23,7 @@ from ..conveniences import iterators as _iterators
 from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
 from .. import has_variants as _has_variants
+from .. import pages as _pages
 
 from . import _diffcums
 from . import _fillings
@@ -113,6 +114,13 @@ def _trim_decorate(func):
     return wrapper
 
 
+@_pages.reference(
+    path=("data_management", "time_series.md", ),
+    categories={
+        "constructor": "Creating new time series",
+        "property": None,
+    },
+)
 class Series(
     _conversions.ConversionMixin,
     _diffcums.CumMixin,
@@ -127,7 +135,18 @@ class Series(
     _copies.CopyMixin,
 ):
     """
-    Time series objects
+················································································
+
+Time series
+============
+
+The `Series` objects represent numerical time series, organized as rows of
+observations stored in NumPy arrays and'
+[date](dates.md)
+stamped. A `Series` object can hold multiple
+variants of the data, stored as mutliple columns.
+
+················································································
     """
     #[
 
@@ -146,6 +165,7 @@ class Series(
     _missing_str: str = "⋅"
     _test_missing_period = staticmethod(lambda x: _np.all(_np.isnan(x)))
 
+    @_pages.reference(category="constructor", call_name="Series", )
     def __init__(
         self,
         /,
@@ -158,6 +178,45 @@ class Series(
         values: Any | None = None,
         func: Callable | None = None,
     ) -> None:
+        """
+················································································
+
+==Create a new `Series` object==
+
+```
+self = Series(
+    start_date=start_date,
+    values=values,
+)
+```
+
+```
+self = Series(
+    dates=dates,
+    values=values,
+)
+```
+
+### Input arguments ###
+
+
+???+ input "start_date"
+
+    The date of the first value in the `values`.
+
+???+ input "values"
+
+    Time series observations, supplied either as a tuple of values, or a
+    NumPy array.
+
+### Returns ###
+
+???+ returns "self"
+
+    The newly created `Series` object.
+
+················································································
+        """
         self.start_date = None
         self.data_type = data_type
         self.data = _np.full((0, num_variants), self._missing, dtype=self.data_type)
@@ -182,15 +241,21 @@ class Series(
         )
 
     @property
+    @_pages.reference(category="property", )
     def shape(self, /, ) -> tuple[int, int]:
+        """==Shape of time series data=="""
         return self.data.shape
 
     @property
+    @_pages.reference(category="property", )
     def num_periods(self, /, ) -> int:
+        """==Number of periods from the first to the last observation=="""
         return self.data.shape[0]
 
     @property
+    @_pages.reference(category="property", )
     def num_variants(self, /, ) -> int:
+        """==Number of variants (columns) within the `Series` object=="""
         return self.data.shape[1]
 
     @property

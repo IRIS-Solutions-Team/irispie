@@ -14,6 +14,7 @@ from typing import (Union, Self, Any, Protocol, TypeAlias, runtime_checkable, )
 from collections.abc import (Iterable, Callable, Iterator, )
 from numbers import (Real, )
 
+from . import pages as _pages
 from .conveniences import copies as _copies
 from . import wrongdoings as _wrongdoings
 #]
@@ -226,11 +227,24 @@ class RangeableMixin:
     #]
 
 
+@_pages.reference(
+    path=("data_management", "dates.md", ),
+    categories={
+        "constructor": "Creating new dates",
+        "property": None,
+    },
+)
 class Dater(
     RangeableMixin,
     _copies.CopyMixin,
 ):
     """
+......................................................................
+
+Dates and date ranges
+======================
+
+......................................................................
     """
     #[
     frequency = None

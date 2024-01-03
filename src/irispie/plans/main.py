@@ -57,11 +57,12 @@ class PlannableSteadyProtocol(Protocol, ):
 
 
 @_pages.reference(
-    path=("structural_models", "simulation_plans", "index.md", ),
+    path=("structural_models", "simulation_plans.md", ),
     categories={
         "constructor": "Creating new simulation plans",
         "property": None,
         "definition": "Defining exogenized and endogenized data points",
+        "information": "Getting information about simulation plans",
     },
 )
 class PlanSimulate(
@@ -76,8 +77,8 @@ Simulation plans
 =================
 
 `PlanSimulate` objects are used to set up conditioning assumptions
-for simulating [`Simultaneous`](../simultaneous_models/index.md) or
-[`Sequential`](../sequential_models/index.md) models. The simulation plans specify
+for simulating [`Simultaneous`](simultaneous_modelsd) or
+[`Sequential`](sequential_models) models. The simulation plans specify
 
 * what variables to exogenize in what periods
 * what shocks to endogenized in what periods (`Simultaneous` models only)
@@ -103,7 +104,7 @@ exogenized variables. The actual data points are included in the input databox.
 
     def _properties():
         """
-------------------------------------------------------------
+················································································
 
 
 Directly accessible properties of `PlanSimulate` objects
@@ -119,7 +120,7 @@ Property | Description
 `can_be_endogenized` | Names of quantities that can be endogenized
 `pretty` | Tabular view of the simulation plan
 
-------------------------------------------------------------
+················································································
         """
 
     @_pages.reference(category="constructor", call_name="PlanSimulate", )
@@ -138,15 +139,15 @@ self = PlanSimulate(model, time_span, )
 ```
 
 Create a new simulation plan object for a
-[`Simultaneous`](../sequential_models/index.md) or
-[`Sequential`](../sequential_models/index.md) model.
+[`Simultaneous`](sequential_models) or
+[`Sequential`](sequential_models) model.
 
 ### Input arguments ###
 
 ???+ input "model"
 
-    A [`Simultaneous`](../sequential_models/index.md) or
-    [`Sequential`](../sequential_models/index.md) model that will be simulated.
+    A [`Simultaneous`](sequential_models) or
+    [`Sequential`](sequential_models) model that will be simulated.
 
 ???+ input "time_span"
 
@@ -232,6 +233,7 @@ self.exogenize(
     dates, names,
     /,
     transform=None,
+    when_data=False,
 )
 ```
 
@@ -256,7 +258,7 @@ self.exogenize(
 
 ???+ input "when_data"
 
-    If `True`, the data point will be exogenized only if an actual value
+    If `True`, the data point will be exogenized only if a proper value
     exists in the input data.
 
 ················································································
@@ -264,11 +266,18 @@ self.exogenize(
         transform = _transforms.resolve_transform(transform, **kwargs, )
         self._plan_simulate(self._exogenized_register, dates, names, transform, )
 
+    @_pages.reference(category="information", )
     def get_names_exogenized_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
         """
+················································································
+
+==Get names exogenized at a certain date==
+
+················································································
         """
         return self._get_names_registered_in_period(self._exogenized_register, *args, **kwargs, )
 
+    @_pages.reference(category="definition", )
     def endogenize(
         self,
         dates: Iterable[_dates.Dater] | EllipsisType,
@@ -276,24 +285,24 @@ self.exogenize(
         /,
     ) -> None:
         """
-------------------------------------------------------------
+················································································
 
-# `endogenize`
+==Endogenize certain quantities at certain dates==
 
-#### Endogenize certain quantities at certain dates ####
-
-Syntax
--------
-
-
-------------------------------------------------------------
+················································································
         """
         transform = None
         new_status = True
         self._plan_simulate(self._endogenized_register, dates, names, new_status, )
 
+    @_pages.reference(category="information", )
     def get_names_endogenized_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
         """
+················································································
+
+==Get names endogenized at a certain date==
+
+················································································
         """
         return self._get_names_registered_in_period(self._endogenized_register, *args, **kwargs, )
 
@@ -400,18 +409,25 @@ Syntax
 Plan = PlanSimulate
 
 
-class PlanSteady():
+@_pages.reference(
+    path=("structural_models", "steady_plans.md", ),
+    categories={
+        "constructor": "Creating new steady plans",
+        "property": None,
+        "definition": "Defining exogenized, endogenized and fixed quantities",
+    },
+)
+class PlanSteady:
     """
-------------------------------------------------------------
+················································································
 
+Steady plans
+=============
 
-`PlanSteady`
-============
+`PlanSteady` objects are used to define assumptions about the steady state
+values of certain model variables.
 
-#### Plan for steady state calculations ####
-
-
-------------------------------------------------------------
+················································································
     """
     #[
 
@@ -426,12 +442,18 @@ class PlanSteady():
         "_fixed_change_register",
     )
 
+    @_pages.reference(category="constructor", call_name="PlanSteady", )
     def __init__(
         self,
         plannable: PlannableSteadyProtocol,
         /,
     ) -> None:
         """
+················································································
+
+==Create new steady plan object==
+
+················································································
         """
         for r in ("exogenized", "endogenized", "fixed_level", "fixed_change", ):
             register = {
@@ -462,6 +484,66 @@ class PlanSteady():
 #             n: [None] * self.num_periods
 #             for n in plannable.can_be_fixed_change
 #         } if plannable.can_be_fixed_change else {}
+
+    @_pages.reference(category="definition", )
+    def exogenize(
+        self,
+        names: Iterable[str] | str,
+        /,
+    ) -> None:
+        """
+················································································
+
+==Exogenize steady levels of variables==
+
+················································································
+        """
+        pass
+
+    @_pages.reference(category="definition", )
+    def endogenize(
+        self,
+        names: Iterable[str] | str,
+        /,
+    ) -> None:
+        """
+················································································
+
+==Endogenize parameters==
+
+················································································
+        """
+        pass
+
+    @_pages.reference(category="definition", )
+    def fix_level(
+        self,
+        names: Iterable[str] | str,
+        /,
+    ) -> None:
+        """
+················································································
+
+==Fix steady levels of variables==
+
+················································································
+        """
+        pass
+
+    @_pages.reference(category="definition", )
+    def fix_change(
+        self,
+        names: Iterable[str] | str,
+        /,
+    ) -> None:
+        """
+················································································
+
+==Fix steady changes of variables==
+
+················································································
+        """
+        pass
 
 
 def _resolve_and_check_names(

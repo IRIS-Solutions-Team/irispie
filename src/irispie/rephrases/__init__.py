@@ -1,5 +1,5 @@
 """
-Time series module
+HTML report module
 """
 
 

@@ -95,10 +95,11 @@ _ARRAY_TRANSPOSER_FACTORY = {
 
 
 @_pages.reference(
-    path=("data_management", "databoxes", "index.md" ),
+    path=("data_management", "databoxes.md", ),
     categories={
         "constructor": "Creating new databoxes",
         "property": None,
+        "import_export": "Importing and exporting databoxes",
     },
 )
 class Databox(
@@ -114,12 +115,13 @@ class Databox(
     """
 ......................................................................
 
-Unstructured data store
-========================
+Databoxes
+==========
 
-`Databox` objects are used to store and manipulate unstructured data
-organized as key-value pairs, in a dictionary style (they are a `dict`
-subclass). The values stored within a databox can be of any type.
+The `Databox` objects can be used to store and manipulate unstructured data
+organized as key-value pairs, in a dictionary style; the `Databox` objects
+are, indeed, subclassed from the standard `dict`. The values stored within
+a databox can be of any type.
 
 ......................................................................
     """

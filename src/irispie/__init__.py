@@ -22,6 +22,9 @@ from .series import __all__ as series_all
 from .plotly_wrap import *
 from .plotly_wrap import __all__ as plotly_wrap_all
 
+from .rephrases import *
+from .rephrases import __all__ as rephrases_all
+
 from .databoxes.main import *
 from .databoxes.main import __all__ as databoxes_all
 
@@ -82,6 +85,7 @@ __all__ = (
     *dates_all,
     *series_all,
     *plotly_wrap_all,
+    *rephrases_all,
     *databoxes_all,
     *sources_all,
     *simultaneous_all,

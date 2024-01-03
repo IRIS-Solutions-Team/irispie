@@ -13,8 +13,9 @@ import numpy as _np
 import dataclasses as _dc
 import pickle as _pickle
 
-from ..series import main as _series
 from .. import dates as _dates
+from .. import pages as _pages
+from ..series import main as _series
 #]
 
 
@@ -58,6 +59,7 @@ class ImportMixin:
     """
     #[
     @classmethod
+    @_pages.reference(category="import_export", )
     def from_sheet(
         klass,
         file_name: str,
@@ -71,6 +73,11 @@ class ImportMixin:
         **kwargs,
     ) -> Self:
         """
+················································································
+
+==Import `Databox` from a CSV or spreadsheet file==
+
+················································································
         """
         self = klass(**kwargs)
 

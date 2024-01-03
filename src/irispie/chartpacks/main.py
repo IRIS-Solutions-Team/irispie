@@ -18,6 +18,7 @@ from ..conveniences import descriptions as _descriptions
 from ..conveniences import copies as _copies
 from .. import plotly_wrap as _plotly_wrap
 from .. import dates as _dates
+from .. import pages as _pages
 from ..databoxes import main as _databoxes
 #]
 
@@ -28,11 +29,26 @@ __all__ =  (
 
 
 @_dc.dataclass
+@_pages.reference(
+    path=("visualization_reporting", "chartpacks.md", ),
+    categories={
+        "constructor": "Creating new chartpacks",
+        "property": None,
+        "plot": "Plotting chartpacks",
+        "add": "Adding figures and charts to chartpacks",
+    }
+)
 class Chartpack(
     _descriptions.DescriptionMixin,
     _copies.CopyMixin,
 ):
     """
+················································································
+
+Chartpacks
+===========
+
+················································································
     """
     #[
 
@@ -46,6 +62,71 @@ class Chartpack(
     _figures = None
     _description = None
 
+    @classmethod
+    @_pages.reference(category="constructor", call_name="Chartpack", )
+    def _constructor_doc():
+        """
+················································································
+
+==Create a new chartpack==
+
+```
+self = Chartpack(
+    title="",
+    span=...,
+    tiles=None,
+    transforms=None,
+    highlight=None,
+    legend=None,
+    reverse_plot_order=False,
+)
+```
+
+### Input arguments ###
+
+???+ input "title"
+
+    The title of the chartpack, used as a basis for creating a caption
+    shown at the top of each figure.
+
+???+ input "span"
+
+    The date span on which the time series will be plotted.
+
+???+ input "tiles"
+
+    The number of rows and columns of the figure grid. If input "None", the number of
+    rows and columns will be determined automatically.
+
+???+ input "transforms"
+
+    A dictionary of functions that will be applied to the input data before
+    plotting.
+
+???+ input "highlight"
+
+    A date span that will be highlighted in the charts.
+
+???+ input "legend"
+
+    A list of strings that will be used as the legend of the charts.
+
+???+ input "reverse_plot_order"
+
+    If `True`, the order of plotting the individual time series within each
+    chart will be reversed.
+
+### Returns
+
+???+ returns "self"
+
+    A new empty `Chartpack` object.
+
+················································································
+        """
+        pass
+
+    @_pages.reference(category="plot", )
     def plot(
         self,
         input_db: _databoxes.Databox,
@@ -54,6 +135,11 @@ class Chartpack(
         show_figures: bool = True,
     ) -> tuple[_pg.Figure, ...]:
         """
+················································································
+
+==Plot the chartpack==
+
+················································································
         """
         transforms = transforms if transforms is not None else self.transforms
         figures = tuple(
@@ -74,9 +160,9 @@ class Chartpack(
             figure.format_figure_title(**kwargs, )
 
     @property
+    @_pages.reference(category="property", )
     def num_figures(self, ) -> int:
-        """
-        """
+        """==Total number of figures in the chartpack=="""
         return len(self._figures, ) if self._figures else 0
 
     def _add_figure(self, figure: _Figure, ) -> None:
@@ -86,12 +172,30 @@ class Chartpack(
             self._figures = []
         self._figures.append(figure, )
 
+    @_pages.reference(category="add", )
     def add_figure(self, figure_string: str, **kwargs, ) -> None:
         """
+················································································
+
+==Add a new figure to the chartpack==
+
+················································································
         """
         new_figure = _Figure.from_string(figure_string, **kwargs, )
         self._add_figure(new_figure, )
         return new_figure
+
+    @staticmethod
+    @_pages.reference(category="add", call_name="add_chart", )
+    def _add_chart_doc():
+        """
+················································································
+
+==Add a new chart to an existing figure in the chartpack==
+
+················································································
+        """
+        pass
 
     def __str__(self, /, ) -> str:
         """
@@ -143,8 +247,6 @@ class _Figure:
 
     @property
     def num_charts(self, ) -> int:
-        """
-        """
         return len(self._charts, ) if self._charts else 0
 
     def plot(
@@ -274,8 +376,7 @@ class _Chart:
 
     @property
     def caption(self, ) -> str:
-        """
-        """
+        """Caption shown at the top of the figure"""
         return self.title or (self._expression + f" [{self._transform}]" if self._transform else "")
 
     def plot(
