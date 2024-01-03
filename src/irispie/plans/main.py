@@ -1,13 +1,4 @@
-"""
-------------------------------------------------------------
-
-
-Plans for dynamic simulations and steady state calculations
-============================================================
-
-
-------------------------------------------------------------
-"""
+"""Plans for dynamic simulations and steady state calculations"""
 
 
 #[
@@ -23,6 +14,7 @@ import copy as _copy
 from ..conveniences import copies as _copies
 from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
+from .. import pages as _pages
 from . import _pretty as _pretty
 from . import _indexes as _indexes
 from . import transforms as _transforms
@@ -64,31 +56,36 @@ class PlannableSteadyProtocol(Protocol, ):
     #]
 
 
+@_pages.reference(
+    path=("structural_models", "simulation_plans", "index.md", ),
+    categories={
+        "constructor": "Creating new simulation plans",
+        "property": None,
+        "definition": "Defining exogenized and endogenized data points",
+    },
+)
 class PlanSimulate(
     _pretty.PrettyMixin,
     _indexes.ItemMixin,
     _copies.CopyMixin,
 ):
     """
-----------------------------------------------------------------------
+················································································
 
+Simulation plans
+=================
 
-Dynamic simulation plans
-=========================
-
-Dynamic simulation plans are used to set up assumptions about
-[`Simultaneous`](../simultaneous_models/index.md) or
-[`Sequential`](../sequential_models/index.md) model simulations:
+`PlanSimulate` objects are used to set up conditioning assumptions
+for simulating [`Simultaneous`](../simultaneous_models/index.md) or
+[`Sequential`](../sequential_models/index.md) models. The simulation plans specify
 
 * what variables to exogenize in what periods
 * what shocks to endogenized in what periods (`Simultaneous` models only)
 
-The plans only contain meta information, not any actual data. The actual
-data (the exogenized data points, the values of shocks) need to be included
-in the input databox.
+The plans only contain meta information, not the actual data points for the
+exogenized variables. The actual data points are included in the input databox.
 
-
-----------------------------------------------------------------------
+················································································
     """
     #[
 
@@ -125,12 +122,44 @@ Property | Description
 ------------------------------------------------------------
         """
 
+    @_pages.reference(category="constructor", call_name="PlanSimulate", )
     def __init__(
         self,
         plannable: PlannableSimulateProtocol,
         span: Iterable[_dates.Dater] | None,
     ) -> None:
         """
+················································································
+
+==Create new simulation plan object==
+
+```
+self = PlanSimulate(model, time_span, )
+```
+
+Create a new simulation plan object for a
+[`Simultaneous`](../sequential_models/index.md) or
+[`Sequential`](../sequential_models/index.md) model.
+
+### Input arguments ###
+
+???+ input "model"
+
+    A [`Simultaneous`](../sequential_models/index.md) or
+    [`Sequential`](../sequential_models/index.md) model that will be simulated.
+
+???+ input "time_span"
+
+    A date range on which the `model` will be simulated.
+
+
+### Returns ###
+
+???+ returns "self"
+
+    A new empty simulation plan object.
+
+················································································
         """
         self.base_span = tuple(span)
         self._default_exogenized = None
@@ -159,30 +188,30 @@ Property | Description
                 raise _wrongdoings.IrisPieError(f"Plan must be created using the simulated model")
 
     @property
+    @_pages.reference(category="property", )
     def start_date(self, /, ) -> _dates.Dater:
-        """
-        """
+        """==Start date of the simulation span=="""
         return self.base_span[0]
 
     @property
+    @_pages.reference(category="property", )
     def end_date(self, /, ) -> _dates.Dater:
-        """
-        """
+        """==End date of the simulation span=="""
         return self.base_span[-1]
 
     @property
+    @_pages.reference(category="property", )
     def num_periods(self, /, ) -> int:
-        """
-        """
+        """==Number of periods in the simulation span=="""
         return len(self.base_span) if self.base_span is not None else 1
 
     @property
+    @_pages.reference(category="property", )
     def frequency(self, /, ) -> str:
-        """
-        Date frequency of simulation span
-        """
+        """==Date frequency of the simulation span=="""
         return self.start_date.frequency
 
+    @_pages.reference(category="definition", )
     def exogenize(
         self,
         dates: Iterable[_dates.Dater] | EllipsisType,
@@ -194,38 +223,43 @@ Property | Description
         **kwargs,
     ) -> None:
         """
-------------------------------------------------------------
+················································································
+
+==Exogenize certain quantities at certain dates==
+
+```
+self.exogenize(
+    dates, names,
+    /,
+    transform=None,
+)
+```
+
+### Input arguments ###
 
 
-`exogenize`
-===========
+???+ input "dates"
 
-#### Exogenize certain quantities at certain dates ####
+    Dates at which the `names` will be exogenized; use `...` for all simulation dates.
 
-Syntax
--------
+???+ input "names"
 
-    self.exogenize(dates, names, **options )
-
-Input arguments
-----------------
-
-### `dates` ###
-Dates at which the `names` will be exogenized; use `...` for all simulation dates.
-
-### `names` ###
-Names of quantities to exogenize at the `dates`; use `...` for all exogenizable quantities.
-
-Options
---------
-
-### `transform=None` ###
-Transformation (a string) to be applied to the exogenized quantities; only
-available in simulation plans created for
-[`Sequential`](../Sequential/index.md) objects.
+    Names of quantities to exogenize at the `dates`; use `...` for all exogenizable quantities.
 
 
-------------------------------------------------------------
+### Input arguments available only for `Sequential` models ###
+
+???+ input "transform"
+
+    Transformation (specified as a string) to be applied to the exogenized
+    quantities; if `None`, no tranformation is applied.
+
+???+ input "when_data"
+
+    If `True`, the data point will be exogenized only if an actual value
+    exists in the input data.
+
+················································································
         """
         transform = _transforms.resolve_transform(transform, **kwargs, )
         self._plan_simulate(self._exogenized_register, dates, names, transform, )

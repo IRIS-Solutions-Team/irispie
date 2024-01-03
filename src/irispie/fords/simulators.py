@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import (Self, TypeAlias, Literal, )
 import numpy as _np
 
-from .. import dataslates as _dataslates
+from ..dataslates import main as _dataslates
 from ..plans import main as _plans
 from ..fords import solutions as _solutions
 from ..fords import descriptors as _descriptors
@@ -30,7 +30,7 @@ def simulate_flat(
     """
     columns_to_run = dataslate.base_columns
     boolex_logly = dataslate.boolex_logly
-    working_data = _np.copy(dataslate.data)
+    working_data = dataslate.get_data_variant(0, )
 
     column_start = columns_to_run[0]
     column_slice = slice(column_start, column_start+len(columns_to_run))
@@ -50,7 +50,7 @@ def simulate_flat(
     if any(boolex_logly):
         working_data[boolex_logly, :] = _np.log(working_data[boolex_logly, :])
 
-    curr_state = _dataslates.HorizontalDataslate.retrieve_vector_from_data_array(
+    curr_state = _dataslates.retrieve_vector_from_data_array(
         working_data, vec.transition_variables, column_start-1,
     )
 
@@ -110,8 +110,6 @@ def simulate_flat(
 
     if any(boolex_logly):
         working_data[boolex_logly, :] = _np.exp(working_data[boolex_logly, :])
-
-    dataslate.data = working_data
 
 
 def _extract_shock_values(working_data, shock_vector, ) -> _np.ndarray:

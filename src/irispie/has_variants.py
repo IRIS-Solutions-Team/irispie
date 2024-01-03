@@ -5,7 +5,7 @@
 #[
 from __future__ import annotations
 
-from typing import (Self, Iterable, Iterator, TypeVar, )
+from typing import (Any, Self, Iterable, Iterator, TypeVar, Protocol, )
 from numbers import (Number, )
 import copy as _co
 import numpy as _np
@@ -15,6 +15,17 @@ from .conveniences import iterators as _iterators
 
 
 _T = TypeVar("T")
+
+
+class HasVariantsProtocol:
+    """
+    """
+    #[
+
+    _invariant: Any
+    _variants: list
+
+    #]
 
 
 class HasVariantsMixin:
@@ -35,7 +46,7 @@ class HasVariantsMixin:
         """
         True for models with only one variant
         """
-        return self.num_variants == 1
+        return is_singleton(self.num_variants, )
 
     def new_with_shallow_variants(self, /, ) -> Self:
         """
@@ -87,7 +98,7 @@ class HasVariantsMixin:
         vids: Iterable[int] | int | slice | EllipsisType,
         /,
     ) -> Self:
-        new = type(self).skeleton()
+        new = type(self).skeleton(self, )
         new._invariant = self._invariant
         variant_iter = _resolve_vids(self, vids, )
         new._variants = [ self._variants[i] for i in variant_iter ]
@@ -109,12 +120,11 @@ class HasVariantsMixin:
     def _new_with_single_variant(self: _T, variant, /, ) -> _T:
         """
         """
-        new = type(self).skeleton()
-        new._invariant = self._invariant
+        new = type(self).skeleton(self, )
         new._variants = [ variant ]
         return new
 
-    def __iter__(
+    def iter_own_variants(
         self,
         /,
     ) -> Iterator[Self]:
@@ -123,6 +133,33 @@ class HasVariantsMixin:
         """
         for v in self._variants:
             yield self._new_with_single_variant(v, )
+
+    def __iter__(
+        self,
+        /,
+    ) -> Iterator[Self]:
+        """
+        Iterate over alternative variants of this object
+        """
+        return self.iter_own_variants()
+
+    def rewrap_singleton(
+        self: HasVariantsProtocol,
+        anything: list[_T] | _T,
+        /,
+    ) -> list[_T]:
+        """
+        """
+        return rewrap_singleton(anything, self.is_singleton, )
+
+    def unwrap_singleton(
+        self: HasVariantsProtocol,
+        anything: list[_T],
+        /,
+    ) -> list[_T] | _T:
+        """
+        """
+        return unwrap_singleton(anything, self.is_singleton, )
 
     #]
 
@@ -170,4 +207,22 @@ def iter_own_variants(anything: _T, ) -> Iterator[_T]:
         return anything
     else:
         return [anything, ]
+
+
+def rewrap_singleton(anything: _T, is_singleton: bool, ) -> list[_T]:
+    """
+    """
+    return [anything] if is_singleton else anything
+
+
+def unwrap_singleton(anything: list[_T], is_singleton: bool, ) -> _T:
+    """
+    """
+    return anything[0] if is_singleton else anything
+
+
+def is_singleton(num_variants: int) -> bool:
+    """
+    """
+    return num_variants == 1
 

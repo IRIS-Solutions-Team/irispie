@@ -14,7 +14,7 @@ from . import solutions as _solutions
 
 def get_autocov_square(
     solution: _solutions.Solution,
-    cov_v: _np.ndarray,
+    cov_u: _np.ndarray,
     cov_w: _np.ndarray,
     order: int,
     /,
@@ -33,47 +33,49 @@ def get_autocov_square(
         return cov
     return tuple(
         fill_nans(cov, )
-        for cov in get_autocov_square_00(solution, cov_v, cov_w, order, )
+        for cov in get_autocov_square_00(solution, cov_u, cov_w, order, )
     )
     #]
 
 
 def get_autocov_square_00(
     solution: _solutions.Solution,
-    cov_v: _np.ndarray,
+    cov_u: _np.ndarray,
     cov_w: _np.ndarray,
     order: int,
     /,
-) -> _np.ndarray:
+) -> tuple[_np.ndarray, ...]:
     """
-    Covariance of [xi; y] based on stable alpha
+    Autocovariance (up to order) of [xi; y] based on stable alpha and a zero cov assumption for unstable alpha
     """
     #[
     num_alpha = solution.num_alpha
     Ua = solution.Ua
-    def transform_cov(cov: _np.ndarray, /, ) -> _np.ndarray:
+    #
+    def _transform_cov(cov: _np.ndarray, /, ) -> _np.ndarray:
         cov[:num_alpha, :] = Ua @ cov[:num_alpha, :]
         cov[:, :num_alpha] = cov[:, :num_alpha] @ Ua.T
         return cov
+    #
     return tuple(
-        transform_cov(cov, )
-        for cov in get_autocov_triangular_00(solution, cov_v, cov_w, order, )
+        _transform_cov(cov, )
+        for cov in get_autocov_triangular_00(solution, cov_u, cov_w, order, )
     )
     #]
 
 
 def get_autocov_triangular_00(
     solution: _solutions.Solution,
-    cov_v: _np.ndarray,
+    cov_u: _np.ndarray,
     cov_w: _np.ndarray,
     order: int,
     /,
 ) -> tuple[_np.ndarray, ...]:
     """
-    Autocovariance of [alpha; y] based on stable alpha
+    Autocovariance (up to order) of [alpha; y] based on stable alpha
     """
     #[
-    cov_triangular_00 = get_cov_triangular_00(solution, cov_v, cov_w, )
+    cov_triangular_00 = get_cov_triangular_00(solution, cov_u, cov_w, )
     #
     num_unit_roots = solution.num_unit_roots
     num_alpha = solution.num_alpha
@@ -97,7 +99,7 @@ def get_autocov_triangular_00(
 
 def get_cov_triangular_00(
     solution: _solutions.Solution,
-    cov_v: _np.ndarray,
+    cov_u: _np.ndarray,
     cov_w: _np.ndarray,
     /,
 ) -> _np.ndarray:
@@ -107,10 +109,12 @@ def get_cov_triangular_00(
     #[
     # Triangular transition equations
     #
-    cov_alpha_stable, cov_alpha_00 = get_cov_alpha_stable(solution, cov_v, )
+    cov_alpha_00 = get_cov_alpha_00(solution, cov_u, )
     #
     # Measurement equations
     #
+    num_unit_roots = solution.num_unit_roots
+    cov_alpha_stable = cov_alpha_00[num_unit_roots:, num_unit_roots:]
     Za_stable = solution.Za_stable
     H = solution.H
     sigma_w = H @ cov_w @ H.T
@@ -130,9 +134,9 @@ def get_cov_triangular_00(
     #]
 
 
-def get_cov_alpha_stable(
+def get_cov_alpha_00(
     solution: _solutions.Solution,
-    cov_v: _np.ndarray,
+    cov_u: _np.ndarray,
     /,
 ) -> _np.ndarray:
     """
@@ -141,13 +145,12 @@ def get_cov_alpha_stable(
     #[
     num_unit_roots = solution.num_unit_roots
     Ta_stable = solution.Ta_stable
-    Ra_stable = solution.Ra_stable
-    sigma_v = Ra_stable @ cov_v @ Ra_stable.T
-    cov_alpha_stable = \
-        _sp.linalg.solve_discrete_lyapunov(Ta_stable, sigma_v, )
+    Pa_stable = solution.Pa_stable
+    sigma_u = Pa_stable @ cov_u @ Pa_stable.T
+    cov_alpha_stable = _sp.linalg.solve_discrete_lyapunov(Ta_stable, sigma_u, )
     cov_alpha_00 = _np.zeros(solution.Ta.shape, dtype=float, )
     cov_alpha_00[num_unit_roots:, num_unit_roots:] = cov_alpha_stable
-    return cov_alpha_stable, cov_alpha_00
+    return cov_alpha_00
     #]
 
 
@@ -159,27 +162,17 @@ def acorr_from_acov(
     """
     #[
     acorr_by_order = [None, ] * len(acov_by_order)
-    is_singleton = _is_singleton(acov_by_order[0], )
-    if is_singleton:
-        acov_by_order = _add_dim_to_singleton(acov_by_order, )
     #
     # Scale matrix has inv_std[i]*inv_std[j]
-    #
-    scale_matrix = _np.dstack(tuple(
-        _get_scale_matrix(acov_by_order[0][:, :, d], )
-        for d in range(acov_by_order[0].shape[2])
-    ))
+    scale_matrix = _get_scale_matrix(acov_by_order[0], )
     #
     # Rescale autocovariance matrices to autocorrelation matrices order by
     # order
-    #
     acorr_by_order = tuple(
-        cov * scale_matrix
-        for cov in acov_by_order
+        i * scale_matrix
+        for i in acov_by_order
     )
     #
-    if is_singleton:
-        acorr_by_order = _remove_dim_from_singleton(acorr_by_order, )
     return acorr_by_order
     #]
 

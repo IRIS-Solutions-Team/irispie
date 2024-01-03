@@ -12,6 +12,7 @@ import numpy as _np
 import re as _re
 import operator as _op
 import functools as _ft
+import os as _os
 from typing import (Self, TypeAlias, Literal, Sequence, Protocol, Any, )
 from collections.abc import (Iterable, Iterator, Callable, )
 from numbers import (Number, )
@@ -20,10 +21,11 @@ from ..conveniences import views as _views
 from ..conveniences import descriptions as _descriptions
 from ..conveniences import iterators as _iterators
 from ..series import main as _series
+from ..dataslates import main as _dataslates
 from .. import quantities as _quantities
-from .. import dataslates as _dataslates
 from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
+from .. import pages as _pages
 
 from . import _imports as _imports
 from . import _exports as _exports
@@ -54,11 +56,6 @@ class SteadyDataboxableProtocol(Protocol):
     def generate_steady_items(self, *args) -> Any: ...
 
     #]
-
-
-class EmptyDateRange(Exception):
-    def __init__(self):
-        super().__init__("Empty date range is not allowed in this context.")
 
 
 def _extended_range_tuple_from_base_span(input_range, min_shift, max_shift):
@@ -97,6 +94,13 @@ _ARRAY_TRANSPOSER_FACTORY = {
 }
 
 
+@_pages.reference(
+    path=("data_management", "databoxes", "index.md" ),
+    categories={
+        "constructor": "Creating new databoxes",
+        "property": None,
+    },
+)
 class Databox(
     _imports.ImportMixin,
     _exports.ExportMixin,
@@ -108,7 +112,16 @@ class Databox(
     dict,
 ):
     """
-    Unstructured data storage class
+......................................................................
+
+Unstructured data store
+========================
+
+`Databox` objects are used to store and manipulate unstructured data
+organized as key-value pairs, in a dictionary style (they are a `dict`
+subclass). The values stored within a databox can be of any type.
+
+......................................................................
     """
     #[
 
@@ -117,17 +130,39 @@ class Databox(
         /,
         **kwargs,
     ) -> None:
+        """ """
         super().__init__(**kwargs, )
         self._description = ""
         self._dotters = []
 
     @classmethod
+    @_pages.reference(category="constructor", call_nam="Databox.empty", )
+    def empty(
+        klass,
+        /,
+    ) -> Self:
+        """
+......................................................................
+
+==Create a new empty `Databox`==
+
+......................................................................
+        """
+        return klass()
+
+    @classmethod
+    @_pages.reference(category="constructor", call_name="Databox.from_dict", )
     def from_dict(
         klass,
         _dict: dict,
         /,
     ) -> Self:
         """
+......................................................................
+
+==Create a `Databox` from a `dict`==
+
+......................................................................
         """
         self = klass()
         for k, v in _dict.items():
@@ -135,6 +170,7 @@ class Databox(
         return self
 
     @classmethod
+    @_pages.reference(category="constructor", call_name="Databox.from_dict", )
     def from_array(
         klass,
         array: _np.ndarray,
@@ -147,6 +183,11 @@ class Databox(
         interpret_dates: Literal["start_date", "range", ] = "start_date",
     ) -> Self:
         """
+......................................................................
+
+==Create a `Databox` from a NumPy array==
+
+......................................................................
         """
         self = target_databox or klass()
         constructor = _SERIES_CONSTRUCTOR_FACTORY[interpret_dates]
@@ -465,7 +506,7 @@ class Databox(
             False: lambda x, y: x - y,
             None: lambda x, y: x - y,
         }
-        kind = _quantities.QuantityKind.VARIABLE | _quantities.QuantityKind.SHOCK
+        kind = _quantities.QuantityKind.ANY_VARIABLE | _quantities.QuantityKind.ANY_SHOCK
         quantities = model.get_quantities(kind=kind, )
         qid_to_name = _quantities.create_qid_to_name(quantities, )
         qid_to_logly = _quantities.create_qid_to_logly(quantities, )

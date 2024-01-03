@@ -10,7 +10,7 @@ from ..databoxes import main as _databoxes
 #]
 
 
-class AssignMixin:
+class AssignInlay:
     """
     """
     #[

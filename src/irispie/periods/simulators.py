@@ -15,9 +15,9 @@ import functools as _ft
 from ..evaluators.base import (DEFAULT_INIT_GUESS, )
 from ..simultaneous import main as _simultaneous
 from ..plans import main as _plans
+from ..dataslates import main as _dataslates
 from .. import quantities as _quantities
 from .. import equations as _equations
-from .. import dataslates as _dataslates
 from .. import wrongdoings as _wrongdoings
 from . import evaluators as _evaluators
 #]
@@ -93,9 +93,9 @@ def simulate(
 
     for t in dataslate.base_columns:
         current_wrt_qids, current_evaluator = \
-            _set_up_current_period(plan, evaluator_factory, wrt_qids, dataslate.column_dates[t], base_evaluator, name_to_qid, )
+            _set_up_current_period(plan, evaluator_factory, wrt_qids, dataslate.dates[t], base_evaluator, name_to_qid, )
         current_evaluator.iter_printer.header_message = \
-            _create_header_message(vid, t, dataslate.column_dates[t], )
+            _create_header_message(vid, t, dataslate.dates[t], )
         dataslate.data[current_wrt_qids, t] = starter(dataslate.data, current_wrt_qids, t, )
         catch_missing(dataslate.data, t, )
         #
@@ -197,7 +197,7 @@ def _catch_missing(
     #
     data[missing, t] = fallback_value
     #
-    current_period = dataslate.column_dates[t]
+    current_period = dataslate.dates[t]
     shift = 0
     for qid in _np.flatnonzero(missing):
         when_missing_stream.add(

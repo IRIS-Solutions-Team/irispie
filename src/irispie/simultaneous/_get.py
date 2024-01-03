@@ -28,7 +28,7 @@ from . import _flags
 """
 Quantities that are time series in model databoxes
 """
-_TIME_SERIES_QUANTITY = _quantities.QuantityKind.VARIABLE | _quantities.QuantityKind.SHOCK
+_TIME_SERIES_QUANTITY = _quantities.QuantityKind.ANY_VARIABLE | _quantities.QuantityKind.ANY_SHOCK
 
 
 def _decorate_output_format(func: Callable, ):
@@ -109,7 +109,7 @@ class GetMixin:
         /,
         **kwargs,
     ) -> dict[str, Real]:
-        qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _quantities.QuantityKind.STD, )
+        qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _quantities.QuantityKind.ANY_STD, )
         return self._get_values("levels", qids, **kwargs, )
 
     @_decorate_output_format
@@ -308,7 +308,7 @@ def _resolve_steady_kind(
     #[
     return (
         _sources.LOGLY_VARIABLE if not include_shocks
-        else _sources.LOGLY_VARIABLE_OR_SHOCK
+        else _sources.LOGLY_VARIABLE_OR_ANY_SHOCK
     )
     #]
 

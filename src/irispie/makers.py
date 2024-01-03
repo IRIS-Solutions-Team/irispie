@@ -30,6 +30,7 @@ def make_lambda(
     return func, func_str, globals_
     #]
 
+
 def _prepare_globals(
     context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:

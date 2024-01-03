@@ -10,11 +10,12 @@ from collections.abc import (Iterable, Iterator, )
 from typing import (Self, Any, )
 import numpy as _np
 import copy as _co
+import os as _os
 
 from .. import equations as _equations
 from .. import quantities as _quantities
 from .. import sources as _sources
-from ..conveniences import files as _files
+from .. import pages as _pages
 from ..incidences import main as _incidences
 from ..incidences import blazer as _blazer
 from ..explanatories import main as _explanatories
@@ -33,14 +34,31 @@ __all__ = (
 )
 
 
+@_pages.reference(
+    path=("structural_models", "sequential_models.md", ),
+    categories={
+        "constructor": "Creating new sequential models",
+        "property": None,
+        "simulation": "Simulating sequential models",
+        "manipulation": "Manipulating sequential models",
+    },
+)
 class Sequential(
-    _simulate.SimulateMixin,
-    _assigns.AssignMixin,
+    _simulate.SimulateInlay,
+    _assigns.AssignInlay,
+
     _has_variants.HasVariantsMixin,
-    _sources.SourceMixin,
-    _files.FromFileMixin,
 ):
     """
+......................................................................
+
+Sequential models
+==================
+
+`Sequential` models are non-simultaneous systems of equations that are
+simulated period by period, equation by equation.
+
+......................................................................
     """
     #[
 
@@ -52,26 +70,142 @@ class Sequential(
     def __init__(
         self,
         /,
-        skeleton: bool = False,
     ) -> None:
         """
         """
         self._invariant = None
         self._variants = []
 
+    @_pages.reference(category="manipulation", )
     def copy(self, /, ) -> Self:
         """
+················································································
+
+==Create a deep copy==
+
+```
+other = self.copy()
+```
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    A `Sequential` model object to be copied.
+
+
+### Returns ###
+
+
+???+ returns "other"
+    A deep copy of `self`.
+
+......................................................................
         """
         return _co.deepcopy(self, )
 
     @classmethod
     def skeleton(
         klass,
+        other,
         /,
     ) -> Self:
         """
         """
-        return klass(skeleton=True, )
+        self = klass()
+        self._invariant = other._invariant
+        return self
+
+    @classmethod
+    @_pages.reference(category="constructor", call_name="Sequential.from_file", )
+    def from_file(klass, *args, **kwargs, ) -> _sources.SourceMixinProtocol:
+        """
+················································································
+
+==Create new `Sequential` model object from source file or files==
+
+```
+self = Sequential.from_file(
+    file_names,
+    /,
+    context=None,
+    description="",
+)
+```
+
+Read and parse one or more source files specified by `file_names` (a string
+or a list of strings) with model source code, and create a `Sequential`
+model object.
+
+
+### Input arguments ###
+
+
+???+ input "file_names"
+    The name of the model source file from which the `Sequential` model object
+    will be created, or a list of file names; if multiple file names are
+    specified, they will all combined together in the given order.
+
+???+ input "context"
+    Dictionary supplying the values used in preparsing commands, and the
+    definition of non-standard functions used in the equations.
+
+???+ input "description"
+    Desscription of the model specified as a text string.
+
+
+### Returns ###
+
+
+???+ returns "self"
+
+    `Sequential` model object created from the `file_names`.
+
+················································································
+        """
+        return _sources.from_file(klass, *args, **kwargs, )
+
+    @classmethod
+    @_pages.reference(category="constructor", call_name="Sequential.from_string",)
+    def from_string(klass, *args, **kwargs, ) -> _sources.SourceMixinProtocol:
+        """
+················································································
+
+==Create sequential model object from string==
+
+```
+self = Sequential.from_string(
+    string,
+    /,
+    context=None,
+    description="",
+)
+```
+
+Read and parse a text `string` with a model source code, and create a
+`Sequential` model object. Otherwise, this function behaves the same way as
+[`Sequential.from_file`](#sequentialfrom_file).
+
+
+### Input arguments ###
+
+???+ input "string"
+
+    Text string from which the `Sequential` model object will be created.
+
+
+See [`Sequential.from_file`](#sequentialfrom_file) for other input arguments.
+
+
+
+### Returns ###
+
+See [`Sequential.from_file`](sequentialfrom_file) for return values.
+
+················································································
+        """
+        return _sources.from_string(klass, *args, **kwargs, )
 
     @classmethod
     def from_equations(
@@ -105,32 +239,32 @@ class Sequential(
         )
         return self
 
+    #
+    #  Properties
+    #
+
     @property
+    @_pages.reference(category="property", )
     def all_names(self, /, ) -> tuple[str]:
-        """
-        Tuple of names of all variables in order of appearance
-        """
+        """==Names of all variables occurring in the model in order of appearance=="""
         return tuple(self._invariant.all_names)
 
     @property
+    @_pages.reference(category="property", )
     def lhs_names(self, /, ) -> tuple[str]:
-        """
-        Tuple of names of LHS variables in order of appearance
-        """
+        """==Names of LHS variables in order of their equations=="""
         return tuple(self._invariant.lhs_names)
 
     @property
+    @_pages.reference(category="property", )
     def residual_names(self, /, ) -> tuple[str]:
-        """
-        Tuple of names of LHS variables in order of appearance.
-        """
+        """==Names of residuals in order of their equations=="""
         return tuple(self._invariant.residual_names)
 
     @property
+    @_pages.reference(category="property", )
     def rhs_only_names(self, /, ) -> tuple[str]:
-        """
-        Set of names of RHS variables no appearing on the LHS.
-        """
+        """==Names of variables appearing only on the RHS of equations=="""
         exclude_names = self._invariant.lhs_names + self._invariant.residual_names + self._invariant.parameter_names
         return tuple(
             n for n in self._invariant.all_names
@@ -138,47 +272,42 @@ class Sequential(
         )
 
     @property
+    @_pages.reference(category="property", )
     def parameter_names(self, /, ) -> tuple[str]:
-        """
-        Tuple of names of parameters in order of appearance
-        """
+        """==Names of model parameters=="""
         return tuple(self._invariant.parameter_names)
 
     @property
+    @_pages.reference(category="property", )
     def identity_index(self, /, ) -> tuple[int]:
-        """
-        Tuple of indices of identities
-        """
+        """==Index of identity equations=="""
         return tuple(
             i for i, x in enumerate(self._invariant.explanatories)
             if x.is_identity
         )
 
     @property
+    @_pages.reference(category="property", )
     def nonidentity_index(self, /, ) -> tuple[int]:
-        """
-        Tuple of indices of nonidentities
-        """
+        """==Index of nonidentity equations=="""
         return tuple(
             i for i, x in enumerate(self._invariant.explanatories)
             if not x.is_identity
         )
 
     @property
-    def equations(self, /, ) -> tuple[_equations.Equation]:
-        """
-        Tuple of equations in order of appearance
-        """
+    @_pages.reference(category="property", )
+    def equation_strings(self, /, ) -> tuple[_equations.Equation]:
+        """==Equation strings in order of appearance=="""
         return tuple(
-            x.equation
+            x.equation.human
             for x in self._invariant.explanatories
         )
 
     @property
+    @_pages.reference(category="property", )
     def lhs_quantities(self, /, ) -> tuple[_quantities.Quantity]:
-        """
-        Tuple of LHS quantities in order of appearance
-        """
+        """==LHS quantities in order of appearance=="""
         lhs_names = self._invariant.lhs_names
         kind = _quantities.QuantityKind.LHS_VARIABLE
         logly = False
@@ -189,23 +318,23 @@ class Sequential(
         )
 
     @property
+    @_pages.reference(category="property", )
     def num_equations(self, /, ) -> int:
-        """
-        Number of equations
-        """
-        return len(self.equations)
+        """==Number of equations=="""
+        return self._invariant.num_equations
 
     @property
     def descriptions(self, /, ) -> tuple[str]:
-        """
-        """
+        """==Descriptions of equations in order of appearance=="""
         return tuple(
             x.equation.description
             for x in self._invariant.explanatories
         )
 
     @property
+    @_pages.reference(category="property", )
     def incidence_matrix(self, /, ) -> _np.ndarray:
+        """==Incidence matrix with equations in rows and LHS quantities in columns=="""
         def _shift_test(tok: _incidences.Token) -> bool:
             return tok.shift == 0
         return _equations.create_incidence_matrix(
@@ -215,34 +344,109 @@ class Sequential(
         )
 
     @property
+    @_pages.reference(category="property", )
     def min_shift(self, /, ) -> int:
-        """
-        """
+        """==Maximum lag occurring on the RHS of equations=="""
         return min(
             x.min_shift
             for x in self._invariant.explanatories
         )
 
     @property
+    @_pages.reference(category="property", )
     def max_shift(self, /, ) -> int:
-        """
-        """
+        """==Maximum lead occurring on the RHS of equations=="""
         return max(
             x.max_shift
             for x in self._invariant.explanatories
         )
 
+    @property
+    @_pages.reference(category="property", )
+    def is_sequential(
+        self,
+        /,
+    ) -> bool:
+        """==`True` if the model equations are ordered sequentially=="""
+        return _blazer.is_sequential(self.incidence_matrix, )
+
+    @property
+    def equations(self, /, ) -> tuple[_equations.Equation]:
+        return tuple(
+            x.equation
+            for x in self._invariant.explanatories
+        )
+
+    #
+    #  Public methods
+    #
+
+    @_pages.reference(category="manipulation", )
     def reorder_equations(self, *args, **kwargs, ) -> None:
         """
+......................................................................
+
+==Reorder model equations==
+
+```
+self.reorder_equations(new_order, )
+```
+
+Reorder the model equations within `self` according to the `new_order` of
+equation indexes.
+
+
+### Input arguments ###
+
+
+???+ input "self"
+
+    `Sequential` model object whose equations will be reordered.
+
+???+ input "new_order"
+
+    New order of model equations specified as a list of equation indexes
+    (integers starting from 0).
+
+......................................................................
         """
         self._invariant.reorder_equations(*args, **kwargs, )
 
+    @_pages.reference(category="manipulation", )
     def sequentialize(
         self,
         /,
     ) -> tuple[int, ...]:
         """
-        Reorder the model equations so that they can be solved sequentially
+......................................................................
+
+==Reorder the model equations so that they can be solved sequentially==
+
+```
+eids_reordered = self.sequentialize()
+```
+
+Reorder the model equations within `self` so that they can be solved
+sequentially. The reordered equation indexes are returned as a tuple.
+
+
+### Input arguments ###
+
+
+???+ input "self"
+
+    `Sequential` model object whose equations will be reordered sequentially.
+
+
+### Returns ###
+
+
+???+ returns "eids_reordered"
+
+    Tuple of equation indexes (integers starting from 0) specifying the
+    new order of equations.
+
+......................................................................
         """
         if self.is_sequential:
             return tuple(range(self.num_equations))
@@ -255,15 +459,6 @@ class Sequential(
         """
         yield from self._invariant.explanatories
 
-    @property
-    def is_sequential(
-        self,
-        /,
-    ) -> bool:
-        """
-        """
-        return _blazer.is_sequential(self.incidence_matrix, )
-
     def get_description(self, /, ) -> str:
         """
         """
@@ -273,24 +468,6 @@ class Sequential(
         """
         """
         self._invariant.set_description(*args, **kwargs, )
-
-    def set_extra_databox_names(self, *args, **kwargs, ) -> None:
-        """
-        """
-        self._invariant.set_extra_databox_names(*args, **kwargs, )
-
-    def get_human_equations(
-        self,
-        /,
-        descriptions: bool = True,
-        separator: str = "\n\n",
-    ) -> tuple[str]:
-        """
-        """
-        return tuple(
-            x.equation.human
-            for x in self._invariant.explanatories
-        )
 
     def create_qid_to_name(self, *args, **kwargs, ) -> dict[int, str]:
         """
@@ -311,13 +488,13 @@ class Sequential(
             f"{self.__class__.__name__} model",
             f"Description: \"{self.get_description()}\"",
             f"|",
-            f"| Num of variants: {self.num_variants}",
-            f"| Num of equations: {self.num_equations}",
-            f"| Num of [nonidentities, identities]: [{len(self.nonidentity_index)}, {len(self.identity_index)}]",
-            f"| Num of parameters: {len(self.parameter_names)}",
-            f"| Num of rhs-only variables: {len(self.rhs_only_names)}",
-            f"| Time shifts [min, max]: [{self.min_shift:+g}, {self.max_shift:+g}]",
-            f"|",
+            f"|--Num of variants: {self.num_variants}",
+            f"|--Num of equations: {self.num_equations}",
+            f"|--Num of [nonidentities, identities]: [{len(self.nonidentity_index)}, {len(self.identity_index)}]",
+            f"|--Num of parameters: {len(self.parameter_names)}",
+            f"|--Num of rhs-only variables: {len(self.rhs_only_names)}",
+            f"|--Time shifts [min, max]: [{self.min_shift:+g}, {self.max_shift:+g}]",
+            f" ",
         ))
 
     def __str__(self, /, ) -> str:
@@ -346,8 +523,7 @@ class Sequential(
     def get_databox_names(self, /, ) -> tuple[str]:
         """
         """
-        extra_databox_names = self._invariant.extra_databox_names or ()
-        return tuple(self._invariant.all_names) + tuple(extra_databox_names)
+        return tuple(self._invariant.all_names)
 
     def get_fallbacks(self, /, ) -> dict[str, Any]:
         """
@@ -391,5 +567,4 @@ class Sequential(
     simulate_can_be_when_data = simulate_can_be_exogenized
 
     #]
-
 

@@ -7,15 +7,15 @@ Model source
 from __future__ import annotations
 
 import re as _re
-from typing import (TypeAlias, Literal, )
+from typing import (Self, Type, TypeAlias, Literal, Protocol, )
 from collections.abc import (Iterable, )
 
+from . import pages as _pages
+from . import equations as _equations
+from . import quantities as _quantities
 from .parsers import preparser as _preparser
 from .parsers import models as _models
 from .parsers import common as _common
-from . import equations as _equations
-from . import quantities as _quantities
-from .conveniences import files as _files
 #]
 
 
@@ -35,37 +35,60 @@ LOGLY_VARIABLE = (
 )
 
 
-LOGLY_VARIABLE_OR_SHOCK = (
+LOGLY_VARIABLE_OR_ANY_SHOCK = (
     LOGLY_VARIABLE
-    | _quantities.QuantityKind.SHOCK
+    | _quantities.QuantityKind.ANY_SHOCK
 )
 
 
-class SourceMixin:
+class SourceMixinProtocol(Protocol, ):
     """
     """
     #[
 
     @classmethod
-    def from_string(
+    def from_source(
         klass,
-        source_string: str,
+        source: ModelSource,
         /,
-        context: dict | None = None,
-        save_preparsed: str = "",
         **kwargs,
     ) -> Self:
-        """
-        Create a new object from model source string
-        """
-        source, info = ModelSource.from_string(
-            source_string, context=context, save_preparsed=save_preparsed,
-        )
-        return klass.from_source(source, context=context, **kwargs, )
+        ...
+
     #]
 
 
-class ModelSource(_files.FromFileMixin, ):
+def from_string(
+    klass: type[SourceMixinProtocol],
+    source_string: str,
+    /,
+    context: dict | None = None,
+    save_preparsed: str = "",
+    **kwargs,
+) -> SourceMixinProtocol:
+    """Create a new object from model source string"""
+    #[
+    source, info = ModelSource.from_string(
+        source_string, context=context, save_preparsed=save_preparsed,
+    )
+    return klass.from_source(source, context=context, **kwargs, )
+    #]
+
+
+def from_file(
+    klass: type[SourceMixinProtocol],
+    source_files: str | Iterable[str],
+    /,
+    **kwargs,
+) -> SourceMixinProtocol:
+    """Create a new object from source file(s)"""
+    #[
+    source_string = _combine_source_files(source_files, )
+    return from_string(klass, source_string, **kwargs, )
+    #]
+
+
+class ModelSource:
     """
     """
     #[
@@ -113,13 +136,13 @@ class ModelSource(_files.FromFileMixin, ):
     def add_transition_equations(self, equation_inputs: Iterable[EquationInput] | None) -> None:
         self._add_equations(equation_inputs, _equations.EquationKind.TRANSITION_EQUATION)
 
-    def add_measurement_variables(self, quantity_inputs: Iterable[EquationInput] | None) -> None:
+    def add_measurement_variables(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
         self._add_quantities(quantity_inputs, _quantities.QuantityKind.MEASUREMENT_VARIABLE)
 
     def add_measurement_shocks(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
         self._add_quantities(quantity_inputs, _quantities.QuantityKind.MEASUREMENT_SHOCK)
 
-    def add_measurement_equations(self, equation_inputs: Iterable[QuantityInput] | None) -> None:
+    def add_measurement_equations(self, equation_inputs: Iterable[EquationInput] | None) -> None:
         self._add_equations(equation_inputs, _equations.EquationKind.MEASUREMENT_EQUATION)
 
     def add_all_but(self, all_but_input: str | None) -> None:
@@ -215,7 +238,7 @@ class ModelSource(_files.FromFileMixin, ):
     ) -> Self:
         """
         """
-        self = ModelSource()
+        self = klass()
         self.add_transition_variables(transition_variables, )
         self.add_transition_equations(transition_equations, )
         self.add_anticipated_shocks(anticipated_shocks, )
@@ -278,5 +301,23 @@ def _conform_attributes(attributes: str | Iterable[str] | None, /, ) -> set:
     if isinstance(attributes, str):
         attributes = set((attributes, ))
     return set(a.strip() for a in attributes)
+    #]
+
+
+def _combine_source_files(
+    source_files: str | Iterable[str],
+    /,
+    joint: str = "\n\n",
+) -> str:
+    """
+    """
+    #[
+    if isinstance(source_files, str):
+        source_files = [source_files]
+    source_strings = []
+    for f in source_files:
+        with open(f, "r") as fid:
+            source_strings.append(fid.read(), )
+    return "\n\n".join(source_strings, )
     #]
 

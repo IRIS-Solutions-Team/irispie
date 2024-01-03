@@ -15,7 +15,6 @@ class AttributesProtocol(Protocol, ):
     """
     #[
 
-    def has_attributes(self, *attributes) -> bool:  ...
     attributes: set[str]
 
     #]

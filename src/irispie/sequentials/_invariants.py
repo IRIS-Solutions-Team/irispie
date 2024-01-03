@@ -25,7 +25,6 @@ class Invariant(
     __slots__ = (
         "explanatories",
         "all_names",
-        "extra_databox_names",
         "_context",
         "_description",
     )
@@ -35,7 +34,6 @@ class Invariant(
         """
         self.explanatories = ()
         self.all_names = ()
-        self.extra_databox_names = None
         self._context = {}
         self._description = ""
 
@@ -60,10 +58,16 @@ class Invariant(
         )
         self.collect_all_names()
         self.finalize_explanatories()
-        self.extra_databox_names = ()
         quantity_names = _quantities.generate_all_quantity_names(quantities, )
         self.parameter_names = tuple(n for n in quantity_names if n in self.all_names)
         return self
+
+    @property
+    def num_equations(self, /, ) -> int:
+        """
+        Number of equations.
+        """
+        return len(self.explanatories)
 
     @property
     def lhs_names(self, /, ) -> tuple[str]:
@@ -116,18 +120,6 @@ class Invariant(
         ]
         self.collect_all_names()
         self.finalize_explanatories()
-
-    def set_extra_databox_names(
-        self,
-        names: Iterable[str] | None,
-        /,
-    ) -> None:
-        """
-        """
-        if names is None:
-            self.extra_databox_names = None
-            return
-        self.extra_databox_names = tuple(set(names).difference(self.all_names))
 
     def create_name_to_qid(self, /, ) -> dict[str, int]:
         """

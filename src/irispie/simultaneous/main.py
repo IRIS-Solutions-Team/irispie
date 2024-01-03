@@ -22,8 +22,8 @@ from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
 from .. import has_invariant as _has_invariant
 from .. import has_variants as _has_variants
+from .. import pages as _pages
 from ..conveniences import iterators as _iterators
-from ..conveniences import files as _files
 from ..parsers import common as _pc
 from ..databoxes import main as _databoxes
 from ..fords import solutions as _solutions
@@ -49,11 +49,17 @@ __all__ = [
 
 
 _SIMULATE_CAN_BE_EXOGENIZED = _quantities.QuantityKind.ENDOGENOUS_VARIABLE
-_SIMULATE_CAN_BE_ENDOGENIZED = _quantities.QuantityKind.EXOGENOUS_VARIABLE | _quantities.QuantityKind.SHOCK
+_SIMULATE_CAN_BE_ENDOGENIZED = _quantities.QuantityKind.EXOGENOUS_VARIABLE | _quantities.QuantityKind.ANY_SHOCK
 
 
+@_pages.reference(
+    path=("structural_models", "simultaneous_models.md", ),
+    categories={
+        "constructor": "Creating new simultaneous models",
+        "property": None,
+    },
+)
 class Simultaneous(
-    _sources.SourceMixin,
     _assigns.AssignMixin,
     _has_invariant.HasInvariantMixin,
     _has_variants.HasVariantsMixin,
@@ -61,10 +67,16 @@ class Simultaneous(
     _steady.SteadyMixin,
     _covariances.CoverianceMixin,
     _get.GetMixin,
-    _files.FromFileMixin,
 ):
     """
+················································································
 
+Simultaneous models
+====================
+
+`Simultaneous` models...
+
+················································································
     """
     #[
 
@@ -76,7 +88,6 @@ class Simultaneous(
     def __init__(
         self,
         /,
-        skeleton: bool = False,
     ) -> None:
         """
         """
@@ -86,11 +97,102 @@ class Simultaneous(
     @classmethod
     def skeleton(
         klass,
+        other,
         /,
     ) -> Self:
         """
         """
-        return klass(skeleton=True, )
+        self = klass()
+        self._invariant = other._invariant
+        return self
+
+    @classmethod
+    @_pages.reference(category="constructor", call_name="Simultaneous.from_file", )
+    def from_file(klass, *args, **kwargs, ) -> _sources.SourceMixinProtocol:
+        """
+················································································
+
+==Create `Simultaneous` model object from source file or files==
+
+```
+self = Simultaneous.from_file(
+    file_names,
+    /,
+    context=None,
+    description="",
+)
+```
+
+Read and parse one or more source files specified by `file_names` (a string
+or a list of strings) with model source code, and create a `Simultaneous`
+model object.
+
+
+### Input arguments ###
+
+
+???+ input "file_names"
+    The name of the model source file from which the `Simultaneous` model object
+    will be created, or a list of file names; if multiple file names are
+    specified, they will all combined together in the given order.
+
+???+ input "context"
+    Dictionary supplying the values used in preparsing commands, and the
+    definition of non-standard functions used in the equations.
+
+???+ input "description"
+    Desscription of the model specified as a text string.
+
+
+### Returns ###
+
+
+???+ returns "self"
+`Simultaneous` model object created from the `file_names`.
+
+················································································
+        """
+        return _sources.from_file(klass, *args, **kwargs, )
+
+    @classmethod
+    @_pages.reference(category="constructor", call_name="Simultaneous.from_string",)
+    def from_string(klass, *args, **kwargs, ) -> _sources.SourceMixinProtocol:
+        """
+················································································
+
+==Create `Simultaneous` model from string==
+
+```
+self = Simultaneous.from_string(
+    string,
+    /,
+    context=None,
+    description="",
+)
+```
+
+Read and parse a text `string` with a model source code, and create a
+`Simultaneous` model object. Otherwise, this function behaves the same way as
+[`Simultaneous.from_file`](#simultaneousfrom_file).
+
+
+### Input arguments ###
+
+
+???+ input "string"
+
+    Text string from which the `Simultaneous` model object will be created.
+
+See [`Simultaneous.from_file`](#simultaneousfrom_file) for other input arguments.
+
+
+### Returns ###
+
+See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
+
+················································································
+        """
+        return _sources.from_string(klass, *args, **kwargs, )
 
     def copy(self, /, ) -> Self:
         """
@@ -172,29 +274,33 @@ class Simultaneous(
         self._invariant.quantities = _quantities.change_logly(self._invariant.quantities, new_logly, qids)
 
     @property
+    @_pages.reference(category="property", )
     def is_linear(self, /, ) -> bool:
-        """
-        True for models declared as linear
-        """
+        """==True for models declared as linear=="""
         return self._invariant._flags.is_linear
 
     @property
+    @_pages.reference(category="property", )
     def is_flat(self, /, ) -> bool:
-        """
-        True for models declared as flat
-        """
+        """==True for models declared as flat=="""
         return self._invariant._flags.is_flat
 
     @property
+    @_pages.reference(category="property", )
+    def is_deterministic(self, /, ) -> bool:
+        """==True for models declared as deterministic=="""
+        return self._invariant._flags.is_deterministic
+
+    @property
+    @_pages.reference(category="property", )
     def num_transition_equations(self, /, ) -> int:
-        """
-        """
+        """==Number of transition equations=="""
         return self._invariant.num_transition_equations
 
     @property
+    @_pages.reference(category="property", )
     def num_measurement_equations(self, /, ) -> int:
-        """
-        """
+        """==Number of measurement equations=="""
         return self._invariant.num_measurement_equations
 
     def create_name_to_qid(self, /, ) -> dict[str, int]:
@@ -262,7 +368,7 @@ class Simultaneous(
         #
         name_to_qid = self.create_name_to_qid()
         shock_qids = _quantities.generate_qids_by_kind(
-            self._invariant.quantities, _quantities.QuantityKind.SHOCK,
+            self._invariant.quantities, _quantities.QuantityKind.ANY_SHOCK,
         )
         zero_shocks = { i: 0 for i in shock_qids }
         variant.update_values_from_dict(zero_shocks, )
@@ -362,7 +468,7 @@ class Simultaneous(
         """
         Initialize standard deviations of shocks to default values
         """
-        std_names = _quantities.generate_quantity_names_by_kind(self._invariant.quantities, _quantities.QuantityKind.STD, )
+        std_names = _quantities.generate_quantity_names_by_kind(self._invariant.quantities, _quantities.QuantityKind.ANY_STD, )
         dict_to_assign = { k: self._invariant._default_std for k in std_names }
         self.assign(**dict_to_assign, )
 
@@ -409,7 +515,7 @@ class Simultaneous(
     def get_fallbacks(self, /, ) -> dict[str, Number]:
         """
         """
-        shocks = _quantities.generate_quantity_names_by_kind(self._invariant.quantities, _quantities.QuantityKind.SHOCK)
+        shocks = _quantities.generate_quantity_names_by_kind(self._invariant.quantities, _quantities.QuantityKind.ANY_SHOCK)
         return { name: 0 for name in shocks }
 
     def get_overwrites(self, /, ) -> dict[str, Any]:
@@ -422,7 +528,7 @@ class Simultaneous(
         """
         return _quantities.generate_quantity_names_by_kind(
             self._invariant.quantities,
-            _quantities.QuantityKind.PARAMETER | _quantities.QuantityKind.STD,
+            _quantities.QuantityKind.PARAMETER | _quantities.QuantityKind.ANY_STD,
         )
 
     #

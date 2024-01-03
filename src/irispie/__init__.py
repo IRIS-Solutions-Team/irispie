@@ -28,8 +28,8 @@ from .databoxes.main import __all__ as databoxes_all
 from .chartpacks.main import *
 from .chartpacks.main import __all__ as chartpacks_all
 
-from .dataslates import *
-from .dataslates import __all__ as dataslates_all
+from .dataslates.main import *
+from .dataslates.main import __all__ as dataslates_all
 
 from .sources import *
 from .sources import __all__ as sources_all
@@ -97,11 +97,11 @@ __all__ = (
 
 import dill as _di
 
-def _save(obj, filename, ):
+def save(obj, filename, ):
     with open(filename, "wb+", ) as fid:
         _di.dump(obj, fid, )
 
-def _load(filename, ):
+def load(filename, ):
     with open(filename, "rb", ) as fid:
         return _di.load(fid, )
 

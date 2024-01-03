@@ -106,11 +106,8 @@ class Mixin:
         tile, index = _plotly_wrap.resolve_subplot(figure, subplot, )
         row, column = (tile[0]+1, tile[1]+1, ) if tile is not None else (None, None, )
 
-        show_legend = (
-            show_legend
-            if show_legend is not None
-            else legend is not None
-        )
+        if show_legend is None:
+            show_legend = legend is not None
 
         traces = (traces, ) if isinstance(traces, dict) else traces
         color_cycle = _it.cycle(_COLOR_ORDER)

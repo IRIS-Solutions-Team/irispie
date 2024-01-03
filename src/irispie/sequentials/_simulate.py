@@ -9,23 +9,24 @@ from typing import (Any, )
 from numbers import (Real, )
 import numpy as _np
 
+from .. import pages as _pages
 from .. import wrongdoings as _wrongdoings
 from ..databoxes import main as _databoxes
 from ..plans import main as _plans
 from ..explanatories import main as _explanatories
-from .. import dataslates as _dataslates
+from ..dataslates import main as _dataslates
 #]
 
 
-_DATASLATE_VARIANT_ITERATOR = \
-    _dataslates.HorizontalDataslate.iter_variants_from_databox_for_slatable
+_dataslate_constructor = _dataslates.Dataslate.from_databox_for_slatable
 
 
-class SimulateMixin:
+class SimulateInlay:
     """
     """
     #[
 
+    @_pages.reference(category="simulation", )
     def simulate(
         self,
         in_databox: _databoxes.Databox,
@@ -35,41 +36,103 @@ class SimulateMixin:
         prepend_input: bool = True,
         target_databox: _databoxes.Databox | None = None,
         when_nonfinite: Literal["error", "warning", "silent", ] = "warning",
+        num_variants: int | None = None,
+        remove_initial: bool = True,
+        remove_terminal: bool = True,
     ) -> tuple[_databoxes.Databox, dict[str, Any]]:
         """
+......................................................................
+
+==Simulate sequential model==
+
+```
+output_db, info = self.simulate(
+    input_db, span,
+    /,
+    prepend_input=True,
+    plan=None,
+    target_databox=None,
+    when_nonfinite="warning",
+    num_variants=None,
+    remove_initial=True,
+    remove_terminal=True,
+)
+```
+
+Simulate a `Sequential` model, `self`, on a time `span`, period by period,
+equation by equation. The `simulate` function does not reorder the
+equations; if needed, this must be done by running `reorder` before
+simulating the model.
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    `Sequential` model that will be simulated.
+
+???+ input "input_db"
+    Input databox (a `Databox` object) with all the necessary initial
+    conditions (initial lags) for the LHS variables, and all the values for
+    the RHS variables needed to simulate `self` on the time `span`.
+
+???+ input "plan"
+    `PlanSimulate` object with a simulation plan, i.e. information about
+    which LHS variables to exogenize in which periods. If `plan=None`, no
+    simulation plan is imposed on the simulation.
+
+
+### Returns ###
+
+???+ returns "output_db"
+
+    Output databox with the simulated time series for the LHS variables.
+
+???+ returns "info"
+
+    Information about the simulation; `info` is a dict with the following
+    items.
+
+......................................................................
         """
-        #
-        # Check consistency of the plan and the model/simulation
-        # Add extra custom databox names to the model
+        num_variants = self.num_variants if num_variants is None else num_variants
         base_dates = tuple(span, )
+        extra_databox_names = None
         if plan is not None:
             plan.check_consistency(self, base_dates, )
-            self.set_extra_databox_names(plan.get_databox_names(), )
+            extra_databox_names = plan.get_databox_names()
         #
-        out_dataslates = []
-        num_variants = 1
+        dataslate = _dataslate_constructor(
+            self, in_databox, base_dates,
+            num_variants=self.num_variants,
+            extra_databox_names=extra_databox_names,
+        )
+        #
         zipped = zip(
             range(num_variants, ),
             self.iter_variants(),
-            _DATASLATE_VARIANT_ITERATOR(self, in_databox, base_dates, ),
+            dataslate.iter_variants(),
         )
         #
         #=======================================================================
         # Main loop over variants
-        for vid, mdi, dsi in zipped:
-            mdi._simulate_periods_and_explanatories(
-                dsi,
+        for vid, model_v, dataslate_v in zipped:
+            model_v._simulate_periods_and_explanatories(
+                dataslate_v,
                 plan=plan,
                 when_nonfinite=when_nonfinite,
             )
-            dsi.remove_terminal()
-            out_dataslates.append(dsi, )
         #=======================================================================
         #
-        # Build output databox
-        self.set_extra_databox_names(None, )
-        out_db = _dataslates.multiple_to_databox(out_dataslates, )
+        # Remove initial and terminal condition data (all lags and leads
+        # before and after the simulation span)
+        if remove_terminal:
+            dataslate.remove_terminal()
+        if remove_initial:
+            dataslate.remove_initial()
         #
+        # Convert all variants of the dataslate to a databox
+        out_db = dataslate.to_databox()
         if prepend_input:
             out_db.prepend(in_databox, base_dates[0]-1, )
         #
@@ -83,7 +146,7 @@ class SimulateMixin:
 
     def _simulate_periods_and_explanatories(
         self,
-        ds: _dataslates.HorizontalDataslate,
+        ds: _dataslates.Dataslate,
         /,
         plan: _plans.Plan | None = None,
         when_nonfinite: Literal["error", "warning", "silent", ] = "warning",
@@ -95,15 +158,17 @@ class SimulateMixin:
             ("Simulating the following data point(s) resulted in non-finite values:", )
         #
         name_to_row = ds.create_name_to_row()
+        base_columns = ds.base_columns
         first_base_column = (
-            ds.base_columns[0]
-            if ds.base_columns
+            base_columns[0]
+            if base_columns
             else None
         )
         #
-        for data_column in ds.base_columns:
+        working_data = ds.get_data_variant(0, )
+        for data_column in base_columns:
             plan_column = data_column - first_base_column
-            date = ds.column_dates[data_column]
+            date = ds.dates[data_column]
             #
             for x in self.iter_explanatories():
                 #
@@ -113,11 +178,11 @@ class SimulateMixin:
                     else None
                 )
                 #
-                is_exogenized, implied_value = _is_exogenized(x.lhs_name, transform, ds.data, data_column, name_to_row, )
+                is_exogenized, implied_value = _is_exogenized(x.lhs_name, transform, working_data, data_column, name_to_row, )
                 if is_exogenized:
-                    info = x.exogenize(ds.data, data_column, implied_value)
+                    info = x.exogenize(working_data, data_column, implied_value)
                 else:
-                    info = x.simulate(ds.data, data_column, )
+                    info = x.simulate(working_data, data_column, )
                 _catch_nonfinite(when_nonfinite_stream, info["is_finite"], x.lhs_name, date, )
                 #
         when_nonfinite_stream._raise()

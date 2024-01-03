@@ -43,12 +43,8 @@ class Chartpack(
     highlight: Iterable[_dates.Dater] | None = None
     legend: Iterable[str] | None = None
     reverse_plot_order: bool = False
-
-    def __init__(self, /, **kwargs, ) -> None:
-        """
-        """
-        self._figures = []
-        self._description = None
+    _figures = None
+    _description = None
 
     def plot(
         self,
@@ -81,11 +77,13 @@ class Chartpack(
     def num_figures(self, ) -> int:
         """
         """
-        return len(self._figures, )
+        return len(self._figures, ) if self._figures else 0
 
     def _add_figure(self, figure: _Figure, ) -> None:
         """
         """
+        if not self._figures:
+            self._figures = []
         self._figures.append(figure, )
 
     def add_figure(self, figure_string: str, **kwargs, ) -> None:
@@ -124,25 +122,14 @@ class Chartpack(
     #]
 
 
+@_dc.dataclass(slots=True, )
 class _Figure:
     """
     """
     #[
 
-    __slots__ = (
-        "_charts",
-        "title",
-    )
-
-    def __init__(
-        self,
-        /,
-        title: str | None = None,
-    ) -> None:
-        """
-        """
-        self._charts = []
-        self.title = title
+    _charts: list[_Chart] | None = None
+    title: str | None = None
 
     @classmethod
     def from_string(
@@ -158,7 +145,7 @@ class _Figure:
     def num_charts(self, ) -> int:
         """
         """
-        return len(self._charts, )
+        return len(self._charts, ) if self._charts else 0
 
     def plot(
         self,
@@ -186,7 +173,7 @@ class _Figure:
                 i,
                 span=span,
                 transforms=transforms,
-                legend=legend if i==0 else None,
+                legend=legend if i == 0 else None,
                 reverse_plot_order=reverse_plot_order,
             )
             if highlight is not None:
@@ -218,6 +205,8 @@ class _Figure:
     def _add_chart(self, chart: _Chart, ) -> None:
         """
         """
+        if not self._charts:
+            self._charts = []
         self._charts.append(chart, )
 
     def add_charts(self, chart_strings: Iterable[str], **kwargs, ) -> None:

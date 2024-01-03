@@ -7,7 +7,7 @@ Model quantities
 from __future__ import annotations
 
 from typing import (Self, )
-from collections.abc import (Iterable, )
+from collections.abc import (Iterable, Iterator, )
 import enum
 import collections as _co
 import dataclasses as _dc
@@ -31,6 +31,7 @@ class QuantityKind(enum.Flag):
     #[
 
     UNSPECIFIED = enum.auto()
+
     TRANSITION_VARIABLE = enum.auto()
     UNANTICIPATED_SHOCK = enum.auto()
     ANTICIPATED_SHOCK = enum.auto()
@@ -45,10 +46,10 @@ class QuantityKind(enum.Flag):
     MEASUREMENT_STD = enum.auto()
 
     ENDOGENOUS_VARIABLE = TRANSITION_VARIABLE | MEASUREMENT_VARIABLE
-    VARIABLE = ENDOGENOUS_VARIABLE | EXOGENOUS_VARIABLE
-    STD = UNANTICIPATED_STD | ANTICIPATED_STD | MEASUREMENT_STD
-    PARAMETER_OR_STD = PARAMETER | STD
-    SHOCK = UNANTICIPATED_SHOCK | ANTICIPATED_SHOCK | MEASUREMENT_SHOCK
+    ANY_VARIABLE = ENDOGENOUS_VARIABLE | EXOGENOUS_VARIABLE
+    ANY_STD = UNANTICIPATED_STD | ANTICIPATED_STD | MEASUREMENT_STD
+    PARAMETER_OR_STD = PARAMETER | ANY_STD
+    ANY_SHOCK = UNANTICIPATED_SHOCK | ANTICIPATED_SHOCK | MEASUREMENT_SHOCK
     STOCHASTIC_SHOCK = UNANTICIPATED_SHOCK | MEASUREMENT_SHOCK
 
     @classmethod
@@ -76,15 +77,23 @@ class QuantityKind(enum.Flag):
     #]
 
 
-_export_kinds  = [
-    "TRANSITION_VARIABLE", "ANTICIPATED_SHOCK", "UNANTICIPATED_SHOCK", "UNANTICIPATED_STD",
-    "MEASUREMENT_VARIABLE", "MEASUREMENT_SHOCK", "MEASUREMENT_STD",
-    "SHOCK", "VARIABLE",
-]
-
-for n in _export_kinds:
+for n in QuantityKind.__members__:
     exec(f"{n} = QuantityKind.{n}")
-__all__ = ["filter_quantities_by_name", ] + _export_kinds
+
+
+__all__ = (
+    "filter_quantities_by_name",
+    "TRANSITION_VARIABLE",
+    "ANTICIPATED_SHOCK",
+    "UNANTICIPATED_SHOCK",
+    "UNANTICIPATED_STD",
+    "MEASUREMENT_VARIABLE",
+    "MEASUREMENT_SHOCK",
+    "MEASUREMENT_STD",
+    "EXOGENOUS_VARIABLE",
+    "ANY_SHOCK",
+    "ANY_VARIABLE",
+)
 
 
 @_dc.dataclass(slots=True, )
@@ -101,7 +110,7 @@ class Quantity(
     logly: bool | None = None
     description: str | None = None
     entry: int | None = None
-    attributes: tuple[str, ...] = ()
+    attributes: set[str] | None = None
 
     def set_logly(self, logly: bool) -> Self:
         self.logly = logly
@@ -123,27 +132,42 @@ class Quantity(
 
 
 def create_name_to_qid(quantities: Iterable[Quantity]) -> dict[str, int]:
-    return { qty.human: qty.id for qty in quantities }
+    return {
+        qty.human: qty.id for qty in quantities
+        if qty.id is not None and qty.human is not None
+    }
 
 
-def create_name_to_quantity(quantities: Iterable[Quantity]) -> dict[str, int]:
-    return { qty.human: qty for qty in quantities }
+def create_name_to_quantity(quantities: Iterable[Quantity], /, ) -> dict[str, Quantity]:
+    return { qty.human: qty for qty in quantities if qty.human is not None }
 
 
 def create_qid_to_name(quantities: Iterable[Quantity]) -> dict[int, str]:
-    return { qty.id: qty.human for qty in quantities }
+    return {
+        qty.id: qty.human for qty in quantities
+        if qty.id is not None and qty.human is not None
+    }
 
 
 def create_qid_to_description(quantities: Iterable[Quantity]) -> dict[int, str]:
-    return { qty.id: qty.description for qty in quantities }
+    return {
+        qty.id: qty.description for qty in quantities
+        if qty.id is not None and qty.description is not None
+    }
 
 
 def create_name_to_description(quantities: Iterable[Quantity]) -> dict[str, str]:
-    return { qty.human: qty.description for qty in quantities }
+    return {
+        qty.human: qty.description for qty in quantities
+        if qty.human is not None and qty.description is not None
+    }
 
 
-def create_qid_to_kind(quantities: Iterable[Quantity]) -> dict[int, str]:
-    return { qty.id: qty.kind for qty in quantities }
+def create_qid_to_kind(quantities: Iterable[Quantity]) -> dict[int, QuantityKind]:
+    return {
+        qty.id: qty.kind for qty in quantities
+        if qty.id is not None and qty.kind is not None
+    }
 
 
 def generate_quantities_of_kind(
@@ -170,7 +194,7 @@ def generate_qids_by_kind(
     quantities: Iterable[Quantity],
     kind: QuantityKind | None,
     /,
-) -> Iterable[int]:
+) -> Iterable[int | None]:
     """
     """
     return ( qty.id for qty in generate_quantities_of_kind(quantities, kind, ) )
@@ -180,26 +204,32 @@ def generate_quantity_names_by_kind(
     quantities: Iterable[Quantity],
     kind: QuantityKind | None,
     /,
-) -> Iterable[str]:
+) -> Iterator[str | None]:
     """
     """
     return ( qty.human for qty in generate_quantities_of_kind(quantities, kind, ) )
 
 
-def generate_all_quantity_names(quantities: Iterable[Quantity]) -> Iterable[str]:
+def generate_all_quantity_names(quantities: Iterable[Quantity]) -> Iterator[str | None]:
     return ( qty.human for qty in quantities )
 
 
-def generate_all_qids(quantities: Iterable[Quantity]) -> Iterable[int]:
+def generate_all_qids(quantities: Iterable[Quantity]) -> Iterator[int | None]:
     return ( qty.id for qty in quantities )
 
 
 def get_max_qid(quantities: Iterable[Quantity]) -> int:
-    return max(qty.id for qty in quantities)
+    return max(
+        qty.id for qty in quantities
+        if qty.id is not None
+    )
 
 
 def create_qid_to_logly(quantities: Iterable[Quantity]) -> dict[int, bool]:
-    return { qty.id: qty.logly for qty in quantities }
+    return {
+        qty.id: qty.logly for qty in quantities
+        if qty.id is not None and qty.logly is not None
+    }
 
 
 def change_logly(
@@ -231,13 +261,13 @@ def lookup_quantities_by_name(
     quantities: Iterable[Quantity],
     custom_names: Iterable[str],
     /,
-) -> tuple[Iterable[Quantity], tuple[str]]:
+) -> tuple[tuple[Quantity, ...], tuple[str, ...]]:
     """
     Lookup quantities by name, and return a list of quantities and a list
     of invalid names
     """
     custom_names = list(custom_names)
-    name_to_quantity  = create_name_to_quantity(quantities)
+    name_to_quantity  = create_name_to_quantity(quantities, )
     custom_quantities = tuple(
         name_to_quantity[n]
         for n in custom_names if n in name_to_quantity

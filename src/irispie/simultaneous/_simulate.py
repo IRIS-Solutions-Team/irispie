@@ -15,14 +15,13 @@ from ..fords import simulators as _ford_simulators
 from ..fords import solutions as _solutions
 from ..periods import simulators as _period_simulators
 from ..plans import main as _plans
-from .. import dataslates as _dataslates
+from ..dataslates import main as _dataslates
 
 from . import main as _simultaneous
 #]
 
 
-_DATASLATE_VARIANT_ITERATOR = \
-    _dataslates.HorizontalDataslate.iter_variants_from_databox_for_slatable
+_dataslate_constructor = _dataslates.Dataslate.from_databox_for_slatable
 
 
 class SimulateMixin:
@@ -41,45 +40,54 @@ class SimulateMixin:
         prepend_input: bool = True,
         target_databox: _databoxes.Databox | None = None,
         num_variants: int | None = None,
+        remove_initial: bool = True,
+        remove_terminal: bool = True,
         **kwargs,
     ) -> tuple[_databoxes.Databox, dict[str, Any]]:
         """
         """
-        num_variants = (
-            num_variants
-            if num_variants is not None
-            else self.num_variants
-        )
+        num_variants = self.num_variants if num_variants is None else num_variants
         base_dates = tuple(span, )
+        extra_databox_names = None
         if plan is not None:
             plan.check_consistency(self, base_dates, )
+            extra_databox_names = plan.get_databox_names()
         #
-        out_dataslates = []
+        dataslate = _dataslate_constructor(
+            self, in_databox, base_dates,
+            num_variants=num_variants,
+            extra_databox_names=extra_databox_names,
+        )
+        #
         zipped = zip(
             range(num_variants, ),
             self.iter_variants(),
-            _DATASLATE_VARIANT_ITERATOR(self, in_databox, base_dates, )
+            dataslate.iter_variants(),
         )
         #
         #=======================================================================
         # Main loop over variants
-        for vid, mdi, dsi in zipped:
+        for vid, model_v, dataslate_v in zipped:
             #
             # Simulate and write to dataslate
             _SIMULATE_METHODS[method](
-                mdi, dsi, vid,
+                model_v, dataslate_v, vid,
                 plan=plan,
                 **kwargs,
             )
-            dsi.remove_terminal()
-            out_dataslates.append(dsi, )
         #=======================================================================
         #
-        # Combine resulting dataslates into a databox
-        out_db = _dataslates.multiple_to_databox(out_dataslates, )
+        # Remove initial and terminal condition data (all lags and leads
+        # before and after the simulation span)
+        if remove_terminal:
+            dataslate.remove_terminal()
+        if remove_initial:
+            dataslate.remove_initial()
+        #
+        # Convert all variants of the dataslate to a databox
+        out_db = dataslate.to_databox()
         if prepend_input:
             out_db.prepend(in_databox, base_dates[0]-1, )
-        out_db = out_db | self.get_parameters_stds()
         #
         # Add to custom databox
         if target_databox is not None:

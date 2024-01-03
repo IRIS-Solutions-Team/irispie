@@ -209,6 +209,13 @@ class Solution:
         return self.eigen_values_stability.count(EigenValueKind.UNIT)
 
     @property
+    def num_stable(self, /, ) -> int:
+        """
+        Number of stable elements in alpha vector
+        """
+        return self.num_alpha - self.num_unit_roots
+
+    @property
     def Ta_stable(self, /, ) -> _np.ndarray:
         """
         Stable part of transition matrix
@@ -231,6 +238,14 @@ class Solution:
         """
         num_unit_roots = self.num_unit_roots
         return self.Ra[num_unit_roots:, :]
+
+    @property
+    def Ka_stable(self, /, ) -> _np.ndarray:
+        """
+        Stable part of intercept in transition equation
+        """
+        num_unit_roots = self.num_unit_roots
+        return self.Ka[num_unit_roots:, :]
 
     @property
     def Za_stable(self, /, ) -> _np.ndarray:
@@ -328,14 +343,14 @@ class Solution:
     #]
 
 
-def _left_div(A, B):
+def left_div(A, B):
     r"""
     Solve A \ B
     """
     return _np.linalg.lstsq(A, B, rcond=None)[0]
 
 
-def _right_div(B, A):
+def right_div(B, A):
     r"""
     Solve B / A which is (A' \ B')'
     """
@@ -356,7 +371,7 @@ def _square_from_triangular(
     """
     #[
     Ua, Ta, Pa, Ra, Ka, Xa, *_ = triangular_solution
-    T = Ua @ _right_div(Ta, Ua) # Ua • Ta • inv(Ua)
+    T = Ua @ right_div(Ta, Ua) # Ua • Ta • inv(Ua)
     P = Ua @ Pa
     R = Ua @ Ra
     K = Ua @ Ka
@@ -392,9 +407,9 @@ def _solve_measurement_equations(descriptor, system, Ua, ) -> tuple[_np.ndarray,
     #[
     num_forwards = descriptor.get_num_forwards()
     G = system.G[:, num_forwards:]
-    Z = _left_div(-system.F, G) # -F \ G
-    H = _left_div(-system.F, system.J) # -F \ J
-    D = _left_div(-system.F, system.H) # -F \ H
+    Z = left_div(-system.F, G) # -F \ G
+    H = left_div(-system.F, system.J) # -F \ J
+    D = left_div(-system.F, system.H) # -F \ H
     Za = Z @ Ua
     return Z, H, D, Za
     #]
@@ -440,27 +455,27 @@ def _solve_transition_equations(
     #
     # Unstable block
     #
-    G = _left_div(-Z21, Z22) # -Z21 \ Z22
-    Pu = _left_div(-T22, QD2) # -T22 \ QD2
-    Ru = _left_div(-T22, QE2) # -T22 \ QE2
-    Ku = _left_div(-(S22 + T22), QC2) # -(S22+T22) \ QC2
+    G = left_div(-Z21, Z22) # -Z21 \ Z22
+    Pu = left_div(-T22, QD2) # -T22 \ QD2
+    Ru = left_div(-T22, QE2) # -T22 \ QE2
+    Ku = left_div(-(S22 + T22), QC2) # -(S22+T22) \ QC2
     #
     # Transform stable block==transform backward-looking variables:
     # gamma(t) = s(t) + G u(t+1)
     #
-    Xg0 = _left_div(S11, T11 @ G + T12)
-    Xg1 = G + _left_div(S11, S12)
+    Xg0 = left_div(S11, T11 @ G + T12)
+    Xg1 = G + left_div(S11, S12)
     #
-    Tg = _left_div(-S11, T11)
-    Pg = -Xg0 @ Pu - _left_div(S11, QD1)
-    Rg = -Xg0 @ Ru - _left_div(S11, QE1)
-    Kg = -(Xg0 + Xg1) @ Ku - _left_div(S11, QC1)
+    Tg = left_div(-S11, T11)
+    Pg = -Xg0 @ Pu - left_div(S11, QD1)
+    Rg = -Xg0 @ Ru - left_div(S11, QE1)
+    Kg = -(Xg0 + Xg1) @ Ku - left_div(S11, QC1)
     Ug = Z21 # xib = Ug @ gamma
     #
     # Forward expansion
     # gamma(t) = ... -Xg J**(k-1) Ru e(t+k)
     #
-    J = _left_div(-T22, S22) # -T22 \ S22
+    J = left_div(-T22, S22) # -T22 \ S22
     Xg = Xg1 + Xg0 @ J
     #
     return Ug, Tg, Pg, Rg, Kg, Xg, J, Ru
