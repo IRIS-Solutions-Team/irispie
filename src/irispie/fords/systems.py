@@ -81,7 +81,7 @@ class System:
             self.C = _np.vstack((self.C, smap.dynid_C))
         else:
             tokens = descriptor.system_vectors.transition_variables
-            logly = descriptor.system_vectors.transition_variables_logly
+            logly = descriptor.system_vectors.transition_variables_are_logly
             xi = _get_vector(descriptor, data_array, tokens, logly, column_offset, )
             xi_lagged = _get_vector(descriptor, data_array_lagged, tokens, logly, column_offset, )
             self.C = -(self.A @ xi + self.B @ xi_lagged)
@@ -105,10 +105,10 @@ class System:
             self.H[smap.H.lhs] = tc[smap.H.rhs]
         else:
             tokens = descriptor.system_vectors.transition_variables
-            logly = descriptor.system_vectors.transition_variables_logly
+            logly = descriptor.system_vectors.transition_variables_are_logly
             xi = _get_vector(descriptor, data_array, tokens, logly, column_offset, )
             tokens = descriptor.system_vectors.measurement_variables
-            logly = descriptor.system_vectors.measurement_variables_logly
+            logly = descriptor.system_vectors.measurement_variables_are_logly
             y = _get_vector(descriptor, data_array, tokens, logly, column_offset, )
             self.H = -(self.F @ y + self.G @ xi)
 
@@ -127,9 +127,11 @@ def _get_vector(
     """
     """
     #[
+    logly = list(logly)
     rows = tuple(tok.qid for tok in tokens)
     columns = tuple(column_offset + tok.shift for tok in tokens)
     x = data_array[rows, columns]
+    xx = _np.copy(x)
     x[logly] = _np.log(x[logly])
     return x
     #]

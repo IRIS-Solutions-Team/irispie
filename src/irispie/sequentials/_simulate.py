@@ -160,7 +160,7 @@ simulating the model.
         """
         when_nonfinite_stream = \
             _wrongdoings.STREAM_FACTORY[when_nonfinite] \
-            ("Simulating the following data point(s) resulted in non-finite values:", )
+            ("These simulated data point(s) are non-finite values:", )
         #
         name_to_row = ds.create_name_to_row()
         base_columns = ds.base_columns
@@ -182,15 +182,13 @@ simulating the model.
                 name_to_row,
             )
             #
-            if is_exogenized:
-                info = equation.exogenize(working_data, column, implied_value)
-            else:
-                info = equation.simulate(working_data, column, )
+            simulation_function = equation.simulate if not is_exogenized else equation.exogenize
+            info = simulation_function(working_data, column, implied_value, )
             #
             _catch_nonfinite(
                 when_nonfinite_stream,
                 info["is_finite"],
-                equation.lhs_name,
+                info["simulated_name"],
                 date,
             )
         when_nonfinite_stream._raise()
@@ -239,7 +237,7 @@ def _is_exogenized(
 def _catch_nonfinite(
     stream: _wrongdoings.Stream,
     is_finite: bool | _np.ndarray,
-    name: str,
+    simulated_name: str,
     date: Dater,
 ) -> None:
     """
@@ -247,7 +245,7 @@ def _catch_nonfinite(
     #[
     if _np.all(is_finite, ):
         return
-    message = f"{name}[{date}]"
+    message = f"{simulated_name}[{date}]"
     stream.add(message, )
     #]
 

@@ -33,7 +33,7 @@ class PrettyMixin:
         table.field_names = ("NAME", "PERIOD", "REGISTER", "TRANSFORM", )
         table.align = "r"
         table.align["NAME"] = "l"
-        for r in ("exogenized", "endogenized", "anticipated", ):
+        for r in ("exogenized", "endogenized", ):
             if getattr(self, f"_{r}_register"):
                 _add_register_to_table(
                     table,

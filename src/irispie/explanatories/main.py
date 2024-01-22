@@ -205,14 +205,18 @@ class Explanatory:
         self,
         data: _np.ndarray,
         columns: int | _np.ndarray,
+        values: int | _np.ndarray,
         /,
     ) -> dict[str, Any]:
         """
         """
         row = self.lhs_qid
         data[row, columns] = self.eval_level(data, columns, )
-        info = {"is_finite": _np.isfinite(data[row, columns]), }
-        return info
+        is_finite = _np.isfinite(data[row, columns])
+        return {
+            "simulated_name": self.lhs_name,
+            "is_finite": is_finite,
+        }
 
     def exogenize(
         self,
@@ -228,8 +232,10 @@ class Explanatory:
         data[lhs_row, columns] = values
         data[res_row, columns] = self.eval_residual(data, columns, )
         is_finite = _np.isfinite(data[res_row, columns])
-        info = {"is_finite": is_finite, }
-        return info
+        return {
+            "simulated_name": self.residual_name,
+            "is_finite": is_finite,
+        }
 
     #]
 

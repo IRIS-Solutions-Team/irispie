@@ -152,12 +152,12 @@ class SystemVectors:
     eid_to_wrt_tokens: dict[int, Iterable[_incidence.Token]] | None = None
     #
     transition_variables: Iterable[_incidence.Token] | None = None
-    transition_variables_logly: tuple[bool, ...] | None = None
-    initial_conditions: Iterable[bool] | None = None,
+    transition_variables_are_logly: list[bool] | None = None
+    are_initial_conditions: list[bool] | None = None,
     unanticipated_shocks: tuple[_incidence.Token, ...] | None = None
     anticipated_shocks: tuple[_incidence.Token, ...] | None = None
     measurement_variables: Iterable[_incidence.Token] | None = None
-    measurement_variables_logly: tuple[bool, ...] | None = None
+    measurement_variables_are_logly: list[bool] | None = None
     measurement_shocks: tuple[_incidence.Token, ...] | None = None
     #
     shape_A_excl_dynid: tuple[int, int] | None = None
@@ -203,9 +203,9 @@ class SystemVectors:
         #
         self.transition_variables \
             = _incidence.sort_tokens(_create_system_transition_vector(adjusted_tokens_transition_variables))
-        self.transition_variables_logly \
-            = tuple(qid_to_logly[tok.qid] for tok in self.transition_variables)
-        self.initial_conditions = [
+        self.transition_variables_are_logly \
+            = [ qid_to_logly[tok.qid] for tok in self.transition_variables ]
+        self.are_initial_conditions = [
             _incidence.Token(t.qid, t.shift-1) in actual_tokens_transition_variables and t.shift <= 0
             for t in self.transition_variables
         ]
@@ -230,8 +230,8 @@ class SystemVectors:
             = tuple(_incidence.sort_tokens(_incidence.generate_tokens_of_kinds(
                 all_tokens, qid_to_kind, _quantities.QuantityKind.MEASUREMENT_VARIABLE,
             )))
-        self.measurement_variables_logly \
-            = tuple(qid_to_logly[tok.qid] for tok in self.measurement_variables)
+        self.measurement_variables_are_logly \
+            = [ qid_to_logly[tok.qid] for tok in self.measurement_variables ]
         #
         # Measurement shocks
         #
@@ -267,7 +267,7 @@ class SolutionVectors:
     """
     #[
     transition_variables: tuple[_incidence.Token] | None = None
-    initial_conditions: tuple[bool] | None = None,
+    are_initial_conditions: list[bool] | None = None,
     unanticipated_shocks: tuple[_incidence.Token] | None = None
     anticipated_shocks: tuple[_incidence.Token] | None = None
     measurement_variables: tuple[_incidence.Token] | None = None
@@ -277,8 +277,8 @@ class SolutionVectors:
         """
         Construct solution vectors and initial conditions indicator
         """
-        self.transition_variables, self.initial_conditions = \
-            _solution_vector_from_system_vector(system_vectors.transition_variables, system_vectors.initial_conditions)
+        self.transition_variables, self.are_initial_conditions = \
+            _solution_vector_from_system_vector(system_vectors.transition_variables, system_vectors.are_initial_conditions)
         self.unanticipated_shocks = tuple(system_vectors.unanticipated_shocks)
         self.anticipated_shocks = tuple(system_vectors.anticipated_shocks)
         self.measurement_variables = tuple(system_vectors.measurement_variables)
@@ -291,7 +291,7 @@ class SolutionVectors:
         """
         Get tokens representing required initial conditions
         """
-        return list(_it.compress(self.transition_variables, self.initial_conditions))
+        return list(_it.compress(self.transition_variables, self.are_initial_conditions))
     #]
 
 
@@ -316,7 +316,7 @@ def _create_system_transition_vector(
 
 def _solution_vector_from_system_vector(
     system_transition_vector: Iterable[_incidence.Token],
-    initial_conditions: Iterable[bool],
+    are_initial_conditions: Iterable[bool],
     /,
 ) -> Iterable[_incidence.Token]:
     """
@@ -326,7 +326,7 @@ def _solution_vector_from_system_vector(
     num_forwards = _get_num_forwards(system_transition_vector)
     return (
         tuple(system_transition_vector[num_forwards:]),
-        tuple(initial_conditions[num_forwards:]),
+        tuple(are_initial_conditions[num_forwards:]),
     )
 
 

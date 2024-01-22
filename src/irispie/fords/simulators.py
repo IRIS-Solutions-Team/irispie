@@ -55,8 +55,8 @@ def simulate_flat(
         working_data, vec.transition_variables, column_start-1,
     )
     #
-    missing_initials = _np.isnan(curr_state)
-    unnecessary_initials = ~_np.array(vec.initial_conditions)
+    missing_initials = _np.isnan(curr_state, )
+    unnecessary_initials = ~_np.array(vec.are_initial_conditions, )
     missing_unnecessary_initials = missing_initials & unnecessary_initials
     curr_state[missing_unnecessary_initials] = 0
     #

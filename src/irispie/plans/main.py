@@ -331,7 +331,11 @@ self.exogenize(
     ) -> _transforms.PlanTransformProtocol | None:
         """
         """
-        column = next((t == date for t in self.base_span), )
+        column = next((
+            column
+            for column, t in enumerate(self.base_span)
+            if date == t
+        ))
         point = self._exogenized_register[name][column]
         return point if point is not None else self._default_exogenized
 
