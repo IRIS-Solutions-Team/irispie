@@ -54,14 +54,14 @@ def blaze(
     # individually (a quantity only occurs in one equation)
     #
     eids_first, qids_first, eids_last, qids_last, eids_inner, qids_inner, im_inner \
-    = prefetch(im, eids=eids, qids=qids, )
+        = prefetch(im, eids=eids, qids=qids, )
     #
     # Step 2: If there is a remaining core of interdependent equations, run
     # a naive triangularization algorithm on it
     #
-    if im_inner.size > 0:
+    if im_inner.size:
         eids_inner, qids_inner, im_inner, *_ \
-        = triangularize_inner_block(im_inner, eids=eids_inner, qids=qids_inner, )
+            = triangularize_inner_block(im_inner, eids=eids_inner, qids=qids_inner, )
     #
     # Combine the results
     #

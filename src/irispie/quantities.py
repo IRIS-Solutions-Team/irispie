@@ -314,14 +314,14 @@ def filter_quantities_by_name(
     return [ qty for qty in quantities if inclusion_test(qty.human) and exclusion_test(qty.human) ]
 
 
-def generate_index_logly(
+def generate_where_logly(
     qids: Iterable[int],
     qid_to_logly: dict[int, bool],
     /,
 ) -> Iterable[int]:
     """
     """
-    return (i for i, qid in enumerate(qids, ) if qid_to_logly[qid])
+    return (i for i, qid in enumerate(qids, ) if qid_to_logly.get(qid, False))
 
 
 def print_name_maybe_log(name, logly, /, ) -> str:

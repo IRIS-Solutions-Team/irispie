@@ -22,7 +22,7 @@ class Variant:
     """
     #[
 
-    __slots__ = ("levels", "changes", "solution", "num_quantities", )
+    __slots__ = ("levels", "changes", "solution", "_max_qid", )
 
     _missing = _np.nan
 
@@ -36,7 +36,7 @@ class Variant:
         """
         """
         max_qid = _quantities.get_max_qid(quantities, )
-        self.num_quantities = max_qid + 1
+        self._max_qid = max_qid
         self.solution = None
         self._initilize_values()
         if is_flat:
@@ -57,12 +57,12 @@ class Variant:
     def _reset_levels(self, /, ) -> None:
         """
         """
-        self.levels = _np.full((self.num_quantities, ), self._missing, dtype=float, )
+        self.levels = _np.full((self._max_qid+1, ), self._missing, dtype=float, )
 
     def _reset_changes(self, /, ) -> None:
         """
         """
-        self.changes = _np.full((self.num_quantities, ), self._missing, dtype=float, )
+        self.changes = _np.full((self._max_qid+1, ), self._missing, dtype=float, )
 
     def update_values_from_dict(self, update: dict, /, ) -> None:
         self.levels = _update_from_dict(self.levels, update, _op.itemgetter(0), lambda x: x, )
@@ -93,15 +93,15 @@ class Variant:
         """
         """
         qids = list(qids)
-        index_logly = list(_quantities.generate_index_logly(qids, qid_to_logly, ))
+        where_logly = list(_quantities.generate_where_logly(qids, qid_to_logly, ))
         #
         # Extract initial guesses for levels and changes
         maybelog_levels = self.levels[qids].flatten()
         maybelog_changes = self.changes[qids].flatten()
         #
         # Logarithmize
-        maybelog_levels[index_logly] = _np.log(maybelog_levels[index_logly])
-        maybelog_changes[index_logly] = _np.log(maybelog_changes[index_logly])
+        maybelog_levels[where_logly] = _np.log(maybelog_levels[where_logly])
+        maybelog_changes[where_logly] = _np.log(maybelog_changes[where_logly])
         #
         return maybelog_levels, maybelog_changes
 
@@ -114,16 +114,10 @@ class Variant:
         Reset all quantities to flat
         """
         self._reset_changes()
-        index_logly_false = [
-            i for i in range(self.num_quantities) if qid_to_logly.get(i, None) is False
-        ] # Needs to be a list, because tuples are interpreted as dimensional indices by numpy
-        if index_logly_false:
-            self.changes[index_logly_false] = 0
-        index_logly_true = [
-            i for i in range(self.num_quantities) if qid_to_logly.get(i, None) is True
-        ] # Needs to be a list, because tuples are interpreted as dimensional indices by numpy
-        if index_logly_true:
-            self.changes[index_logly_true] = 1
+        for qid, logly in qid_to_logly.items():
+            if logly is None:
+                continue
+            self.changes[qid] = 1 if logly else 0
 
     def create_steady_array(
         self,
@@ -140,13 +134,14 @@ class Variant:
         if num_columns==1 and shift_in_first_column==0:
             return levels
         #
-        index_logly = list(self._generate_index_logly(qid_to_logly))
+        qids = list(range(self._max_qid+1))
+        where_logly = list(_quantities.generate_where_logly(qids, qid_to_logly))
         #
         shift_vec = _np.array(range(shift_in_first_column, shift_in_first_column+num_columns))
         #
         warnings.filterwarnings(action="ignore", category=RuntimeWarning)
-        levels[index_logly] = _np.log(levels[index_logly])
-        changes[index_logly] = _np.log(changes[index_logly])
+        levels[where_logly] = _np.log(levels[where_logly])
+        changes[where_logly] = _np.log(changes[where_logly])
         warnings.filterwarnings(action="default", category=RuntimeWarning)
         #
         levels[_np.isnan(levels) | _np.isinf(levels)] = _np.nan
@@ -155,20 +150,10 @@ class Variant:
         steady_array = levels + changes * shift_vec
         #
         warnings.filterwarnings(action="ignore", category=RuntimeWarning)
-        steady_array[index_logly, :] = _np.exp(steady_array[index_logly, :])
+        steady_array[where_logly, :] = _np.exp(steady_array[where_logly, :])
         warnings.filterwarnings(action="default", category=RuntimeWarning)
         #
         return steady_array
-
-    def _generate_index_logly(
-        self,
-        qid_to_logly: dict[int, bool],
-        /,
-    ) -> list[int]:
-        """
-        """
-        qids = range(self.levels.shape[0])
-        return _quantities.generate_index_logly(qids, qid_to_logly, )
 
     def create_zero_array(
         self,

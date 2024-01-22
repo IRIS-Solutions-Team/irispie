@@ -103,7 +103,7 @@ def print_tokens(
     return [ t.print(qid_to_name) for t in tokens ]
 
 
-def rows_and_columns_from_tokens_in_horizontal(
+def rows_and_columns_from_tokens(
     tokens: Iterable[Token],
     column_zero: int,
 ) -> tuple[Iterable[int], Iterable[int]]:

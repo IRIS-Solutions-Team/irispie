@@ -104,6 +104,9 @@ class System:
             self.H = _np.zeros(svec.shape_H, dtype=float)
             self.H[smap.H.lhs] = tc[smap.H.rhs]
         else:
+            tokens = descriptor.system_vectors.transition_variables
+            logly = descriptor.system_vectors.transition_variables_logly
+            xi = _get_vector(descriptor, data_array, tokens, logly, column_offset, )
             tokens = descriptor.system_vectors.measurement_variables
             logly = descriptor.system_vectors.measurement_variables_logly
             y = _get_vector(descriptor, data_array, tokens, logly, column_offset, )
@@ -126,8 +129,8 @@ def _get_vector(
     #[
     rows = tuple(tok.qid for tok in tokens)
     columns = tuple(column_offset + tok.shift for tok in tokens)
-    x = data_array[rows, columns].reshape(-1, 1)
-    x[logly,:] = _np.log(x[logly,:])
+    x = data_array[rows, columns]
+    x[logly] = _np.log(x[logly])
     return x
     #]
 

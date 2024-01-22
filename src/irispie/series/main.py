@@ -118,6 +118,7 @@ def _trim_decorate(func):
     path=("data_management", "time_series.md", ),
     categories={
         "constructor": "Creating new time series",
+        "conversion": "Converting time series frequency",
         "property": None,
     },
 )

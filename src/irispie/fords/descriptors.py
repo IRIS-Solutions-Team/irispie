@@ -154,20 +154,20 @@ class SystemVectors:
     transition_variables: Iterable[_incidence.Token] | None = None
     transition_variables_logly: tuple[bool, ...] | None = None
     initial_conditions: Iterable[bool] | None = None,
-    unanticipated_shocks: tuple[_incidence.Token, ...] | None = None 
-    anticipated_shocks: tuple[_incidence.Token, ...] | None = None 
+    unanticipated_shocks: tuple[_incidence.Token, ...] | None = None
+    anticipated_shocks: tuple[_incidence.Token, ...] | None = None
     measurement_variables: Iterable[_incidence.Token] | None = None
     measurement_variables_logly: tuple[bool, ...] | None = None
-    measurement_shocks: tuple[_incidence.Token, ...] | None = None 
+    measurement_shocks: tuple[_incidence.Token, ...] | None = None
     #
     shape_A_excl_dynid: tuple[int, int] | None = None
     shape_B_excl_dynid: tuple[int, int] | None = None
-    shape_C_excl_dynid: tuple[int, int] | None = None
+    shape_C_excl_dynid: tuple[int] | None = None
     shape_D_excl_dynid: tuple[int, int] | None = None
     shape_E_excl_dynid: tuple[int, int] | None = None
     shape_F: tuple[int, int] | None = None
     shape_G: tuple[int, int] | None = None
-    shape_H: tuple[int, int] | None = None
+    shape_H: tuple[int] | None = None
     shape_J: tuple[int, int] | None = None
 
     def __init__(
@@ -244,12 +244,12 @@ class SystemVectors:
         #
         self.shape_A_excl_dynid = (len(self.transition_eids), len(self.transition_variables), )
         self.shape_B_excl_dynid = self.shape_A_excl_dynid
-        self.shape_C_excl_dynid = (len(self.transition_eids), 1, )
+        self.shape_C_excl_dynid = (len(self.transition_eids), )
         self.shape_D_excl_dynid = (len(self.transition_eids), len(self.unanticipated_shocks), )
         self.shape_E_excl_dynid = (len(self.transition_eids), len(self.anticipated_shocks), )
         self.shape_F = (len(self.measurement_eids), len(self.measurement_variables), )
         self.shape_G = (len(self.measurement_eids), len(self.transition_variables), )
-        self.shape_H = (len(self.measurement_eids), 1, )
+        self.shape_H = (len(self.measurement_eids), )
         self.shape_J = (len(self.measurement_eids), len(self.measurement_shocks), )
 
     def get_num_backwards(self) -> int:
@@ -268,10 +268,10 @@ class SolutionVectors:
     #[
     transition_variables: tuple[_incidence.Token] | None = None
     initial_conditions: tuple[bool] | None = None,
-    unanticipated_shocks: tuple[_incidence.Token] | None = None 
-    anticipated_shocks: tuple[_incidence.Token] | None = None 
+    unanticipated_shocks: tuple[_incidence.Token] | None = None
+    anticipated_shocks: tuple[_incidence.Token] | None = None
     measurement_variables: tuple[_incidence.Token] | None = None
-    measurement_shocks: tuple[_incidence.Token] | None = None 
+    measurement_shocks: tuple[_incidence.Token] | None = None
 
     def __init__(self, system_vectors: SystemVectors, /, ) -> None:
         """
@@ -315,7 +315,7 @@ def _create_system_transition_vector(
 
 
 def _solution_vector_from_system_vector(
-    system_transition_vector: Iterable[_incidence.Token], 
+    system_transition_vector: Iterable[_incidence.Token],
     initial_conditions: Iterable[bool],
     /,
 ) -> Iterable[_incidence.Token]:
@@ -380,28 +380,26 @@ class SystemMap:
         #
         # Transition equations
         #
-        self.A = _maps.ArrayMap.for_equations(
+        self.A = _maps.ArrayMap(
             system_vectors.transition_eids,
             system_vectors.eid_to_wrt_tokens,
             system_vectors.transition_variables,
             eid_to_rhs_offset,
-            #
             rhs_column=0,
             lhs_column_offset=0,
         )
         #
         lagged_transition_variables = [ t.shifted(-1) for t in system_vectors.transition_variables ]
-        lagged_transition_variables = [ 
-            t if t not in system_vectors.transition_variables else None 
-            for t in lagged_transition_variables 
+        lagged_transition_variables = [
+            t if t not in system_vectors.transition_variables else None
+            for t in lagged_transition_variables
         ]
         #
-        self.B = _maps.ArrayMap.for_equations(
+        self.B = _maps.ArrayMap(
             system_vectors.transition_eids,
             system_vectors.eid_to_wrt_tokens,
-            lagged_transition_variables, 
+            lagged_transition_variables,
             eid_to_rhs_offset,
-            #
             rhs_column=0,
             lhs_column_offset=0,
         )
@@ -409,64 +407,59 @@ class SystemMap:
         self.A.remove_nones()
         self.B.remove_nones()
         #
-        self.C = _maps.ArrayMap.constant_vector(system_vectors.transition_eids)
+        self.C = _maps.VectorMap(system_vectors.transition_eids, )
         #
-        self.D = _maps.ArrayMap.for_equations(
+        self.D = _maps.ArrayMap(
             system_vectors.transition_eids,
             system_vectors.eid_to_wrt_tokens,
             system_vectors.unanticipated_shocks,
             eid_to_rhs_offset,
-            #
             rhs_column=0,
             lhs_column_offset=0,
         )
         #
-        self.E = _maps.ArrayMap.for_equations(
+        self.E = _maps.ArrayMap(
             system_vectors.transition_eids,
             system_vectors.eid_to_wrt_tokens,
             system_vectors.anticipated_shocks,
             eid_to_rhs_offset,
-            #
             rhs_column=0,
             lhs_column_offset=0,
         )
         #
         num_dynid_rows = len(system_vectors.transition_variables) - len(system_vectors.transition_eids)
         self.dynid_A, self.dynid_B = _create_dynid_matrices(system_vectors.transition_variables, )
-        self.dynid_C = _np.zeros((num_dynid_rows, system_vectors.shape_C_excl_dynid[1]), dtype=float, )
+        self.dynid_C = _np.zeros((num_dynid_rows, ), dtype=float, )
         self.dynid_D = _np.zeros((num_dynid_rows, system_vectors.shape_D_excl_dynid[1]), dtype=float, )
         self.dynid_E = _np.zeros((num_dynid_rows, system_vectors.shape_E_excl_dynid[1]), dtype=float, )
         #
         # Measurement equations
         #
-        self.F = _maps.ArrayMap.for_equations(
+        self.F = _maps.ArrayMap(
             system_vectors.measurement_eids,
             system_vectors.eid_to_wrt_tokens,
-            system_vectors.measurement_variables, 
+            system_vectors.measurement_variables,
             eid_to_rhs_offset,
-            #
             rhs_column=0,
             lhs_column_offset=0,
         )
         #
-        self.G = _maps.ArrayMap.for_equations(
+        self.G = _maps.ArrayMap(
             system_vectors.measurement_eids,
             system_vectors.eid_to_wrt_tokens,
             system_vectors.transition_variables,
             eid_to_rhs_offset,
-            #
             rhs_column=0,
             lhs_column_offset=0,
         )
         #
-        self.H = _maps.ArrayMap.constant_vector(system_vectors.measurement_eids)
+        self.H = _maps.VectorMap(system_vectors.measurement_eids, )
         #
-        self.J = _maps.ArrayMap.for_equations(
+        self.J = _maps.ArrayMap(
             system_vectors.measurement_eids,
             system_vectors.eid_to_wrt_tokens,
-            system_vectors.measurement_shocks, 
+            system_vectors.measurement_shocks,
             eid_to_rhs_offset,
-            #
             rhs_column=0,
             lhs_column_offset=0,
         )

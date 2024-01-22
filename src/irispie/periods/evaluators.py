@@ -43,7 +43,7 @@ class PeriodEvaluator:
         # Index of loglies within wrt_qids; needs to be list not tuple
         # because of numpy indexing
         self._index_logly = \
-            list(_quantities.generate_index_logly(self._wrt_qids, qid_to_logly, ))
+            list(_quantities.generate_where_logly(self._wrt_qids, qid_to_logly, ))
         #
         # Set up components
         self._equator = _equators.PeriodEquator(

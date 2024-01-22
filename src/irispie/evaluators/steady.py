@@ -68,8 +68,8 @@ class SteadyEvaluator:
         #
         # Index of loglies within wrt_qids; needs to be list not tuple
         # because of numpy indexing
-        self._index_logly = \
-            list(_quantities.generate_index_logly(self.wrt_qids, qid_to_logly, ))
+        self._where_logly = \
+            list(_quantities.generate_where_logly(self.wrt_qids, qid_to_logly, ))
         #
         # Vectors self._maybelog_init_levels and
         # self._maybelog_init_changes are the initial guesses from the
@@ -166,7 +166,7 @@ class SteadyEvaluator:
         """
         """
         levels = self._get_maybelog_levels(guess, )
-        levels[self._index_logly] = _np.exp(levels[self._index_logly])
+        levels[self._where_logly] = _np.exp(levels[self._where_logly])
         levels = levels[self._bool_index_wrt_levels]
         wrt_qids_levels = tuple(_it.compress(self.wrt_qids, self._bool_index_wrt_levels, ))
         return levels, wrt_qids_levels
@@ -179,7 +179,7 @@ class SteadyEvaluator:
         """
         """
         changes = self._get_maybelog_changes(guess, )
-        changes[self._index_logly] = _np.exp(changes[self._index_logly])
+        changes[self._where_logly] = _np.exp(changes[self._where_logly])
         changes = changes[self._bool_index_wrt_changes]
         wrt_qids_changes = tuple(_it.compress(self.wrt_qids, self._bool_index_wrt_changes, ))
         return changes, wrt_qids_changes
@@ -245,7 +245,7 @@ class FlatSteadyEvaluator(SteadyEvaluator, ):
         """
         new_maybelog_levels = self._get_maybelog_levels(current_guess, )
         new_paths = _np.repeat(new_maybelog_levels.reshape(-1, 1), self._num_columns, axis=1, )
-        new_paths[self._index_logly, :] = _np.exp(new_paths[self._index_logly, :])
+        new_paths[self._where_logly, :] = _np.exp(new_paths[self._where_logly, :])
         self._steady_array[self.wrt_qids, :] = new_paths
     #]
 
@@ -312,7 +312,7 @@ class NonflatSteadyEvaluator(SteadyEvaluator, ):
         new_maybelog_levels = self._get_maybelog_levels(current_guess, )
         new_maybelog_changes = self._get_maybelog_changes(current_guess, )
         new_paths = new_maybelog_levels.reshape(-1, 1) + self._shift_vec * new_maybelog_changes.reshape(-1, 1)
-        new_paths[self._index_logly, :] = _np.exp(new_paths[self._index_logly, :])
+        new_paths[self._where_logly, :] = _np.exp(new_paths[self._where_logly, :])
         self._steady_array[self.wrt_qids, :] = new_paths
     #]
 

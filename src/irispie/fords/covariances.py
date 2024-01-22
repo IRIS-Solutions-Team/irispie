@@ -52,13 +52,13 @@ def get_autocov_square_00(
     num_alpha = solution.num_alpha
     Ua = solution.Ua
     #
-    def _transform_cov(cov: _np.ndarray, /, ) -> _np.ndarray:
+    def _transform_cov_triangular_to_square(cov: _np.ndarray, /, ) -> _np.ndarray:
         cov[:num_alpha, :] = Ua @ cov[:num_alpha, :]
         cov[:, :num_alpha] = cov[:, :num_alpha] @ Ua.T
         return cov
     #
     return tuple(
-        _transform_cov(cov, )
+        _transform_cov_triangular_to_square(cov, )
         for cov in get_autocov_triangular_00(solution, cov_u, cov_w, order, )
     )
     #]

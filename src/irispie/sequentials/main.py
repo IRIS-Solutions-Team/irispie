@@ -48,7 +48,7 @@ __all__ = (
 class Sequential(
     _simulate.SimulateInlay,
     _assigns.AssignInlay,
-
+    #
     _has_variants.HasVariantsMixin,
 ):
     """
@@ -453,10 +453,12 @@ sequentially. The reordered equation indexes are returned as a tuple.
         self.reorder_equations(eids_reordered, )
         return tuple(eids_reordered)
 
-    def iter_explanatories(self, /, ) -> Iterator[_explanatories.Explanatory]:
+    def iter_equations(self, /, ) -> Iterator[_explanatories.Explanatory]:
         """
         """
         yield from self._invariant.explanatories
+
+    iter_explanatories = iter_equations
 
     @_pages.reference(category="information", )
     def get_description(self, /, ) -> str:

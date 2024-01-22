@@ -443,8 +443,8 @@ def retrieve_vector_from_data_array(
 ) -> _np.ndarray:
     """
     """
-    rows, columns = _incidences.rows_and_columns_from_tokens_in_horizontal(tokens, index_zero, )
-    return data[rows, columns].reshape(-1, 1)
+    rows, columns = _incidences.rows_and_columns_from_tokens(tokens, index_zero, )
+    return data[rows, columns]
 
 
 def store_vector_in_data_array(
@@ -455,5 +455,6 @@ def store_vector_in_data_array(
 ) -> None:
     """
     """
-    rows, columns = _incidences.rows_and_columns_from_tokens_in_horizontal(tokens, index_zero, )
+    rows, columns = _incidences.rows_and_columns_from_tokens(tokens, index_zero, )
     data[rows, columns] = vector
+

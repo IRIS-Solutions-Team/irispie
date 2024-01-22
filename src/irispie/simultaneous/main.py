@@ -64,7 +64,7 @@ class Simultaneous(
     _has_invariant.HasInvariantMixin,
     _has_variants.HasVariantsMixin,
     _simulate.SimulateMixin,
-    _steady.SteadyMixin,
+    _steady.SteadyInlay,
     _covariances.CoverianceMixin,
     _get.GetMixin,
 ):

@@ -5,9 +5,10 @@
 #[
 from __future__ import annotations
 
-from typing import (Any, )
-from numbers import (Real, )
+from typing import Any
+from numbers import Real
 import numpy as _np
+import itertools as _it
 
 from .. import pages as _pages
 from .. import wrongdoings as _wrongdoings
@@ -36,6 +37,7 @@ class SimulateInlay:
         prepend_input: bool = True,
         target_databox: _databoxes.Databox | None = None,
         when_nonfinite: Literal["error", "warning", "silent", ] = "warning",
+        execution_order: Literal["dates_equations", "equations_dates", ] = "dates_equations",
         num_variants: int | None = None,
         remove_initial: bool = True,
         remove_terminal: bool = True,
@@ -78,7 +80,7 @@ simulating the model.
 
 ???+ input "plan"
     `PlanSimulate` object with a simulation plan, i.e. information about
-    which LHS variables to exogenize in which periods. If `plan=None`, no
+    which LHS variables to exogenize at which dates. If `plan=None`, no
     simulation plan is imposed on the simulation.
 
 
@@ -117,10 +119,11 @@ simulating the model.
         #=======================================================================
         # Main loop over variants
         for vid, model_v, dataslate_v in zipped:
-            model_v._simulate_periods_and_explanatories(
+            model_v._simulate(
                 dataslate_v,
                 plan=plan,
                 when_nonfinite=when_nonfinite,
+                execution_order=execution_order,
             )
         #=======================================================================
         #
@@ -144,12 +147,14 @@ simulating the model.
         #
         return out_db, info
 
-    def _simulate_periods_and_explanatories(
+    def _simulate(
         self,
         ds: _dataslates.Dataslate,
         /,
-        plan: _plans.Plan | None = None,
-        when_nonfinite: Literal["error", "warning", "silent", ] = "warning",
+        *,
+        plan,
+        when_nonfinite,
+        execution_order,
     ) -> None:
         """
         """
@@ -159,32 +164,35 @@ simulating the model.
         #
         name_to_row = ds.create_name_to_row()
         base_columns = ds.base_columns
-        first_base_column = (
-            base_columns[0]
-            if base_columns
-            else None
-        )
-        #
+        first_base_column = base_columns[0] if base_columns else None
         working_data = ds.get_data_variant(0, )
-        for data_column in base_columns:
-            plan_column = data_column - first_base_column
-            date = ds.dates[data_column]
+        columns_dates = ( (c, ds.dates[c]) for c in base_columns )
+        execution_iterator_creator = _CREATE_EXECUTION_ITERATOR[execution_order]
+        columns_dates_equations = execution_iterator_creator(columns_dates, self.iter_equations(), )
+        for (column, date), equation in columns_dates_equations:
+            transform = (
+                _get_transform(plan, equation.lhs_name, date, )
+                if not equation.is_identity else None
+            )
+            is_exogenized, implied_value = _is_exogenized(
+                equation.lhs_name,
+                transform,
+                working_data,
+                column,
+                name_to_row,
+            )
             #
-            for x in self.iter_explanatories():
-                #
-                transform = (
-                    _get_transform(plan, x.lhs_name, plan_column, )
-                    if not x.is_identity
-                    else None
-                )
-                #
-                is_exogenized, implied_value = _is_exogenized(x.lhs_name, transform, working_data, data_column, name_to_row, )
-                if is_exogenized:
-                    info = x.exogenize(working_data, data_column, implied_value)
-                else:
-                    info = x.simulate(working_data, data_column, )
-                _catch_nonfinite(when_nonfinite_stream, info["is_finite"], x.lhs_name, date, )
-                #
+            if is_exogenized:
+                info = equation.exogenize(working_data, column, implied_value)
+            else:
+                info = equation.simulate(working_data, column, )
+            #
+            _catch_nonfinite(
+                when_nonfinite_stream,
+                info["is_finite"],
+                equation.lhs_name,
+                date,
+            )
         when_nonfinite_stream._raise()
 
     #]
@@ -193,14 +201,13 @@ simulating the model.
 def _get_transform(
     plan: _plans.Plan | None,
     lhs_name: str,
-    plan_column: int,
+    date: _dates.Dater,
 ) -> _plans.Transform | None:
     """
     """
-    return (
-        plan.get_exogenized_point(lhs_name, plan_column, )
+    return \
+        plan.get_exogenized_point(lhs_name, date, ) \
         if plan is not None else None
-    )
 
 
 def _is_exogenized(
@@ -243,4 +250,23 @@ def _catch_nonfinite(
     message = f"{name}[{date}]"
     stream.add(message, )
     #]
+
+
+def _iter_dates_equations(columns_dates, equations, ) -> Iterator[tuple[int, _dates.Dater], _explanatories.Explanatory]:
+    return _it.product(columns_dates, equations, )
+
+
+def _iter_equations_dates(columns_dates, equations, ) -> Iterator[tuple[int, _dates.Dater], _explanatories.Explanatory]:
+    return _swap_product(_it.product(equations, columns_dates, ), )
+
+
+def _swap_product(iterator: Iterable[tuple[Any, Any]], ) -> Iterable[tuple[Any, Any]]:
+    return ((b, a) for a, b in iterator)
+
+
+_CREATE_EXECUTION_ITERATOR = {
+    "dates_equations": _iter_dates_equations,
+    "equations_dates": _iter_equations_dates,
+}
+
 

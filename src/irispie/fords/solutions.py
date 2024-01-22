@@ -245,7 +245,7 @@ class Solution:
         Stable part of intercept in transition equation
         """
         num_unit_roots = self.num_unit_roots
-        return self.Ka[num_unit_roots:, :]
+        return self.Ka[num_unit_roots:]
 
     @property
     def Za_stable(self, /, ) -> _np.ndarray:
@@ -362,16 +362,16 @@ def _square_from_triangular(
     /,
 ) -> tuple[_np.ndarray, ...]:
     r"""
-    T <- Ua • Ta / Ua
-    P <- Ua • Pa
-    R <- Ua • Ra
-    X <- Xa • Ra
-    K <- Ua • Ka
+    T <- Ua @ Ta / Ua
+    P <- Ua @ Pa
+    R <- Ua @ Ra
+    X <- Xa @ Ra
+    K <- Ua @ Ka
     xi[t] = ... -X J**(k-1) Ru e[t+k]
     """
     #[
     Ua, Ta, Pa, Ra, Ka, Xa, *_ = triangular_solution
-    T = Ua @ right_div(Ta, Ua) # Ua • Ta • inv(Ua)
+    T = Ua @ right_div(Ta, Ua) # Ua @ (Ta / Ua)
     P = Ua @ Pa
     R = Ua @ Ra
     K = Ua @ Ka
@@ -428,7 +428,6 @@ def _solve_transition_equations(
     num_forwards = descriptor.get_num_forwards()
     num_stable = num_backwards
     S, T, Q, Z = qz
-    A, B, C, D, E = system.A, system.B, system.C, system.D, system.E
     #
     S11 = S[:num_stable, :num_stable]
     S12 = S[:num_stable, num_stable:]
@@ -441,24 +440,27 @@ def _solve_transition_equations(
     Z21 = Z[num_forwards:, :num_stable]
     Z22 = Z[num_forwards:, num_stable:]
     #
-    QC = Q @ C
-    QC1 = QC[:num_stable, ...]
-    QC2 = QC[num_stable:, ...]
+    # Constant in transition
+    Q_CC = Q @ system.C
+    Q_CC1 = Q_CC[:num_stable]
+    Q_CC2 = Q_CC[num_stable:]
     #
-    QD = Q @ D
-    QD1 = QD[:num_stable, ...]
-    QD2 = QD[num_stable:, ...]
+    # Unanticipated shocks in transition
+    Q_DD = Q @ system.D
+    Q_DD1 = Q_DD[:num_stable, :]
+    Q_DD2 = Q_DD[num_stable:, :]
     #
-    QE = Q @ E
-    QE1 = QE[:num_stable, ...]
-    QE2 = QE[num_stable:, ...]
+    # Antiicipated shocks in transition
+    Q_EE = Q @ system.E
+    Q_EE1 = Q_EE[:num_stable, :]
+    Q_EE2 = Q_EE[num_stable:, :]
     #
     # Unstable block
     #
     G = left_div(-Z21, Z22) # -Z21 \ Z22
-    Pu = left_div(-T22, QD2) # -T22 \ QD2
-    Ru = left_div(-T22, QE2) # -T22 \ QE2
-    Ku = left_div(-(S22 + T22), QC2) # -(S22+T22) \ QC2
+    Pu = left_div(-T22, Q_DD2) # -T22 \ Q_DD2
+    Ru = left_div(-T22, Q_EE2) # -T22 \ Q_EE2
+    Ku = left_div(-(S22 + T22), Q_CC2) # -(S22+T22) \ Q_CC2
     #
     # Transform stable block==transform backward-looking variables:
     # gamma(t) = s(t) + G u(t+1)
@@ -467,9 +469,9 @@ def _solve_transition_equations(
     Xg1 = G + left_div(S11, S12)
     #
     Tg = left_div(-S11, T11)
-    Pg = -Xg0 @ Pu - left_div(S11, QD1)
-    Rg = -Xg0 @ Ru - left_div(S11, QE1)
-    Kg = -(Xg0 + Xg1) @ Ku - left_div(S11, QC1)
+    Pg = -Xg0 @ Pu - left_div(S11, Q_DD1)
+    Rg = -Xg0 @ Ru - left_div(S11, Q_EE1)
+    Kg = -(Xg0 + Xg1) @ Ku - left_div(S11, Q_CC1)
     Ug = Z21 # xib = Ug @ gamma
     #
     # Forward expansion

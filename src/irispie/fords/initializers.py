@@ -36,7 +36,10 @@ def _initialize_fixed(*args, **kwargs, ) -> tuple[_np.ndarray, _np.ndarray]:
     )
 
 
-def _initialize_approx_diffuse(*args, **kwargs, ) -> tuple[_np.ndarray, _np.ndarray]:
+def _initialize_approx_diffuse(
+    *args,
+    **kwargs,
+    ) -> tuple[_np.ndarray, _np.ndarray]:
     """
     """
     return (

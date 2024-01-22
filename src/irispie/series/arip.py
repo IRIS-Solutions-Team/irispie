@@ -25,12 +25,10 @@ def disaggregate_arip(
     target_dater_class: _dates.Dater,
     /,
     model: tuple[FormType, AggregationType],
-    indicator: _np.ndarray | None = None,
     target: Self | None = None,
+    # indicator: _np.ndarray | None = None,
 ) -> Self:
-    """
-    Autoregressive interpolation
-    """
+    """Autoregressive interpolation"""
     #[
     if not self.start_date:
         return None, None
@@ -228,7 +226,7 @@ def _create_basic_system_matrices(
 def disaggregate_arip_data(
     data_variant_iterator: Iterable[_np.ndarray],
     target_data: _np.ndarray,
-    model: tuple[str, str],
+    model: tuple[str, str | tuple[Real]],
     num_low_periods: int,
     low_freq: int,
     high_freq: int,
@@ -243,8 +241,12 @@ def disaggregate_arip_data(
     num_high_periods = num_low_periods * num_within
     where_full_low_periods = _detect_full_low_periods(target_data, num_within, )
 
-    form_string, aggregation_string = model
+    form_string, aggregation = model
     form = _CHOOSE_FORM[form_string]
+    aggregation_vector = (
+        _CHOOSE_AGGREGATION_VECTOR[aggregation](num_within, )
+        if isinstance(aggregation, str) else tuple(aggregation)
+    )
 
     create_multiplier_column = _ft.partial(
         _create_multiplier_column,
@@ -261,7 +263,7 @@ def disaggregate_arip_data(
         _create_aggregation_row,
         num_low_periods=num_low_periods,
         num_within=num_within,
-        aggregation_vector=_CHOOSE_AGGREGATION_VECTOR[aggregation_string](num_within, ),
+        aggregation_vector=aggregation_vector,
     )
 
     create_target_row = _ft.partial(

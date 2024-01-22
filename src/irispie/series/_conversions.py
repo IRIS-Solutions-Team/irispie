@@ -14,6 +14,7 @@ import operator as _op
 import statistics as _st
 
 from .. import dates as _dates
+from .. import pages as _pages
 from . import arip as _arip
 from . import _functionalize
 #]
@@ -35,48 +36,75 @@ class ConversionMixin:
     """
     #[
 
+    @_pages.reference(category="conversion", )
     def aggregate(
         self,
-        new_freq: _dates.Frequency,
+        target_freq: _dates.Frequency,
         /,
         method: Literal["mean", "sum", "first", "last", "min", "max"] = "mean",
         remove_missing: bool = False,
         select: list[int] | None = None,
     ) -> None:
         """
-        ---
+················································································
 
-        # `aggregate`
+==Aggregate  time series to a lower frequency==
 
-        Aggregate time series to a lower frequency
 
-        ## Syntax
+### Changing time series in-place ###
 
-            y = x.aggregate(new_freq, method="mean", remove_missing=False, select=None)
+    self.aggregate(
+        target_freq,
+        /,
+        method="mean",
+        remove_missing=False,
+        select=None,
+        )
 
-        ## Input arguments
 
-            * `new_freq`: Frequency
-            >
-            > The new frequency to aggregate the original time series to.
-            >
+### Creating new time series ###
 
-            * `method` {"mean", "sum", "first", "last", "min", "max"}
-            >
-            > The method to use for aggregation. The following methods are available:
-            >
+    new_series = aggregate(self, ...)
+
+
+### Input arguments ###
+
+
+???+ input "target_freq"
+    The new frequency to which the original time series will be diaggregated.
+
+???+ input "method"
+    Aggregation method, i.e. a function applied to the high-frequency
+    values within each low-frequency period:
+
+    * "mean" - the arithmetic average of high-frequency values
+    * "sum" - the sum of high-frequency values
+    * "first" - the value in the first high-frequency period
+    * "last" - the value in the last high-frequency period
+    * "min" - the minimum of high-frequency values
+    * "max" - the maximum of high-frequency values
+
+???+ input "remove_missing"
+    Remove missing values from the high-frequency data before
+    applying the aggregation `method`.
+
+???+ input "select"
+    Select only the high-frequency values at the specified indexes;
+    `select=None` means all values are used.
+
+················································································
         """
         method_func = (
             _AGGREGATION_METHOD_RESOLUTION[method]
             if isinstance(method, str) else method
         )
         #
-        if new_freq == self.frequency:
+        if target_freq == self.frequency:
             return
-        if new_freq > self.frequency or new_freq is _dates.Frequency.UNKNOWN or self.frequency is _dates.Frequency.UNKNOWN:
-            raise ValueError(f"Cannot aggregate from {self.frequency} frequency to {new_freq} frequency")
+        if target_freq > self.frequency or target_freq is _dates.Frequency.UNKNOWN or self.frequency is _dates.Frequency.UNKNOWN:
+            raise ValueError(f"Cannot aggregate from {self.frequency} frequency to {target_freq} frequency")
         #
-        new_dater_class = _dates.DATER_CLASS_FROM_FREQUENCY_RESOLUTION[new_freq]
+        new_dater_class = _dates.DATER_CLASS_FROM_FREQUENCY_RESOLUTION[target_freq]
         #
         aggregate_within_data_func = _ft.partial(
             _aggregate_within_data,
@@ -93,6 +121,7 @@ class ConversionMixin:
         new_start_date, new_data = aggregate_func(self, new_dater_class, aggregate_within_data_func, )
         self._replace_start_date_and_values(new_start_date, new_data, )
 
+    @_pages.reference(category="conversion", )
     def disaggregate(
         self,
         target_freq: _dates.Frequency,
@@ -101,7 +130,52 @@ class ConversionMixin:
         **kwargs,
     ) -> Self:
         """
-Disaggregate time series to a higher frequency
+················································································
+
+==Disaggregate  time series to a higher frequency==
+
+
+### Changing time series in-place ###
+
+    self.disaggregate(
+        target_freq,
+        /,
+        method="flat",
+        model=
+        )
+
+
+### Creating new time series ###
+
+    new_series = disaggregate(self, ...)
+
+
+### Input arguments ###
+
+
+???+ input "target_freq"
+    The new frequency to which the original time series will be aggregated.
+
+???+ input "method"
+    Aggregation method, i.e. a function applied to the high-frequency
+    values within each low-frequency period:
+
+    * "mean" - the arithmetic average of high-frequency values
+    * "sum" - the sum of high-frequency values
+    * "first" - the value in the first high-frequency period
+    * "last" - the value in the last high-frequency period
+    * "min" - the minimum of high-frequency values
+    * "max" - the maximum of high-frequency values
+
+???+ input "remove_missing"
+    Remove missing values from the high-frequency data before
+    applying the aggregation `method`.
+
+???+ input "select"
+    Select only the high-frequency values at the specified indexes;
+    `select=None` means all values are used.
+
+················································································
         """
         method_func = _CHOOSE_DISAGGREGATION_METHOD[method]
         #
@@ -173,9 +247,9 @@ def _aggregate_regular_to_regular(
     start_date = self.start_date.create_soy()
     end_date = self.end_date.create_eoy()
     new_start_date = new_dater_class.from_year_period(start_year, 1)
-    new_freq = new_dater_class.frequency
+    target_freq = new_dater_class.frequency
     self_data = self.get_data_from_to((start_date, end_date))
-    factor = self.frequency.value // new_freq
+    factor = self.frequency.value // target_freq
     #
     # Loop over variants, create within-period data, and aggregate
     multi_output_data_transposed = []

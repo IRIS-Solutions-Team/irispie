@@ -68,7 +68,7 @@ class PlannableForSteady:
     #]
 
 
-class SteadyMixin:
+class SteadyInlay:
     """
     """
     #[
@@ -160,8 +160,8 @@ class SteadyMixin:
         evaluator_class: type,
         *,
         fix: Iterable[str] | None = None,
-        fix_level: Iterable[str] | None = None,
-        fix_change: Iterable[str] | None = None,
+        fix_levels: Iterable[str] | None = None,
+        fix_changes: Iterable[str] | None = None,
         root_settings: dict[str, Any] | None = None,
         iter_printer_settings: dict[str, Any] | None = None,
         **kwargs,
@@ -180,9 +180,9 @@ class SteadyMixin:
         fixable_quantities = \
             self.get_quantities(kind=_quantities.QuantityKind.ENDOGENOUS_VARIABLE, )
         wrt_qids_levels = \
-            _resolve_qids_fixed(fixable_quantities, fix, fix_level, )
+            _resolve_qids_fixed(fixable_quantities, fix, fix_levels, )
         wrt_qids_changes = \
-            _resolve_qids_fixed(fixable_quantities, fix, fix_change, )
+            _resolve_qids_fixed(fixable_quantities, fix, fix_changes, )
         #
         all_quantities = self.get_quantities()
         steady_evaluator = evaluator_class(

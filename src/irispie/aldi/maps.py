@@ -7,31 +7,56 @@ sparse) Jacobian matrix
 #[
 from __future__ import annotations
 
-from typing import (Self, Any, )
-from collections.abc import (Iterable, )
+from typing import (Any, )
+from collections.abc import (Iterable, Collection, )
 import itertools as it_
 import dataclasses as dc_
 #]
 
 
-@dc_.dataclass
 class ArrayMap:
     """
     """
-    lhs: tuple[list[int], list[int]] | None = None
-    rhs: tuple[list[int], list[int]] | None = None
     #[
-    def __init__(self, /, ) -> None:
-        self.lhs = ([], [])
-        self.rhs = ([], [])
+
+    __slots__ = ('lhs', 'rhs', )
+
+    def __init__(
+        self,
+        eids: list[int],
+        eid_to_wrt_tokens: dict[int, Any],
+        tokens_in_columns_on_lhs: list[Any],
+        eid_to_rhs_offset: dict[int, int],
+        /,
+        **kwargs,
+    ) -> None:
+        """
+        """
+        self.lhs = ([], [], )
+        self.rhs = ([], [], )
+        #
+        token_to_lhs_column = {
+            t: i
+            for i, t in enumerate(tokens_in_columns_on_lhs, )
+        }
+        #
+        for lhs_row, eid in enumerate(eids):
+            self.add_lhs_rhs(*_get_raw_map_for_single_equation(
+                eid_to_wrt_tokens[eid],
+                token_to_lhs_column,
+                eid_to_rhs_offset[eid],
+                lhs_row,
+                **kwargs,
+            ))
+
 
     def __len__(self, /, ) -> int:
         return len(self.lhs[0])
 
     def append(
         self,
-        lhs: tuple[int, int], 
-        rhs: tuple[int, int],
+        lhs: tuple[list[int], list[int]],
+        rhs: tuple[list[int], list[int]],
         /
     ) -> None:
         """
@@ -68,45 +93,38 @@ class ArrayMap:
         self.lhs = (list(unzipped_pruned[0]), list(unzipped_pruned[1]))
         self.rhs = (list(unzipped_pruned[2]), list(unzipped_pruned[3]))
 
-    @classmethod
-    def for_equations(
-        klass,
-        eids: list[int],
-        eid_to_wrt_tokens: dict[int, Any],
-        tokens_in_columns_on_lhs: list[Any],
-        eid_to_rhs_offset: dict[int, int],
-        /,
-        **kwargs,
-    ) -> Self:
-        """
-        """
-        token_to_lhs_column = {
-            t: i
-            for i, t in enumerate(tokens_in_columns_on_lhs, )
-        }
-        self = klass()
-        for lhs_row, eid in enumerate(eids):
-            self.add_lhs_rhs(*_get_raw_map_for_single_equation(
-                eid_to_wrt_tokens[eid],
-                token_to_lhs_column,
-                eid_to_rhs_offset[eid],
-                lhs_row,
-                **kwargs,
-            ))
-        return self
+class VectorMap:
+    """
+    """
+    #[
 
-    @classmethod
-    def constant_vector(
-        klass,
-        eids: Iterable[int],
-    ) -> Self:
+    __slots__ = ('lhs', 'rhs', )
+
+    def __init__(
+        self,
+        eids: Collection[int],
+        /,
+    ) -> None:
         """
         """
         num_equations = len(eids)
-        self = klass()
-        self.lhs = (list(range(num_equations)), [0]*num_equations)
-        self.rhs = (list(eids), [0]*num_equations)
-        return self
+        self.lhs = (list(range(num_equations)), )
+        self.rhs = (list(eids), )
+
+    def __len__(self, /, ) -> int:
+        return len(self.lhs[0])
+
+    def append(
+        self,
+        lhs: tuple[list[int]],
+        rhs: tuple[list[int]],
+        /
+    ) -> None:
+        """
+        """
+        self.lhs[0].append(lhs[0])
+        self.rhs[0].append(rhs[0])
+
     #]
 
 

@@ -65,7 +65,7 @@ class Jacobian:
         #
         self._shape = len(eids), len(wrt_something),
         #
-        self._map = _maps.ArrayMap.for_equations(
+        self._map = _maps.ArrayMap(
             eids,
             eid_to_wrts,
             wrt_something,
