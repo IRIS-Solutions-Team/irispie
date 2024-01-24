@@ -426,6 +426,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
     def solve(
         self,
         /,
+        clip_small: bool = False,
         **kwargs,
     ) -> dict[str, Any]:
         """
@@ -433,7 +434,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         model_flags = self._invariant._flags.update_from_kwargs(**kwargs, )
         for variant in self._variants:
-            self._solve(variant, model_flags, )
+            self._solve(variant, model_flags, clip_small=clip_small, )
         info = {}
         return info
 
@@ -442,12 +443,13 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         variant: _variants.Variant,
         model_flags: flags.Flags,
         /,
+        clip_small: bool,
     ) -> None:
         """
         Calculate first-order solution for one variant of this model
         """
         system = self._systemize(variant, self._invariant.dynamic_descriptor, model_flags, )
-        variant.solution = _solutions.Solution(self._invariant.dynamic_descriptor, system, )
+        variant.solution = _solutions.Solution(self._invariant.dynamic_descriptor, system, clip_small=clip_small, )
 
     def _choose_plain_equator(
         self,

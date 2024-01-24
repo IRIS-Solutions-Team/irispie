@@ -64,6 +64,7 @@ class Dataslate(
         """
         self = klass()
         self._invariant = other._invariant
+        self._variants = []
         return self
 
     @classmethod

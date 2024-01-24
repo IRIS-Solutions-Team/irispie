@@ -132,6 +132,7 @@ class Solution:
         /,
         *,
         tolerance: float = 1e-12,
+        clip_small: bool = False,
     ) -> Self:
         """
         """
@@ -141,6 +142,9 @@ class Solution:
             return abs(root) < (1 - tolerance)
         def is_unit_root(root: Real, /, ) -> bool:
             return abs(root) >= (1 - tolerance) and abs(root) < (1 + tolerance)
+        def clip_func(x: _np.ndarray, /, ) -> _np.ndarray:
+            return _np.where(_np.abs(x) < tolerance, 0, x)
+        clip = clip_func if clip_small else None
         #
         # Detach unstable from (stable + unit) roots and solve out expectations
         # The system is triangular but because stable and unit roots are
@@ -152,15 +156,24 @@ class Solution:
         #
         # Detach unit from stable roots to create the final triangular solution
         # From the final triangular solution, calculate the square solution
-        triangular_solution = \
-            detach_stable_from_unit_roots(triangular_solution_prelim, is_unit_root, )
-        square_solution = \
-            _square_from_triangular(triangular_solution, )
+        triangular_solution = detach_stable_from_unit_roots(
+            triangular_solution_prelim,
+            is_unit_root,
+            clip=clip,
+        )
+        #
+        square_solution = _square_from_triangular(triangular_solution, )
+        #
         self.Ua, self.Ta, self.Pa, self.Ra, self.Ka, self.Xa, self.J, self.Ru = triangular_solution
         self.T, self.P, self.R, self.K, self.X = square_solution
         #
         # Solve measurement equations
-        self.Z, self.H, self.D, self.Za = _solve_measurement_equations(descriptor, system, self.Ua, )
+        self.Z, self.H, self.D, self.Za = _solve_measurement_equations(
+            descriptor,
+            system,
+            self.Ua,
+            clip=clip,
+        )
         self._classify_eigen_values_stability(is_stable_root, is_unit_root, )
         self._classify_system_stability(descriptor.get_num_forwards(), )
         self._classify_transition_vector_stability(tolerance=tolerance, )
@@ -345,7 +358,7 @@ class Solution:
 
 def left_div(A, B):
     r"""
-    Solve A \ B
+    Solve A \ B = pinv(A) @ B or inv(A) @ B
     """
     return _np.linalg.lstsq(A, B, rcond=None)[0]
 
@@ -384,6 +397,7 @@ def detach_stable_from_unit_roots(
     transition_solution_prelim: tuple[_np.ndarray, ...],
     is_unit_root: Callable[[Real], bool],
     /,
+    clip: Callable | None,
 ) -> tuple[_np.ndarray, ...]:
     """
     Apply a secondary Schur decomposition to detach stable eigenvalues from unit roots
@@ -393,6 +407,7 @@ def detach_stable_from_unit_roots(
     num_xib = Tg.shape[0]
     Ta, u, check_num_unit_roots = _sp.linalg.schur(Tg, sort=is_unit_root, ) # Tg = u @ Ta @ u.T
     Ua = Ug @ u if Ug is not None else u
+    Ua = clip(Ua) if clip is not None else Ua
     Pa = u.T @ Pg
     Ra = u.T @ Rg
     Ka = u.T @ Kg
@@ -401,7 +416,13 @@ def detach_stable_from_unit_roots(
     #]
 
 
-def _solve_measurement_equations(descriptor, system, Ua, ) -> tuple[_np.ndarray, ...]:
+def _solve_measurement_equations(
+    descriptor,
+    system,
+    Ua,
+    /,
+    clip: Callable | None,
+) -> tuple[_np.ndarray, ...]:
     """
     """
     #[
@@ -410,6 +431,7 @@ def _solve_measurement_equations(descriptor, system, Ua, ) -> tuple[_np.ndarray,
     Z = left_div(-system.F, G) # -F \ G
     H = left_div(-system.F, system.J) # -F \ J
     D = left_div(-system.F, system.H) # -F \ H
+    Z = clip(Z) if clip is not None else Z
     Za = Z @ Ua
     return Z, H, D, Za
     #]

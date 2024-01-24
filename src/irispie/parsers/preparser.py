@@ -313,7 +313,7 @@ class _End:
     #]
 
 
-_LINE_COMMENT_PATTERN = _re.compile(r'"[^"\n]*"|[%#].*|\.\.\.|\\.*')
+_LINE_COMMENT_PATTERN = _re.compile(r'"[^"\n]*"|[%#].*|\.\.\..*|\\.*')
 _BLOCK_COMMENT_PATTERN = _re.compile(r"([%#]){.*?\1\}", _re.DOTALL)
 
 def _remove_comments(source: str, /, ) -> str:

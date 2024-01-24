@@ -5,56 +5,57 @@
 #[
 from __future__ import annotations
 
-import numpy as np_
-import scipy as sp_
+import numpy as _np
+import scipy as _sp
 
-from ..fords import (systems as sy_, )
+from . import systems as _systems
+from . import solutions as _solutions
 #]
 
 
 def solve_steady_linear_flat(
-    sys: sy_.System,
+    sys: _systems.System,
     /,
-) -> tuple[np_.ndarray, np_.ndarray, np_.ndarray, np_.ndarray]:
+) -> tuple[_np.ndarray, _np.ndarray, _np.ndarray, _np.ndarray]:
     """
     """
     #[
-    """
-    """
-    pinv = np_.linalg.pinv
-    lstsq = sp_.linalg.lstsq
-    vstack = np_.vstack
-    hstack = np_.hstack
+    left_div = _solutions.left_div
+    vstack = _np.vstack
+    hstack = _np.hstack
+    concatenate = _np.concatenate
+    #
     A, B, C, F, G, H = sys.A, sys.B, sys.C, sys.F, sys.G, sys.H
     #
     # A @ Xi + B @ Xi{-1} + C = 0
     # F @ Y + G @ Xi + H = 0
     #
     # Xi = -pinv(A + B) @ C
-    Xi, *_ = lstsq(-(A + B), C)
-    dXi = np_.zeros(Xi.shape)
+    Xi = left_div(-(A + B), C, )
+    dXi = _np.zeros(Xi.shape)
     #
     # Y = -pinv(F) @ (G @ Xi + H)
-    Y, *_ = lstsq(-F, G @ Xi + H)
-    dY = np_.zeros(Y.shape)
+    Y = left_div(-F, G @ Xi + H, )
+    dY = _np.zeros(Y.shape)
     #
     return Xi, Y, dXi, dY
     #]
 
 
 def solve_steady_linear_nonflat(
-    sys: sy_.System,
+    sys: _systems.System,
     /,
-) -> tuple[np_.ndarray, np_.ndarray, np_.ndarray, np_.ndarray]:
+) -> tuple[_np.ndarray, _np.ndarray, _np.ndarray, _np.ndarray]:
     """
     """
     #[
     """
     """
-    # pinv = np_.linalg.pinv
-    lstsq = np_.linalg.lstsq
-    vstack = np_.vstack
-    hstack = np_.hstack
+    left_div = _solutions.left_div
+    vstack = _np.vstack
+    hstack = _np.hstack
+    concatenate = _np.concatenate
+    #
     A, B, C, F, G, H = sys.A, sys.B, sys.C, sys.F, sys.G, sys.H
     num_y = F.shape[0]
     k = 1
@@ -68,12 +69,9 @@ def solve_steady_linear_nonflat(
         hstack(( A + B, 0*A + (0-1)*B )),
         hstack(( A + B, k*A + (k-1)*B )),
     ))
-    CC = vstack((
-        C,
-        C,
-    ))
+    CC = concatenate((C, C, ))
     # Xi_dXi = -pinv(AB) @ CC
-    Xi_dXi, *_ = lstsq(-AB, CC, rcond=None)
+    Xi_dXi = left_div(-AB, CC, )
     #
     # F @ Y + G @ Xi + H = 0:
     # -->
@@ -88,12 +86,9 @@ def solve_steady_linear_nonflat(
         hstack(( G, 0*G )),
         hstack(( G, k*G )),
     ))
-    HH = vstack((
-        H,
-        H,
-    ))
+    HH = concatenate((H, H, ))
     # Y_dY = -pinv(FF) @ (GG @ Xi_dXi + HH)
-    Y_dY, *_ = lstsq(-FF, GG @ Xi_dXi + HH, rcond=None)
+    Y_dY = left_div(-FF, GG @ Xi_dXi + HH, )
     #
     # Separate levels and changes
     #

@@ -12,6 +12,7 @@ import numpy as _np
 import re as _re
 import operator as _op
 import functools as _ft
+import itertools as _it
 import os as _os
 from typing import (Self, TypeAlias, Literal, Sequence, Protocol, Any, )
 from collections.abc import (Iterable, Iterator, Callable, )
@@ -79,18 +80,6 @@ def _extended_range_tuple_from_extended_range(input_range, min_shift, max_shift)
 _EXTENDED_RANGE_TUPLE_RESOLUTION = {
     "base": _extended_range_tuple_from_base_span,
     "extended": _extended_range_tuple_from_extended_range,
-}
-
-
-_SERIES_CONSTRUCTOR_FACTORY = {
-    "start_date": _series.Series.from_start_date_and_values,
-    "range": _series.Series.from_dates_and_values,
-}
-
-
-_ARRAY_TRANSPOSER_FACTORY = {
-    "vertical": _np.transpose,
-    "horizontal": lambda x: x,
 }
 
 
@@ -176,13 +165,13 @@ a databox can be of any type.
     def from_array(
         klass,
         array: _np.ndarray,
-        qid_to_name: Sequence[str] | dict[int, str],
-        dates: _dates.Dater,
-        /,
+        names: Sequence[str],
+        *,
+        descriptions: Iterable[str] | None = None,
+        dates: Iterable[_dates.Date] | None = None,
+        start_date: _dates.Date | None = None,
         target_databox: Self | None = None,
-        qid_to_description: dict[int, str] | None = None,
         array_orientation: Literal["vertical", "horizontal", ] = "vertical",
-        interpret_dates: Literal["start_date", "range", ] = "start_date",
     ) -> Self:
         """
 ......................................................................
@@ -191,18 +180,40 @@ a databox can be of any type.
 
 ......................................................................
         """
+        arra = array if array_orientation == "horizontal" else array.T,
+        series_constructor = _get_series_constructor(start_date, dates, )
+        return klass._from_vertical_array_and_constructor(
+            array,
+            names,
+            series_constructor,
+            descriptions=descriptions,
+            target_databox=target_databox,
+        )
+
+
+    @classmethod
+    def _from_horizontal_array_and_constructor(
+        klass,
+        array: _np.ndarray,
+        names: Iterable[str],
+        series_constructor: Callable,
+        *,
+        descriptions: Sequence[str] | None = None,
+        target_databox: Self | None = None,
+    ) -> Self:
+        """
+        """
         self = target_databox or klass()
-        constructor = _SERIES_CONSTRUCTOR_FACTORY[interpret_dates]
-        transposer = _ARRAY_TRANSPOSER_FACTORY[array_orientation]
-        for qid, data in enumerate(transposer(array)):
-            name = qid_to_name.get(qid, None)
+        descriptions = (
+            descriptions if descriptions is not None
+            else _it.repeat("", )
+        )
+        for name, data, description in zip(names, array, descriptions, ):
             if not name:
                 continue
             if data.ndim == 1:
                 data = data.reshape(-1, 1)
-            description = qid_to_description[qid] if qid_to_description else ""
-            series = constructor(dates, data, description=description)
-            self[name] = series
+            self[name] = constructor(data, description=description, )
         return self
 
     def iter_variants(
@@ -597,5 +608,26 @@ def _default_item_iterator(value: Any, /, ) -> Iterator[Any]:
     )
     value = value if is_value_iterable else [value, ]
     yield from _iterators.exhaust_then_last(value, None, )
+    #]
+
+
+def _get_series_constructor(
+    start_date: _dates.Dater | None = None,
+    dates: Iterable[_dates.Dater] | None = None,
+    /,
+) -> Callable:
+    """
+    """
+    #[
+    if start_date is not None:
+        return _ft.partial(
+            _series.Series.from_start_date_and_values,
+            start_date=start_date,
+        )
+    elif dates is not None:
+        return _ft.partial(
+            _series.Series.from_dates_and_values,
+            dates=dates,
+        )
     #]
 

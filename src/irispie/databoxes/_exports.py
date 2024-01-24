@@ -24,6 +24,7 @@ from ..databoxes import main as _databoxes
 
 
 _DEFAULT_ROUND = 12
+_DEFAULT_CSV_WRITER_SETTINGS = {"delimiter": ",", "lineterminator": "\n", }
 
 
 @_dc.dataclass
@@ -104,11 +105,10 @@ class ExportMixin:
         names: Iterable[str] | None = None,
         description_row: bool = False,
         frequency: _dates.Frequency | None = None,
-        delimiter: str = ",",
         numeric_format: str = "g",
         nan_str: str = "",
         round: int = _DEFAULT_ROUND,
-        csv_writer_settings: dict = None,
+        csv_writer_settings: dict | None = {"delimiter": ",", "lineterminator": "\n", },
         when_empty: Literal["error", "warning", "silent"] = "warning",
     ) -> dict[str, Any]:
         """
@@ -131,9 +131,9 @@ class ExportMixin:
             for frequency in frequency_span.keys()
         )
         #
-        csv_writer_settings = {} if csv_writer_settings is None else csv_writer_settings
+        csv_writer_settings = csv_writer_settings or {}
         with open(file_name, "w+") as fid:
-            writer = _cs.writer(fid, delimiter=delimiter, **csv_writer_settings)
+            writer = _cs.writer(fid, _DEFAULT_CSV_WRITER_SETTINGS, **csv_writer_settings, )
             for row in zip(*export_blocks, ):
                 writer.writerow(_it.chain.from_iterable(row))
         #

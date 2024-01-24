@@ -204,7 +204,13 @@ class GetMixin:
         return tuple(v.solution for v in self._variants)
 
     def get_solution_matrices(self, /, ):
-        return self._variants[0].solution
+        """
+        """
+        solution_matrices = [
+            v.solution
+            for v in self._variants
+        ]
+        return self.unwrap_singleton(solution_matrices, )
 
     def get_dynamic_equations(
         self,

@@ -77,8 +77,8 @@ class System:
 
         if model_flags.is_linear:
             self.C = _np.zeros(svec.shape_C_excl_dynid, dtype=float)
-            self.C[smap.C.lhs] = tc[smap.C.rhs]
-            self.C = _np.vstack((self.C, smap.dynid_C))
+            self.C[smap.C.lhs] = tc[smap.C.rhs, 0]
+            self.C = _np.concatenate((self.C, smap.dynid_C))
         else:
             tokens = descriptor.system_vectors.transition_variables
             logly = descriptor.system_vectors.transition_variables_are_logly
@@ -102,7 +102,7 @@ class System:
 
         if model_flags.is_linear:
             self.H = _np.zeros(svec.shape_H, dtype=float)
-            self.H[smap.H.lhs] = tc[smap.H.rhs]
+            self.H[smap.H.lhs] = tc[smap.H.rhs, 0]
         else:
             tokens = descriptor.system_vectors.transition_variables
             logly = descriptor.system_vectors.transition_variables_are_logly

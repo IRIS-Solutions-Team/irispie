@@ -290,7 +290,6 @@ self = Series(
         klass,
         dates: Dates,
         values: Any,
-        /,
         **kwargs,
     ) -> Self:
         """
@@ -306,7 +305,6 @@ self = Series(
         klass,
         start_date: _dates.Dater,
         values: _np.ndarray | Iterable,
-        /,
         **kwargs,
     ) -> Self:
         return klass(
@@ -320,7 +318,6 @@ self = Series(
         klass,
         dates: Iterable[_dates.Dater],
         func: Callable,
-        /,
         **kwargs,
     ) -> Self:
         return klass(
