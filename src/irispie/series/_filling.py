@@ -25,7 +25,6 @@ class Inlay:
         self,
         fill_range: Iterable[_dates.Dater],
         method: Literal["next", "previous", "nearest", "constant"],
-        /,
         *args,
         **kwargs,
     ) -> None:
@@ -33,10 +32,10 @@ class Inlay:
         """
         fill_func = _METHOD_FACTORY[method]
         data = self.get_data(fill_range, )
-        new_data = tuple(
+        new_data = [
             fill_func(variant, *args, **kwargs, ).T
             for variant in data.T
-        )
+        ]
         self.set_data(fill_range, new_data, )
 
     #]
@@ -60,6 +59,8 @@ def _fill_neighbor(
         return data
     where_nan = _np.where(index_nan)[0]
     where_obs = _np.where(~index_nan)[0].astype(_np.float64, )
+    if where_obs.size == 0:
+        return data
     for i in where_nan:
         j = func(i, where_obs, )
         data[i] = data[int(j)] if j is not None else _np.nan
@@ -80,7 +81,7 @@ def _fill_constant(
     return data
 
 
-def _previous_index(i: int, where_obs: _np.ndarray, /, ) -> int:
+def _next_index(i: int, where_obs: _np.ndarray, /, ) -> int:
     """
     """
     #[
@@ -94,7 +95,7 @@ def _previous_index(i: int, where_obs: _np.ndarray, /, ) -> int:
     #]
 
 
-def _next_index(i: int, where_obs: _np.ndarray, /, ) -> int:
+def _previous_index(i: int, where_obs: _np.ndarray, /, ) -> int:
     """
     """
     #[
@@ -108,10 +109,20 @@ def _next_index(i: int, where_obs: _np.ndarray, /, ) -> int:
     #]
 
 
+def _nearest_index(i: int, where_obs: _np.ndarray, /, ) -> int:
+    """
+    """
+    #[
+    i_minus_where_obs = _np.abs(i - where_obs)
+    index = _np.argmin(i_minus_where_obs)
+    return where_obs[index]
+    #]
+
+
 _METHOD_FACTORY = {
     "next": _ft.partial(_fill_neighbor, func=_next_index, ),
     "previous": _ft.partial(_fill_neighbor, func=_previous_index, ),
-    "nearest": _ft.partial(_fill_neighbor, func=_np.abs, ),
+    "nearest": _ft.partial(_fill_neighbor, func=_nearest_index, ),
     "constant": _fill_constant,
 }
 
