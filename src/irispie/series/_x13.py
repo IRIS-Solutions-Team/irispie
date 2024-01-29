@@ -25,7 +25,7 @@ from . import _functionalize
 __all__ = ()
 
 
-class Mixin:
+class Inlay:
     """
     """
     #[

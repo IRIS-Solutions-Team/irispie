@@ -18,7 +18,7 @@ from . import _functionalize
 __all__ = ()
 
 
-class DiffMixin:
+class Inlay:
     """
     """
     #[
@@ -71,43 +71,6 @@ class DiffMixin:
         """
         """
         self._shifted_op(shift, lambda x, y: 100*(x/y - 1), )
-
-    #]
-
-
-for n in ("diff", "diff_log", "pct", "roc", ):
-    exec(_functionalize.FUNC_STRING.format(n=n, ), globals(), locals(), )
-    __all__ += (n, )
-
-
-_CUMULATIVE_FACTORY = {
-    "diff": {
-        "forward": lambda x_past, change_curr: x_past + change_curr,
-        "backward": lambda x_future, change_future: x_future - change_future,
-        "initial": 0,
-    },
-    "diff_log": {
-        "forward": lambda x_past, change_curr: x_past * exp(change_curr),
-        "backward": lambda x_future, change_future: x_future / exp(change_future),
-        "initial": 0,
-    },
-    "pct": {
-        "forward": lambda x_past, change_curr: x_past * (1 + change_curr/100),
-        "backward": lambda x_future, change_future: x_future / (1 + change_future/100),
-        "initial": 1,
-    },
-    "roc": {
-        "forward": lambda x_past, change_curr: x_past * change_curr,
-        "backward": lambda x_future, change_future: x_future / change_future,
-        "initial": 1,
-    },
-}
-
-
-class CumMixin:
-    """
-    """
-    #[
 
     def cum_diff(self, *args, **kwargs, ) -> None:
         """
@@ -177,6 +140,37 @@ class CumMixin:
         for t, sh in zip(backward_range, shifted_backward_range, ):
             new_data = cum_func(self.get_data(t, ), orig.get_data(t, ), )
             self.set_data(sh, new_data, )
+
+    #]
+
+
+for n in ("diff", "diff_log", "pct", "roc", ):
+    exec(_functionalize.FUNC_STRING.format(n=n, ), globals(), locals(), )
+    __all__ += (n, )
+
+
+_CUMULATIVE_FACTORY = {
+    "diff": {
+        "forward": lambda x_past, change_curr: x_past + change_curr,
+        "backward": lambda x_future, change_future: x_future - change_future,
+        "initial": 0,
+    },
+    "diff_log": {
+        "forward": lambda x_past, change_curr: x_past * exp(change_curr),
+        "backward": lambda x_future, change_future: x_future / exp(change_future),
+        "initial": 0,
+    },
+    "pct": {
+        "forward": lambda x_past, change_curr: x_past * (1 + change_curr/100),
+        "backward": lambda x_future, change_future: x_future / (1 + change_future/100),
+        "initial": 1,
+    },
+    "roc": {
+        "forward": lambda x_past, change_curr: x_past * change_curr,
+        "backward": lambda x_future, change_future: x_future / change_future,
+        "initial": 1,
+    },
+}
 
 
 for n in ("cum_diff", "cum_diff_log", "cum_pct", "cum_roc", ):

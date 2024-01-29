@@ -19,7 +19,7 @@ from . import _functionalize
 __all__ = ()
 
 
-class MovingMixin:
+class Inlay:
     """
     Time series mixin for moving sum, average, product
     """

@@ -31,7 +31,7 @@ _builtin_max = max
 _builtin_sum = sum
 
 
-class ConversionMixin:
+class Inlay:
     """
     """
     #[

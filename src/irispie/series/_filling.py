@@ -16,7 +16,7 @@ from . import _functionalize
 __all__ = ()
 
 
-class FillingMixin:
+class Inlay:
     """
     """
     #[

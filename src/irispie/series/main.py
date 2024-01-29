@@ -26,12 +26,13 @@ from .. import has_variants as _has_variants
 from .. import pages as _pages
 
 from . import _diffcums
-from . import _fillings
-from . import _movings
+from . import _filling
+from . import _moving
 from . import _conversions
 from . import _hp
 from . import _x13
 
+from . import _indexing
 from . import _plotly
 from . import _views
 from . import _functionalize
@@ -39,14 +40,14 @@ from . import _functionalize
 from ._diffcums import __all__ as _diffcums__all__
 from ._diffcums import *
 
-from ._fillings import __all__ as _fillings__all__
-from ._fillings import *
+from ._filling import __all__ as _fillings__all__
+from ._filling import *
 
 from ._hp import __all__ as _hp__all__
 from ._hp import *
 
-from ._movings import __all__ as _movings__all__
-from ._movings import *
+from ._moving import __all__ as _moving__all__
+from ._moving import *
 
 from ._conversions import __all__ as _conversions__all__
 from ._conversions import *
@@ -85,7 +86,7 @@ __all__ = (
     + _diffcums__all__
     + _fillings__all__
     + _hp__all__
-    + _movings__all__
+    + _moving__all__
     + FUNCTION_ADAPTATIONS
 )
 
@@ -123,14 +124,16 @@ def _trim_decorate(func):
     },
 )
 class Series(
-    _conversions.ConversionMixin,
-    _diffcums.CumMixin,
-    _diffcums.DiffMixin,
-    _fillings.FillingMixin,
-    _hp.Mixin,
-    _movings.MovingMixin,
-    _x13.Mixin,
-    _plotly.Mixin,
+    # Inlays
+    _indexing.Inlay,
+    _conversions.Inlay,
+    _diffcums.Inlay,
+    _filling.Inlay,
+    _hp.Inlay,
+    _moving.Inlay,
+    _x13.Inlay,
+    _plotly.Inlay,
+    # Mixins
     _descriptions.DescriptionMixin,
     _views.ViewMixin,
     _copies.CopyMixin,
@@ -522,12 +525,6 @@ self = Series(
             variants = (variants, )
         return variants
 
-    def __call__(self, *args):
-        """
-        Get data self[dates] or self[dates, variants]
-        """
-        return self.get_data(*args)
-
     def shift(
         self,
         by: int | str = -1,
@@ -574,26 +571,6 @@ self = Series(
             for t in self.range
         )
         self._replace_data(new_data, )
-
-    def __getitem__(self, index):
-        """
-        Create a new time series based on date retrieved by self[dates] or self[dates, variants]
-        """
-        if isinstance(index, int):
-            new = self.copy()
-            new.shift(index)
-            return new
-        if not isinstance(index, tuple):
-            index = (index, None, )
-        return self._get_data_and_recreate(*index)
-
-    def __setitem__(self, index, data):
-        """
-        Set data self[dates] = ... or self[dates, variants] = ...
-        """
-        if not isinstance(index, tuple):
-            index = (index, None, )
-        return self.set_data(index[0], data, index[1], )
 
     def hstack(self, *args):
         if not args:
@@ -709,18 +686,6 @@ self = Series(
         Implement the | operator
         """
         return self.hstack(other)
-
-    def __lshift__(self, other):
-        """
-        Implement the << operator
-        """
-        return self.copy().overlay_by_range(other, )
-
-    def __rshift__(self, other):
-        """
-        Implement the >> operator
-        """
-        return other.copy().overlay_by_range(self, )
 
     def trim(self):
         if self.data.size == 0:

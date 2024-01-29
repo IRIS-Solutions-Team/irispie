@@ -71,7 +71,7 @@ _COLOR_ORDER = [
 ]
 
 
-class Mixin:
+class Inlay:
     """
     """
     #[

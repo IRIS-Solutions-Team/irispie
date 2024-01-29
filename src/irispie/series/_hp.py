@@ -155,7 +155,7 @@ class _ConstrainedHodrickPrescottFilter:
     #]
 
 
-class Mixin:
+class Inlay:
     """
     Constrained Hodrick-Prescott filter mixin for Series
     """
