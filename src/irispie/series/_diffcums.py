@@ -97,31 +97,31 @@ class Inlay:
         func_name: str,
         shift: int | str = -1,
         initial: Real | _series.Series | None = None,
-        range: _dates.Ranger | None = None,
+        span: _dates.Ranger | None = None,
     ) -> None:
         """
         """
         _catch_invalid_shift(shift, )
-        range = _dates.Ranger(None, None, ) if range is None else range
-        range = range.resolve(self, )
-        direction = range.direction
+        span = _dates.Ranger(None, None, ) if span is None else span
+        span = span.resolve(self, )
+        direction = span.direction
         factory = _CUMULATIVE_FACTORY[func_name]
         cum_func = factory[direction]
         initial = factory["initial"] if initial is None else initial
         if direction == "forward":
-            self._cumulate_forward(shift, cum_func, initial, range, )
+            self._cumulate_forward(shift, cum_func, initial, span, )
         elif direction == "backward":
-            self._cumulate_backward(shift, cum_func, initial, range, )
+            self._cumulate_backward(shift, cum_func, initial, span, )
 
-    def _cumulate_forward(self, shift, cum_func, initial, range, /, ) -> None:
+    def _cumulate_forward(self, shift, cum_func, initial, span, /, ) -> None:
         """
         """
-        shifted_range = tuple(t.shift(shift, ) for t in range)
-        initial_range = _dates.Ranger(min(shifted_range), range.end_date, )
+        shifted_range = tuple(t.shift(shift, ) for t in span)
+        initial_range = _dates.Ranger(min(shifted_range), span.end_date, )
         orig = self.copy()
         self.empty()
         self.set_data(initial_range, initial)
-        for t, sh in zip(range, shifted_range):
+        for t, sh in zip(span, shifted_range):
             new_data = cum_func(self.get_data(sh, ), orig.get_data(t, ), )
             self.set_data(t, new_data)
 

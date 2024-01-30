@@ -22,7 +22,7 @@ from ..dataslates import main as _dataslates
 _dataslate_constructor = _dataslates.Dataslate.from_databox_for_slatable
 
 
-class SimulateInlay:
+class Inlay:
     """
     """
     #[

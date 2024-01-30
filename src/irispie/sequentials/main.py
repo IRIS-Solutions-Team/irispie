@@ -25,6 +25,7 @@ from . import _invariants as _invariants
 from . import _variants as _variants
 from . import _simulate as _simulate
 from . import _assigns as _assigns
+from . import _get as _get
 
 #]
 
@@ -46,8 +47,9 @@ __all__ = (
     },
 )
 class Sequential(
-    _simulate.SimulateInlay,
-    _assigns.AssignInlay,
+    _simulate.Inlay,
+    _assigns.Inlay,
+    _get.Inlay,
     #
     _has_variants.HasVariantsMixin,
 ):

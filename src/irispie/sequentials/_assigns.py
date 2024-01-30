@@ -5,13 +5,16 @@
 #[
 from __future__ import annotations
 
+import numpy as _np
+
 from .. import quantities as _quantities
 from .. import pages as _pages
+from .. import wrongdoings as _wrongdoings
 from ..databoxes import main as _databoxes
 #]
 
 
-class AssignInlay:
+class Inlay:
     """
     """
     #[
@@ -68,8 +71,30 @@ etc...
 
 ················································································
         """
+        kwargs_to_assign = {}
+        for a in args:
+            kwargs_to_assign.update(a, )
+        kwargs_to_assign.update(kwargs, )
+        #
+        kwargs_to_assign = {
+            k: v
+            for k, v in kwargs_to_assign.items()
+            if k in self._invariant.parameter_names
+        }
+        #
         for v in self._variants:
-            v.assign(*args, **kwargs, )
+            v.assign_from_dict_like(kwargs_to_assign, )
+
+    def check_missing_parameters(self, /, ) -> _databoxes.Databox:
+        """
+        """
+        parameters = self.get_parameters()
+        missing = tuple(
+            k for k, v in parameters.items()
+            if _np.isnan(_np.array(v, dtype=float)).any()
+        )
+        if missing:
+            raise _wrongdoings.IrisPieCritical(("Missing parameters", ) + missing)
 
     def get_parameters(self, /, ) -> _databoxes.Databox:
         """

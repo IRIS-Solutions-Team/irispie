@@ -37,20 +37,13 @@ class Variant:
         """
         return _co.deepcopy(self, )
 
-    def assign(self, *args, **kwargs, ) -> None:
-        """
-        """
-        for a in args:
-            self._assign_from_kwargs(**a, )
-        self._assign_from_kwargs(**kwargs, )
-
-    def _assign_from_kwargs(self, **kwargs, ) -> None:
+    def assign_from_dict_like(self, dict_like: dict[str, Any], ) -> None:
         """
         """
         existing_keys = set(self.parameters.keys())
-        custom_keys = set(kwargs.keys())
-        for n in existing_keys & custom_keys:
-            self.parameters[n] = kwargs[n]
+        custom_keys = set(dict_like.keys())
+        for n in (custom_keys & existing_keys):
+            self.parameters[n] = dict_like[n]
 
     #]
 

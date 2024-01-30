@@ -25,6 +25,7 @@ class Invariant(
     __slots__ = (
         "explanatories",
         "all_names",
+        "parameter_names",
         "_context",
         "_description",
     )
@@ -34,6 +35,7 @@ class Invariant(
         """
         self.explanatories = ()
         self.all_names = ()
+        self.parameter_names = ()
         self._context = {}
         self._description = ""
 
