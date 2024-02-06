@@ -13,7 +13,7 @@ from . import main as _databoxes
 #]
 
 
-class MergeMixin:
+class Inlay:
     """
     """
     #[

@@ -94,12 +94,12 @@ Dates: TypeAlias = _dates.Dater | Iterable[_dates.Dater] | _dates.Ranger | Ellip
 VariantsRequestType: TypeAlias = int | Iterable[int] | slice | None
 
 
-def _get_date_positions(dates, base, num_periods):
+def _get_date_positions(dates, base, num_periods, /, ):
     pos = tuple(_dates.date_index(dates, base))
     min_pos = _builtin_min((x for x in pos if x is not None), default=0)
     max_pos = _builtin_max((x for x in pos if x is not None), default=0)
     add_before = _builtin_max(-min_pos, 0)
-    add_after = _builtin_max(max_pos - num_periods, 0)
+    add_after = _builtin_max(max_pos - num_periods + 1, 0)
     pos_adjusted = [
         p + add_before if p is not None else None
         for p in pos
@@ -263,6 +263,13 @@ self = Series(
         return self.data.shape[1]
 
     @property
+    def is_singleton(self, /, ) -> bool:
+        """
+        True for time series with only one variant
+        """
+        return _has_variants.is_singleton(self.num_variants, )
+
+    @property
     def span(self, ):
         return _dates.Ranger(self.start_date, self.end_date, ) if self.start_date else ()
 
@@ -338,11 +345,15 @@ self = Series(
         /,
     ) -> None:
         dates = self._resolve_dates(dates)
+        data = (
+            _reshape_numpy_array(data, )
+            if isinstance(data, _np.ndarray) else data
+        )
         vids = self._resolve_variants(variants, )
         if not self.start_date:
             self.start_date = next(iter(dates), None, )
             self.data = self._create_periods_of_missing_values(num_rows=1, )
-        pos, add_before, add_after = _get_date_positions(dates, self.start_date, self.shape[0]-1)
+        pos, add_before, add_after = _get_date_positions(dates, self.start_date, self.shape[0], )
         self.data = self._create_expanded_data(add_before, add_after)
         if add_before:
             self.start_date -= add_before
@@ -384,7 +395,7 @@ self = Series(
             return dates, pos, variants, data
         #
         base_date = self.start_date or _builtin_min(dates, )
-        pos, add_before, add_after = _get_date_positions(dates, base_date, self.shape[0]-1)
+        pos, add_before, add_after = _get_date_positions(dates, base_date, self.shape[0], )
         data = self._create_expanded_data(add_before, add_after, )
         if not isinstance(pos, Iterable):
             pos = (pos, )
@@ -1042,7 +1053,9 @@ def _from_start_date_and_values(
         start_date if not isinstance(start_date, str)
         else _dates.Dater.from_sdmx_string(None, start_date, )
     )
-    if not isinstance(values, _np.ndarray):
+    if isinstance(values, _np.ndarray):
+        values = _reshape_numpy_array(values, )
+    else:
         values = _has_variants.iter_variants(values, )
         values = _np.column_stack(tuple(
             v for v, _ in zip(values, range(self.num_variants), )
@@ -1052,6 +1065,16 @@ def _from_start_date_and_values(
     self.trim()
     #]
 
+
+def _reshape_numpy_array(values: _np.ndarray, /, ) -> _np.ndarray:
+    """
+    """
+    #[
+    return (
+        values.reshape(values.shape[0], -1)
+        if values.ndim >= 2 else values.reshape(-1, 1)
+    )
+    #]
 
 def _broadcast_variants_if_needed(
     self: Series,

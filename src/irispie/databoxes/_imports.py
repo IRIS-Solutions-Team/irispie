@@ -54,7 +54,7 @@ class _ImportBlock:
     #]
 
 
-class ImportMixin:
+class Inlay:
     """
     """
     #[

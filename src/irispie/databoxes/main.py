@@ -92,9 +92,9 @@ _EXTENDED_RANGE_TUPLE_RESOLUTION = {
     },
 )
 class Databox(
-    _imports.ImportMixin,
+    _imports.Inlay,
     _exports.ExportMixin,
-    _merge.MergeMixin,
+    _merge.Inlay,
     _dotters.DotterMixin,
     _fred.FredMixin,
     _descriptions.DescriptionMixin,
@@ -249,6 +249,10 @@ a databox can be of any type.
     def get_num_items(self, /, ) -> int:
         """
         """
+        return len(self.keys())
+
+    @property
+    def num_items(self, /, ) -> int:
         return len(self.keys())
 
     def to_dict(self: Self) -> dict:

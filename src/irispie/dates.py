@@ -168,10 +168,10 @@ class ResolvableProtocol(Protocol, ):
 
 
 def _check_daters(first, second, ) -> None:
-    if type(first) != type(second):
-        raise _wrongdoings.IrisPieError(
-            "Cannot handle dates of different types in this context"
-        )
+    if str(type(first)) == str(type(second)):
+        return
+    message = "Cannot handle dates of different types in this context"
+    raise _wrongdoings.IrisPieError(message, )
 
 
 def _check_daters_decorate(func: Callable, ) -> Callable:
@@ -183,7 +183,8 @@ def _check_daters_decorate(func: Callable, ) -> Callable:
 
 def _check_offset(offset, ) -> None:
     if not isinstance(offset, int, ):
-        raise Exception("Date offset must be an integer")
+        message = "Date offset must be an integer"
+        raise Exception(message, )
 
 
 def _check_offset_decorator(func: Callable) -> Callable:
@@ -279,6 +280,18 @@ Dates and date ranges
         t = _dt.date.today()
         return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_ymd(t.year, t.month, t.day, )
 
+    @property
+    def start_date(self, /, ) -> Self:
+        """
+        """
+        return self
+
+    @property
+    def end_date(self, /, ) -> Self:
+        """
+        """
+        return self
+
     def to_iso_string(
         self,
         /,
@@ -334,11 +347,8 @@ Dates and date ranges
     def __iter__(self) -> Iterator[Self]:
         yield self
 
-    def _get_hash_key(self, /, ) -> tuple[int, int]:
-        return (int(self.serial), int(self.frequency), )
-
     def __hash__(self, /, ) -> int:
-        return hash(self._get_hash_key(), )
+        return hash((int(self.serial), hash(self.frequency), ))
 
     @_check_offset_decorator
     def __add__(self, other: int) -> Self:
@@ -619,7 +629,7 @@ class RegularDaterMixin:
         try:
             return DailyDater.from_ymd(*self.to_ymd(position=position, ), )
         except:
-            from IPython import embed; embed()
+            raise IrisPieCritical("Cannot convert date to daily date.")
 
     #]
 
@@ -704,6 +714,10 @@ class HalfyearlyDater(RegularDaterMixin, Dater, ):
 
 
 class QuarterlyDater(RegularDaterMixin, Dater, ):
+    """
+    """
+    #[
+
     frequency: Frequency = Frequency.QUARTERLY
     needs_resolve: bool = False
     origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.QUARTERLY)
@@ -728,6 +742,8 @@ class QuarterlyDater(RegularDaterMixin, Dater, ):
     @staticmethod
     def month_to_period(month: int, ) -> int:
         return 1+((month-1)//3)
+
+    #]
 
 
 class MonthlyDater(RegularDaterMixin, Dater, ):
@@ -1126,6 +1142,7 @@ DATER_CLASS_FROM_FREQUENCY_RESOLUTION = {
     Frequency.UNKNOWN: UnknownDater,
 }
 
+
 def daters_from_sdmx_strings(freq: Frequency, sdmx_strings: Iterable[str], ) -> Iterable[Dater]:
     """
     """
@@ -1143,8 +1160,8 @@ def daters_from_iso_strings(freq: Frequency, iso_strings: Iterable[str], ) -> It
 def get_encompassing_span(*args: ResolutionContextProtocol, ) -> Ranger:
     """
     """
-    start_dates = tuple( _get_date(x, "start_date", min, ) for x in args if hasattr(x, "start_date") )
-    end_dates = tuple( _get_date(x, "end_date", max, ) for x in args if hasattr(x, "end_date") )
+    start_dates = tuple(_get_date(x, "start_date", min, ) for x in args)
+    end_dates = tuple( _get_date(x, "end_date", max, ) for x in args)
     start_dates = tuple(d for d in start_dates if d is not None)
     end_dates = tuple(d for d in end_dates if d is not None)
     start_date = min(start_dates) if start_dates else None

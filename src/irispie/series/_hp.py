@@ -180,7 +180,7 @@ def _data_hpf(
     log: bool = False,
     level: _series.Series | None = None,
     change: _series.Series | None = None,
-) -> tuple[_np.ndarray, _np.ndarray, ]:
+) -> tuple[_dates.Dater, _np.ndarray, _np.ndarray]:
     """
     Hodrick-Prescott filter run on a multi-variant data matrix
     """
@@ -212,10 +212,22 @@ def _data_hpf(
         )
         trend_data.append(trend_data_variant, )
         gap_data.append(gap_data_variant, )
+    #
     trend_data = _np.hstack(trend_data, )
     gap_data = _np.hstack(gap_data, )
     #
-    new_start_date = from_to[0]
+    if span:
+        new_start_date = min(span, )
+        new_end_date = max(span, )
+        clip_start = new_start_date - from_to[0]
+        clip_end = new_end_date - from_to[0] + 1
+        trend_data = trend_data[clip_start:clip_end, ...]
+        gap_data = gap_data[clip_start:clip_end, ...]
+    else:
+        new_start_date = None
+        trend_data = trend_data[[], ...]
+        gap_data = gap_data[[], ...]
+    #
     return new_start_date, trend_data, gap_data
     #]
 
