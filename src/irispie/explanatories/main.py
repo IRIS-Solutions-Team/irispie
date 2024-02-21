@@ -81,7 +81,7 @@ class Explanatory:
         """
         self.equation.finalize(name_to_qid, )
         self.lhs_qid = name_to_qid[self.lhs_name]
-        self.res_qid = name_to_qid[self.residual_name] if self.residual_name is not None else None
+        self.residual_qid = name_to_qid[self.residual_name] if self.residual_name is not None else None
         rhs_xtring, *_ = _equations.xtring_from_human(self._rhs_human, name_to_qid, )
         lhs_xtring, *_ = _equations.xtring_from_human(self._lhs_human, name_to_qid, )
         lhs_token = _incidence.Token(self.lhs_qid, 0, )
@@ -210,12 +210,15 @@ class Explanatory:
     ) -> dict[str, Any]:
         """
         """
-        row = self.lhs_qid
-        data[row, columns] = self.eval_level(data, columns, )
-        is_finite = _np.isfinite(data[row, columns])
+        lhs_row = self.lhs_qid
+        residual_row = self.residual_qid
+        data[lhs_row, columns] = self.eval_level(data, columns, )
+        is_finite = _np.isfinite(data[lhs_row, columns])
         return {
             "simulated_name": self.lhs_name,
             "is_finite": is_finite,
+            "lhs_value": data[lhs_row, columns],
+            "residual_value": data[residual_row, columns] if residual_row is not None else None,
         }
 
     def exogenize(
@@ -228,13 +231,15 @@ class Explanatory:
         """
         """
         lhs_row = self.lhs_qid
-        res_row = self.res_qid
+        residual_row = self.residual_qid
         data[lhs_row, columns] = values
-        data[res_row, columns] = self.eval_residual(data, columns, )
-        is_finite = _np.isfinite(data[res_row, columns])
+        data[residual_row, columns] = self.eval_residual(data, columns, )
+        is_finite = _np.isfinite(data[residual_row, columns])
         return {
             "simulated_name": self.residual_name,
             "is_finite": is_finite,
+            "lhs_value": data[lhs_row, columns],
+            "residual_value": data[residual_row, columns],
         }
 
     #]

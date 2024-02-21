@@ -1191,6 +1191,20 @@ def daters_from_to(
     return tuple(dater_class(x) for x in serials)
 
 
+def ensure_dater(
+    dater_or_string: _dates.Dater | str,
+    frequency: _dates.Frequency | None = None,
+) -> _dates.Dater:
+    """
+    """
+    #[
+    return (
+        dater_or_string if not isinstance(dater_or_string, str)
+        else Dater.from_sdmx_string(frequency, dater_or_string, )
+    )
+    #]
+
+
 def _is_dater(x: Any, ) -> bool:
     return isinstance(x, Dater, )
 

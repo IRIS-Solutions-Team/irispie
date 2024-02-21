@@ -5,9 +5,11 @@
 #[
 from __future__ import annotations
 
-import dataclasses as _dc
 from typing import (Callable, )
 from numbers import (Real, )
+import dataclasses as _dc
+import copy as _cp
+import numpy as _np
 
 from .. import dates as _dates
 from .. import has_variants as _has_variants
@@ -23,7 +25,6 @@ class Invariant:
     """
     #[
 
-    missing_names: tuple[str, ...] | None = None
     descriptions: Iterable[str] | None = None
     boolex_logly: tuple[bool, ...] | None = None
     index_base_columns: tuple[int, ...] | None = None
@@ -34,13 +35,12 @@ class Invariant:
 
     def __init__(
         self,
-        databox: _databoxes.Databox,
         names: Iterable[str],
         dates: Iterable[_dates.Dater],
         /,
         *,
-        base_columns: Iterable[int] = None,
-        descriptions: dict[str, str | None] | None = None,
+        base_columns: Iterable[int] | None = None,
+        descriptions: Iterable[str | None] | None = None,
         scalar_names: Iterable[str] | None = None,
         qid_to_logly: dict[int, bool | None] | None = None,
         min_max_shift: tuple[int, int] = (0, 0),
@@ -48,8 +48,8 @@ class Invariant:
         """
         """
         self.names = tuple(names)
-        self.dates = dates
-        self.missing_names = tuple(databox.get_missing_names(self.names, ))
+        self.dates = tuple(_dates.ensure_dater(d) for d in dates)
+        base_columns = base_columns or ()
         self.index_base_columns = tuple(i in base_columns for i in range(self.num_periods))
         self._populate_descriptions(descriptions, )
         self._populate_boolex_logly(qid_to_logly, )
@@ -98,15 +98,14 @@ class Invariant:
 
     def _populate_descriptions(
         self,
-        descriptions: dict[str, str] | None,
+        descriptions: Iterable[str | None] | None,
     ) -> None:
         """
         """
-        descriptions = descriptions or {}
-        self.descriptions = tuple(
-            descriptions.get(n, "") or ""
-            for n in self.names
-        )
+        if descriptions is None:
+            self.descriptions = tuple("" for _ in self.names)
+        else:
+            self.descriptions = tuple((d or "") for d in descriptions)
 
     def _populate_boolex_logly(
         self,

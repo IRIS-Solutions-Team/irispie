@@ -179,6 +179,7 @@ variants of the data, stored as mutliple columns.
         description: str = "",
         start_date: _dates.Dater | None = None,
         dates: Iterable[_dates.Dater] | None = None,
+        frequency: _dates.Frequency | None = None,
         values: Any | None = None,
         func: Callable | None = None,
     ) -> None:
@@ -227,7 +228,7 @@ self = Series(
         self.metadata = {}
         self._description = description
         test = (x is not None for x in (start_date, dates, values, func))
-        _SERIES_FACTORY.get(tuple(test), _invalid_constructor)(self, start_date=start_date, dates=dates, values=values, func=func, )
+        _SERIES_FACTORY.get(tuple(test), _invalid_constructor)(self, start_date=start_date, dates=dates, frequency=frequency, values=values, func=func, )
 
     def reset(self, /, ) -> None:
         self.__init__(
@@ -1008,6 +1009,7 @@ def _from_dates_and_values(
     self,
     dates: Iterable[_dates.Dater],
     values: _np.ndarray | Iterable,
+    frequency: _dates.Frequency | None = None,
     **kwargs,
 ) -> None:
     """
@@ -1016,6 +1018,7 @@ def _from_dates_and_values(
     # values = _has_variants.iter_variants(values, )
     # num_variants = values.shape[1] if hasattr(values, "shape") else 1
     # self.empty(num_variants=num_variants, )
+    dates = tuple(( _dates.ensure_dater(d, frequency=frequency, ) for d in dates ))
     self.set_data(dates, values, )
     #]
 
@@ -1024,13 +1027,14 @@ def _from_dates_and_func(
     self,
     dates: Iterable[_dates.Dater],
     func: Callable,
+    frequency: _dates.Frequency | None = None,
     **kwargs,
 ) -> Self:
     """
     Create a new time series from dates and a function
     """
     #[
-    dates = tuple(dates)
+    dates = tuple(( _dates.ensure_dater(d, frequency=frequency, ) for d in dates ))
     data = [
         [func() for j in range(self.num_variants)]
         for i in range(len(dates))
@@ -1044,15 +1048,13 @@ def _from_start_date_and_values(
     self,
     start_date: _dates.Dater,
     values: _np.ndarray | Iterable,
+    frequency: _dates.Frequency | None = None,
     **kwargs,
 ) -> None:
     """
     """
     #[
-    self.start_date = (
-        start_date if not isinstance(start_date, str)
-        else _dates.Dater.from_sdmx_string(None, start_date, )
-    )
+    self.start_date = _dates.ensure_dater(start_date, frequency=frequency, )
     if isinstance(values, _np.ndarray):
         values = _reshape_numpy_array(values, )
     else:
@@ -1075,6 +1077,7 @@ def _reshape_numpy_array(values: _np.ndarray, /, ) -> _np.ndarray:
         if values.ndim >= 2 else values.reshape(-1, 1)
     )
     #]
+
 
 def _broadcast_variants_if_needed(
     self: Series,

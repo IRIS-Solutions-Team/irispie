@@ -68,6 +68,29 @@ class Dataslate(
         return self
 
     @classmethod
+    def nan_from_names_dates(
+        klass,
+        names: Iterable[str],
+        dates: Iterable[_dates.Dater],
+        /,
+        num_variants: int = 1,
+        **kwargs,
+    ) -> Iterator[Self]:
+        """
+        """
+        names = tuple(names or databox.keys())
+        dates = tuple(dates)
+        num_names = len(names)
+        num_dates = len(dates)
+        self = klass()
+        self._invariant = _invariants.Invariant(names, dates, **kwargs, )
+        self._variants = [
+            _variants.Variant.nan_data_array(self._invariant, )
+            for _ in range(num_variants, )
+        ]
+        return self
+
+    @classmethod
     def from_databox(
         klass,
         databox: _databoxes.Databox | dict,
@@ -78,7 +101,7 @@ class Dataslate(
         fallbacks: dict[str, Number] | None = None,
         overwrites: dict[str, Number] | None = None,
         **kwargs,
-    ) -> Iterator[Self]:
+    ) -> Self:
         """
         """
         names = tuple(names or databox.keys())
@@ -109,15 +132,15 @@ class Dataslate(
         )
         #
         self = klass()
-        self._invariant = _invariants.Invariant(databox, names, dates, **kwargs, )
-        self._variants = []
-        for vid, databox_v, fallbacks_v, overwrites_v in zipped:
-            new_variant = _variants.Variant(
+        self._invariant = _invariants.Invariant(names, dates, **kwargs, )
+        self._variants = [
+            _variants.Variant.from_databox_variant(
                 databox_v, self._invariant,
                 fallbacks=fallbacks_v,
                 overwrites=overwrites_v,
             )
-            self._variants.append(new_variant, )
+            for vid, databox_v, fallbacks_v, overwrites_v in zipped
+        ]
         return self
 
     @classmethod
@@ -129,7 +152,7 @@ class Dataslate(
         /,
         extra_databox_names: Iterable[str] | None = None,
         **kwargs,
-    ) -> Iterator[Self]:
+    ) -> Self:
         """
         """
         names = tuple(slatable.get_databox_names())
@@ -148,10 +171,6 @@ class Dataslate(
             qid_to_logly=qid_to_logly,
             **kwargs,
         )
-
-    @property
-    def missing_names(self, /, ) -> tuple[str, ...] | None:
-        return self._invariant.missing_names
 
     @property
     def descriptions(self, /, ) -> tuple[str, ...] | None:
@@ -190,6 +209,20 @@ class Dataslate(
         """
         """
         return self._invariant.min_max_shift[1]
+
+    def copy(self, /, ) -> Self:
+        """
+        """
+        new = self.skeleton(self, )
+        new._variants = [i.copy() for i in self._variants]
+        return new
+
+    def nan_copy(self, /, ) -> Self:
+        """
+        """
+        new = self.skeleton(self, )
+        new._variants = [i.nan_copy() for i in self._variants]
+        return new
 
     def remove_initial_data(self, /, ) -> None:
         """
@@ -416,23 +449,6 @@ def _slate_value_variant_iterator(
         return _iterators.exhaust_then_last(value, )
     else:
         return _iterators.exhaust_then_last([], value, )
-    #]
-
-
-def _retrieve_descriptions(
-    databox: _databoxes.Databox | dict,
-    names: Iterable[str],
-) -> tuple[str]:
-    """
-    """
-    #[
-    def _retrieve_item_description(n: str, /, ) -> str:
-        if n in databox and hasattr(databox[n], "get_description"):
-            return databox[n].get_description()
-        else:
-            return None
-    #
-    return { n: _retrieve_item_description(n, ) for n in names }
     #]
 
 

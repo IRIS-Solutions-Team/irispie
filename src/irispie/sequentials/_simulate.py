@@ -9,6 +9,7 @@ from typing import Any
 from numbers import Real
 import numpy as _np
 import itertools as _it
+import wlogging as _wl
 
 from .. import pages as _pages
 from .. import wrongdoings as _wrongdoings
@@ -19,6 +20,7 @@ from ..dataslates import main as _dataslates
 #]
 
 
+_LOGGER_NAME = "Sequential.simulate"
 _dataslate_constructor = _dataslates.Dataslate.from_databox_for_slatable
 
 
@@ -41,6 +43,7 @@ class Inlay:
         num_variants: int | None = None,
         remove_initial: bool = True,
         remove_terminal: bool = True,
+        logging_level: int = _wl.INFO,
     ) -> tuple[_databoxes.Databox, dict[str, Any]]:
         """
 ......................................................................
@@ -97,6 +100,7 @@ simulating the model.
 
 ......................................................................
         """
+        logger = _wl.get_colored_logger(_LOGGER_NAME, level=logging_level, )
         num_variants = self.num_variants if num_variants is None else num_variants
         base_dates = tuple(span, )
         extra_databox_names = None
@@ -119,8 +123,9 @@ simulating the model.
         #=======================================================================
         # Main loop over variants
         for vid, model_v, dataslate_v in zipped:
-            model_v._simulate(
+            model_v._simulate_v(
                 dataslate_v,
+                logger,
                 plan=plan,
                 when_nonfinite=when_nonfinite,
                 execution_order=execution_order,
@@ -147,9 +152,10 @@ simulating the model.
         #
         return out_db, info
 
-    def _simulate(
+    def _simulate_v(
         self,
         ds: _dataslates.Dataslate,
+        logger: _wl.Logger,
         /,
         *,
         plan,
@@ -170,10 +176,7 @@ simulating the model.
         execution_iterator_creator = _CREATE_EXECUTION_ITERATOR[execution_order]
         columns_dates_equations = execution_iterator_creator(columns_dates, self.iter_equations(), )
         for (column, date), equation in columns_dates_equations:
-            transform = (
-                _get_transform(plan, equation.lhs_name, date, )
-                if not equation.is_identity else None
-            )
+            transform = _get_transform(plan, equation, date)
             is_exogenized, implied_value = _is_exogenized(
                 equation.lhs_name,
                 transform,
@@ -184,6 +187,11 @@ simulating the model.
             #
             simulation_function = equation.simulate if not is_exogenized else equation.exogenize
             info = simulation_function(working_data, column, implied_value, )
+            logger.debug(
+                f"{simulation_function.__name__}"
+                f" {equation.lhs_name}[{date}]={info['lhs_value']}"
+                f" (equation.residual_name[{date}]={info['residual_value']})"
+            )
             #
             _catch_nonfinite(
                 when_nonfinite_stream,
@@ -198,14 +206,16 @@ simulating the model.
 
 def _get_transform(
     plan: _plans.Plan | None,
-    lhs_name: str,
+    equation: _explanatories.Explanatory,
     date: _dates.Dater,
 ) -> _plans.Transform | None:
     """
     """
-    return \
-        plan.get_exogenized_point(lhs_name, date, ) \
-        if plan is not None else None
+    return (
+        plan.get_exogenized_point(equation.lhs_name, date, )
+        if plan and not equation.is_identity
+        else None
+    )
 
 
 def _is_exogenized(
@@ -243,7 +253,7 @@ def _catch_nonfinite(
     """
     """
     #[
-    if _np.all(is_finite, ):
+    if is_finite.all():
         return
     message = f"{simulated_name}[{date}]"
     stream.add(message, )

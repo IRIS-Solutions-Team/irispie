@@ -506,6 +506,18 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         return self._invariant._min_shift, self._invariant._max_shift
 
+    @property
+    def max_lag(self, /, ) -> int:
+        """
+        """
+        return self._invariant._min_shift
+
+    @property
+    def max_lead(self, /, ) -> int:
+        """
+        """
+        return self._invariant._max_shift
+
     def get_databox_names(self, /, ) -> tuple[str, ...]:
         """
         """

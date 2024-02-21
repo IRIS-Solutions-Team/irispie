@@ -45,6 +45,16 @@ class Inlay:
         """
         self._shifted_op(shift, lambda x, y: x - y, )
 
+    def adiff(
+        self,
+        /,
+    ) -> None:
+        """
+        """
+        shift = -1
+        factor = self.frequency.value or 1
+        self._shifted_op(shift, lambda x, y: factor*(x - y), )
+
     def diff_log(
         self,
         shift: int | str = -1,
@@ -53,6 +63,16 @@ class Inlay:
         """
         """
         self._shifted_op(shift, lambda x, y: _np.log(x) - _np.log(y), )
+
+    def adiff_log(
+        self,
+        /,
+    ) -> None:
+        """
+        """
+        shift = -1
+        factor = self.frequency.value or 1
+        self._shifted_op(shift, lambda x, y: factor*(_np.log(x) - _np.log(y)), )
 
     def roc(
         self,
@@ -63,6 +83,16 @@ class Inlay:
         """
         self._shifted_op(shift, lambda x, y: x/y, )
 
+    def aroc(
+        self,
+        /,
+    ) -> None:
+        """
+        """
+        shift = -1
+        factor = self.frequency.value or 1
+        self._shifted_op(shift, lambda x, y: (x/y)**factor, )
+
     def pct(
         self,
         shift: int | str = -1,
@@ -71,6 +101,16 @@ class Inlay:
         """
         """
         self._shifted_op(shift, lambda x, y: 100*(x/y - 1), )
+
+    def apct(
+        self,
+        /,
+    ) -> None:
+        """
+        """
+        shift = -1
+        factor = self.frequency.value or 1
+        self._shifted_op(shift, lambda x, y: 100*((x/y)**factor - 1), )
 
     def cum_diff(self, *args, **kwargs, ) -> None:
         """
@@ -144,7 +184,7 @@ class Inlay:
     #]
 
 
-for n in ("diff", "diff_log", "pct", "roc", ):
+for n in ("diff", "adiff", "diff_log", "adiff_log", "pct", "apct", "aroc", "roc", ):
     exec(_functionalize.FUNC_STRING.format(n=n, ), globals(), locals(), )
     __all__ += (n, )
 
@@ -183,4 +223,10 @@ def _catch_invalid_shift(shift: int | str, ):
     """
     if not isinstance(shift, str) and (int(shift) != shift or shift >= 0):
         raise ValueError("Time shift must be a negative integer or a string")
+
+
+def _roc_from_pct(pct: Real, /, ) -> Real:
+    """
+    """
+    return 1 + pct/100
 

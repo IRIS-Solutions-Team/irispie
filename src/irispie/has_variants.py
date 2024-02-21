@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from typing import (Any, Self, Iterable, Iterator, TypeVar, Protocol, )
 from numbers import (Number, )
-import copy as _co
 import numpy as _np
 
 from .conveniences import iterators as _iterators
@@ -85,7 +84,7 @@ class HasVariantsMixin:
         """
         """
         for i in range(self.num_variants, new_num):
-            self._variants.append(self._variants[-1].copy())
+            self._variants.append(self._variants[-1].copy(), )
 
     def broadcast_variants(self, other: Self, /, ) -> None:
         """

@@ -171,7 +171,7 @@ a databox can be of any type.
         dates: Iterable[_dates.Date] | None = None,
         start_date: _dates.Date | None = None,
         target_databox: Self | None = None,
-        array_orientation: Literal["vertical", "horizontal", ] = "vertical",
+        orientation: Literal["vertical", "horizontal", ] = "vertical",
     ) -> Self:
         """
 ......................................................................
@@ -180,9 +180,9 @@ a databox can be of any type.
 
 ......................................................................
         """
-        arra = array if array_orientation == "horizontal" else array.T,
+        array = array if orientation == "horizontal" else array.T
         series_constructor = _get_series_constructor(start_date, dates, )
-        return klass._from_vertical_array_and_constructor(
+        return klass._from_horizontal_array_and_constructor(
             array,
             names,
             series_constructor,
@@ -208,12 +208,9 @@ a databox can be of any type.
             descriptions if descriptions is not None
             else _it.repeat("", )
         )
-        for name, data, description in zip(names, array, descriptions, ):
-            if not name:
-                continue
-            if data.ndim == 1:
-                data = data.reshape(-1, 1)
-            self[name] = constructor(data, description=description, )
+        for name, values, description in zip(names, array, descriptions, ):
+            print(name, type(values), description, )
+            # self[name] = series_constructor(values=values, description=description, )
         return self
 
     def iter_variants(

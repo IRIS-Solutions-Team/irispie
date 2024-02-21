@@ -5,7 +5,6 @@
 #[
 from __future__ import annotations
 
-import dataclasses as _dc
 import numpy as _np
 
 from .. import dates as _dates
@@ -14,17 +13,27 @@ from . import _invariants as _invariants
 #]
 
 
-@_dc.dataclass(slots=True, )
 class Variant:
     """
     """
     #[
 
-    data: _np.ndarray | None = None
+    __slots__ = (
+        "data",
+    )
 
     def __init__(
         self,
-        databox: _databoxes.Databox | dict,
+        /,
+    ) -> None:
+        """
+        """
+        self.data = None
+
+    @classmethod
+    def from_databox_variant(
+        klass,
+        databox_v: _databoxes.Databox | dict,
         invariant: _invariants.Invariant,
         /,
         fallbacks: dict[str, Number] | None = None,
@@ -34,15 +43,40 @@ class Variant:
         """
         def _create_nan_vector() -> _np.ndarray:
             return _np.full((invariant.num_periods, ), _np.nan, dtype=_np.float64, )
-        data = []
+        self = klass()
+        data_list = []
         for n in invariant.names:
             new_data = _create_nan_vector()
-            if n in databox:
-                new_data[:] = databox[n]
-            data.append(new_data, )
-        self.data = _np.vstack(data, )
+            if n in databox_v:
+                new_data[:] = databox_v[n]
+            data_list.append(new_data, )
+        self.data = _np.vstack(data_list, )
         self._fill_fallbacks(fallbacks, invariant, )
         self._fill_overwrites(overwrites, invariant, )
+        return self
+
+    @classmethod
+    def nan_data_array(
+        klass,
+        invariant: _invariants.Invariant,
+        /,
+    ) -> Self:
+        """
+        """
+        self = klass()
+        self.data = _np.full((invariant.num_names, invariant.num_periods, ), _np.nan, dtype=_np.float64, )
+        return self
+
+    def nan_copy(self, /, ) -> Self:
+        """
+        """
+        data_array = _np.full_like(variant.data, _np.nan, )
+        return type(self).from_data_array(data_array, )
+
+    def copy(self, /) -> Self:
+        """
+        """
+        return type(self).from_data_array(self.data.copy(), )
 
     def remove_periods_from_start(
         self,
