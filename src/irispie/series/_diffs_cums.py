@@ -112,6 +112,57 @@ class Inlay:
         factor = self.frequency.value or 1
         self._shifted_op(shift, lambda x, y: 100*((x/y)**factor - 1), )
 
+    def roc_from_pct(
+        self,
+        /,
+    ) -> None:
+        """
+        """
+        self.data = (1 + self.data/100)
+
+    def pct_from_roc(
+        self,
+        /,
+    ) -> None:
+        """
+        """
+        self.data = 100*(self.data - 1)
+
+    def roc_from_pct(
+        self,
+        /,
+    ) -> None:
+        """
+        """
+        self.data = 1 + self.data/100
+
+    def pct_from_apct(
+        self,
+        /,
+    ) -> None:
+        """
+        """
+        factor = self.frequency.value or 1
+        self.data = 100*((1 + self.data/100)**(1/factor) - 1)
+
+    def roc_from_apct(
+        self,
+        /,
+    ) -> None:
+        """
+        """
+        factor = self.frequency.value or 1
+        self.data = (1 + self.data/100)**(1/factor)
+
+    def roc_from_aroc(
+        self,
+        /,
+    ) -> None:
+        """
+        """
+        factor = self.frequency.value or 1
+        self.data = self.data**factor
+
     def cum_diff(self, *args, **kwargs, ) -> None:
         """
         """
@@ -184,7 +235,8 @@ class Inlay:
     #]
 
 
-for n in ("diff", "adiff", "diff_log", "adiff_log", "pct", "apct", "aroc", "roc", ):
+attributes = (n for n in dir(Inlay) if not n.startswith("_"))
+for n in attributes:
     exec(_functionalize.FUNC_STRING.format(n=n, ), globals(), locals(), )
     __all__ += (n, )
 
@@ -213,11 +265,6 @@ _CUMULATIVE_FACTORY = {
 }
 
 
-for n in ("cum_diff", "cum_diff_log", "cum_pct", "cum_roc", ):
-    exec(_functionalize.FUNC_STRING.format(n=n, ), globals(), locals(), )
-    __all__ += (n, )
-
-
 def _catch_invalid_shift(shift: int | str, ):
     """
     """
@@ -229,4 +276,5 @@ def _roc_from_pct(pct: Real, /, ) -> Real:
     """
     """
     return 1 + pct/100
+
 

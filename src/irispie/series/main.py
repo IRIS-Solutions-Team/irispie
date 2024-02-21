@@ -25,7 +25,7 @@ from .. import wrongdoings as _wrongdoings
 from .. import has_variants as _has_variants
 from .. import pages as _pages
 
-from . import _diffcums
+from . import _diffs_cums
 from . import _filling
 from . import _moving
 from . import _conversions
@@ -37,8 +37,8 @@ from . import _plotly
 from . import _views
 from . import _functionalize
 
-from ._diffcums import __all__ as _diffcums__all__
-from ._diffcums import *
+from ._diffs_cums import __all__ as _diffs_cums__all__
+from ._diffs_cums import *
 
 from ._filling import __all__ as _fillings__all__
 from ._filling import *
@@ -83,7 +83,7 @@ FUNCTION_ADAPTATIONS = tuple(set(
 __all__ = (
     ("Series", "shift", )
     + _conversions__all__
-    + _diffcums__all__
+    + _diffs_cums__all__
     + _fillings__all__
     + _hp__all__
     + _moving__all__
@@ -127,7 +127,7 @@ class Series(
     # Inlays
     _indexing.Inlay,
     _conversions.Inlay,
-    _diffcums.Inlay,
+    _diffs_cums.Inlay,
     _filling.Inlay,
     _hp.Inlay,
     _moving.Inlay,
