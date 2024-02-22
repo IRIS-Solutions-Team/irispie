@@ -27,6 +27,7 @@ __all__ = [
     "Dater", "daters_from_sdmx_strings", "daters_from_iso_strings", "daters_from_to",
     "YEARLY", "HALFYEARLY", "QUARTERLY", "MONTHLY", "WEEKLY", "DAILY",
     "DATER_CLASS_FROM_FREQUENCY_RESOLUTION",
+    "convert_to_new_freq",
 ]
 
 
@@ -292,6 +293,13 @@ Dates and date ranges
         """
         return self
 
+    def convert(self, new_freq: Frequency, *args ,**kwargs, ) -> Dater:
+        """
+        """
+        year, month, day = self.to_ymd(*args, **kwargs, )
+        new_class = DATER_CLASS_FROM_FREQUENCY_RESOLUTION[new_freq]
+        return new_class.from_ymd(year, month, day, )
+
     def to_iso_string(
         self,
         /,
@@ -317,14 +325,6 @@ Dates and date ranges
 
     def resolve(self, context: ResolutionContextProtocol) -> Self:
         return self
-
-    def convert(self, new_freq: Frequency, *args ,**kwargs, ) -> Dater:
-        """
-        Convert date to a new frequency
-        """
-        year, month, day = self.to_ymd(*args, **kwargs, )
-        new_class = DATER_CLASS_FROM_FREQUENCY_RESOLUTION[new_freq]
-        return new_class.from_ymd(year, month, day, )
 
     def __bool__(self) -> bool:
         return not self.needs_resolve
@@ -1207,4 +1207,13 @@ def ensure_dater(
 
 def _is_dater(x: Any, ) -> bool:
     return isinstance(x, Dater, )
+
+
+def convert_to_new_freq(self, new_freq: Frequency, *args ,**kwargs, ) -> Dater:
+    """
+    Convert date to a new frequency
+    """
+    year, month, day = self.to_ymd(*args, **kwargs, )
+    new_class = DATER_CLASS_FROM_FREQUENCY_RESOLUTION[new_freq]
+    return new_class.from_ymd(year, month, day, )
 
