@@ -512,6 +512,9 @@ class KalmanMixin:
             a2 = a0 + P0 @ r
             _store_mean(krv.smooth_mean_array, (curr_qids, t), Ua @ a2, curr_pos, )
 
+            y2 = krv.y1_array[:, t]
+            _store_mean(krv.smooth_mean_array, (y_qids, t), y2, )
+
             Pa_cov_u = Pa @ cov_u
             u2 = u0 + Pa_cov_u.T @ r
             _store_mean(krv.smooth_mean_array, (u_qids, t), u2, )
