@@ -92,6 +92,7 @@ class Inlay:
         traces: tuple(dict[str, Any], ) | None = None,
         freeze_span: bool = False,
         reverse_plot_order: bool = False,
+        round=None,
     ) -> _pg.Figure:
         """
         """
@@ -120,7 +121,7 @@ class Inlay:
         for i, color, ts in loop:
             traces_settings = {
                 "x": date_strings,
-                "y": data[:, i],
+                "y": data[:, i] if round is None else data[:, i].round(round, ),
                 "name": legend[i] if legend else None,
                 "showlegend": show_legend,
                 "xhoverformat": date_format,

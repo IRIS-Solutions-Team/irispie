@@ -221,7 +221,10 @@ class Dataslate(
         """
         """
         new = self.skeleton(self, )
-        new._variants = [i.nan_copy() for i in self._variants]
+        new._variants = [
+            type(i).nan_data_array(new._invariant, )
+            for i in self._variants
+        ]
         return new
 
     def remove_initial_data(self, /, ) -> None:
@@ -266,46 +269,19 @@ class Dataslate(
         """
         return ( v.retrieve_record(record_id, ) for v in self._variants )
 
-    for n in ["num_periods", "from_to", "num_row", "base_slice", "base_columns"]:
+    for n in ["num_periods", "from_to", "num_row", "base_slice", "base_columns", "nonbase_columns", ]:
         exec(f"@property\ndef {n}(self, /, ): return self._invariant.{n}", )
 
     def get_data_variant(
         self,
-        vid: int,
+        vid: int | None = None,
     ) -> _np.ndarray:
         """
         """
+        vid = vid or 0
         return self._variants[vid].data
 
-    # @property
-    # def num_periods(self, /, ) -> int:
-    #     """
-    #     """
-    #     return self._invariant.num_periods
-
-    # @property
-    # def from_to(self, /, ) -> tuple[_dates.Dater, _dates.Dater]:
-    #     """
-    #     """
-    #     return self._invariant.from_to
-
-    # @property
-    # def num_rows(self, /, ) -> int:
-    #     """
-    #     """
-    #     return self._invariant.num_names
-
-    # @property
-    # def base_slice(self, /, ) -> slice:
-    #     """
-    #     """
-    #     return self._invariant.base_slice
-
-    # @property
-    # def base_columns(self, /, ) -> tuple[int, ...]:
-    #     """
-    #     """
-    #     return self._invariant.base_columns
+    get_data_array_variant = get_data_variant
 
     def remove_initial(self, /, ) -> None:
         """

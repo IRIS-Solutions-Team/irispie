@@ -81,6 +81,12 @@ class Invariant:
         return tuple(i for i in range(self.num_periods) if self.index_base_columns[i])
 
     @property
+    def nonbase_columns(self, /, ) -> tuple[int]:
+        """
+        """
+        return tuple(i for i in range(self.num_periods) if not self.index_base_columns[i])
+
+    @property
     def base_slice(self, /, ) -> slice:
         """
         """

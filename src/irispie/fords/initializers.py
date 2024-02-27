@@ -14,7 +14,7 @@ from . import covariances as _covariances
 #]
 
 
-_DEFAULT_DIFFUSE_SCALE = 1e8
+_DEFAULT_DIFFUSE_SCALE = 1e7
 
 
 def initialize(
@@ -34,6 +34,7 @@ def initialize(
     return (
         _initialize_mean(solution, ),
         _initialize_mse(solution, cov_u, diffuse_scale, ),
+        diffuse_scale,
     )
 
 

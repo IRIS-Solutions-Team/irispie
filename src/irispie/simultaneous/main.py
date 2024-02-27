@@ -30,6 +30,7 @@ from ..fords import solutions as _solutions
 from ..fords import steadiers as _fs
 from ..fords import descriptors as _descriptors
 from ..fords import systems as _systems
+from ..fords import kalmans as _kalmans
 
 from . import invariants as _invariants
 from . import variants as _variants
@@ -66,6 +67,7 @@ class Simultaneous(
     _simulate.SimulateMixin,
     _steady.SteadyInlay,
     _covariances.CoverianceMixin,
+    _kalmans.KalmanMixin,
     _get.GetMixin,
 ):
     """
@@ -301,6 +303,18 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """==Number of measurement equations=="""
         return self._invariant.num_measurement_equations
 
+    @property
+    @_pages.reference(category="property", )
+    def max_lag(self, /, ) -> int:
+        """==Maximul lag in the model (negative or zero)=="""
+        return self._invariant._min_shift
+
+    @property
+    @_pages.reference(category="property", )
+    def max_lead(self, /, ) -> int:
+        """==Maximul lead in the model (positive or zero)=="""
+        return self._invariant._max_shift
+
     def create_name_to_qid(self, /, ) -> dict[str, int]:
         return _quantities.create_name_to_qid(self._invariant.quantities)
 
@@ -505,18 +519,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         """
         return self._invariant._min_shift, self._invariant._max_shift
-
-    @property
-    def max_lag(self, /, ) -> int:
-        """
-        """
-        return self._invariant._min_shift
-
-    @property
-    def max_lead(self, /, ) -> int:
-        """
-        """
-        return self._invariant._max_shift
 
     def get_databox_names(self, /, ) -> tuple[str, ...]:
         """

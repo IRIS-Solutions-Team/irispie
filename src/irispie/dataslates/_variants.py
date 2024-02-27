@@ -67,12 +67,6 @@ class Variant:
         self.data = _np.full((invariant.num_names, invariant.num_periods, ), _np.nan, dtype=_np.float64, )
         return self
 
-    def nan_copy(self, /, ) -> Self:
-        """
-        """
-        data_array = _np.full_like(variant.data, _np.nan, )
-        return type(self).from_data_array(data_array, )
-
     def copy(self, /) -> Self:
         """
         """

@@ -727,6 +727,11 @@ self = Series(
         if data.shape[1] != self.data.shape[1]:
             raise Exception("Time series data being assigned must preserve the number of variants")
 
+    def __bool__(self, /, ):
+        """
+        """
+        return self.data.size > 0
+
     def __neg__(self):
         """
         -self
@@ -836,7 +841,7 @@ self = Series(
 
     def apply(self, func, /, *args, **kwargs, ):
         new_data = func(self.data, *args, **kwargs, )
-        axis = kwargs.get("axis", )
+        axis = kwargs.get("axis", None, )
         if new_data.shape == self.data.shape:
             new = self.copy()
             new._replace_data(new_data, )
