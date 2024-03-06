@@ -294,10 +294,10 @@ class SteadyInlay:
         if not all_status:
             message = "Invalid steady state"
             _wrongdoings.raise_as(when_fails, message)
-        details = tuple(
+        details = [
             {"discrepancies": d, "max_abs_discrepancy": m, "is_valid": s}
             for d, m, s in zip(dis, max_abs_dis, status)
-        )
+        ]
         return all_status, details
 
     #
