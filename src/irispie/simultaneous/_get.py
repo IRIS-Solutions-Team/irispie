@@ -145,7 +145,10 @@ class GetMixin:
             _incidence.Token(t.qid, t.shift-1)
             for t in self._invariant.dynamic_descriptor.solution_vectors.get_initials()
         ]
-        return _incidence.print_tokens(initial_tokens, self.create_qid_to_name(), )
+        qid_to_name = self.create_qid_to_name()
+        qid_to_logly = {} # [^1]
+        return _incidence.print_tokens(initial_tokens, qid_to_name, qid_to_logly, )
+        # [^1] Do not wrap initial conditions in log(...)
 
     def generate_steady_items(
         self,
@@ -194,23 +197,27 @@ class GetMixin:
             else:
                 yield qid_to_name[qid], array[qid, 0]
 
-    def get_solution_vectors(self, /, ) -> _descriptors.SolutionVectors:
+    def get_solution_vectors(self, /, ) -> _descriptors.HumanSolutionVectors:
         """
         Get the solution vectors of the model
         """
-        return self._invariant.dynamic_descriptor.solution_vectors
+        qid_to_name = self.create_qid_to_name()
+        qid_to_logly = self.create_qid_to_logly()
+        return _descriptors.HumanSolutionVectors(
+            self._solution_vectors,
+            qid_to_name,
+            qid_to_logly,
+        )
 
-    def get_all_solution_matrices(self, /, ):
-        return tuple(v.solution for v in self._variants)
-
-    def get_solution_matrices(self, /, ):
+    def get_solution_matrices(
+        self,
+        /,
+        unwrap_singleton: bool = True,
+    ):
         """
         """
-        solution_matrices = [
-            v.solution
-            for v in self._variants
-        ]
-        return self.unwrap_singleton(solution_matrices, )
+        solution_matrices = [ v.solution for v in self._variants ]
+        return self.unwrap_singleton(solution_matrices, unwrap_singleton=unwrap_singleton, )
 
     def get_dynamic_equations(
         self,
@@ -301,6 +308,22 @@ class GetMixin:
             _quantities.create_name_to_description(self._invariant.quantities, )
             | _equations.create_human_to_description(self._invariant.dynamic_equations, )
         )
+
+    def get_eigenvalues(
+        self,
+        /,
+        unwrap_singleton: bool = True,
+    ):
+        eigenvalues = [ v.solution.eigenvalues for v in self._variants ]
+        return self.unwrap_singleton(eigenvalues, unwrap_singleton=unwrap_singleton, )
+
+    def get_eigenvalues_stability(
+        self,
+        /,
+        unwrap_singleton: bool = True,
+    ):
+        stability = [ v.solution.eigenvalues_stability for v in self._variants ]
+        return self.unwrap_singleton(stability, unwrap_singleton=unwrap_singleton, )
 
     #]
 

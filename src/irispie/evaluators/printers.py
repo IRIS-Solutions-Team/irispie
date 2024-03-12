@@ -165,7 +165,7 @@ class BasicIterPrinter(IterPrinter, ):
     ) -> None:
         self._qids = tuple(qids)
         self._qid_to_print = {
-            i: _quantities.print_name_maybe_log(qid_to_name[i], qid_to_logly[i], )
+            i: _quantities.wrap_logly(qid_to_name[i], qid_to_logly[i], )
             for i in qids
         }
     #]
@@ -196,10 +196,10 @@ class NonflatSteadyIterPrinter(IterPrinter, ):
     ) -> None:
         self._qids = tuple(qids) + tuple(-i for i in qids)
         self._qid_to_print = {
-            i: _quantities.print_name_maybe_log(qid_to_name[i], qid_to_logly[i], )
+            i: _quantities.wrap_logly(qid_to_name[i], qid_to_logly[i], )
             for i in qids
         } | {
-            -i: "∆" + _quantities.print_name_maybe_log(qid_to_name[i], qid_to_logly[i], )
+            -i: "∆" + _quantities.wrap_logly(qid_to_name[i], qid_to_logly[i], )
             for i in qids
         }
     #]

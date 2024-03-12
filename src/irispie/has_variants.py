@@ -154,11 +154,15 @@ class HasVariantsMixin:
     def unwrap_singleton(
         self: HasVariantsProtocol,
         anything: list[_T],
-        /,
+        **kwargs,
     ) -> list[_T] | _T:
         """
         """
-        return unwrap_singleton(anything, self.is_singleton, )
+        return unwrap_singleton(
+            anything,
+            self.is_singleton,
+            **kwargs,
+        )
 
     #]
 
@@ -214,10 +218,19 @@ def rewrap_singleton(anything: _T, is_singleton: bool, ) -> list[_T]:
     return [anything] if is_singleton else anything
 
 
-def unwrap_singleton(anything: list[_T], is_singleton: bool, ) -> _T:
+def unwrap_singleton(
+    anything: list[_T],
+    is_singleton: bool,
+    /,
+    unwrap_singleton: bool = True,
+) -> _T | list[_T]:
     """
     """
-    return anything[0] if is_singleton else anything
+    return (
+        anything[0]
+        if is_singleton and unwrap_singleton
+        else anything
+    )
 
 
 def is_singleton(num_variants: int) -> bool:

@@ -293,12 +293,14 @@ Dates and date ranges
         """
         return self
 
-    def convert(self, new_freq: Frequency, *args ,**kwargs, ) -> Dater:
+    def convert_to_new_freq(self, new_freq: Frequency, *args ,**kwargs, ) -> Dater:
         """
         """
         year, month, day = self.to_ymd(*args, **kwargs, )
         new_class = DATER_CLASS_FROM_FREQUENCY_RESOLUTION[new_freq]
         return new_class.from_ymd(year, month, day, )
+
+    convert = convert_to_new_freq
 
     def to_iso_string(
         self,

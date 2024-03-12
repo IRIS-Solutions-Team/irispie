@@ -16,6 +16,54 @@ from . import initializers as _initializers
 #]
 
 
+@_dc.dataclass
+class HumanKalmanOutputData:
+    """
+    """
+    #[
+
+    predict_mean = None
+    predict_std = None
+
+    update_mean = None
+    update_std = None
+    predict_error = None
+
+    smooth_mean = None
+    smooth_std = None
+
+    predict_mse_measurement = None
+
+    @classmethod
+    def from_kalman_output_store(
+        klass,
+        kos: _KalmanOutputStore,
+    ) -> Self:
+        """
+        """
+        self = klass()
+        self.predict_mse_measurement = kos.predict_mse_measurement
+        if kos.needs.return_predict:
+            self.predict_mean = kos.predict_mean.to_databox()
+            self.predict_std = kos.predict_std.to_databox()
+        if kos.needs.return_update:
+            self.update_mean = kos.update_mean.to_databox()
+            self.update_std = kos.update_std.to_databox()
+            self.predict_error = kos.predict_error.to_databox()
+        if kos.needs.return_smooth:
+            self.smooth_mean = kos.smooth_mean.to_databox()
+            self.smooth_std = kos.smooth_std.to_databox()
+        return self
+
+    def __repr__(self, /, ) -> str:
+        """
+        """
+        return f"HumanKalmanOutputData({', '.join(self.__dict__.keys())})"
+
+
+    #]
+
+
 class _KalmanNeeds:
     """
     """
@@ -87,26 +135,17 @@ class _KalmanOutputStore:
             self.smooth_mean = ds.nan_copy()
             self.smooth_std = ds.nan_copy()
 
-    def to_output_args(self, /, ) -> _databoxes.Databox:
+    def create_output_args(self, /, ) -> tuple[HumanKalmanOutputData, dict[str, Any]]:
         """
         """
-        out_dbs = _databoxes.Databox()
-        if self.needs.return_predict:
-            out_dbs["predict_mean"] = self.predict_mean.to_databox()
-            out_dbs["predict_std"] = self.predict_std.to_databox()
-        if self.needs.return_update:
-            out_dbs["update_mean"] = self.update_mean.to_databox()
-            out_dbs["update_std"] = self.update_std.to_databox()
-            out_dbs["predict_error"] = self.predict_error.to_databox()
-        if self.needs.return_smooth:
-            out_dbs["smooth_mean"] = self.smooth_mean.to_databox()
-            out_dbs["smooth_std"] = self.smooth_std.to_databox()
-        info = {
+        return HumanKalmanOutputData.from_kalman_output_store(self, ), self._create_info()
+
+    def _create_info(self, /, ) -> dict[str, Any]:
+        return {
             "neg_log_lik": [ float(i[0]) for i in self.neg_log_lik ],
             "var_scale": [ float(i[0]) for i in self.var_scale ],
             "diffuse_factor": [ float(i[0]) for i in self.diffuse_factor ],
         }
-        return out_dbs, info
 
     #]
 
@@ -288,7 +327,7 @@ class KalmanMixin:
 
         qid_to_name = self.create_qid_to_name()
         qid_to_logly = self.create_qid_to_logly()
-        solution_vectors = self.get_solution_vectors()
+        solution_vectors = self._solution_vectors
         temp = [(t.qid, i) for i, t in enumerate(solution_vectors.transition_variables) if not t.shift ]
         curr_qids, curr_pos = tuple(zip(*temp))
         curr_qids = list(curr_qids)
@@ -525,7 +564,7 @@ class KalmanMixin:
         krv.calculate_likelihood()
         krv.rescale_stds()
 
-        return kos.to_output_args()
+        return kos.create_output_args()
 
     #]
 

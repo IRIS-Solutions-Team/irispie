@@ -111,7 +111,7 @@ def _simulate_first_order(
     """
     _ford_simulators.simulate_flat(
         model._variants[0].solution,
-        model.get_solution_vectors(),
+        model._solution_vectors,
         dataslate,
         vid,
         **kwargs,

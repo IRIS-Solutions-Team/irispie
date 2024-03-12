@@ -38,7 +38,7 @@ $$
 from __future__ import annotations
 
 from typing import (Self, Callable, )
-from numbers import (Real, )
+from numbers import (Real, Number, )
 import dataclasses as _dc
 
 import enum as _en
@@ -119,8 +119,8 @@ class Solution:
     X: _np.ndarray | None = None
     Xa: _np.ndarray | None = None
 
-    eigen_values: tuple[Real, ...] | None = None
-    eigen_values_stability: tuple[EigenValueKind, ...] | None = None
+    eigenvalues: tuple[Number, ...] | None = None
+    eigenvalues_stability: tuple[EigenValueKind, ...] | None = None
     system_stability: SystemStabilityKind | None = None
     transition_vector_stability: VariableStability | None = None
     measurement_vector_stability: VariableStability | None = None
@@ -149,7 +149,7 @@ class Solution:
         # Detach unstable from (stable + unit) roots and solve out expectations
         # The system is triangular but because stable and unit roots are
         # not detached yet, the system is called "preliminary"
-        qz, self.eigen_values = \
+        qz, self.eigenvalues = \
             _solve_ordqz(system, is_alpha_beta_stable_or_unit_root, is_stable_root, is_unit_root, )
         triangular_solution_prelim = \
             _solve_transition_equations(descriptor, system, qz, )
@@ -174,7 +174,7 @@ class Solution:
             self.Ua,
             clip=clip,
         )
-        self._classify_eigen_values_stability(is_stable_root, is_unit_root, )
+        self._classify_eigenvalues_stability(is_stable_root, is_unit_root, )
         self._classify_system_stability(descriptor.get_num_forwards(), )
         self._classify_transition_vector_stability(tolerance=tolerance, )
         self._classify_measurement_vector_stability(tolerance=tolerance, )
@@ -219,7 +219,7 @@ class Solution:
         """
         Number of unit roots
         """
-        return self.eigen_values_stability.count(EigenValueKind.UNIT)
+        return self.eigenvalues_stability.count(EigenValueKind.UNIT)
 
     @property
     def num_stable(self, /, ) -> int:
@@ -306,15 +306,15 @@ class Solution:
             for k_minus_1 in range(0, forward)
         ]
 
-    def _classify_eigen_values_stability(
+    def _classify_eigenvalues_stability(
         self,
         is_stable_root: Callable[[Real], bool],
         is_unit_root: Callable[[Real], bool],
         /,
     ) -> None:
-        self.eigen_values_stability = tuple(
-            _classify_eigen_value_stability(v, is_stable_root, is_unit_root, )
-            for v in self.eigen_values
+        self.eigenvalues_stability = tuple(
+            _classify_eigenvalue_stability(v, is_stable_root, is_unit_root, )
+            for v in self.eigenvalues
         )
 
     def _classify_system_stability(
@@ -322,7 +322,7 @@ class Solution:
         num_forwards: int,
         /,
     ) -> None:
-        num_unstable = self.eigen_values_stability.count(EigenValueKind.UNSTABLE)
+        num_unstable = self.eigenvalues_stability.count(EigenValueKind.UNSTABLE)
         if num_unstable == num_forwards:
             self.system_stability = SystemStabilityKind.STABLE
         elif num_unstable > num_forwards:
@@ -520,25 +520,25 @@ def _solve_ordqz(
     Q = Q.T
     #
     inx_nonzero_alpha = alpha != 0
-    eigen_values = _np.full(beta.shape, _np.inf, dtype=complex, )
-    eigen_values[inx_nonzero_alpha] = -beta[inx_nonzero_alpha] / alpha[inx_nonzero_alpha]
-    eigen_values = tuple(eigen_values)
+    eigenvalues = _np.full(beta.shape, _np.inf, dtype=complex, )
+    eigenvalues[inx_nonzero_alpha] = -beta[inx_nonzero_alpha] / alpha[inx_nonzero_alpha]
+    eigenvalues = tuple(eigenvalues)
     #
     #
-    return (S, T, Q, Z), eigen_values
+    return (S, T, Q, Z), eigenvalues
     #]
 
 
-def _classify_eigen_value_stability(
-    eigen_value,
+def _classify_eigenvalue_stability(
+    eigenvalue,
     is_stable_root,
     is_unit_root,
 ) -> EigenValueKind:
     #[
-    abs_eigen_value = _np.abs(eigen_value)
-    if is_stable_root(abs_eigen_value):
+    abs_eigenvalue = _np.abs(eigenvalue)
+    if is_stable_root(abs_eigenvalue):
         return EigenValueKind.STABLE
-    elif is_unit_root(abs_eigen_value):
+    elif is_unit_root(abs_eigenvalue):
         return EigenValueKind.UNIT
     else:
         return EigenValueKind.UNSTABLE

@@ -19,6 +19,9 @@ from ..series import main as _series
 #]
 
 
+_DEFAULT_DATE_CREATOR = _dates.Dater.from_sdmx_string
+
+
 @_dc.dataclass
 class _ImportBlock:
     """
@@ -64,6 +67,7 @@ class Inlay:
         klass,
         file_name: str,
         /,
+        date_creator: Callable | None = None,
         start_date_only: bool = False,
         description_row: bool = False,
         delimiter: str = ",",
@@ -94,8 +98,9 @@ class Inlay:
             name_row = _apply_name_row_transform(name_row, name_row_transform, )
 
         description_row = header_rows[1] if description_row else [""] * len(name_row)
+        date_creator = date_creator or _DEFAULT_DATE_CREATOR
         #
-        for b in _block_iterator(name_row, description_row, data_rows, start_date_only, ):
+        for b in _block_iterator(name_row, description_row, data_rows, date_creator, start_date_only, ):
             array = _read_array_for_block(file_name, b, num_header_rows, delimiter=delimiter, **numpy_reader_settings, )
             _add_series_for_block(self, b, array, )
         #
@@ -137,7 +142,7 @@ def _remove_nonascii_from_start(string, /, ):
     #]
 
 
-def _block_iterator(name_row, description_row, data_rows, start_date_only, /, ):
+def _block_iterator(name_row, description_row, data_rows, date_creator, start_date_only, /, ):
     """
     """
     #[
@@ -167,7 +172,7 @@ def _block_iterator(name_row, description_row, data_rows, start_date_only, /, ):
             num_columns = column - current_start
             names = name_row[current_start:column]
             descriptions = description_row[current_start:column]
-            row_index, dates = _extract_dates_from_data_rows(data_rows, current_frequency, current_date_column, start_date_only, )
+            row_index, dates = _extract_dates_from_data_rows(data_rows, current_frequency, current_date_column, date_creator, start_date_only, )
             yield _ImportBlock(row_index, dates, current_start, num_columns, names, descriptions)
         if not status and _is_start(cell):
             status = True
@@ -179,18 +184,19 @@ def _block_iterator(name_row, description_row, data_rows, start_date_only, /, ):
 
 def _extract_dates_from_data_rows(
     data_rows,
-    frequency,
-    column,
-    start_date_only,
+    frequency: _dates.Frequency,
+    column: int,
+    date_creator: Callable,
+    start_date_only: bool,
     /,
 ) -> tuple[tuple[int], tuple[_dates.Dater]]:
     """
     """
     #[
-    start_date = _dates.Dater.from_sdmx_string(frequency, data_rows[0][column])
+    start_date = date_creator(frequency, data_rows[0][column])
     date_extractor = {
         True: lambda i, line: start_date + i,
-        False: lambda i, line: _dates.Dater.from_sdmx_string(frequency, line[column]),
+        False: lambda i, line: date_creator(frequency, line[column]),
     }[start_date_only]
     row_indices_and_dates = ( 
         (i, date_extractor(i, line))

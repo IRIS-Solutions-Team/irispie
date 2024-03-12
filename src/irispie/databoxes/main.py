@@ -59,28 +59,21 @@ class SteadyDataboxableProtocol(Protocol):
     #]
 
 
-def _extended_range_tuple_from_base_span(input_range, min_shift, max_shift):
+def _extended_range_tuple_from_base_span(
+    input_span: Iterable[_dates.Dater],
+    min_shift: int,
+    max_shift: int,
+    prepend_initial: bool,
+    append_terminal: bool,
+    /,
+) -> tuple[_dates.Date, _dates.Date]:
     """
     """
-    range_list = [t for t in input_range]
+    range_list = tuple(t for t in input_span)
     start_date, end_date = range_list[0], range_list[-1]
-    start_date += min_shift
-    end_date += max_shift
+    start_date += min_shift if prepend_initial else 0
+    end_date += max_shift if append_terminal else 0
     return start_date, end_date
-
-
-def _extended_range_tuple_from_extended_range(input_range, min_shift, max_shift):
-    """
-    """
-    range_list = [t for t in input_range]
-    start_date, end_date = range_list[0], range_list[-1]
-    return start_date, end_date
-
-
-_EXTENDED_RANGE_TUPLE_RESOLUTION = {
-    "base": _extended_range_tuple_from_base_span,
-    "extended": _extended_range_tuple_from_extended_range,
-}
 
 
 @_pages.reference(
@@ -118,11 +111,12 @@ a databox can be of any type.
 
     def __init__(
         self,
-        /,
+        *args,
         **kwargs,
     ) -> None:
-        """ """
-        super().__init__(**kwargs, )
+        """
+        """
+        super().__init__(*args, **kwargs, )
         self._description = ""
         self._dotters = []
 
@@ -263,102 +257,133 @@ a databox can be of any type.
         /,
         source_names: SourceNames = None,
         target_names: TargetNames = None,
+        strict_names: bool = False,
     ) -> Self:
         """
         """
         new_databox = _co.deepcopy(self)
         if source_names is None and target_names is None:
             return new_databox
-        context_names = new_databox.get_names()
-        source_names, target_names = _resolve_source_target_names(source_names, target_names, context_names)
+        source_names, target_names, *_ = self._resolve_source_target_names(
+            source_names, target_names, strict_names,
+        )
         new_databox.rename(source_names, target_names, )
         new_databox.keep(target_names, )
         return new_databox
+
+    def shallow(
+        self: Self,
+        /,
+        source_names: SourceNames = None,
+        target_names: TargetNames = None,
+        strict_names: bool = False,
+    ) -> Self:
+        """
+        """
+        source_names, target_names, *_ = self._resolve_source_target_names(
+            source_names, target_names, strict_names,
+        )
+        return type(self)(
+            (t, self[s])
+            for s, t in zip(source_names, target_names, )
+        )
 
     def rename(
         self: Self,
         /,
         source_names: SourceNames = None,
         target_names: TargetNames = None,
+        strict_names: bool = False,
     ) -> None:
         """
         """
-        context_names = self.get_names()
-        source_names, target_names = _resolve_source_target_names(source_names, target_names, context_names)
-        for old_name, new_name in (
-            z
-            for z in zip(source_names, target_names)
-            if z[0] in context_names and z[0] != z[1]
-        ):
-            self[new_name] = self.pop(old_name)
+        source_names, target_names, *_ = self._resolve_source_target_names(
+            source_names, target_names, strict_names,
+        )
+        for s, t in zip(source_names, target_names, ):
+            if s == t:
+                continue
+            self[t] = self.pop(s)
 
     def remove(
         self: Self,
         /,
         remove_names: SourceNames = None,
+        strict_names: bool = False,
     ) -> None:
         """
         """
         if remove_names is None:
             return self
         context_names = self.get_names()
-        remove_names, *_ = _resolve_source_target_names(remove_names, None, context_names)
-        for n in set(remove_names).intersection(context_names):
+        remove_names, *_ = self._resolve_source_target_names(
+            remove_names, None, strict_names,
+        )
+        for n in remove_names:
             del self[n]
 
     def keep(
         self: Self,
         /,
         keep_names: SourceNames = None,
+        strict_names: bool = False,
     ) -> None:
         """
         """
         if keep_names is None:
             return self
-        context_names = self.get_names()
-        keep_names, *_ = _resolve_source_target_names(keep_names, None, context_names)
-        remove_names = set(context_names).difference(keep_names)
-        self.remove(remove_names)
+        keep_names, _, context_names = self._resolve_source_target_names(
+            keep_names, None, strict_names,
+        )
+        for n in context_names:
+            if n in keep_names:
+                continue
+            del self[n]
 
     def apply(
         self,
         func: Callable,
         /,
         source_names: SourceNames = None,
-        target_names: TargetNames = None,
-        in_place: bool = False,
+        in_place: bool = True,
         when_fails: Literal["critical", "error", "warning", "silent", ] = "critical",
+        strict_names: bool = False,
     ) -> None:
         """
         """
-        context_names = self.get_names()
-        source_names, target_names = _resolve_source_target_names(source_names, target_names, context_names)
+        source_names, *_ = self._resolve_source_target_names(
+            source_names, None, strict_names,
+        )
         when_fails_stream = \
             _wrongdoings.STREAM_FACTORY[when_fails] \
             (f"Error(s) when applying function to Databox items:")
-        for s, t in zip(source_names, target_names):
+        for s in source_names:
             try:
-                self[t] = self[s]
-                result = func(self[t])
+                output = func(self[s])
                 if not in_place:
-                    self[t] = result
+                    self[s] = output
             except Exception as e:
-                when_fails_stream.add(f"{s} --> {t}: {repr(e)}", )
+                when_fails_stream.add(f"{s}: {repr(e)}", )
         when_fails_stream._raise()
 
     def filter(
         self,
+        /,
         name_test: Callable | None = None,
         value_test: Callable | None = None,
     ) -> Iterable[str]:
         """
         """
-        names = self.get_names()
+        names = tuple(self.get_names())
         if name_test is None and value_test is None:
             return names
         name_test = name_test if name_test else lambda x: True
         value_test = value_test if value_test else lambda x: True
-        return [ n for n in names if name_test(n) and value_test(self[n]) ]
+        return tuple(
+            name
+            for name in names
+            if name_test(name) and value_test(self[name], )
+        )
 
     def get_series_names_by_frequency(
         self,
@@ -385,9 +410,9 @@ a databox can be of any type.
             return _dates.EmptyRanger()
         start_dates = (self[n].start_date for n in names)
         end_dates = (self[n].end_date for n in names)
-        min_start_date = min(start_dates, key=_op.attrgetter("serial"))
-        max_end_date = max(end_dates, key=_op.attrgetter("serial"))
-        return _dates.Ranger(min_start_date, max_end_date)
+        min_start_date = min(start_dates, key=_op.attrgetter("serial"), )
+        max_end_date = max(end_dates, key=_op.attrgetter("serial"), )
+        return _dates.Ranger(min_start_date, max_end_date, )
 
     def to_json(self, file_name, **kwargs):
         """
@@ -426,8 +451,9 @@ a databox can be of any type.
         """"
         """
         if names is None:
-            self_names = self.filter(value_test=lambda x: isinstance(x, _series.Series))
-            other_names = other.filter(value_test=lambda x: isinstance(x, _series.Series))
+            value_test = lambda x: isinstance(x, _series.Series)
+            self_names = self.filter(value_test=value_test, )
+            other_names = other.filter(value_test=value_test, )
             names = set(self_names).intersection(other_names)
         for n in names:
             if self[n].frequency == other[n].frequency:
@@ -439,10 +465,17 @@ a databox can be of any type.
         new_end_date: _dates.Dater | None = None,
         /,
     ) -> None:
+        """
+        """
         if new_start_date is None and new_end_date is None:
             return
-        frequency = new_start_date.frequency if new_start_date is not None else new_end_date.frequency
-        names = self.filter(value_test=lambda x: isinstance(x, _series.Series) and x.frequency == frequency)
+        frequency = (
+            new_start_date.frequency
+            if new_start_date is not None
+            else new_end_date.frequency
+        )
+        value_test = lambda x: isinstance(x, _series.Series) and x.frequency == frequency
+        names = self.filter(value_test=value_test, )
         for n in names:
             self[n].clip(new_start_date, new_end_date, )
 
@@ -486,20 +519,37 @@ a databox can be of any type.
             globals |= context
         return eval(expression, globals, )
 
+    def __call__(
+        self,
+        expression: str,
+        /,
+        context: dict[str, Any] | None = None,
+    ) -> Any:
+        """
+        """
+        return self.eval(expression, context, )
+
     @classmethod
     def steady(
         klass,
         steady_databoxable: SteadyDataboxableProtocol,
-        input_range: Iterable[_dates.Dater],
+        input_span: Iterable[_dates.Dater],
         /,
         deviation: bool = False,
-        interpret_range: InterpretRange = "base",
+        prepend_initial: bool = True,
+        append_terminal: bool = True,
     ) -> Self:
         """
         """
         self = klass()
         min_shift, max_shift = steady_databoxable.get_min_max_shifts()
-        start_date, end_date = _resolve_input_range(input_range, min_shift, max_shift, interpret_range, )
+        start_date, end_date = _extended_range_tuple_from_base_span(
+            input_span,
+            min_shift,
+            max_shift,
+            prepend_initial,
+            append_terminal,
+        )
         items = steady_databoxable.generate_steady_items(start_date, end_date, deviation=deviation, )
         for name, value in items:
             self[name] = value
@@ -533,44 +583,39 @@ a databox can be of any type.
         new.update(other, )
         return new
 
+    def _resolve_source_target_names(
+        self,
+        /,
+        source_names: SourceNames,
+        target_names: TargetNames,
+        strict_names: bool = False,
+    ) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+        """
+        """
+        context_names = self.get_names()
+        if source_names is None:
+            source_names = context_names
+        if isinstance(source_names, str):
+            source_names = tuple(source_names)
+        if callable(source_names):
+            func = source_names
+            source_names = tuple(n for n in context_names if func(n))
+        if target_names is None:
+            target_names = source_names
+        if isinstance(target_names, str):
+            target_names = tuple(target_names)
+        if callable(target_names):
+            func = target_names
+            target_names = tuple(func(n) for n in source_names)
+        if not strict_names:
+            source_target_pairs = tuple((s, t) for s, t in zip(source_names, target_names, ) if s in context_names)
+            source_names, target_names = zip(*source_target_pairs, ) if source_target_pairs else ((), (), )
+        return source_names, target_names, context_names
+
     #]
 
 
 Databank = Databox
-
-
-def _resolve_source_target_names(
-    source_names: SourceNames,
-    target_names: TargetNames,
-    context_names: Iterable[str],
-    /,
-) -> tuple[Iterable[str], Iterable[str]]:
-    """
-    """
-    if source_names is None:
-        source_names = context_names
-    if isinstance(source_names, str):
-        source_names = [ source_names ]
-    if callable(source_names):
-        func = source_names
-        source_names = [ n for n in context_names if func(n) ]
-    if target_names is None:
-        target_names = source_names
-    if isinstance(target_names, str):
-        target_names = [ target_names ]
-    if callable(target_names):
-        func = target_names
-        target_names = [ func(n) for n in source_names ]
-    return source_names, target_names
-
-
-def _resolve_input_range(
-    input_range: Iterable[_dates.Dater],
-    min_shift: int,
-    max_shift: int,
-    interpret_range: InterpretRange,
-) -> tuple[Dater, Dater]:
-    return _EXTENDED_RANGE_TUPLE_RESOLUTION[interpret_range](input_range, min_shift, max_shift)
 
 
 def _apply_to_item(

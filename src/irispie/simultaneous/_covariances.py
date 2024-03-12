@@ -113,23 +113,31 @@ class CoverianceMixin:
         ]
         return self.unwrap_singleton(std_w, )
 
-    def get_cov_unanticipated_shocks(self, /, ):
+    def get_cov_unanticipated_shocks(
+        self,
+        /,
+        unwrap_singleton: bool = True,
+    ):
         """
         """
         cov_u = [
             self._getv_cov_u(v, )
             for v in self._variants
         ]
-        return self.unwrap_singleton(cov_u, )
+        return self.unwrap_singleton(cov_u, unwrap_singleton=unwrap_singleton, )
 
-    def get_cov_measurement_shocks(self, /, ):
+    def get_cov_measurement_shocks(
+        self,
+        /,
+        unwrap_singleton: bool = True,
+    ):
         """
         """
         cov_w = [
             self._getv_cov_w(v, )
             for v in self._variants
         ]
-        return self.unwrap_singleton(cov_w, )
+        return self.unwrap_singleton(cov_w, unwrap_singleton=unwrap_singleton, )
 
     def _getv_std_u(self, variant, /, ):
         """
@@ -179,7 +187,7 @@ def _get_dimension_names(
     qid_to_name = self.create_qid_to_name()
     qid_to_logly = self.create_qid_to_logly()
     names = tuple(
-        _quantities.print_name_maybe_log(qid_to_name[tok.qid], qid_to_logly[tok.qid], )
+        _quantities.wrap_logly(qid_to_name[tok.qid], qid_to_logly[tok.qid], )
         for tok in system_vector
     )
     return _namings.DimensionNames(rows=names, columns=names, )

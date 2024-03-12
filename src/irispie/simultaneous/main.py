@@ -315,6 +315,12 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """==Maximul lead in the model (positive or zero)=="""
         return self._invariant._max_shift
 
+    @property
+    def _solution_vectors(self, /, ) -> _descriptors.SolutionVectors:
+        """
+        """
+        return self._invariant.dynamic_descriptor.solution_vectors
+
     def create_name_to_qid(self, /, ) -> dict[str, int]:
         return _quantities.create_name_to_qid(self._invariant.quantities)
 

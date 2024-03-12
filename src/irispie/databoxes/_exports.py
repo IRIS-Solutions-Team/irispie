@@ -9,7 +9,7 @@ from __future__ import annotations
 import pickle as _pk
 
 from collections.abc import (Iterable, )
-from typing import (Any, )
+from typing import (Any, Callable, )
 import csv as _cs
 import numpy as _np
 import itertools as _it
@@ -24,6 +24,8 @@ from ..databoxes import main as _databoxes
 
 
 _DEFAULT_ROUND = 12
+_DEFAULT_DATE_FORMATTER = str
+
 
 @_dc.dataclass
 class _ExportBlock:
@@ -43,6 +45,7 @@ class _ExportBlock:
     numeric_format: str | None = None
     nan_str: str | None = None
     round: int | None = None
+    date_formatter: Callable | None = None
 
     def __iter__(self, ):
         """
@@ -76,9 +79,10 @@ class _ExportBlock:
             yield ("", ) + description_row + ("", )
         #
         # Dates and data, row by row
+        date_formatter = self.date_formatter or _DEFAULT_DATE_FORMATTER
         for date, data_row in zip(self.dates, data_array, ):
             yield \
-                (str(date), ) \
+                (date_formatter(date, ), ) \
                 + tuple(x if not _np.isnan(x) else self.nan_str for x in _round(data_row).tolist()) \
                 + ("", )
         #
@@ -105,8 +109,9 @@ class ExportMixin:
         frequency: _dates.Frequency | None = None,
         numeric_format: str = "g",
         nan_str: str = "",
-        round: int = _DEFAULT_ROUND,
         delimiter: str = ",",
+        round: int = _DEFAULT_ROUND,
+        date_formatter: Callable | None = None,
         csv_writer_settings: dict | None = {},
         when_empty: Literal["error", "warning", "silent"] = "warning",
     ) -> dict[str, Any]:
@@ -117,17 +122,32 @@ class ExportMixin:
 
 ················································································
         """
-        frequency_span = _resolve_frequency_span(self, frequency_span, )
-        frequency_names = _resolve_frequency_names(self, frequency_span, names, )
+        databox = self.shallow(source_names=names, )
+        frequency_span = frequency_span if frequency_span is not None else _DEFAULT_FREQUENCY_SPAN
+        frequency_span = _resolve_frequency_span(databox, frequency_span, )
+        frequency_names = _resolve_frequency_names(databox, frequency_span, )
         _catch_empty(frequency_span, frequency_names, when_empty, file_name, )
         #
         total_num_data_rows = _get_total_num_data_rows(frequency_span, )
+        export_block_constructor = _ft.partial(
+            _ExportBlock,
+            databox=databox,
+            total_num_data_rows=total_num_data_rows,
+            description_row=description_row,
+            delimiter=delimiter,
+            numeric_format=numeric_format,
+            nan_str=nan_str,
+            round=round,
+            date_formatter=date_formatter,
+        )
         export_blocks = (
-            _ExportBlock(
-                self, frequency, frequency_span[frequency], frequency_names[frequency],
-                total_num_data_rows, description_row, delimiter, numeric_format, nan_str, round,
+            export_block_constructor(
+                frequency=f,
+                dates=frequency_span[f],
+                names=frequency_names[f],
             )
-            for frequency in frequency_span.keys()
+            for f in frequency_span.keys()
+            if frequency_names[f]
         )
         #
         csv_writer_settings = csv_writer_settings or {}
@@ -169,7 +189,7 @@ def _get_names_to_export(databox, frequency, names, ):
     #]
 
 
-_DEFAULT_FREQUENCY_RANGE = {
+_DEFAULT_FREQUENCY_SPAN = {
     _dates.Frequency.YEARLY: ...,
     _dates.Frequency.HALFYEARLY: ...,
     _dates.Frequency.QUARTERLY: ...,
@@ -181,8 +201,8 @@ _DEFAULT_FREQUENCY_RANGE = {
 
 
 def _resolve_frequency_span(
-    self,
-    frequency_span: dict[_dates.Frequency | int: Iterable[_dates.Dater]] | None,
+    databox: _databoxes.Databox,
+    frequency_span: dict[_dates.Frequency | int: Iterable[_dates.Dater]],
     /,
 ) -> tuple[dict[_dates.Frequency: tuple[_dates.Dater]], int]:
     """
@@ -191,13 +211,13 @@ def _resolve_frequency_span(
     # Remove Nones, ensure Frequency objects
     frequency_span = {
         _dates.Frequency(k): v
-        for k, v in (frequency_span or _DEFAULT_FREQUENCY_RANGE).items()
+        for k, v in frequency_span.items()
         if v is not None
     }
     #
     # Resolve date span for each ...
     frequency_span = {
-        k: v if v is not ... else self.get_span_by_frequency(k, )
+        k: v if v is not ... else databox.get_span_by_frequency(k, )
         for k, v in frequency_span.items()
     }
     #
@@ -213,28 +233,17 @@ def _resolve_frequency_span(
 
 
 def _resolve_frequency_names(
-    self,
+    databox: _databoxes.Databox,
     frequency_span: _dates.Frequency | None,
-    custom_names: Iterable[str] | None,
     /,
 ) -> dict[_dates.Frequency: tuple[str, ...]]:
     """
     """
     #[
-    #
-    # Get all databox names for each frequency
-    frequency_names = {
-        k: tuple(self.get_series_names_by_frequency(k, ))
+    return {
+        k: tuple(databox.get_series_names_by_frequency(k, ))
         for k in frequency_span.keys()
     }
-    #
-    # Filter names against custom names
-    frequency_names = {
-        k: tuple(n for n in v if n in custom_names)
-        for k, v in frequency_names.items()
-    } if custom_names is not None else frequency_names
-    #
-    return frequency_names
 
 
 def _get_total_num_data_rows(

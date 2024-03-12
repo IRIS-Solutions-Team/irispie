@@ -23,6 +23,7 @@ from __future__ import annotations
 from typing import (Self, Any, )
 from collections.abc import (Iterable, )
 import itertools as _it
+import functools as _ft
 import dataclasses as _dc
 import numpy as _np
 
@@ -266,12 +267,12 @@ class SolutionVectors:
     Vectors of quantities in first-order solution matrices
     """
     #[
-    transition_variables: tuple[_incidence.Token] | None = None
-    are_initial_conditions: list[bool] | None = None,
-    unanticipated_shocks: tuple[_incidence.Token] | None = None
-    anticipated_shocks: tuple[_incidence.Token] | None = None
-    measurement_variables: tuple[_incidence.Token] | None = None
-    measurement_shocks: tuple[_incidence.Token] | None = None
+    transition_variables: tuple[_incidence.Token, ...] | None = None
+    are_initial_conditions: list[bool, ...] | None = None
+    unanticipated_shocks: tuple[_incidence.Token, ...] | None = None
+    anticipated_shocks: tuple[_incidence.Token, ...] | None = None
+    measurement_variables: tuple[_incidence.Token, ...] | None = None
+    measurement_shocks: tuple[_incidence.Token, ...] | None = None
 
     def __init__(self, system_vectors: SystemVectors, /, ) -> None:
         """
@@ -292,6 +293,34 @@ class SolutionVectors:
         Get tokens representing required initial conditions
         """
         return list(_it.compress(self.transition_variables, self.are_initial_conditions))
+    #]
+
+
+@_dc.dataclass(slots=True, )
+class HumanSolutionVectors:
+    """
+    """
+    #[
+
+    transition_variables: tuple[str, ...] | None = None
+    unanticipated_shocks: tuple[str, ...] | None = None
+    anticipated_shocks: tuple[str, ...] | None = None
+    measurement_variables: tuple[str, ...] | None = None
+    measurement_shocks: tuple[str, ...] | None = None
+
+    def __init__(
+        self,
+        solution_vectors: SolutionVectors,
+        qid_to_name: dict[int, str],
+        qid_to_logly: dict[int, bool],
+        /,
+    ) -> None:
+        """
+        """
+        print_tokens = _ft.partial(_incidence.print_tokens, qid_to_name=qid_to_name, qid_to_logly=qid_to_logly, )
+        for a in self.__slots__:
+            setattr(self, a, print_tokens(getattr(solution_vectors, a)))
+
     #]
 
 

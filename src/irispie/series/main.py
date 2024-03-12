@@ -63,6 +63,7 @@ _ELEMENTWISE_FUNCTIONS = {
     "sin": _np.sin,
     "cos": _np.cos,
     "tan": _np.tan,
+    "round": _np.round,
     "logistic": _sp.special.expit,
     "normal_cdf": _sp.stats.norm.cdf,
     "normal_pdf": _sp.stats.norm.pdf,
@@ -124,7 +125,6 @@ def _trim_decorate(func):
     },
 )
 class Series(
-    # Inlays
     _indexing.Inlay,
     _conversions.Inlay,
     _diffs_cums.Inlay,
@@ -133,7 +133,7 @@ class Series(
     _moving.Inlay,
     _x13.Inlay,
     _plotly.Inlay,
-    # Mixins
+
     _descriptions.DescriptionMixin,
     _views.ViewMixin,
     _copies.CopyMixin,
@@ -607,6 +607,7 @@ self = Series(
 
     def clip(
         self,
+        /,
         new_start_date: _dates.Dater | None,
         new_end_date: _dates.Dater | None,
     ) -> None:
@@ -616,8 +617,8 @@ self = Series(
             new_end_date = self.end_date
         if new_start_date == self.start_date and new_end_date == self.end_date:
             return
+        self.data = self.get_data_from_to((new_start_date, new_end_date, ), )
         self.start_date = new_start_date
-        self.data = self.get_data(_dates.Ranger(new_start_date, new_end_date))
 
     def is_empty(self, ) -> bool:
         return not self.data.size

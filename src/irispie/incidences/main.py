@@ -17,6 +17,7 @@ from .. import quantities as _quantities
 
 _PRINT_TOKEN = "x[({qid},t{shift:+g})]"
 _PRINT_TOKEN_ZERO_SHIFT = "x[({qid},t)]"
+_PRINT_SHIFT = "[{shift:+g}]"
 
 
 class Token(NamedTuple):
@@ -35,12 +36,11 @@ class Token(NamedTuple):
 
     def print(
         self,
-        qid_to_name: dict[int, str], 
+        qid_to_name: dict[int, str],
     ) -> str:
-        s = qid_to_name[self.qid]
-        if self.shift:
-            s += f"{{{self.shift:+g}}}"
-        return s
+        name = qid_to_name[self.qid]
+        shift = _PRINT_SHIFT.format(shift=self.shift, ) if self.shift else ""
+        return name + shift
 
     def print_xtring(
         self,
@@ -95,12 +95,18 @@ def is_qid_zero_in_tokens(tokens: Iterable[Token], qid: int) -> bool:
 
 def print_tokens(
     tokens: Iterable[Token],
-    qid_to_name: dict[int, str]
+    /,
+    qid_to_name: dict[int, str],
+    qid_to_logly: dict[int, bool],
 ) -> Iterable[str]:
     """
     Create list of printed tokens
     """
-    return [ t.print(qid_to_name) for t in tokens ]
+    qid_to_logly = qid_to_logly or {}
+    return [
+        _quantities.wrap_logly(t.print(qid_to_name), qid_to_logly.get(t.qid, False))
+        for t in tokens
+    ]
 
 
 def rows_and_columns_from_tokens(

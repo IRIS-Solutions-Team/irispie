@@ -91,8 +91,10 @@ __all__ = (
     "MEASUREMENT_SHOCK",
     "MEASUREMENT_STD",
     "EXOGENOUS_VARIABLE",
-    "ANY_SHOCK",
     "ANY_VARIABLE",
+    "ANY_SHOCK",
+    "STOCHASTIC_SHOCK",
+    "PARAMETER",
 )
 
 
@@ -116,8 +118,8 @@ class Quantity(
         self.logly = logly
         return self
 
-    def print_name_maybe_log(self, /, ) -> str:
-        return print_name_maybe_log(self.human, self.logly, )
+    def wrap_logly(self, /, ) -> str:
+        return wrap_logly(self.human, self.logly, )
 
     def copy(self, /, ) -> Self:
         """
@@ -324,7 +326,7 @@ def generate_where_logly(
     return (i for i, qid in enumerate(qids, ) if qid_to_logly.get(qid, False))
 
 
-def print_name_maybe_log(name, logly, /, ) -> str:
+def wrap_logly(name, logly, /, ) -> str:
     return f"log({name})" if logly else name
 
 
