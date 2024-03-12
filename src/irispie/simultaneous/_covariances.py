@@ -49,7 +49,7 @@ class CoverianceMixin:
         #     stack_func(tuple(cov[order] for cov in cov_by_variant))
         #     for order in range(up_to_order + 1)
         # )
-        cov_by_variant = self.unwrap_singleton(cov_by_variant, )
+        cov_by_variant = self.unpack_singleton(cov_by_variant, )
         return cov_by_variant, dimension_names
 
     def get_acorr(
@@ -66,12 +66,12 @@ class CoverianceMixin:
         acov_by_variant = acov
         if acov_by_variant is None:
             acov_by_variant, *_ = self.get_acov(**kwargs, )
-        acov_by_variant = self.rewrap_singleton(acov_by_variant, )
+        acov_by_variant = self.repack_singleton(acov_by_variant, )
         acorr_by_variant = [
             _covariances.acorr_from_acov(i)
             for i in acov_by_variant
         ]
-        acorr_by_variant = self.unwrap_singleton(acorr_by_variant, )
+        acorr_by_variant = self.unpack_singleton(acorr_by_variant, )
         return acorr_by_variant, dimension_names
 
     def _getv_autocov(
@@ -102,7 +102,7 @@ class CoverianceMixin:
             self._getv_std_u(v, )
             for v in self._variants
         ]
-        return self.unwrap_singleton(std_u, )
+        return self.unpack_singleton(std_u, )
 
     def get_std_measurement_shocks(self, /, ):
         """
@@ -111,12 +111,12 @@ class CoverianceMixin:
             self._getv_std_w(v, )
             for v in self._variants
         ]
-        return self.unwrap_singleton(std_w, )
+        return self.unpack_singleton(std_w, )
 
     def get_cov_unanticipated_shocks(
         self,
         /,
-        unwrap_singleton: bool = True,
+        unpack_singleton: bool = True,
     ):
         """
         """
@@ -124,12 +124,12 @@ class CoverianceMixin:
             self._getv_cov_u(v, )
             for v in self._variants
         ]
-        return self.unwrap_singleton(cov_u, unwrap_singleton=unwrap_singleton, )
+        return self.unpack_singleton(cov_u, unpack_singleton=unpack_singleton, )
 
     def get_cov_measurement_shocks(
         self,
         /,
-        unwrap_singleton: bool = True,
+        unpack_singleton: bool = True,
     ):
         """
         """
@@ -137,7 +137,7 @@ class CoverianceMixin:
             self._getv_cov_w(v, )
             for v in self._variants
         ]
-        return self.unwrap_singleton(cov_w, unwrap_singleton=unwrap_singleton, )
+        return self.unpack_singleton(cov_w, unpack_singleton=unpack_singleton, )
 
     def _getv_std_u(self, variant, /, ):
         """

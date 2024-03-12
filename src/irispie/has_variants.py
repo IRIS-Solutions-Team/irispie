@@ -142,23 +142,23 @@ class HasVariantsMixin:
         """
         return self.iter_own_variants()
 
-    def rewrap_singleton(
+    def repack_singleton(
         self: HasVariantsProtocol,
         anything: list[_T] | _T,
         /,
     ) -> list[_T]:
         """
         """
-        return rewrap_singleton(anything, self.is_singleton, )
+        return repack_singleton(anything, self.is_singleton, )
 
-    def unwrap_singleton(
+    def unpack_singleton(
         self: HasVariantsProtocol,
         anything: list[_T],
         **kwargs,
     ) -> list[_T] | _T:
         """
         """
-        return unwrap_singleton(
+        return unpack_singleton(
             anything,
             self.is_singleton,
             **kwargs,
@@ -212,23 +212,23 @@ def iter_own_variants(anything: _T, ) -> Iterator[_T]:
         return [anything, ]
 
 
-def rewrap_singleton(anything: _T, is_singleton: bool, ) -> list[_T]:
+def repack_singleton(anything: _T, is_singleton: bool, ) -> list[_T]:
     """
     """
     return [anything] if is_singleton else anything
 
 
-def unwrap_singleton(
+def unpack_singleton(
     anything: list[_T],
     is_singleton: bool,
     /,
-    unwrap_singleton: bool = True,
+    unpack_singleton: bool = True,
 ) -> _T | list[_T]:
     """
     """
     return (
         anything[0]
-        if is_singleton and unwrap_singleton
+        if is_singleton and unpack_singleton
         else anything
     )
 

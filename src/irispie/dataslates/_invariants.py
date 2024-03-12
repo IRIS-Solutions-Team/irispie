@@ -188,5 +188,5 @@ def _scalar_from_values(
     """
     scalars = list(values[:, 0])
     is_singleton = _has_variants.is_singleton(num_variants, )
-    return _has_variants.unwrap_singleton(scalars, is_singleton, )
+    return _has_variants.unpack_singleton(scalars, is_singleton, )
 

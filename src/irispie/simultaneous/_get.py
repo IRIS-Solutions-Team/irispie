@@ -212,12 +212,12 @@ class GetMixin:
     def get_solution_matrices(
         self,
         /,
-        unwrap_singleton: bool = True,
+        unpack_singleton: bool = True,
     ):
         """
         """
         solution_matrices = [ v.solution for v in self._variants ]
-        return self.unwrap_singleton(solution_matrices, unwrap_singleton=unwrap_singleton, )
+        return self.unpack_singleton(solution_matrices, unpack_singleton=unpack_singleton, )
 
     def get_dynamic_equations(
         self,
@@ -312,18 +312,18 @@ class GetMixin:
     def get_eigenvalues(
         self,
         /,
-        unwrap_singleton: bool = True,
+        unpack_singleton: bool = True,
     ):
         eigenvalues = [ v.solution.eigenvalues for v in self._variants ]
-        return self.unwrap_singleton(eigenvalues, unwrap_singleton=unwrap_singleton, )
+        return self.unpack_singleton(eigenvalues, unpack_singleton=unpack_singleton, )
 
     def get_eigenvalues_stability(
         self,
         /,
-        unwrap_singleton: bool = True,
+        unpack_singleton: bool = True,
     ):
         stability = [ v.solution.eigenvalues_stability for v in self._variants ]
-        return self.unwrap_singleton(stability, unwrap_singleton=unwrap_singleton, )
+        return self.unpack_singleton(stability, unpack_singleton=unpack_singleton, )
 
     #]
 
