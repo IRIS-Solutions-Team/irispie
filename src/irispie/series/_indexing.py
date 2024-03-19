@@ -5,6 +5,8 @@ Time series indexing inlay
 
 #[
 from __future__ import annotations
+
+from .. import dates as _dates
 #]
 
 
@@ -21,15 +23,19 @@ class Inlay:
         """
         Get data self[dates] or self[dates, variants]
         """
-        # Time shift
         if isinstance(index, int, ):
+            # Time shift
             new = self.copy()
             new.shift(index, )
             return new
-        # Extracting data
-        if not isinstance(index, tuple, ):
-            index = (index, None, )
-        return self.get_data(*index, )
+        else:
+            # Extract data
+            if isinstance(index, tuple, ):
+                dates, variants = index
+            else:
+                dates, variants = index, None
+            dates = _dates.ensure_date_tuple(dates, frequency=self.frequency, )
+            return self.get_data(dates, variants, )
 
     def __setitem__(
         self,

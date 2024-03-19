@@ -38,6 +38,7 @@ from . import _covariances as _covariances
 from . import _flags as _flags
 from . import _simulate as _simulate
 from . import _steady as _steady
+from . import _logly as _logly
 from . import _get as _get
 from . import _assigns as _assigns
 #]
@@ -65,7 +66,8 @@ class Simultaneous(
     _has_invariant.HasInvariantMixin,
     _has_variants.HasVariantsMixin,
     _simulate.SimulateMixin,
-    _steady.SteadyInlay,
+    _steady.Inlay,
+    _logly.Inlay,
     _covariances.CoverianceMixin,
     _kalmans.KalmanMixin,
     _get.GetMixin,
@@ -335,12 +337,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         Create a dictionary mapping from quantity id to quantity descriptor
         """
         return _quantities.create_qid_to_description(self._invariant.quantities)
-
-    def create_qid_to_logly(self, /, ) -> dict[int, bool]:
-        """
-        Create a dictionary mapping from quantity id to quantity log-status
-        """
-        return _quantities.create_qid_to_logly(self._invariant.quantities)
 
     def create_steady_array(
         self,

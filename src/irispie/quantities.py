@@ -234,6 +234,13 @@ def create_qid_to_logly(quantities: Iterable[Quantity]) -> dict[int, bool]:
     }
 
 
+def generate_logly_indexes(quantities: Iterable[Quantity]) -> Iterator[int]:
+    return (
+        qty.id for qty in quantities
+        if qty.id is not None and qty.logly
+    )
+
+
 def change_logly(
     quantities: Iterable[Quantity],
     new_logly: bool,

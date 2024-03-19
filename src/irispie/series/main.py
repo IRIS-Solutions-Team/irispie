@@ -1023,7 +1023,7 @@ for n in FUNCTION_ADAPTATIONS_BUILTINS:
 
 def _from_dates_and_values(
     self,
-    dates: Iterable[_dates.Dater],
+    dates: Iterable[_dates.Dater] | str,
     values: _np.ndarray | Iterable,
     frequency: _dates.Frequency | None = None,
     **kwargs,
@@ -1031,17 +1031,14 @@ def _from_dates_and_values(
     """
     """
     #[
-    # values = _has_variants.iter_variants(values, )
-    # num_variants = values.shape[1] if hasattr(values, "shape") else 1
-    # self.empty(num_variants=num_variants, )
-    dates = tuple(( _dates.ensure_dater(d, frequency=frequency, ) for d in dates ))
+    dates = _dates.ensure_date_tuple(dates, frequency=frequency, )
     self.set_data(dates, values, )
     #]
 
 
 def _from_dates_and_func(
     self,
-    dates: Iterable[_dates.Dater],
+    dates: Iterable[_dates.Dater] | str,
     func: Callable,
     frequency: _dates.Frequency | None = None,
     **kwargs,
@@ -1050,7 +1047,7 @@ def _from_dates_and_func(
     Create a new time series from dates and a function
     """
     #[
-    dates = tuple(( _dates.ensure_dater(d, frequency=frequency, ) for d in dates ))
+    dates = _dates.ensure_date_tuple(dates, frequency=frequency, )
     data = [
         [func() for j in range(self.num_variants)]
         for i in range(len(dates))
@@ -1070,7 +1067,7 @@ def _from_start_date_and_values(
     """
     """
     #[
-    self.start_date = _dates.ensure_dater(start_date, frequency=frequency, )
+    self.start_date = _dates.ensure_date_tuple(start_date, frequency=frequency, )[0]
     if isinstance(values, _np.ndarray):
         values = _reshape_numpy_array(values, )
     else:

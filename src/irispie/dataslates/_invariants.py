@@ -26,7 +26,7 @@ class Invariant:
     #[
 
     descriptions: Iterable[str] | None = None
-    boolex_logly: tuple[bool, ...] | None = None
+    logly_indexes: tuple[int, ...] | None = None
     index_base_columns: tuple[int, ...] | None = None
     names: tuple[str] | None = None
     dates: tuple[_dates.Dater, ...] | None = None
@@ -44,15 +44,16 @@ class Invariant:
         scalar_names: Iterable[str] | None = None,
         qid_to_logly: dict[int, bool | None] | None = None,
         min_max_shift: tuple[int, int] = (0, 0),
+        frequency: _dates.Frequency | None = None,
     ) -> None:
         """
         """
         self.names = tuple(names)
-        self.dates = tuple(_dates.ensure_dater(d) for d in dates)
+        self.dates = tuple(dates)
         base_columns = base_columns or ()
         self.index_base_columns = tuple(i in base_columns for i in range(self.num_periods))
         self._populate_descriptions(descriptions, )
-        self._populate_boolex_logly(qid_to_logly, )
+        self._populate_logly_index(qid_to_logly, )
         self.min_max_shift = min_max_shift
         self._populate_databox_value_creator(scalar_names, )
 
@@ -113,7 +114,7 @@ class Invariant:
         else:
             self.descriptions = tuple((d or "") for d in descriptions)
 
-    def _populate_boolex_logly(
+    def _populate_logly_index(
         self,
         qid_to_logly: dict[int, bool] | None,
         /,
@@ -121,9 +122,9 @@ class Invariant:
         """
         """
         qid_to_logly = qid_to_logly or {}
-        self.boolex_logly = tuple(
-            qid_to_logly.get(i, False) or False
-            for i in range(len(self.names), )
+        self.logly_indexes = tuple(
+            i for i in range(len(self.names), )
+            if qid_to_logly.get(i, False)
         )
 
     def _populate_databox_value_creator(

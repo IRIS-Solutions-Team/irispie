@@ -22,14 +22,14 @@ class HumanKalmanOutputData:
     """
     #[
 
-    predict_mean = None
+    predict_med = None
     predict_std = None
+    predict_err = None
 
-    update_mean = None
+    update_med = None
     update_std = None
-    predict_error = None
 
-    smooth_mean = None
+    smooth_med = None
     smooth_std = None
 
     predict_mse_measurement = None
@@ -44,14 +44,14 @@ class HumanKalmanOutputData:
         self = klass()
         self.predict_mse_measurement = kos.predict_mse_measurement
         if kos.needs.return_predict:
-            self.predict_mean = kos.predict_mean.to_databox()
+            self.predict_med = kos.predict_med.to_databox()
             self.predict_std = kos.predict_std.to_databox()
         if kos.needs.return_update:
-            self.update_mean = kos.update_mean.to_databox()
+            self.update_med = kos.update_med.to_databox()
             self.update_std = kos.update_std.to_databox()
-            self.predict_error = kos.predict_error.to_databox()
+            self.predict_err = kos.predict_err.to_databox()
         if kos.needs.return_smooth:
-            self.smooth_mean = kos.smooth_mean.to_databox()
+            self.smooth_med = kos.smooth_med.to_databox()
             self.smooth_std = kos.smooth_std.to_databox()
         return self
 
@@ -93,14 +93,14 @@ class _KalmanOutputStore:
 
     needs = None
 
-    predict_mean = None
+    predict_med = None
     predict_std = None
 
-    update_mean = None
+    update_med = None
     update_std = None
-    predict_error = None
+    predict_err = None
 
-    smooth_mean = None
+    smooth_med = None
     smooth_std = None
 
     predict_mse_measurement = None
@@ -122,17 +122,17 @@ class _KalmanOutputStore:
         self.var_scale = [_np.full((1, ), _np.nan, dtype=_np.float64, )]
         self.diffuse_factor = [_np.full((1, ), _np.nan, dtype=_np.float64, )]
         if self.needs.return_predict:
-            self.predict_mean = ds.nan_copy()
+            self.predict_med = ds.nan_copy()
             self.predict_std = ds.nan_copy()
         if self.needs.return_update:
-            self.update_mean = ds.nan_copy()
+            self.update_med = ds.nan_copy()
             self.update_std = ds.nan_copy()
-            self.predict_error = _dataslates.Dataslate.nan_from_names_dates(
+            self.predict_err = _dataslates.Dataslate.nan_from_names_dates(
                 y_names, ds.dates,
                 base_columns=ds.base_columns,
             )
         if self.needs.return_smooth:
-            self.smooth_mean = ds.nan_copy()
+            self.smooth_med = ds.nan_copy()
             self.smooth_std = ds.nan_copy()
 
     def create_output_args(self, /, ) -> tuple[HumanKalmanOutputData, dict[str, Any]]:
@@ -178,12 +178,12 @@ class _KalmanRunningVariant:
     sum_log_det_Fx = None
     sum_pex_invFx_pex = None
 
-    predict_mean_array = None
+    predict_med_array = None
     predict_std_array = None
-    update_mean_array = None
+    update_med_array = None
     update_std_array = None
-    predict_error_data = None
-    smooth_mean_array = None
+    predict_err_data = None
+    smooth_med_array = None
     smooth_std_array = None
 
     y1_array = None
@@ -267,7 +267,7 @@ def _store_std_from_mse(std_array, array_indexes, mse, pos=None, ) -> None:
     std_array[array_indexes] = _std_from_mse(mse, )
 
 
-def _store_mean(mean_array, array_indexes, mean, pos=None, ) -> None:
+def _store_med(mean_array, array_indexes, mean, pos=None, ) -> None:
     if pos is not None:
         mean = mean[pos]
     mean_array[array_indexes] = mean
@@ -361,7 +361,7 @@ class KalmanMixin:
         #
         # Initialize mean and MSE
         #
-        init_mean, init_mse, diffuse_factor_resolved = _initializers.initialize(
+        init_med, init_mse, diffuse_factor_resolved = _initializers.initialize(
             solution, cov_u,
             diffuse_scale=diffuse_factor,
         )
@@ -369,7 +369,7 @@ class KalmanMixin:
         krv.diffuse_factor = kos.diffuse_factor[0]
         krv.diffuse_factor[0] = diffuse_factor_resolved
 
-        a1, P1 = init_mean, init_mse
+        a1, P1 = init_med, init_mse
         Ta = solution.Ta
         Ra = solution.Ra
         Pa = solution.Pa
@@ -420,19 +420,19 @@ class KalmanMixin:
 
 
         if needs.return_predict:
-            krv.predict_mean_array = kos.predict_mean.get_data_variant(0, )
-            krv.predict_mean_array[u_qids, :] = krv.u0_array
-            krv.predict_mean_array[v_qids, :] = krv.v0_array
-            krv.predict_mean_array[w_qids, :] = krv.w0_array
+            krv.predict_med_array = kos.predict_med.get_data_variant(0, )
+            krv.predict_med_array[u_qids, :] = krv.u0_array
+            krv.predict_med_array[v_qids, :] = krv.v0_array
+            krv.predict_med_array[w_qids, :] = krv.w0_array
             krv.predict_std_array = kos.predict_std.get_data_variant(0, )
 
         if needs.return_update:
-            krv.update_mean_array = kos.update_mean.get_data_variant(0, )
+            krv.update_med_array = kos.update_med.get_data_variant(0, )
             krv.update_std_array = kos.update_std.get_data_variant(0, )
-            krv.predict_error_data = kos.predict_error.get_data_variant(0, )
+            krv.predict_err_data = kos.predict_err.get_data_variant(0, )
 
         if needs.return_smooth:
-            krv.smooth_mean_array = kos.smooth_mean.get_data_variant(0, )
+            krv.smooth_med_array = kos.smooth_med.get_data_variant(0, )
             krv.smooth_std_array = kos.smooth_std.get_data_variant(0, )
 
         krv.neg_log_lik = kos.neg_log_lik[0]
@@ -463,11 +463,11 @@ class KalmanMixin:
             y0[~inx_y] = _np.nan
 
             if needs.return_predict:
-                _store_mean(krv.predict_mean_array, (curr_qids, t), Ua @ a0, curr_pos, )
-                _store_mean(krv.predict_mean_array, (y_qids, t), y0, )
-                _store_mean(krv.predict_mean_array, (u_qids, t), u0, )
-                _store_mean(krv.predict_mean_array, (v_qids, t), v0, )
-                _store_mean(krv.predict_mean_array, (w_qids, t), w0, )
+                _store_med(krv.predict_med_array, (curr_qids, t), Ua @ a0, curr_pos, )
+                _store_med(krv.predict_med_array, (y_qids, t), y0, )
+                _store_med(krv.predict_med_array, (u_qids, t), u0, )
+                _store_med(krv.predict_med_array, (v_qids, t), v0, )
+                _store_med(krv.predict_med_array, (w_qids, t), w0, )
 
             # MSE updating step
             Fx = F[inx_y, :][:, inx_y]
@@ -496,12 +496,12 @@ class KalmanMixin:
                 r = ZaxT_invFx @ pex # Z' * inv(F) * pe
                 u1 = u0 + Pa_cov_u.T @ r
                 v1 = v0
-                _store_mean(krv.update_mean_array, (curr_qids, t), Ua @ a1, curr_pos, )
-                _store_mean(krv.update_mean_array, (y_qids, t), y1, )
-                _store_mean(krv.update_mean_array, (u_qids, t), u1, )
-                _store_mean(krv.update_mean_array, (v_qids, t), v1, )
-                _store_mean(krv.update_mean_array, (w_qids, t), w1, )
-                _store_mean(krv.predict_error_data, (..., t), pe, )
+                _store_med(krv.update_med_array, (curr_qids, t), Ua @ a1, curr_pos, )
+                _store_med(krv.update_med_array, (y_qids, t), y1, )
+                _store_med(krv.update_med_array, (u_qids, t), u1, )
+                _store_med(krv.update_med_array, (v_qids, t), v1, )
+                _store_med(krv.update_med_array, (w_qids, t), w1, )
+                _store_med(krv.predict_err_data, (..., t), pe, )
 
             if needs.return_smooth:
                 krv.all_a0[t] = a0
@@ -545,21 +545,21 @@ class KalmanMixin:
 
             H_cov_w = H[inx_y, :] @ cov_w
             w2 = w0 + H_cov_w.T @ (invFx_pex - (((Ta @ G).T @ r) if r is not None else 0))
-            _store_mean(krv.smooth_mean_array, (w_qids, t), w2, )
+            _store_med(krv.smooth_med_array, (w_qids, t), w2, )
 
             r = ZaxT_invFx_pex + ((L.T @ r) if r is not None else 0)
             a2 = a0 + P0 @ r
-            _store_mean(krv.smooth_mean_array, (curr_qids, t), Ua @ a2, curr_pos, )
+            _store_med(krv.smooth_med_array, (curr_qids, t), Ua @ a2, curr_pos, )
 
             y2 = krv.y1_array[:, t]
-            _store_mean(krv.smooth_mean_array, (y_qids, t), y2, )
+            _store_med(krv.smooth_med_array, (y_qids, t), y2, )
 
             Pa_cov_u = Pa @ cov_u
             u2 = u0 + Pa_cov_u.T @ r
-            _store_mean(krv.smooth_mean_array, (u_qids, t), u2, )
+            _store_med(krv.smooth_med_array, (u_qids, t), u2, )
 
             v2 = v0
-            _store_mean(krv.smooth_mean_array, (v_qids, t), v2, )
+            _store_med(krv.smooth_med_array, (v_qids, t), v2, )
 
         krv.calculate_likelihood()
         krv.rescale_stds()

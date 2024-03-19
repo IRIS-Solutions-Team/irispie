@@ -177,8 +177,8 @@ class Dataslate(
         return self._invariant.descriptions
 
     @property
-    def boolex_logly(self, /, ) -> tuple[str, ...] | None:
-        return self._invariant.boolex_logly
+    def logly_indexes(self, /, ) -> tuple[int, ...] | None:
+        return self._invariant.logly_indexes
 
     @property
     def dates(self, /, ) -> tuple[str]:

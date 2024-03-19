@@ -67,6 +67,7 @@ class Frequency(_en.IntEnum):
         """
         """
         try:
+            sdmx_string = sdmx_string.strip()
             return next(
                 freq for freq, (length, pattern, ) in SDMX_REXP_FORMATS.items()
                 if (length is None or len(sdmx_string) == length) and pattern.fullmatch(sdmx_string, )
@@ -147,8 +148,8 @@ class ResolutionContext:
 
     def __init__(
         self,
-        start_date: _dates.Dater | None = None,
-        end_date: _dates.Dater | None = None,
+        start_date: Dater | None = None,
+        end_date: Dater | None = None,
         /,
     ) -> None:
         """
@@ -264,7 +265,7 @@ Dates and date ranges
         """
         """
         freq = Frequency.from_sdmx_string(sdmx_string, ) if freq is None else freq
-        return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_sdmx_string(sdmx_string)
+        return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_sdmx_string(sdmx_string, )
 
     @staticmethod
     def from_ymd(freq: Frequency, *args, ) -> Dater:
@@ -652,7 +653,7 @@ class YearlyDater(RegularDaterMixin, Dater, ):
 
     @classmethod
     def from_sdmx_string(klass, sdmx_string: str) -> YearlyDater:
-        return klass(int(sdmx_string))
+        return klass(int(sdmx_string.strip()))
 
     def to_sdmx_string(self) -> str:
         return f"{self.get_year():04g}"
@@ -680,7 +681,7 @@ class HalfyearlyDater(RegularDaterMixin, Dater, ):
 
     @classmethod
     def from_sdmx_string(klass, sdmx_string: str) -> HalfyearlyDater:
-        year, halfyear = sdmx_string.split("-H")
+        year, halfyear = sdmx_string.strip().split("-H")
         return klass.from_year_period(int(year), int(halfyear))
 
     def to_sdmx_string(self) -> str:
@@ -731,7 +732,7 @@ class QuarterlyDater(RegularDaterMixin, Dater, ):
 
     @classmethod
     def from_sdmx_string(klass, sdmx_string: str) -> QuarterlyDater:
-        year, quarter = sdmx_string.split("-Q")
+        year, quarter = sdmx_string.strip().split("-Q")
         return klass.from_year_period(int(year), int(quarter))
 
     def to_sdmx_string(self) -> str:
@@ -761,7 +762,7 @@ class MonthlyDater(RegularDaterMixin, Dater, ):
 
     @classmethod
     def from_sdmx_string(klass, sdmx_string: str) -> MonthlyDater:
-        year, month = sdmx_string.split("-")
+        year, month = sdmx_string.strip().split("-")
         return klass.from_year_period(int(year), int(month))
 
     def to_sdmx_string(self) -> str:
@@ -1148,6 +1149,13 @@ DATER_CLASS_FROM_FREQUENCY_RESOLUTION = {
 def daters_from_sdmx_strings(freq: Frequency, sdmx_strings: Iterable[str], ) -> Iterable[Dater]:
     """
     """
+    sdmx_strings = tuple(sdmx_strings)
+    if not sdmx_strings:
+        return ()
+    freq = (
+        Frequency.from_sdmx_string(sdmx_strings[0], )
+        if freq is None else freq
+    )
     dater_class = DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq]
     return ( dater_class.from_sdmx_string(i) for i in sdmx_strings )
 
@@ -1193,17 +1201,36 @@ def daters_from_to(
     return tuple(dater_class(x) for x in serials)
 
 
-def ensure_dater(
-    dater_or_string: _dates.Dater | str,
-    frequency: _dates.Frequency | None = None,
-) -> _dates.Dater:
+def ensure_date_tuple(
+    dater_or_string: Iterable[Dater] | str,
+    frequency: Frequency | None = None,
+) -> tuple[Dater, ...]:
     """
     """
     #[
-    return (
-        dater_or_string if not isinstance(dater_or_string, str)
-        else Dater.from_sdmx_string(frequency, dater_or_string, )
-    )
+    if isinstance(dater_or_string, str):
+        return _date_tuple_from_string(dater_or_string, frequency, )
+    else:
+        return tuple(dater_or_string)
+    #]
+
+
+def _date_tuple_from_string(
+    date_string: str,
+    frequency: Frequency | None = None,
+) -> tuple[Dater, ...]:
+    """
+    """
+    #[
+    if "..." in date_string:
+        start, end = date_string.split("...")
+        return tuple(daters_from_to(*daters_from_sdmx_strings(frequency, (start, end, ))))
+    if ">>" in date_string:
+        start, end = date_string.split(">>")
+        return tuple(daters_from_to(*daters_from_sdmx_strings(frequency, (start, end, ))))
+    if "," in date_string:
+        return tuple(daters_from_sdmx_strings(frequency, date_string.split(",")))
+    return (Dater.from_sdmx_string(frequency, date_string), )
     #]
 
 

@@ -30,7 +30,7 @@ def simulate_flat(
     """
     #[
     columns_to_run = dataslate.base_columns
-    boolex_logly = dataslate.boolex_logly
+    logly_indexes = dataslate.logly_indexes
     working_data = dataslate.get_data_variant(0, )
     #
     column_start = columns_to_run[0]
@@ -48,8 +48,8 @@ def simulate_flat(
     H = solution.H
     D = solution.D if not deviation else 0
     #
-    if any(boolex_logly):
-        working_data[boolex_logly, :] = _np.log(working_data[boolex_logly, :])
+    if logly_indexes:
+        working_data[logly_indexes, ...] = _np.log(working_data[logly_indexes, ...])
     #
     curr_state = _dataslates.retrieve_vector_from_data_array(
         working_data, vec.transition_variables, column_start-1,
@@ -109,8 +109,8 @@ def simulate_flat(
     _store_shock_values(anticipated_shocks, working_data, vec.anticipated_shocks, )
     _store_shock_values(measurement_shocks, working_data, vec.measurement_shocks, )
     #
-    if any(boolex_logly):
-        working_data[boolex_logly, :] = _np.exp(working_data[boolex_logly, :])
+    if logly_indexes:
+        working_data[logly_indexes, ...] = _np.exp(working_data[logly_indexes, ...])
     #]
 
 
