@@ -6,7 +6,7 @@ Main time series class definition
 #[
 from __future__ import annotations
 
-from numbers import Real
+from numbers import (Real, )
 from collections.abc import (Iterable, Callable, )
 from typing import (Self, Any, TypeAlias, NoReturn, )
 from types import (EllipsisType, )
@@ -905,11 +905,21 @@ self = Series(
         self.start_date = new_start_date
         self._replace_data(new_values, )
 
-    def __iter__(self, ):
+    def iter_dates_values(self, /, unpack_singleton=True, ):
         """
         Default iterator is line by line, yielding a tuple of (date, values)
         """
-        return zip(self.range, self.data)
+        def _unpack_singleton_data_row(data_list: list[Real], /, ):
+            return _has_variants.unpack_singleton(data_list, True, )
+        def _keep_data_row(data_list: list[Real], /, ):
+            return data_list
+        data_row_func = (
+            _unpack_singleton_data_row
+            if self.is_singleton and unpack_singleton
+            else _keep_data_row
+        )
+        for date, data_row in zip(self.range, self.data, ):
+            yield date, data_row_func(data_row.tolist(), )
 
     def iter_variants(self, /, ) -> Iterator[Self]:
         """
