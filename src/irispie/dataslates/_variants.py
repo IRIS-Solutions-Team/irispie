@@ -5,6 +5,7 @@
 #[
 from __future__ import annotations
 
+from typing import (Any, Self, Iterable, )
 import numpy as _np
 
 from .. import dates as _dates
@@ -20,15 +21,18 @@ class Variant:
 
     __slots__ = (
         "data",
+        "tag_alongs",
     )
 
     def __init__(
         self,
         /,
+        tag_alongs: dict[str, Any] | None = None,
     ) -> None:
         """
         """
         self.data = None
+        self.tag_alongs = tag_alongs or {}
 
     @classmethod
     def from_databox_variant(
@@ -100,10 +104,13 @@ class Variant:
     ) -> _np.ndarray:
         """
         """
-        if columns is None:
-            return self.data[record_id, :]
-        else:
-            return self.data[record_id, columns]
+        columns = columns if columns is not None else ...
+        return self.data[record_id, columns]
+
+    def iter_data(self, /, ) -> _np.ndarray:
+        """
+        """
+        return iter(self.data)
 
     def store_record(
         self,

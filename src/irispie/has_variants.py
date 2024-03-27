@@ -153,7 +153,7 @@ class HasVariantsMixin:
 
     def unpack_singleton(
         self: HasVariantsProtocol,
-        anything: list[_T],
+        anything: list[_T] | _T,
         **kwargs,
     ) -> list[_T] | _T:
         """
@@ -164,6 +164,18 @@ class HasVariantsMixin:
             **kwargs,
         )
 
+    def unpack_singleton_in_dict(
+        self: HasVariantsProtocol,
+        anything_in_dict: dict[str, list[_T] | _T],
+        **kwargs,
+    ) -> dict[str, _T | list[_T]]:
+        """
+        """
+        return unpack_singleton_in_dict(
+            anything_in_dict,
+            self.is_singleton,
+            **kwargs,
+        )
     #]
 
 
@@ -220,7 +232,7 @@ def repack_singleton(anything: _T, is_singleton: bool, ) -> list[_T]:
 
 def unpack_singleton(
     anything: list[_T],
-    is_singleton: bool,
+    is_singleton: bool = True,
     /,
     unpack_singleton: bool = True,
 ) -> _T | list[_T]:
@@ -231,6 +243,26 @@ def unpack_singleton(
         if is_singleton and unpack_singleton
         else anything
     )
+
+
+shadow_unpack_singleton = unpack_singleton
+
+
+def unpack_singleton_in_dict(
+    anything_in_dict: dict[str, list[_T] | _T],
+    is_singleton: bool,
+    /,
+    unpack_singleton: bool = True,
+) -> dict[str, _T | list[_T]]:
+    """
+    """
+    if is_singleton and unpack_singleton:
+        return {
+            k: shadow_unpack_singleton(v, )
+            for k, v in anything_in_dict.items()
+        }
+    else:
+        return anything_in_dict
 
 
 def is_singleton(num_variants: int) -> bool:

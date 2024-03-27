@@ -16,9 +16,11 @@ from .. import equations as _equations
 from .. import quantities as _quantities
 from .. import sources as _sources
 from .. import dates as _dates
+from .. import has_variants as _has_variants
 from ..series import main as _series
 from ..incidences import main as _incidence
 from ..databoxes import main as _databoxes
+from ..fords import solutions as _solutions
 from ..fords import descriptors as _descriptors
 
 from . import _flags
@@ -31,97 +33,216 @@ Quantities that are time series in model databoxes
 _TIME_SERIES_QUANTITY = _quantities.QuantityKind.ANY_VARIABLE | _quantities.QuantityKind.ANY_SHOCK
 
 
-def _decorate_output_format(func: Callable, ):
+def _cast_as_output_type(func: Callable, ):
     """
     """
     #[
+    @_ft.wraps(func)
     def _wrapper(*args, **kwargs):
         output = func(*args, **kwargs)
-        output_format = kwargs.get("output", "Databox")
-        if output_format == "Databox":
-            output = _databoxes.Databox.from_dict(output, )
-        return output
+        output_type = kwargs.get("output_type", _databoxes.Databox, )
+        return output_type(output, ) if output_type else output
     return _wrapper
     #]
 
 
-class GetMixin:
+def _unpack_singleton(func: Callable, ):
+    #[
+    @_ft.wraps(func)
+    def _wrapper(self, *args, **kwargs, ):
+        unpack_singleton = kwargs.pop("unpack_singleton", True)
+        output = func(self, *args, **kwargs)
+        return self.unpack_singleton(output, unpack_singleton=unpack_singleton, )
+    return _wrapper
+    #]
+
+
+def _unpack_singleton_in_dict(func: Callable, ):
+    #[
+    @_ft.wraps(func)
+    def _wrapper(self, *args, **kwargs, ):
+        unpack_singleton = kwargs.pop("unpack_singleton", True)
+        output = func(self, *args, **kwargs)
+        return self.unpack_singleton_in_dict(output, unpack_singleton=unpack_singleton, )
+    return _wrapper
+    #]
+
+
+class Inlay:
     """
     Frontend getter methods for Simultaneous objects
     """
     #[
 
-    @_decorate_output_format
+    @_cast_as_output_type
+    @_unpack_singleton_in_dict
     def get_steady_levels(
         self,
         /,
+        unpack_singleton: bool = True,
+        kind: _quantities.QuantityKind | None = None,
         **kwargs,
-    ) -> dict[str, Real]:
-        kind = _resolve_steady_kind(**kwargs, )
+    ) -> dict[str, list[Real] | Real]:
+        """
+················································································
+
+==Get steady-state levels of variables==
+
+```
+steady_levels = self.get_steady_levels(
+    *,
+    round: int = None,
+    unpack_singleton: bool = True,
+    output_typ: type = Databox,
+)
+```
+
+### Input arguments ###
+
+
+???+ input "self"
+    `Simultaneous` model object with a valid first-order solution.
+
+???+ input "round"
+    Number of decimal places to round the output values.
+
+???+ input "unpack_singleton"
+    If `True`, unpack singleton lists and return the single element. If
+    `False`, return the list as is.
+
+???+ input "output_type"
+    Cast output as this type; the constructor for this type must accept a
+    dictionary.
+
+
+### Returns ###
+
+
+???+ returns "steady_levels"
+    Databox with the steady-state levels for each variable.
+
+......................................................................
+        """
+        kind = kind if kind is not None else _resolve_steady_kind(**kwargs, )
         qids = _quantities.generate_qids_by_kind(self._invariant.quantities, kind, )
         return self._get_values("levels", qids, **kwargs, )
 
-    @_decorate_output_format
+    @_cast_as_output_type
+    @_unpack_singleton_in_dict
     def get_steady_changes(
         self,
         /,
+        unpack_singleton: bool = True,
+        kind: _quantities.QuantityKind | None = None,
         **kwargs,
-    ) -> dict[str, Real]:
-        kind = _resolve_steady_kind(**kwargs, )
+    ) -> dict[str, list[Real] | Real]:
+        """
+················································································
+
+==Get steady-state changes of variables==
+
+```
+steady_changes = self.get_steady_changes(
+    *,
+    round: int = None,
+    unpack_singleton: bool = True,
+    output_typ: type = Databox,
+)
+```
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    `Simultaneous` model object with a valid first-order solution.
+
+???+ input "round"
+    Number of decimal places to round the output values.
+
+???+ input "unpack_singleton"
+    If `True`, unpack singleton lists and return the single element. If
+    `False`, return the list as is.
+
+???+ input "output_type"
+    Cast output as this type; the constructor for this type must accept a
+    dictionary.
+
+
+### Returns ###
+
+
+???+ returns "steady_changes"
+    Databox with the steady-state changes for each variable, i.e. first
+    differences or gross rates of change depending on the log status of
+    each variable.
+
+......................................................................
+        """
+        kind = kind if kind is not None else _resolve_steady_kind(**kwargs, )
         qids = _quantities.generate_qids_by_kind(self._invariant.quantities, kind, )
         return self._get_values("changes", qids, **kwargs, )
 
-    @_decorate_output_format
+    @_cast_as_output_type
+    @_unpack_singleton_in_dict
     def get_steady(
         self,
         /,
+        unpack_singleton: bool = True,
+        kind: _quantities.QuantityKind | None = None,
         **kwargs,
-    ) -> dict[str, Real]:
+    ) -> dict[str, list[tuple[Real, Real]] | tuple[Real, Real]]:
         """
         """
-        kind = _resolve_steady_kind(**kwargs, )
+        kind = kind if kind is not None else _resolve_steady_kind(**kwargs, )
         qids = tuple(_quantities.generate_qids_by_kind(self._invariant.quantities, kind, ))
         levels = self._get_values("levels", qids, **kwargs, )
         changes = self._get_values("changes", qids, **kwargs, )
-        if self.is_singleton:
-            out = {
-                k: (levels[k], changes[k], )
-                for k in levels.keys()
-            }
-        else:
-            out = { k: None for k in levels.keys() }
-            for k in levels.keys():
-                out[k] = list(zip(levels[k], changes[k]))
-        return out
+        return {
+            k: list(zip(levels[k], changes[k]))
+            for k in levels.keys()
+        }
 
-    @_decorate_output_format
+    @_cast_as_output_type
+    @_unpack_singleton_in_dict
     def get_parameters(
         self,
         /,
+        unpack_singleton: bool = True,
         **kwargs,
     ) -> dict[str, Real]:
+        """
+        """
         qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _quantities.QuantityKind.PARAMETER, )
         return self._get_values("levels", qids, **kwargs, )
 
-    @_decorate_output_format
+    @_cast_as_output_type
+    @_unpack_singleton_in_dict
     def get_stds(
         self,
         /,
+        unpack_singleton: bool = True,
         **kwargs,
     ) -> dict[str, Real]:
+        """
+        """
         qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _quantities.QuantityKind.ANY_STD, )
         return self._get_values("levels", qids, **kwargs, )
 
-    @_decorate_output_format
+    @_cast_as_output_type
+    @_unpack_singleton_in_dict
     def get_parameters_stds(
         self,
         /,
+        unpack_singleton: bool = True,
         **kwargs,
     ) -> dict[str, Real]:
+        """
+        """
         qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _quantities.QuantityKind.PARAMETER_OR_STD, )
         return self._get_values("levels", qids, **kwargs, )
 
-    @_decorate_output_format
+    @_cast_as_output_type
     def get_log_status(
         self,
         /,
@@ -229,6 +350,18 @@ class GetMixin:
             if kind else self._invariant.dynamic_equations
         )
 
+    def get_std_qids_for_shock_qids(
+        self: Self,
+        shock_qids: Iterable[int],
+        /,
+    ) -> tuple[int]:
+        """
+        """
+        return tuple(
+            self._invariant.shock_qid_to_std_qid[qid]
+            for qid in shock_qids
+        )
+
     def get_steady_equations(
         self,
         /,
@@ -284,13 +417,6 @@ class GetMixin:
             value = float(value)
             return round(value, custom_round) if custom_round is not None else value
         #
-        if self.is_singleton:
-            def insert_value(out_dict, name, value):
-                out_dict[name] = apply(value)
-        else:
-            def insert_value(out_dict, name, value):
-                out_dict.setdefault(name, []).append(apply(value))
-        #
         qids = tuple(qids)
         qid_to_name = self.create_qid_to_name()
         out_dict = {}
@@ -298,7 +424,7 @@ class GetMixin:
         for v in self._variants:
             values = v.retrieve_values(variant_attr, qids)
             for qid, value in zip(qids, values):
-                insert_value(out_dict, qid_to_name[qid], value)
+                out_dict.setdefault(qid_to_name[qid], []).append(apply(value))
         return out_dict
 
     def get_descriptions(self, ) -> dict[str, str]:
@@ -309,26 +435,31 @@ class GetMixin:
             | _equations.create_human_to_description(self._invariant.dynamic_equations, )
         )
 
+    @_unpack_singleton
     def get_eigenvalues(
         self,
         /,
+        *,
         unpack_singleton: bool = True,
-    ):
-        eigenvalues = [ v.solution.eigenvalues for v in self._variants ]
-        return self.unpack_singleton(eigenvalues, unpack_singleton=unpack_singleton, )
+    ) -> list[_solutions.Eigenvalues] | _solutions.Eigenvalues:
+        """Eigenvalues
+        """
+        return [ v.solution.eigenvalues for v in self._variants ]
 
+    @_unpack_singleton
     def get_eigenvalues_stability(
         self,
         /,
+        *,
         unpack_singleton: bool = True,
     ):
-        stability = [ v.solution.eigenvalues_stability for v in self._variants ]
-        return self.unpack_singleton(stability, unpack_singleton=unpack_singleton, )
+        return [ v.solution.eigenvalues_stability for v in self._variants ]
 
     #]
 
 
 def _resolve_steady_kind(
+    *,
     include_shocks: bool = False,
     **kwargs,
 ) -> _quantities.QuantityKind:

@@ -179,6 +179,7 @@ model object.
 self = Sequential.from_string(
     string,
     /,
+    *,
     context=None,
     description="",
 )
@@ -194,7 +195,6 @@ Read and parse a text `string` with a model source code, and create a
 ???+ input "string"
 
     Text string from which the `Sequential` model object will be created.
-
 
 See [`Sequential.from_file`](#sequentialfrom_file) for other input arguments.
 
@@ -648,10 +648,10 @@ names = self.get_databox_names()
         """
         return self.get_parameters()
 
-    def get_scalar_names(self, /, ) -> tuple[str]:
+    def get_output_names(self, /, ) -> tuple[str]:
         """
         """
-        return tuple(self.parameter_names, )
+        return self.lhs_names + self.rhs_only_names + self.residual_names
 
     def create_qid_to_logly(self, /, ) -> dict[str, bool]:
         """

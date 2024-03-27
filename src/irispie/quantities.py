@@ -33,14 +33,14 @@ class QuantityKind(enum.Flag):
     UNSPECIFIED = enum.auto()
 
     TRANSITION_VARIABLE = enum.auto()
+    MEASUREMENT_VARIABLE = enum.auto()
     UNANTICIPATED_SHOCK = enum.auto()
     ANTICIPATED_SHOCK = enum.auto()
-    MEASUREMENT_VARIABLE = enum.auto()
     MEASUREMENT_SHOCK = enum.auto()
-    EXOGENOUS_VARIABLE = enum.auto()
     LHS_VARIABLE = enum.auto()
     RHS_ONLY_VARIABLE = enum.auto()
     PARAMETER = enum.auto()
+    EXOGENOUS_VARIABLE = enum.auto()
     UNANTICIPATED_STD = enum.auto()
     ANTICIPATED_STD = enum.auto()
     MEASUREMENT_STD = enum.auto()
@@ -333,7 +333,7 @@ def generate_where_logly(
     return (i for i, qid in enumerate(qids, ) if qid_to_logly.get(qid, False))
 
 
-def wrap_logly(name, logly, /, ) -> str:
+def wrap_logly(name, logly: bool = True, /, ) -> str:
     return f"log({name})" if logly else name
 
 

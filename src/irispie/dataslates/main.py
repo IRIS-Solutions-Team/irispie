@@ -40,8 +40,8 @@ class SlatableProtocol(Protocol, ):
     def get_databox_names(self, /, ) -> tuple[str, ...]: ...
     def get_fallbacks(self, /, ) -> dict[str, Number]: ...
     def get_overwrites(self, /, ) -> dict[str, Number]: ...
-    def get_scalar_names(self, /, ) -> Iterable[str, ...]: ...
-    def create_qid_to_logly(self, /, ) -> dict[int, bool]: ...
+    def get_output_names(self, /, ) -> Iterable[str, ...]: ...
+    def create_qid_to_logly(self, /, ) -> dict[int, bool | None]: ...
 
 
 @_dc.dataclass
@@ -71,7 +71,7 @@ class Dataslate(
     def nan_from_names_dates(
         klass,
         names: Iterable[str],
-        dates: Iterable[_dates.Dater],
+        dates: Iterable[_dates.Dater] | string,
         /,
         num_variants: int = 1,
         **kwargs,
@@ -79,7 +79,7 @@ class Dataslate(
         """
         """
         names = tuple(names or databox.keys())
-        dates = tuple(dates)
+        dates = _dates.ensure_date_tuple(dates, )
         num_names = len(names)
         num_dates = len(dates)
         self = klass()
@@ -91,11 +91,27 @@ class Dataslate(
         return self
 
     @classmethod
+    def nan_from_template(
+        klass,
+        other: Self,
+        /,
+        num_variants: int = 1,
+    ) -> Self:
+        """
+        """
+        self = klass.skeleton(other, )
+        self._variants = [
+            _variants.Variant.nan_data_array(self._invariant, )
+            for _ in range(num_variants, )
+        ]
+        return self
+
+    @classmethod
     def from_databox(
         klass,
         databox: _databoxes.Databox | dict,
         names: Iterable[str],
-        dates: Iterable[_dates.Dater],
+        dates: Iterable[_dates.Dater] | string,
         /,
         num_variants: int = 1,
         fallbacks: dict[str, Number] | None = None,
@@ -105,7 +121,7 @@ class Dataslate(
         """
         """
         names = tuple(names or databox.keys())
-        dates = tuple(dates)
+        dates = _dates.ensure_date_tuple(dates, )
         #
         from_to = dates[0], dates[-1] if dates else ()
         item_iterator = \
@@ -151,6 +167,7 @@ class Dataslate(
         base_span: Iterable[_dates.Dater],
         /,
         extra_databox_names: Iterable[str] | None = None,
+        extend_span: bool = True,
         **kwargs,
     ) -> Self:
         """
@@ -158,7 +175,7 @@ class Dataslate(
         names = tuple(slatable.get_databox_names())
         if extra_databox_names:
             names = names + tuple(i for i in extra_databox_names if i not in names)
-        dates, base_columns, *min_max_shift = _get_extended_range(slatable, base_span, )
+        dates, base_columns, *min_max_shift = _get_extended_span(slatable, base_span, extend_span=extend_span,)
         qid_to_logly = slatable.create_qid_to_logly()
         #
         return klass.from_databox(
@@ -166,7 +183,7 @@ class Dataslate(
             fallbacks=slatable.get_fallbacks(),
             overwrites=slatable.get_overwrites(),
             base_columns=base_columns,
-            scalar_names=slatable.get_scalar_names(),
+            output_names=slatable.get_output_names(),
             min_max_shift=min_max_shift,
             qid_to_logly=qid_to_logly,
             **kwargs,
@@ -210,6 +227,12 @@ class Dataslate(
         """
         return self._invariant.min_max_shift[1]
 
+    @property
+    def output_names(self, /, ) -> tuple[str, ...]:
+        """
+        """
+        return tuple(self.names[i] for i in self._invariant.output_qids)
+
     def copy(self, /, ) -> Self:
         """
         """
@@ -217,15 +240,28 @@ class Dataslate(
         new._variants = [i.copy() for i in self._variants]
         return new
 
+    def rename(self, old_name_to_new_name: dict[str, str], /, ) -> None:
+        """
+        """
+        self._invariant.names = tuple(
+            old_name_to_new_name.get(i, i)
+            for i in self._invariant.names
+        )
+
+    def extend(
+        self: Self,
+        other: Self,
+        /,
+    ) -> None:
+        """
+        """
+        # TODO: Check if the other is compatible
+        self._variants.extend(other._variants, )
+
     def nan_copy(self, /, ) -> Self:
         """
         """
-        new = self.skeleton(self, )
-        new._variants = [
-            type(i).nan_data_array(new._invariant, )
-            for i in self._variants
-        ]
-        return new
+        return self.nan_from_template(self, num_variants=self.num_variants, )
 
     def remove_initial_data(self, /, ) -> None:
         """
@@ -247,27 +283,20 @@ class Dataslate(
         num_names = self.num_names
         num_variants = self.num_variants
         start_date = self._invariant.dates[0]
-        descriptions = self._invariant.descriptions
-        zipped = enumerate(zip(self._invariant.names, self._invariant.databox_value_creator, ), )
-        for record_id, (name, creator) in zipped:
-            values = _np.vstack(tuple(self._generate_record_from_all_variants(record_id, )))
-            target_databox[name] = creator(
+        for qid in self._invariant.output_qids:
+            name = self._invariant.names[qid]
+            description = self._invariant.descriptions[qid]
+            values = _np.vstack(tuple(
+                v.data[qid, :] for v in self._variants
+            )).T
+            target_databox[name] = _series.Series(
                 num_variants=num_variants,
                 start_date=start_date,
                 values=values,
-                description=descriptions[record_id],
+                description=description,
             )
         return target_databox
         #]
-
-    def _generate_record_from_all_variants(
-        self,
-        record_id: int,
-        /,
-    ) -> Iterator[_np.ndarray]:
-        """
-        """
-        return ( v.retrieve_record(record_id, ) for v in self._variants )
 
     for n in ["num_periods", "from_to", "num_row", "base_slice", "base_columns", "nonbase_columns", ]:
         exec(f"@property\ndef {n}(self, /, ): return self._invariant.{n}", )
@@ -278,8 +307,7 @@ class Dataslate(
     ) -> _np.ndarray:
         """
         """
-        vid = vid or 0
-        return self._variants[vid].data
+        return self._variants[vid or 0].data
 
     get_data_array_variant = get_data_variant
 
@@ -390,18 +418,22 @@ class Dataslate(
 #
 #    #]
 
-def _get_extended_range(
+def _get_extended_span(
     slatable: SlatableProtocol,
     base_span: Iterable[_dates.Dater],
     /,
+    extend_span: bool = True,
 ) -> tuple[Iterable[_dates.Dater], tuple[int, ...]]:
     """
     """
     base_span = tuple(t for t in base_span)
     num_base_periods = len(base_span)
-    min_shift, max_shift = slatable.get_min_max_shifts()
-    if min_shift == 0:
-        min_shift = -1
+    if extend_span:
+        min_shift, max_shift = slatable.get_min_max_shifts()
+        # if min_shift == 0:
+        #    min_shift = -1
+    else:
+        min_shift, max_shift = 0, 0
     min_base_date = min(base_span)
     max_base_date = max(base_span)
     start_date = min_base_date + min_shift

@@ -345,7 +345,13 @@ self = Series(
         variants: VariantsRequestType = None,
         /,
     ) -> None:
-        dates = self._resolve_dates(dates)
+        dates = self._resolve_dates(dates, )
+        is_empty_data = (
+            data is None
+            or (isinstance(data, Series) and data.size == 0)
+        )
+        if not dates and is_empty_data:
+            return
         data = (
             _reshape_numpy_array(data, )
             if isinstance(data, _np.ndarray) else data

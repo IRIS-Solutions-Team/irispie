@@ -19,19 +19,26 @@ from ..databoxes import main as _databoxes
 #]
 
 
-@_dc.dataclass(slots=True, )
+#
+# REFACTOR:
+# * rename `index_base_columns` to `are_base_columns` or use int indexes
+#
+
+
 class Invariant:
     """
     """
     #[
 
-    descriptions: Iterable[str] | None = None
-    logly_indexes: tuple[int, ...] | None = None
-    index_base_columns: tuple[int, ...] | None = None
-    names: tuple[str] | None = None
-    dates: tuple[_dates.Dater, ...] | None = None
-    min_max_shift: tuple[int, int] | None = None
-    databox_value_creator: tuple[Callable, ...] | None = None
+    __slots__ = (
+        "descriptions",
+        "logly_indexes",
+        "index_base_columns",
+        "names",
+        "output_qids",
+        "dates",
+        "min_max_shift",
+    )
 
     def __init__(
         self,
@@ -41,10 +48,11 @@ class Invariant:
         *,
         base_columns: Iterable[int] | None = None,
         descriptions: Iterable[str | None] | None = None,
-        scalar_names: Iterable[str] | None = None,
+        output_names: Iterable[str] | None = None,
         qid_to_logly: dict[int, bool | None] | None = None,
         min_max_shift: tuple[int, int] = (0, 0),
         frequency: _dates.Frequency | None = None,
+        tag_alongs: dict[str, Any] | None = None,
     ) -> None:
         """
         """
@@ -55,7 +63,24 @@ class Invariant:
         self._populate_descriptions(descriptions, )
         self._populate_logly_index(qid_to_logly, )
         self.min_max_shift = min_max_shift
-        self._populate_databox_value_creator(scalar_names, )
+        self._populate_output_qids(output_names, )
+
+    def _populate_output_qids(
+        self,
+        output_names: Iterable[str] | None,
+    ) -> None:
+        """
+        """
+        output_names = (
+            tuple(set(output_names) & set(self.names))
+            if output_names is not None
+            else self.names
+        )
+        self.output_qids = tuple(
+            qid
+            for qid, name in enumerate(self.names, )
+            if name in output_names
+        )
 
     @property
     def num_periods(self, /, ) -> int:
@@ -127,20 +152,6 @@ class Invariant:
             if qid_to_logly.get(i, False)
         )
 
-    def _populate_databox_value_creator(
-        self,
-        scalar_names: Iterable[str] | None,
-        /,
-    ) -> None:
-        """
-        """
-        if not scalar_names:
-            scalar_names = ()
-        self.databox_value_creator = tuple(
-            _scalar_from_values if n in scalar_names else _series_from_values
-            for n in self.names
-        )
-
     def remove_periods_from_start(
         self,
         remove: int,
@@ -163,31 +174,4 @@ class Invariant:
             self.dates = self.dates[:-remove]
             self.index_base_columns = self.index_base_columns[:-remove]
 
-
-def _series_from_values(
-    num_variants: int,
-    values: _np.ndarray,
-    start_date: _dates.Dater,
-    description: str,
-) -> _series.Series:
-    """
-    """
-    return _series.Series(
-        num_variants=num_variants,
-        start_date=start_date,
-        values=values.T,
-        description=description,
-    )
-
-
-def _scalar_from_values(
-    num_variants: int,
-    values: _np.ndarray,
-    **kwargs,
-) -> list[Real] | Real:
-    """
-    """
-    scalars = list(values[:, 0])
-    is_singleton = _has_variants.is_singleton(num_variants, )
-    return _has_variants.unpack_singleton(scalars, is_singleton, )
 

@@ -68,9 +68,9 @@ class Simultaneous(
     _simulate.SimulateMixin,
     _steady.Inlay,
     _logly.Inlay,
-    _covariances.CoverianceMixin,
-    _kalmans.KalmanMixin,
-    _get.GetMixin,
+    _get.Inlay,
+    _covariances.Inlay,
+    _kalmans.Mixin,
 ):
     """
 ················································································
@@ -528,23 +528,26 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         qid_to_name = self.create_qid_to_name()
         return tuple(qid_to_name[qid] for qid in sorted(qid_to_name))
 
-    def get_fallbacks(self, /, ) -> dict[str, Number]:
+    def get_fallbacks(self, /, ) -> dict[str, list[Real]]:
         """
         """
-        shocks = _quantities.generate_quantity_names_by_kind(self._invariant.quantities, _quantities.QuantityKind.ANY_SHOCK)
-        return { name: 0 for name in shocks }
+        shock_meds = self.get_steady_levels(
+            kind=_quantities.QuantityKind.ANY_SHOCK,
+            unpack_singleton=False,
+        )
+        shock_stds = self.get_stds(unpack_singleton=False, )
+        return shock_meds | shock_stds
 
-    def get_overwrites(self, /, ) -> dict[str, Any]:
+    def get_overwrites(self, /, ) -> dict[str, list[Real]]:
         """
         """
-        return self.get_parameters_stds()
+        return self.get_parameters(unpack_singleton=False, )
 
-    def get_scalar_names(self, /, ) -> tuple[str, ...]:
+    def get_output_names(self, /, ) -> tuple[str, ...]:
         """
         """
-        return _quantities.generate_quantity_names_by_kind(
-            self._invariant.quantities,
-            _quantities.QuantityKind.PARAMETER | _quantities.QuantityKind.ANY_STD,
+        return self.get_names(
+            kind=_quantities.ANY_VARIABLE | _quantities.ANY_SHOCK,
         )
 
     #

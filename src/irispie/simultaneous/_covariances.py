@@ -16,7 +16,7 @@ from .. import namings as _namings
 #]
 
 
-class CoverianceMixin:
+class Inlay:
     """
     """
 
@@ -212,7 +212,7 @@ def _retrieve_stds(self, variant, shocks, ) -> _np.ndarray:
     """
     #[
     std_qids = tuple(
-        self._invariant._shock_qid_to_std_qid[t.qid]
+        self._invariant.shock_qid_to_std_qid[t.qid]
         for t in shocks
     )
     return variant.retrieve_values("levels", std_qids, )

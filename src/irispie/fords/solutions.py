@@ -50,6 +50,9 @@ from ..fords import descriptors as _descriptors
 #]
 
 
+Eigenvalues = tuple[Number, ...]
+
+
 class EigenValueKind(_en.Flag):
     STABLE = _en.auto()
     UNIT = _en.auto()
@@ -119,7 +122,7 @@ class Solution:
     X: _np.ndarray | None = None
     Xa: _np.ndarray | None = None
 
-    eigenvalues: tuple[Number, ...] | None = None
+    eigenvalues: Eigenvalues | None = None
     eigenvalues_stability: tuple[EigenValueKind, ...] | None = None
     system_stability: SystemStabilityKind | None = None
     transition_vector_stability: VariableStability | None = None

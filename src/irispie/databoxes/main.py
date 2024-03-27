@@ -461,9 +461,9 @@ a databox can be of any type.
 
     def clip(
         self,
+        /,
         new_start_date: _dates.Dater | None = None,
         new_end_date: _dates.Dater | None = None,
-        /,
     ) -> None:
         """
         """

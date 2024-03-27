@@ -32,7 +32,7 @@ class Inlay:
     @_pages.reference(category="simulation", )
     def simulate(
         self,
-        in_databox: _databoxes.Databox,
+        input_db: _databoxes.Databox,
         span: Iterable[Dater],
         /,
         plan: _plans.Plan | None = None,
@@ -43,6 +43,7 @@ class Inlay:
         num_variants: int | None = None,
         remove_initial: bool = True,
         remove_terminal: bool = True,
+        shocks_from_databox: bool = True,
         logging_level: int = _wl.INFO,
     ) -> tuple[_databoxes.Databox, dict[str, Any]]:
         """
@@ -103,13 +104,21 @@ simulating the model.
         logger = _wl.get_colored_logger(_LOGGER_NAME, level=logging_level, )
         num_variants = self.num_variants if num_variants is None else num_variants
         base_dates = tuple(span, )
+        #
+        work_db = input_db.shallow()
+        if not shocks_from_databox:
+            # REFACTOR: Create `quantities` in Sequential.invariant and
+            # create a `get_names` method
+            shock_names = self.residual_names
+            work_db.remove(shock_names, strict_names=False, )
+        #
         extra_databox_names = None
         if plan is not None:
             plan.check_consistency(self, base_dates, )
             extra_databox_names = plan.get_databox_names()
         #
         dataslate = _dataslate_constructor(
-            self, in_databox, base_dates,
+            self, work_db, base_dates,
             num_variants=self.num_variants,
             extra_databox_names=extra_databox_names,
         )
@@ -140,17 +149,17 @@ simulating the model.
             dataslate.remove_initial()
         #
         # Convert all variants of the dataslate to a databox
-        out_db = dataslate.to_databox()
+        output_db = dataslate.to_databox()
         if prepend_input:
-            out_db.prepend(in_databox, base_dates[0]-1, )
+            output_db.prepend(input_db, base_dates[0]-1, )
         #
         # Add to custom databox
         if target_databox is not None:
-            out_db = target_databox | out_db
+            output_db = target_databox | output_db
         #
         info = {}
         #
-        return out_db, info
+        return output_db, info
 
     def _simulate_v(
         self,

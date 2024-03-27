@@ -48,9 +48,9 @@ class Invariant(
         "steady_equations",
         "dynamic_descriptor",
         "steady_descriptor",
+        "shock_qid_to_std_qid",
         "_flags",
         "_context",
-        "_shock_qid_to_std_qid",
         "_plain_dynamic_equator",
         "_plain_steady_equator",
         "_min_shift",
@@ -144,7 +144,7 @@ class Invariant(
         _equations.stamp_id(self.dynamic_equations, )
         _equations.stamp_id(self.steady_equations, )
         #
-        self._shock_qid_to_std_qid = (
+        self.shock_qid_to_std_qid = (
             _create_shock_qid_to_std_qid(self.quantities, std_name_format, )
             if self._flags.is_stochastic
             else {}

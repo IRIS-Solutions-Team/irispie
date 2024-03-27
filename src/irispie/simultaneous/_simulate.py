@@ -9,7 +9,9 @@ from __future__ import annotations
 from typing import (Self, Any, TypeAlias, Literal, Protocol, runtime_checkable)
 from collections.abc import (Iterable, )
 import numpy as _np
+import wlogging as _wl
 
+from .. import quantities as _quantities
 from ..databoxes import main as _databoxes
 from ..fords import simulators as _ford_simulators
 from ..fords import solutions as _solutions
@@ -31,7 +33,7 @@ class SimulateMixin:
 
     def simulate(
         self,
-        in_databox: _databoxes.Databox,
+        input_db: _databoxes.Databox,
         span: Iterable[Dater],
         /,
         *,
@@ -42,19 +44,28 @@ class SimulateMixin:
         num_variants: int | None = None,
         remove_initial: bool = True,
         remove_terminal: bool = True,
+        shocks_from_databox: bool = True,
+        logging_level: int = _wl.INFO,
         **kwargs,
     ) -> tuple[_databoxes.Databox, dict[str, Any]]:
         """
         """
+        logger = _wl.get_colored_logger(__name__, level=logging_level, )
         num_variants = self.num_variants if num_variants is None else num_variants
         base_dates = tuple(span, )
+        #
+        work_db = input_db.shallow()
+        if not shocks_from_databox:
+            shock_names = self.get_names(kind=_quantities.ANY_SHOCK, )
+            work_db.remove(shock_names, strict=False, )
+        #
         extra_databox_names = None
         if plan is not None:
             plan.check_consistency(self, base_dates, )
             extra_databox_names = plan.get_databox_names()
         #
         dataslate = _dataslate_constructor(
-            self, in_databox, base_dates,
+            self, work_db, base_dates,
             num_variants=num_variants,
             extra_databox_names=extra_databox_names,
         )
@@ -85,18 +96,18 @@ class SimulateMixin:
             dataslate.remove_initial()
         #
         # Convert all variants of the dataslate to a databox
-        out_db = dataslate.to_databox()
+        output_db = dataslate.to_databox()
         if prepend_input:
-            out_db.prepend(in_databox, base_dates[0]-1, )
+            output_db.prepend(input_db, base_dates[0]-1, )
         #
         # Add to custom databox
         if target_databox is not None:
-            out_db = target_databox | out_db
+            output_db = target_databox | output_db
         #
         # Simulation info
         info = {}
         #
-        return out_db, info
+        return output_db, info
 
     #]
 

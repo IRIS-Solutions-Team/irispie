@@ -104,7 +104,7 @@ def print_tokens(
     """
     qid_to_logly = qid_to_logly or {}
     return [
-        _quantities.wrap_logly(t.print(qid_to_name), qid_to_logly.get(t.qid, False))
+        _quantities.wrap_logly(t.print(qid_to_name), qid_to_logly.get(t.qid, False), )
         for t in tokens
     ]
 
