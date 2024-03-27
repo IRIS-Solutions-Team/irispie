@@ -17,6 +17,7 @@ import glob as _gl
 from .. import executables as _executables
 from .. import wrongdoings as _wrongdoings
 from .. import dates as _dates
+from .. import pages as _pages
 from . import main as _series
 from . import _functionalize
 #]
@@ -29,6 +30,7 @@ class Inlay:
     """
     """
     #[
+    @_pages.reference(category="filtering", )
     def x13(
         self,
         *,
@@ -39,7 +41,49 @@ class Inlay:
         mode: Literal["mult", "add", "pseudoadd", "logadd", ] = "mult",
         **kwargs,
     ) -> dict[str, Any]:
-        """
+        r"""
+················································································
+
+==Interface to X13-ARIMA-TRAMO-SEATS seasonal adjustment procedure==
+
+
+### Function for creating new Series objects ###
+
+
+```
+output = irispie.x13(
+)
+```
+
+
+### Methods for changing the existing Series object in-place ###
+
+
+```
+self.x13(
+)
+```
+
+
+### Input arguments ###
+
+
+???+ input "self"
+
+
+### Returns ###
+
+
+???+ returns "self"
+
+
+???+ returns "output"
+
+
+### Details ###
+
+
+················································································
         """
         range = tuple(self._resolve_dates(range))
         base_start_date = range[0]

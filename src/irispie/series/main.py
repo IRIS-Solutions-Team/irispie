@@ -121,6 +121,7 @@ def _trim_decorate(func):
     categories={
         "constructor": "Creating new time series",
         "conversion": "Converting time series frequency",
+        "filtering": "Calculating univariate time series filters",
         "property": None,
     },
 )
@@ -138,15 +139,14 @@ class Series(
     _views.ViewMixin,
     _copies.CopyMixin,
 ):
-    """
+    r"""
 ················································································
 
 Time series
 ============
 
 The `Series` objects represent numerical time series, organized as rows of
-observations stored in NumPy arrays and'
-[date](dates.md)
+observations stored in NumPy arrays and [date](dates.md)
 stamped. A `Series` object can hold multiple
 variants of the data, stored as mutliple columns.
 
@@ -271,25 +271,41 @@ self = Series(
         return _has_variants.is_singleton(self.num_variants, )
 
     @property
+    @_pages.reference(category="property", )
     def span(self, ):
+        """==Time span of the time series=="""
         return _dates.Ranger(self.start_date, self.end_date, ) if self.start_date else ()
 
     range = span
 
     @property
+    @_pages.reference(category="property", )
     def from_to(self, ):
+        """==Two-tuple with the start date and end date of the time series=="""
         return self.start_date, self.end_date
 
     @property
+    @_pages.reference(category="property", )
     def dates(self, /, ) -> tuple[_dates.Dater, ...]:
+        """==N-tuple with the dates from the start date to the end date of the time series=="""
         return tuple(self.range, )
 
     @property
+    @_pages.reference(category="property", call_name="start_date", )
+    def _start_date(self):
+        """==Start date of the time series=="""
+        raise NotImplementedError
+
+    @property
+    @_pages.reference(category="property", )
     def end_date(self):
+        """==End date of the time series=="""
         return self.start_date + self.data.shape[0] - 1 if self.start_date else None
 
     @property
+    @_pages.reference(category="property", )
     def frequency(self):
+        """==Date frequency of the time series=="""
         return (
             self.start_date.frequency
             if self.start_date is not None

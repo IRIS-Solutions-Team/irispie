@@ -153,15 +153,14 @@ model object.
     definition of non-standard functions used in the equations.
 
 ???+ input "description"
-    Desscription of the model specified as a text string.
+    Description of the model specified as a text string.
 
 
 ### Returns ###
 
 
 ???+ returns "self"
-
-    `Sequential` model object created from the `file_names`.
+    A new `Sequential` model object created from the `file_names`.
 
 ················································································
         """

@@ -12,6 +12,7 @@ from types import (EllipsisType, )
 from typing import (Self, )
 import numpy as _np
 
+from .. import pages as _pages
 from .. import dates as _dates
 from . import main as _series
 from . import _functionalize
@@ -161,11 +162,169 @@ class Inlay:
     """
     #[
 
+    @_pages.reference(category="filtering", call_name="hpf", )
+    def _hpf(self, /, ):
+        r"""
+················································································
+
+==Constrained Hodrick-Prescott filter==
+
+
+### Function for creating new Series objects ###
+
+
+```
+trend, gap = irispie.hpf(
+    self,
+    span=None,
+    smooth=None,
+    log=False,
+    level=None,
+    change=None,
+)
+```
+
+
+### Methods for changing the existing Series object in-place ###
+
+
+```
+self.hpf_trend(
+    span=None,
+    smooth=None,
+    log=False,
+    level=None,
+    change=None,
+)
+```
+
+```
+self.hpf_gap(
+    span=None,
+    smooth=None,
+    log=False,
+    level=None,
+    change=None,
+)
+```
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    A `Series` object with the time series data to be filtered. All the
+    observations contained in the input time series are used in the
+    Hodrick-Prescott filter calculations no matter the time `span`
+    specified; the time `span` only determines the time span of the output
+    series.
+
+???+ input "span"
+    Time span on which the trend component of the Hodrick-Prescott filter
+    is calculated. If `span=None`, the results are calculated on
+    the time span of the original series, `self`.
+
+???+ input "smooth"
+    Smoothing parameter (aka $\lambda$) for the Hodrick-Prescott filter. If `smooth=None`,
+    a default value is used based on the frequency of the input series `self`:
+
+    | Date frequency | Default $\lambda$ |
+    |----------------|------------------:|
+    | Yearly         |               100 |
+    | Half-yearly    |               400 |
+    | Quarterly      |             1,600 |
+    | Monthly        |           144,000 |
+    | Otherwise      |             1,600 |
+
+???+ input "log"
+    If `log=True`, the Hodrick-Prescott filter is calculated on the logarithm
+    of the input data, and the results are delogarithmized back to the original
+    scale.
+
+???+ input "level"
+    A `Series` object with the level constraints for the Hodrick-Prescott
+    filter (aka judgmental adjustments). If `level=None`, no level
+    constraints are imposed. If `log=True`, the level constraints are
+    logarithmized first before entering the calculations.
+
+???+ input "change"
+    A `Series` object with the change constraints for the Hodrick-Prescott
+    filter (aka judgmental adjustments). If `change=None`, no change
+    constraints are imposed. If `log=True`, the change constraints are
+    logarithmized first before entering the calculations; this effectively
+    means that for `log=True`, the `change` constraints need to be
+    expressed as gross rates of change (period on period).
+
+
+### Returns ###
+
+
+???+ returns "trend"
+    A new `Series` object with the trend component of the Hodrick-Prescott
+    filter. The trend component is always returned on the time `span`
+    specified.
+
+???+ returns "gap"
+    A new `Series` object with the trend component of the Hodrick-Prescott
+    filter. The gap component is calculated on the time `span` as the
+    difference between the actual observations and the trend component.
+
+???+ returns "self"
+    The existing `Series` object with its values replaced in-place by the trend
+    component of the Hodrick-Prescott filter.
+
+
+### Details ###
+
+??? abstract "Math description"
+    The constrained Hodrick-Prescott filter is a method for separating a time series into a
+    lower-frequency (trend) component and a higher-frequency (cyclical)
+    component subject to level and/or change constraints. The filter is
+    implemented as the following constrained dynamic optimization problem
+
+    $$
+    \begin{gathered}
+    \min\nolimits_{\{\overline{y}_t\}} \sum_{t\in\Omega}
+        \lambda \, \left( y_t - \overline{y}_t \right)^2
+        + \sum_{t=3}^{T} \left( \Delta \overline{y}_t - \Delta \overline{y}_{t-1} \right)^2 \\[10pt]
+    \text{subject to} \\[10pt]
+    \overline{y}_t = L_t \qquad \forall t \in \Omega_L \\[10pt]
+    \Delta \overline{y}_t = C_t \qquad \forall t \in \Omega_C
+    \end{gathered}
+    $$
+
+    where
+
+    * $y_t$ is the original time series data,
+    * $\overline{y}_t$ is the calculated trend component,
+    * $L_t$ is the level constraint data,
+    * $C_t$ is the change constraint data,
+    * $\lambda$ is the smoothing parameter,
+    * $1, \dots, T$ is the time span,
+    * $\Omega$ is the time periods within the time span where the original data are available,
+    * $\Omega_L$ is the time periods within the time span where the level constraint data are specified,
+    * $\Omega_C$ is the time periods within the time span where the change constraint data are specified.
+
+    The gap component, $\widehat{y}_t$, is then calculated as the difference between the
+    original data and the trend component,
+
+    $$
+    \widehat{y}_t \equiv y_t - \overline{y}_t
+    $$
+
+················································································
+        """
+        raise NotImplementedError
+
     def hpf_trend(self, /, *args, **kwargs):
+        """
+        """
         start_date, trend_data, _ = _data_hpf(self, *args, **kwargs, )
         self._replace_start_date_and_values(start_date, trend_data, )
 
     def hpf_gap(self, /, *args, **kwargs):
+        """
+        """
         start_date, _, gap_data = _data_hpf(self, *args, **kwargs, )
         self._replace_start_date_and_values(start_date, gap_data, )
 
