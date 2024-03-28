@@ -29,7 +29,32 @@ class Inlay:
         func: Callable,
         /,
     ) -> None:
-        """
+        r"""
+················································································
+
+==Time difference functions==
+
+```
+
+```
+
+
+### Input arguments ###
+
+
+???+ input " "
+
+    ...
+
+
+### Returns ###
+
+
+???+ returns " "
+
+    ...
+
+················································································
         """
         _catch_invalid_shift(shift, )
         other = self.copy()

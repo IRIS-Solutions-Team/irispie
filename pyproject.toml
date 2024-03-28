@@ -4,7 +4,7 @@
 
 [project]
     name = "irispie"
-    version = "0.38.1"
+    version = "0.38.2"
     authors = [
       { name="Jaromir Benes", email="jaromir.benes@gmail.com" },
     ]
@@ -38,5 +38,6 @@
 
 [project.urls]
     "Homepage" = "https://github.com/iris-solutions-team/irispie"
+    "Documentation" = "https://iris-solutions-team.github.io/irispie-pages"
     "Bug Tracker" = "https://github.com/iris-solutions-team/irispie/issues"
 
