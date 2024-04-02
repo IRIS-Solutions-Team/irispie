@@ -242,11 +242,12 @@ def _is_exogenized(
     #
     lhs_name_row = name_to_row[lhs_name]
     values_before = data[lhs_name_row, :data_column]
+    values_after_inclusive = data[lhs_name_row, data_column:]
     #
     transform_name = transform.resolve_databox_name(lhs_name, )
     transform_row = name_to_row.get(transform_name, None, )
     transform_values_after = data[transform_row, data_column:] if transform_row is not None else None
-    implied_value = transform.eval_exogenized(transform_values_after, values_before, )
+    implied_value = transform.eval_exogenized(transform_values_after, values_before, values_after_inclusive, )
     if transform.when_data and _np.isnan(implied_value):
         return False, None
     return True, implied_value
