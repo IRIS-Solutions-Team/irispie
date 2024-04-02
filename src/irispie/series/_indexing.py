@@ -112,7 +112,7 @@ time `Series` object based on the data selected by the `dates` and
                 dates, variants = index
             else:
                 dates, variants = index, None
-            dates = _dates.ensure_date_tuple(dates, frequency=self.frequency, )
+            # dates = _dates.ensure_date_tuple(dates, frequency=self.frequency, )
             return self.get_data(dates, variants, )
 
     def __setitem__(
