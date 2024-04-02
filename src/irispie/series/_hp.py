@@ -313,10 +313,13 @@ self.hpf_gap(
     $$
     \begin{gathered}
     \min\nolimits_{\{\overline{y}_t\}}
-        \lambda \, \sum_{t\in\Omega}
-        \left( y_t - \overline{y}_t \right)^2
-        + \sum_{t=3}^{T}
-        \left( \Delta \overline{y}_t - \Delta \overline{y}_{t-1} \right)^2 \\[10pt]
+        \left[
+            \lambda \sum_{t\in\Omega}
+            \left( y_t - \overline{y}_t \right)^2
+            + \sum_{t=3}^{T}
+            \left( \Delta \overline{y}_t - \Delta \overline{y}_{t-1} \right)^2
+        \right]
+        \\[10pt]
     \text{subject to} \\[10pt]
     \overline{y}_t = L_t \ \forall t \in \Omega_L \\[10pt]
     \Delta \overline{y}_t = C_t \ \forall t \in \Omega_C
@@ -331,9 +334,9 @@ self.hpf_gap(
     * $C_t$ is the change constraint data,
     * $\lambda$ is the smoothing parameter,
     * $1, \dots, T$ is the HP filter time span (see above),
-    * $\Omega$ is the time periods within the time span where the original data are available,
-    * $\Omega_L$ is the time periods within the time span where the level constraint data are specified,
-    * $\Omega_C$ is the time periods within the time span where the change constraint data are specified.
+    * $\Omega$ is the time periods within the filter time span where the original data are available,
+    * $\Omega_L$ is the time periods within the filter time span where the level constraint data are specified,
+    * $\Omega_C$ is the time periods within the filter time span where the change constraint data are specified.
 
     The gap component, $\widehat{y}_t$, is then calculated as the difference between the
     original data and the trend component,
