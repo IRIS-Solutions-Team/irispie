@@ -51,7 +51,19 @@ class Inlay:
 ==Aggregate  time series to a lower frequency==
 
 
-### Changing time series in-place ###
+### Function form for creating new time `Series` objects ###
+
+    new = irispie.aggregate(
+        self,
+        target_freq,
+        /,
+        method="mean",
+        remove_missing=False,
+        select=None,
+    )
+
+
+### Class method form for creating new time `Series` objects ###
 
     self.aggregate(
         target_freq,
@@ -59,12 +71,7 @@ class Inlay:
         method="mean",
         remove_missing=False,
         select=None,
-        )
-
-
-### Creating new time series ###
-
-    new_series = aggregate(self, ...)
+    )
 
 
 ### Input arguments ###
@@ -77,12 +84,14 @@ class Inlay:
     Aggregation method, i.e. a function applied to the high-frequency
     values within each low-frequency period:
 
-    * "mean" - the arithmetic average of high-frequency values
-    * "sum" - the sum of high-frequency values
-    * "first" - the value in the first high-frequency period
-    * "last" - the value in the last high-frequency period
-    * "min" - the minimum of high-frequency values
-    * "max" - the maximum of high-frequency values
+    | Method    | Description
+    |-----------|-------------
+    | "mean"    | Arithmetic average of high-frequency values
+    | "sum"     | Sum of high-frequency values
+    | "first"   | Value in the first high-frequency period
+    | "last"    | Value in the last high-frequency period
+    | "min"     | Minimum of high-frequency values
+    | "max"     | Maximum of high-frequency values
 
 ???+ input "remove_missing"
     Remove missing values from the high-frequency data before
@@ -91,6 +100,15 @@ class Inlay:
 ???+ input "select"
     Select only the high-frequency values at the specified indexes;
     `select=None` means all values are used.
+
+
+### Returns ###
+
+???+ returns "self"
+    The original time `Series` object with the aggregated data.
+
+???+ returns "new"
+    A new time `Series` object with the aggregated data.
 
 ················································································
         """
@@ -135,19 +153,24 @@ class Inlay:
 ==Disaggregate  time series to a higher frequency==
 
 
-### Changing time series in-place ###
+### Function form for creating new time `Series` objects ###
+
+    new = irispie.disaggregate(
+        self,
+        target_freq,
+        /,
+        method="flat",
+    )
+
+
+### Class method form for changing existing time `Series` objects in-place ###
 
     self.disaggregate(
         target_freq,
         /,
         method="flat",
-        model=
-        )
-
-
-### Creating new time series ###
-
-    new_series = disaggregate(self, ...)
+        model=None,
+    )
 
 
 ### Input arguments ###
@@ -160,20 +183,22 @@ class Inlay:
     Aggregation method, i.e. a function applied to the high-frequency
     values within each low-frequency period:
 
-    * "mean" - the arithmetic average of high-frequency values
-    * "sum" - the sum of high-frequency values
-    * "first" - the value in the first high-frequency period
-    * "last" - the value in the last high-frequency period
-    * "min" - the minimum of high-frequency values
-    * "max" - the maximum of high-frequency values
+    | Method    | Description
+    |-----------|-------------
+    | "flat"    | Repeat the high-frequency values
+    | "first"   | Place the low-frequency value in the first high-frequency period
+    | "last"    | Place the low-frequency value in the last high-frequency period
+    | "arip"    | Use an autoregressive interpolation method
 
-???+ input "remove_missing"
-    Remove missing values from the high-frequency data before
-    applying the aggregation `method`.
 
-???+ input "select"
-    Select only the high-frequency values at the specified indexes;
-    `select=None` means all values are used.
+### Returns ###
+
+
+???+ returns "self"
+    The original time `Series` object with the disaggregated data.
+
+???+ returns "new"
+    A new time `Series` object with the disaggregated data.
 
 ················································································
         """

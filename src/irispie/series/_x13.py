@@ -34,7 +34,7 @@ class Inlay:
     def x13(
         self,
         *,
-        range: _dates.Ranger | EllipsisType = ...,
+        span: _dates.Ranger | EllipsisType = ...,
         when_error: _wrongdoings.HOW = "warning",
         clean_up: bool = True,
         output: str = "sa",
@@ -44,23 +44,33 @@ class Inlay:
         r"""
 ················································································
 
-==Interface to X13-ARIMA-TRAMO-SEATS seasonal adjustment procedure==
+==X13-ARIMA-TRAMO-SEATS seasonal adjustment procedure==
 
 
 ### Function for creating new Series objects ###
 
 
 ```
-output = irispie.x13(
+new, info = irispie.x13(
+    self,
+    /,
+    span=None,
+    output="sa",
+    mode="mult",
+    when_error="warning",
 )
 ```
 
 
-### Methods for changing the existing Series object in-place ###
+### Class methods for changing existing Series objects in-place ###
 
 
 ```
-self.x13(
+info = self.x13(
+    span=None,
+    output="sa",
+    mode="mult",
+    when_error="warning",
 )
 ```
 
@@ -69,15 +79,44 @@ self.x13(
 
 
 ???+ input "self"
+    A time `Series` object whose data will be run through the
+    X13-ARIMA-TRAMO-SEATS procedure.
+
+???+ input "span"
+    A time span specified as a `Ranger` object. If `span=None` or `span=...`,
+    the entire time series is used.
+
+???+ input "output"
+    The type of output to be returned by X13. The following options are
+    available:
+
+    | Output    | Description
+    |-----------|-------------
+    | `"sf"`    | Seasonal factors
+    | `"sa"`    | Seasonally adjusted series
+    | `"tc"`    | Trend-cycle
+    | `"irr"`   | Irregular component
 
 
 ### Returns ###
 
 
 ???+ returns "self"
+    The `Series` object with the output data.
 
+???+ returns "new"
+    A new `Series` object with the output data.
 
-???+ returns "output"
+???+ returns "info"
+    A dictionary with information about the X13 run. The dictionary
+    contains the following keys:
+
+    | Key | Description
+    |-----|-------------
+    | `log` | The log file from the X13 run.
+    | `out` | The output file from the X13 run.
+    | `err` | The error file from the X13 run.
+    | `success` | A boolean indicating whether the X13 run was successful.
 
 
 ### Details ###
@@ -85,8 +124,8 @@ self.x13(
 
 ················································································
         """
-        range = tuple(self._resolve_dates(range))
-        base_start_date = range[0]
+        span = tuple(self._resolve_dates(span))
+        base_start_date = span[0]
         settings = _create_settings(base_start_date, output, mode, **kwargs, )
         spc = _create_spc_file(_TEMPLATE_SPC, settings, )
         new_data = []

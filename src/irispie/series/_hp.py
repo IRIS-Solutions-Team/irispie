@@ -162,20 +162,23 @@ class Inlay:
     """
     #[
 
-    @_pages.reference(category="filtering", call_name="hpf", )
-    def _hpf(self, /, ):
+    @_pages.reference(
+        category="filtering",
+    )
+    def hpf(self, /, ):
         r"""
 ················································································
 
 ==Constrained Hodrick-Prescott filter==
 
 
-### Function for creating new Series objects ###
+### Functional forms creating a new time `Series` object ###
 
 
 ```
 trend, gap = irispie.hpf(
     self,
+    /,
     span=None,
     smooth=None,
     log=False,
@@ -185,11 +188,12 @@ trend, gap = irispie.hpf(
 ```
 
 
-### Methods for changing the existing Series object in-place ###
+### Class methods changing an existing time `Series` object in-place ###
 
 
 ```
 self.hpf_trend(
+    /,
     span=None,
     smooth=None,
     log=False,
@@ -200,6 +204,7 @@ self.hpf_trend(
 
 ```
 self.hpf_gap(
+    /,
     span=None,
     smooth=None,
     log=False,
@@ -213,7 +218,7 @@ self.hpf_gap(
 
 
 ???+ input "self"
-    A `Series` object with the time series data to be filtered. All the
+    A time `Series` object whose data are filtered. All the
     observations contained in the input time series are used in the
     Hodrick-Prescott filter calculations no matter the time `span`
     specified; the time `span` only determines the time span of the output
@@ -221,20 +226,20 @@ self.hpf_gap(
 
 ???+ input "span"
     Time span on which the trend component of the Hodrick-Prescott filter
-    is calculated. If `span=None`, the results are calculated on
+    is calculated. If `span=None`, the results are returned on
     the time span of the original series, `self`.
 
 ???+ input "smooth"
-    Smoothing parameter (aka $\lambda$) for the Hodrick-Prescott filter. If `smooth=None`,
+    Smoothing parameter (also known as $\lambda$) for the Hodrick-Prescott filter. If `smooth=None`,
     a default value is used based on the frequency of the input series `self`:
 
-    | Date frequency | Default $\lambda$ |
-    |----------------|------------------:|
-    | Yearly         |               100 |
-    | Half-yearly    |               400 |
-    | Quarterly      |             1,600 |
-    | Monthly        |           144,000 |
-    | Otherwise      |             1,600 |
+    | Date frequency | Default `smooth` ($\lambda$)
+    |----------------|-----------------------------:
+    | `YEARLY`       |                         100
+    | `HALF-YEARLY`  |                         400
+    | `QUARTERLY`    |                       1,600
+    | `MONTHLY`      |                     144,000
+    | Otherwise      |                       1,600
 
 ???+ input "log"
     If `log=True`, the Hodrick-Prescott filter is calculated on the logarithm
@@ -261,13 +266,16 @@ self.hpf_gap(
 
 ???+ returns "trend"
     A new `Series` object with the trend component of the Hodrick-Prescott
-    filter. The trend component is always returned on the time `span`
-    specified.
+    filter. The trend component is always returned on the entier time `span`
+    specified regardless of the actual time span of the original series.
 
 ???+ returns "gap"
     A new `Series` object with the trend component of the Hodrick-Prescott
     filter. The gap component is calculated on the time `span` as the
-    difference between the actual observations and the trend component.
+    difference between the actual observations and the trend component;
+    therefore, unline the `trend` series, the `gap` series is defined only
+    in time periods where the actual observations are available in the
+    original series.
 
 ???+ returns "self"
     The existing `Series` object with its values replaced in-place by the trend
@@ -276,20 +284,42 @@ self.hpf_gap(
 
 ### Details ###
 
-??? abstract "Math description"
-    The constrained Hodrick-Prescott filter is a method for separating a time series into a
-    lower-frequency (trend) component and a higher-frequency (cyclical)
-    component subject to level and/or change constraints. The filter is
-    implemented as the following constrained dynamic optimization problem
+
+???+ abstract "Time span of HP filter calculations"
+
+    The Hodrick-Prescott filter is calculated on a time span starting in
+    the period that is the first common period of
+
+    * the input data,
+    * the `span` argument,
+    * the level constraints, and
+    * the change constraints.
+
+    and ending in the period that is the last common period of the same
+    four data sources.
+
+    The actual time series returned is then clipped to comply with the
+    `span` argument if necessary.
+
+
+???+ abstract "Math description"
+
+    The constrained Hodrick-Prescott filter is a method for decomposing a
+    time series into a lower-frequency (trend) component and a
+    higher-frequency (cyclical) component subject to level and/or change
+    constraints. The filter is implemented as the following constrained
+    dynamic optimization problem
 
     $$
     \begin{gathered}
-    \min\nolimits_{\{\overline{y}_t\}} \sum_{t\in\Omega}
-        \lambda \, \left( y_t - \overline{y}_t \right)^2
-        + \sum_{t=3}^{T} \left( \Delta \overline{y}_t - \Delta \overline{y}_{t-1} \right)^2 \\[10pt]
+    \min\nolimits_{\{\overline{y}_t\}}
+        \lambda \, \sum_{t\in\Omega}
+        \left( y_t - \overline{y}_t \right)^2
+        + \sum_{t=3}^{T}
+        \left( \Delta \overline{y}_t - \Delta \overline{y}_{t-1} \right)^2 \\[10pt]
     \text{subject to} \\[10pt]
-    \overline{y}_t = L_t \qquad \forall t \in \Omega_L \\[10pt]
-    \Delta \overline{y}_t = C_t \qquad \forall t \in \Omega_C
+    \overline{y}_t = L_t \ \forall t \in \Omega_L \\[10pt]
+    \Delta \overline{y}_t = C_t \ \forall t \in \Omega_C
     \end{gathered}
     $$
 
@@ -300,7 +330,7 @@ self.hpf_gap(
     * $L_t$ is the level constraint data,
     * $C_t$ is the change constraint data,
     * $\lambda$ is the smoothing parameter,
-    * $1, \dots, T$ is the time span,
+    * $1, \dots, T$ is the HP filter time span (see above),
     * $\Omega$ is the time periods within the time span where the original data are available,
     * $\Omega_L$ is the time periods within the time span where the level constraint data are specified,
     * $\Omega_C$ is the time periods within the time span where the change constraint data are specified.

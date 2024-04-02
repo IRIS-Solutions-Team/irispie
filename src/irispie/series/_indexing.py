@@ -7,6 +7,7 @@ Time series indexing inlay
 from __future__ import annotations
 
 from .. import dates as _dates
+from .. import pages as _pages
 #]
 
 
@@ -14,6 +15,83 @@ class Inlay:
     """
     """
     #[
+
+
+    @_pages.reference(
+        category=None,
+        call_name="Time series indexing",
+        call_name_is_code=False,
+        priority=30,
+    )
+    def indexing(self, /, ) -> None:
+        """
+················································································
+
+Time `Series` objects can be indexed in four ways (note the square versus round
+brackets):
+
+| Indexing                                           | Description
+|----------------------------------------------------|-------------
+| `self[shift]`                                      | Time shift
+| `self[dates]`, `self[dates, variants]`             | Data extraction
+| `self[dates] = ...`, `self[dates, variants] = ...` | Data assignment
+| `self(dates)`, `self(dates, variants)`             | Time `Series` recreation
+
+
+### Time shift ###
+
+```
+self[shift]
+```
+
+Time shift is done by passing an integer to the `self[shift]` or
+`self[shift]` indexing. The time shift syntax returns a new copy of the
+original series, with the time periods shifted by `shift`.
+
+
+### Data extractation ###
+
+```
+self[dates]
+self[dates, variants]
+```
+
+The `dates` is a `Dater` or a tuple of `Daters` or a time `Span` object,
+and `variants` is an integer or a tuple of integers or a `slice` object
+specifying the variants. The data extraction syntax returns a
+two-dimensional `numpy` array, with the time dimension running along the
+rows and the variant dimension running along the columns.
+
+
+### Data assignment ###
+
+```
+self[dates] = ...
+self[dates, variants] = ...
+```
+
+The `dates` is a `Dater` or a tuple of `Daters` or a time `Span` object,
+and `variants` is an integer or a tuple of integers or a `slice` object
+specifying the variants. The data assignment syntax sets the data in the
+time series.
+
+
+### Time `Series` recreation ###
+
+```
+self(dates)
+self(dates, variants)
+```
+
+The `dates` is a `Dater` or a tuple of `Daters` or a time `Span` object,
+and `variants` is an integer or a tuple of integers or a `slice` object
+specifying the variants. The time `Series` recreation syntax returns a new
+time `Series` object based on the data selected by the `dates` and
+`variants`.
+
+················································································
+        """
+        raise NotImplementedError
 
     def __getitem__(
         self,

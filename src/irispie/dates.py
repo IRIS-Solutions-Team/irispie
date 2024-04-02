@@ -1046,6 +1046,9 @@ class Ranger(_copies.CopyMixin, ):
     #]
 
 
+Span = Ranger
+
+
 class EmptyRanger:
     """
     """

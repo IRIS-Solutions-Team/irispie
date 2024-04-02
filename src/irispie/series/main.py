@@ -25,7 +25,7 @@ from .. import wrongdoings as _wrongdoings
 from .. import has_variants as _has_variants
 from .. import pages as _pages
 
-from . import _diffs_cums
+from . import _temporal
 from . import _filling
 from . import _moving
 from . import _conversions
@@ -37,8 +37,8 @@ from . import _plotly
 from . import _views
 from . import _functionalize
 
-from ._diffs_cums import __all__ as _diffs_cums__all__
-from ._diffs_cums import *
+from ._temporal import __all__ as _diffs_cums__all__
+from ._temporal import *
 
 from ._filling import __all__ as _fillings__all__
 from ._filling import *
@@ -119,16 +119,18 @@ def _trim_decorate(func):
 @_pages.reference(
     path=("data_management", "time_series.md", ),
     categories={
-        "constructor": "Creating new time series",
-        "conversion": "Converting time series frequency",
-        "filtering": "Calculating univariate time series filters",
-        "property": None,
+        "constructor": "New time series",
+        "conversion": "Time series frequency conversions",
+        "filtering": "Univariate time series filters",
+        "moving": "Moving window",
+        "temporal_change": "Temporal change",
+        "temporal_cumulation": "Temporal cumulation",
     },
 )
 class Series(
     _indexing.Inlay,
     _conversions.Inlay,
-    _diffs_cums.Inlay,
+    _temporal.Inlay,
     _filling.Inlay,
     _hp.Inlay,
     _moving.Inlay,
@@ -169,7 +171,10 @@ variants of the data, stored as mutliple columns.
     _missing_str: str = "⋅"
     _test_missing_period = staticmethod(lambda x: _np.all(_np.isnan(x)))
 
-    @_pages.reference(category="constructor", call_name="Series", )
+    @_pages.reference(
+        category="constructor",
+        call_name="Series",
+    )
     def __init__(
         self,
         /,
