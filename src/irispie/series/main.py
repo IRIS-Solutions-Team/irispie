@@ -413,8 +413,7 @@ self = Series(
     ) -> tuple[Iterable[_dates.Dater], Iterable[int], Iterable[int], _np.ndarray]:
         """
         """
-        dates = self._resolve_dates(dates, )
-        dates = [ t for t in dates ]
+        dates = [ t for t in self._resolve_dates(dates, ) ]
         variants = self._resolve_variants(variants)
         if not dates:
             dates = ()
@@ -1058,7 +1057,7 @@ def _from_dates_and_values(
     """
     """
     #[
-    dates = _dates.ensure_date_tuple(dates, frequency=frequency, )
+    # dates = _dates.ensure_date_tuple(dates, frequency=frequency, )
     self.set_data(dates, values, )
     #]
 
@@ -1074,7 +1073,7 @@ def _from_dates_and_func(
     Create a new time series from dates and a function
     """
     #[
-    dates = _dates.ensure_date_tuple(dates, frequency=frequency, )
+    # dates = _dates.ensure_date_tuple(dates, frequency=frequency, )
     data = [
         [func() for j in range(self.num_variants)]
         for i in range(len(dates))
@@ -1094,7 +1093,8 @@ def _from_start_date_and_values(
     """
     """
     #[
-    self.start_date = _dates.ensure_date_tuple(start_date, frequency=frequency, )[0]
+    # start_date = _dates.ensure_date_tuple(start_date, frequency=frequency, )[0]
+    self.start_date = start_date
     if isinstance(values, _np.ndarray):
         values = _reshape_numpy_array(values, )
     else:

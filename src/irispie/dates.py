@@ -1214,7 +1214,7 @@ def ensure_date_tuple(
     if isinstance(dater_or_string, str):
         return _date_tuple_from_string(dater_or_string, frequency, )
     else:
-        return dater_or_string
+        return tuple(dater_or_string)
     #]
 
 

@@ -4,7 +4,7 @@
 
 [project]
     name = "irispie"
-    version = "0.38.5"
+    version = "0.38.6"
     authors = [
       { name="Jaromir Benes", email="jaromir.benes@gmail.com" },
     ]
