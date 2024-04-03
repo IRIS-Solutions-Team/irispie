@@ -98,7 +98,9 @@ class Inlay:
     Databox inlay for writing databox time series to CSV file
     """
     #[
-    @_pages.reference(category="import_export", )
+    @_pages.reference(
+        category="import_export",
+    )
     def to_sheet(
         self,
         file_name: str,
@@ -120,9 +122,6 @@ class Inlay:
 
 ==Write Databox time series to a CSV file==
 
-This method of the `Inlay` class write time series data from a `Databox` to a 
-CSV file. It allows for flexible selection of data based on frequency, names, and
-other parameters.
 
     self.to_sheet(
         file_name,

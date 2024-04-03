@@ -80,7 +80,6 @@ def _extended_range_tuple_from_base_span(
     path=("data_management", "databoxes.md", ),
     categories={
         "constructor": "Creating new databoxes",
-        "property": None,
         "import_export": "Importing and exporting databoxes",
     },
 )
@@ -121,7 +120,10 @@ a databox can be of any type.
         self._dotters = []
 
     @classmethod
-    @_pages.reference(category="constructor", call_nam="Databox.empty", )
+    @_pages.reference(
+        category="constructor",
+        call_name="Databox.empty",
+    )
     def empty(
         klass,
         /,
@@ -184,7 +186,6 @@ a databox can be of any type.
             target_databox=target_databox,
         )
 
-
     @classmethod
     def _from_horizontal_array_and_constructor(
         klass,
@@ -243,7 +244,9 @@ a databox can be of any type.
         return len(self.keys())
 
     @property
+    @_pages.reference(category="property", )
     def num_items(self, /, ) -> int:
+        """==Number of items in the databox=="""
         return len(self.keys())
 
     def to_dict(self: Self) -> dict:

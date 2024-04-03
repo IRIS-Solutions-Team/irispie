@@ -62,19 +62,22 @@ class Inlay:
     """
     #[
     @classmethod
-    @_pages.reference(category="import_export", )
+    @_pages.reference(
+        category="import_export",
+        call_name="Databox.from_sheet",
+    )
     def from_sheet(
         klass,
         file_name: str,
-        /,
+        *,
         date_creator: Callable | None = None,
         start_date_only: bool = False,
         description_row: bool = False,
         delimiter: str = ",",
+        name_row_transform: Callable | None = None,
         csv_reader_settings: dict = {},
         numpy_reader_settings: dict = {},
-        name_row_transform: Callable | None = None,
-        **kwargs,
+        databox_settings: dict = {},
     ) -> Self:
         r"""
 ················································································
@@ -82,13 +85,10 @@ class Inlay:
 
 ==Create a new Databox by reading time series from a CSV file==
 
-This class method creates an instance of `Databox` and populates it with time 
-series data from a specified CSV file. The method is designed to parse a 
-structured CSV format and transform it into `Databox`-compatible time series data.
 
     self = Databox.from_sheet(
         file_name,
-        /,
+        *,
         date_creator=None,
         start_date_only=False,
         description_row=False,
@@ -120,14 +120,17 @@ structured CSV format and transform it into `Databox`-compatible time series dat
 ???+ input "delimiter"
     Character used to separate values in the CSV file.
 
+???+ input "name_row_transform"
+    A function to transform names in the name row of the CSV.
+
 ???+ input "csv_reader_settings"
     Additional settings for the CSV reader.
 
 ???+ input "numpy_reader_settings"
     Settings for reading data into numpy arrays.
 
-???+ input "name_row_transform"
-    A function to transform names in the name row of the CSV.
+???+ input "databox_settings"
+    Settings for the Databox constructor.
 
 
 ### Returns ###
@@ -138,7 +141,7 @@ structured CSV format and transform it into `Databox`-compatible time series dat
 
 ················································································
         """
-        self = klass(**kwargs)
+        self = klass(**databox_settings, )
 
         num_header_rows = 1 + int(description_row)
         csv_rows = _read_csv(file_name, num_header_rows, **csv_reader_settings, )
