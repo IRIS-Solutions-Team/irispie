@@ -42,6 +42,14 @@ def reference(**kwargs, ) -> Callable:
     return _decorate
 
 
+def delete_pages_attributes(callable_obj, ) -> None:
+    """
+    """
+    for attr in dir(callable_obj):
+        if attr.startswith("_pages_"):
+            delattr(callable_obj, attr)
+
+
 def _extract_tagline(callable_obj, ) -> str:
     m = _TAGLINE_PATTERN.search(callable_obj.__doc__, )
     return m.group(1, ) if m else ""

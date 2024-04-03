@@ -76,10 +76,65 @@ class Inlay:
         name_row_transform: Callable | None = None,
         **kwargs,
     ) -> Self:
-        """
+        r"""
 ················································································
 
-==Import `Databox` from a CSV or spreadsheet file==
+
+==Create a new Databox by reading time series from a CSV file==
+
+This class method creates an instance of `Databox` and populates it with time 
+series data from a specified CSV file. The method is designed to parse a 
+structured CSV format and transform it into `Databox`-compatible time series data.
+
+    self = Databox.from_sheet(
+        file_name,
+        /,
+        date_creator=None,
+        start_date_only=False,
+        description_row=False,
+        delimiter=",",
+        csv_reader_settings={},
+        numpy_reader_settings={},
+        name_row_transform=None,
+    )
+
+
+### Input arguments ###
+
+
+???+ input `file_name`
+    Path to the CSV file to be read.
+
+???+ input `date_creator`
+    A callable for creating date objects from string representations. If `None`,
+    a default method based on the SDMX string format is used.
+
+???+ input `start_date_only`
+    If `True`, only the start date of each time series is parsed from the CSV;
+    subsequent dates are inferred based on frequency.
+
+???+ input `description_row`
+    Indicates if the CSV contains a row for descriptions of the time series.
+    Defaults to `False`.
+
+???+ input `delimiter`
+    Character used to separate values in the CSV file.
+
+???+ input `csv_reader_settings`
+    Additional settings for the CSV reader.
+
+???+ input `numpy_reader_settings`
+    Settings for reading data into numpy arrays.
+
+???+ input `name_row_transform`
+    A function to transform names in the name row of the CSV.
+
+
+### Returns ###
+
+
+???+ return `self`
+    An `Databox` populated with time series from the CSV file.
 
 ················································································
         """

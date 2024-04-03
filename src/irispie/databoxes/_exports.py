@@ -93,9 +93,9 @@ class _ExportBlock:
     #]
 
 
-class ExportMixin:
+class Inlay:
     """
-    Databox mixin for exporting data to disk files
+    Databox inlay for writing databox time series to CSV file
     """
     #[
     @_pages.reference(category="import_export", )
@@ -115,10 +115,84 @@ class ExportMixin:
         csv_writer_settings: dict | None = {},
         when_empty: Literal["error", "warning", "silent"] = "warning",
     ) -> dict[str, Any]:
-        """
+        r"""
 ················································································
 
-==Export `Databox` to a CSV or spreadsheet file==
+==Write Databox time series to a CSV file==
+
+This method of the `Inlay` class write time series data from a `Databox` to a 
+CSV file. It allows for flexible selection of data based on frequency, names, and
+other parameters.
+
+    self.to_sheet(
+        file_name,
+        *,
+        frequency_span=None,
+        names=None,
+        description_row=False,
+        frequency=None,
+        numeric_format="g",
+        nan_str="",
+        delimiter=",",
+        round=12,
+        date_formatter=None,
+        csv_writer_settings={},
+        when_empty="warning",
+    )
+
+
+### Input arguments ###
+
+
+???+ input `file_name`
+    Name of the CSV file where the data will be written.
+
+???+ input `frequency_span`
+    Specifies the frequencies and their corresponding date ranges for exporting
+    data. If `None`, exports data for all available frequencies and their full
+    date ranges in the databox.
+
+???+ input `names`
+    A list of series names to export. If `None`, exports all series for the 
+    specified frequencies.
+
+???+ input `description_row`
+    If `True`, include a row of series descriptions in the CSV.
+
+???+ input `frequency`
+    Frequency of the data to export.
+
+???+ input `numeric_format`
+    The numeric format for data values, e.g., 'g', 'f', etc.
+
+???+ input `nan_str`
+    String representation for NaN values in the output.
+
+???+ input `delimiter`
+    Character to separate columns in the CSV file.
+
+???+ input `round`
+    Number of decimal places to round numeric values.
+
+???+ input `date_formatter`
+    Function to format date values. If `None`, SDMX string formatter is used.
+
+???+ input `csv_writer_settings`
+    Additional settings for the CSV writer.
+
+???+ input `when_empty`
+    Behavior when no data is available for export. Can be "error", "warning", or
+    "silent".
+
+
+### Returns ###
+
+
+???+ return `info`
+    A dictionary with details about the export:
+
+    * `names_exported`: Names of the series exported to the CSV file.
+
 
 ················································································
         """

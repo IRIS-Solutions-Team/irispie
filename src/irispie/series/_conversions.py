@@ -48,7 +48,7 @@ class Inlay:
         """
 ················································································
 
-==Aggregate  time series to a lower frequency==
+==Aggregate time series to a lower frequency==
 
 
 ### Function form for creating new time `Series` objects ###
@@ -150,7 +150,7 @@ class Inlay:
         """
 ················································································
 
-==Disaggregate  time series to a higher frequency==
+==Disaggregate time series to a higher frequency==
 
 
 ### Function form for creating new time `Series` objects ###

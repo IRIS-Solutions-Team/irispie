@@ -174,44 +174,36 @@ class Inlay:
 
 ### Functional forms creating a new time `Series` object ###
 
-
-```
-trend, gap = irispie.hpf(
-    self,
-    /,
-    span=None,
-    smooth=None,
-    log=False,
-    level=None,
-    change=None,
-)
-```
+    trend, gap = irispie.hpf(
+        self,
+        /,
+        span=None,
+        smooth=None,
+        log=False,
+        level=None,
+        change=None,
+    )
 
 
 ### Class methods changing an existing time `Series` object in-place ###
 
+    self.hpf_trend(
+        /,
+        span=None,
+        smooth=None,
+        log=False,
+        level=None,
+        change=None,
+    )
 
-```
-self.hpf_trend(
-    /,
-    span=None,
-    smooth=None,
-    log=False,
-    level=None,
-    change=None,
-)
-```
-
-```
-self.hpf_gap(
-    /,
-    span=None,
-    smooth=None,
-    log=False,
-    level=None,
-    change=None,
-)
-```
+    self.hpf_gap(
+        /,
+        span=None,
+        smooth=None,
+        log=False,
+        level=None,
+        change=None,
+    )
 
 
 ### Input arguments ###

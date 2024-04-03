@@ -86,7 +86,7 @@ def _extended_range_tuple_from_base_span(
 )
 class Databox(
     _imports.Inlay,
-    _exports.ExportMixin,
+    _exports.Inlay,
     _merge.Inlay,
     _dotters.DotterMixin,
     _fred.FredMixin,
