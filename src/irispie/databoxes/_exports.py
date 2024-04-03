@@ -144,43 +144,43 @@ other parameters.
 ### Input arguments ###
 
 
-???+ input `file_name`
+???+ input "file_name"
     Name of the CSV file where the data will be written.
 
-???+ input `frequency_span`
+???+ input "frequency_span"
     Specifies the frequencies and their corresponding date ranges for exporting
     data. If `None`, exports data for all available frequencies and their full
     date ranges in the databox.
 
-???+ input `names`
+???+ input "names"
     A list of series names to export. If `None`, exports all series for the 
     specified frequencies.
 
-???+ input `description_row`
+???+ input "description_row"
     If `True`, include a row of series descriptions in the CSV.
 
-???+ input `frequency`
+???+ input "frequency"
     Frequency of the data to export.
 
-???+ input `numeric_format`
+???+ input "numeric_format"
     The numeric format for data values, e.g., 'g', 'f', etc.
 
-???+ input `nan_str`
+???+ input "nan_str"
     String representation for NaN values in the output.
 
-???+ input `delimiter`
+???+ input "delimiter"
     Character to separate columns in the CSV file.
 
-???+ input `round`
+???+ input "round"
     Number of decimal places to round numeric values.
 
-???+ input `date_formatter`
+???+ input "date_formatter"
     Function to format date values. If `None`, SDMX string formatter is used.
 
-???+ input `csv_writer_settings`
+???+ input "csv_writer_settings"
     Additional settings for the CSV writer.
 
-???+ input `when_empty`
+???+ input "when_empty"
     Behavior when no data is available for export. Can be "error", "warning", or
     "silent".
 
@@ -188,7 +188,7 @@ other parameters.
 ### Returns ###
 
 
-???+ return `info`
+???+ return "info"
     A dictionary with details about the export:
 
     * `names_exported`: Names of the series exported to the CSV file.
