@@ -89,10 +89,10 @@ class Databox(
     _imports.Inlay,
     _exports.Inlay,
     _merge.Inlay,
+    _views.Inlay,
     _dotters.DotterMixin,
     _fred.FredMixin,
     _descriptions.DescriptionMixin,
-    _views.ViewMixin,
     dict,
 ):
     """

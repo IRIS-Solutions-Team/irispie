@@ -299,8 +299,9 @@ class Solution:
         if (R is None) or (X is None) or (J is None) or (Ru is None):
             return None
         #
-        # return [R(t+1), R(t+2), ..., R(t+forward)]
+        # return [R(t), R(t+1), R(t+2), ..., R(t+forward)]
         #
+        # R(t) = R
         # R(t+k) = -X J**(k-1) Ru e(t+k)
         # k = 1, ..., forward or k-1 = 0, ..., forward-1
         #

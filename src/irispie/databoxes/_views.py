@@ -18,14 +18,14 @@ _REPR_MAX_LEN = 70
 _REPR_CONT = "..."
 
 
-class ViewMixin(_views.ViewMixin, ):
+class Inlay(_views.ViewMixin, ):
     """
     """
     #[
     def _get_first_line_view(self, /, ):
         """
         """
-        return f"{self.__class__.__name__} with {self.get_num_items():g} item(s)"
+        return f"{self.__class__.__name__} with {self.num_items:g} item(s)"
 
     def _get_content_view_(self, /, ):
         """

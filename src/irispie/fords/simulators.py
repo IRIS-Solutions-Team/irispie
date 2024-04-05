@@ -19,7 +19,7 @@ from ..fords import descriptors as _descriptors
 def simulate_flat(
     solution: _solutions.Solution,
     solution_vectors: _descriptors.SolutionVectors,
-    dataslate: _dataslates.HorizontalDataslate,
+    dataslate: _dataslates.Dataslate,
     vid: int,
     /,
     *,
@@ -88,7 +88,7 @@ def simulate_flat(
         Rk = solution.expand_square_solution(forward, )
         Rx = Rx + (Rk if Rk is not None else [])
     #
-    shock_column_end = (
+    anticipated_shock_column_end = (
         column_start + forward
         if forward is not None
         else column_start - 1
@@ -97,7 +97,7 @@ def simulate_flat(
     for t in column_array:
         anticipated_shock_impact = sum(
             Rx[k] @ anticipated_shocks[:, s] if Rx[k] is not None else 0
-            for k, s in enumerate(range(t, shock_column_end+1))
+            for k, s in enumerate(range(t, anticipated_shock_column_end+1))
         )
         curr_state = T @ curr_state + P @ unanticipated_shocks[:, t] + anticipated_shock_impact + K
         working_data[no_shift_state_to_slab_lhs, t] = curr_state[no_shift_state_to_slab_rhs]
