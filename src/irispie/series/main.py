@@ -119,12 +119,12 @@ def _trim_decorate(func):
 @_pages.reference(
     path=("data_management", "time_series.md", ),
     categories={
-        "constructor": "New time series",
-        "conversion": "Time series frequency conversions",
-        "filtering": "Univariate time series filters",
-        "moving": "Moving window",
-        "temporal_change": "Temporal change",
-        "temporal_cumulation": "Temporal cumulation",
+        "constructor": "Constructing new time series",
+        "conversion": "Converting time series frequency",
+        "filtering": "Filtering time series",
+        "moving": "Applying moving window functions",
+        "temporal_change": "Calculating temporal change",
+        "temporal_cumulation": "Calculating temporal cumulation",
     },
 )
 class Series(

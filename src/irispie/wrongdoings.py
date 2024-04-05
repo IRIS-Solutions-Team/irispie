@@ -22,7 +22,7 @@ _BLANK_LINE = "|"
 _LIST_PREFIX = "| * "
 
 
-class IrisPieError(Exception):
+class IrisPieError(Exception, ):
     """
     """
     #[
@@ -32,11 +32,11 @@ class IrisPieError(Exception):
     #]
 
 
-class IrisPieCritical(IrisPieError):
+class IrisPieCritical(IrisPieError, ):
     pass
 
 
-class IrisPieWarning(UserWarning):
+class IrisPieWarning(UserWarning, ):
     """
     """
     pass
@@ -74,7 +74,7 @@ def _raise_as_error(
     """
     """
     #[
-    raise IrisPieError(message)
+    raise IrisPieError(message, )
     #]
 
 
@@ -169,6 +169,9 @@ class CriticalStream(_Stream):
         self.messages += (message, )
         raise IrisPieCritical(self.final_message, )
 
+    def _raise(self, *args, **kwargs, ) -> None:
+        pass
+
     #]
 
 
@@ -187,7 +190,7 @@ class ErrorStream(_Stream):
         """
         """
         if self.messages:
-            _raise_as_error(self.final_message)
+            _raise_as_error(self.final_message, )
 
     #]
 
@@ -207,7 +210,7 @@ class WarningStream(_Stream):
         """
         """
         if self.messages:
-            _raise_as_warning(self.final_message)
+            _raise_as_warning(self.final_message, )
 
     #]
 

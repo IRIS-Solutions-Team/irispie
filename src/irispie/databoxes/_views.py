@@ -57,7 +57,7 @@ def _databox_repr(x, /, ) -> str:
     """
     #[
     if hasattr(x, "_databox_repr"):
-        s = f"<<{x._databox_repr()}>"
+        s = f"<{x._databox_repr()}>"
     elif x is None:
         s = "None"
     elif x is ...:

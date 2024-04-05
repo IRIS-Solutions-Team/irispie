@@ -35,7 +35,8 @@ def disaggregate_arip(
 
     low_start_date = self.start_date
     low_end_date = self.end_date
-    data_variant_iterator = self.iter_own_data_variants_from_to((low_start_date, low_end_date, ), )
+    low_data_variant_iterator \
+        = self.iter_own_data_variants_from_to((low_start_date, low_end_date, ), )
 
     low_freq = self.start_date.frequency
     num_low_periods = self.num_periods
@@ -45,10 +46,15 @@ def disaggregate_arip(
 
     high_start_date = self.start_date.convert(high_freq, position="start", )
     high_end_date = self.end_date.convert(high_freq, position="end", )
-    target_data = _get_target_data(target, high_start_date, high_end_date, num_high_periods, )
+    target_data = _get_target_data(
+        target,
+        high_start_date,
+        high_end_date,
+        num_high_periods,
+    )
 
     high_data = disaggregate_arip_data(
-        data_variant_iterator,
+        low_data_variant_iterator,
         target_data,
         model,
         num_low_periods,
@@ -67,15 +73,15 @@ class _RateForm:
     #[
 
     @staticmethod
-    def get_rho(low_freq, high_freq, low_data_variant, ) -> Real:
+    def get_rho(low_freq, high_freq, low_data_v, ) -> Real:
         """
         """
-        where_finite, *_ = _np.nonzero(_np.isfinite(low_data_variant, ))
-        num_low_roc_periods = where_finite[-1] - where_finite[0]
+        first_low_value, last_low_value, num_low_periods \
+            = _get_first_last_observations(low_data_v, )
         low_roc = (
-            (low_data_variant[where_finite[-1]] / low_data_variant[where_finite[0]])
-            ** (1 / num_low_roc_periods)
-        ) if num_low_roc_periods else 1
+            ((last_low_value / first_low_value) ** (1 / num_low_periods))
+            if num_low_periods else 1
+        )
         return _conversions.convert_roc(low_roc, low_freq, high_freq, )
 
     @staticmethod
@@ -95,27 +101,45 @@ class _DiffForm:
     #[
 
     @staticmethod
-    def get_rho(low_freq, high_freq, low_data_variant, ) -> Real:
+    def get_rho(low_freq, high_freq, low_data_v, ) -> Real:
         """
         """
         return 1
 
     @staticmethod
-    def get_constant(low_freq, high_freq, low_data_variant, ) -> Real:
+    def get_constant(low_freq, high_freq, low_data_v, ) -> Real:
         """
         """
-        where_finite, *_ = _np.nonzero(_np.isfinite(low_data_variant, ))
-        num_low_diff_periods = where_finite[-1] - where_finite[0]
+        first_low_value, last_low_value, num_low_periods \
+            = _get_first_last_observations(low_data_v, )
         low_diff = (
-            (low_data_variant[where_finite[-1]] - low_data_variant[where_finite[0]])
-            / num_low_diff_periods
-        ) if num_low_diff_periods else 0
+            (last_low_value - first_low_value) / num_low_periods
+            if num_low_periods else 0
+        )
         return _conversions.convert_diff(low_diff, low_freq, high_freq, )
 
     @staticmethod
     def get_sigma_vector(rho, num_high_periods, ) -> _np.ndarray:
         return _np.ones((num_high_periods, ), dtype=float, )
 
+    #]
+
+
+def _get_first_last_observations(
+    low_data_v: _np.ndarray,
+) -> tuple[Real, Real]:
+    """
+    """
+    #[
+    where_finite, *_ = _np.nonzero(_np.isfinite(low_data_v, ))
+    if where_finite.size:
+        first_low_value = low_data_v[where_finite[0]]
+        last_low_value = low_data_v[where_finite[-1]]
+        num_low_periods = where_finite[-1] - where_finite[0]
+    else:
+        first_low_value = last_low_value = None
+        num_low_periods = 0
+    return first_low_value, last_low_value, num_low_periods
     #]
 
 
@@ -224,14 +248,14 @@ def _create_basic_system_matrices(
 
 
 def disaggregate_arip_data(
-    data_variant_iterator: Iterable[_np.ndarray],
+    low_data_variant_iterator: Iterable[_np.ndarray],
     target_data: _np.ndarray,
-    model: tuple[str, str | tuple[Real]],
+    model: tuple[str, str | tuple[Real, ...]],
     num_low_periods: int,
     low_freq: int,
     high_freq: int,
     /,
-) -> tuple[_np.ndarray, _np.ndarray]:
+) -> tuple[_np.ndarray, ...]:
     """
     """
     where_finite_target, *_ = _np.nonzero(_np.isfinite(target_data, ))
@@ -273,11 +297,11 @@ def disaggregate_arip_data(
 
     high_data = ()
 
-    for low_data_variant in data_variant_iterator:
+    for low_data_v in low_data_variant_iterator:
 
-        if low_data_variant.size != num_low_periods:
+        if low_data_v.size != num_low_periods:
             raise _wrongdoings.IrisPieCritical(
-                f"Data variant has {low_data_variant.size} periods, "
+                f"Data variant has {low_data_v.size} periods, "
                 f"but {num_low_periods} are required."
             )
 
@@ -287,15 +311,20 @@ def disaggregate_arip_data(
                 f"but {num_high_periods} are required."
             )
 
-        low_data_variant[where_full_low_periods] = _np.nan
-        where_finite, *_ = _np.nonzero(_np.isfinite(low_data_variant, ))
+        low_data_v[where_full_low_periods] = _np.nan
+        where_finite, *_ = _np.nonzero(_np.isfinite(low_data_v, ))
         num_finite = where_finite.size
 
-        rho = form.get_rho(low_freq, high_freq, low_data_variant, )
-        const = form.get_constant(low_freq, high_freq, low_data_variant, )
+        rho = form.get_rho(low_freq, high_freq, low_data_v, )
+        const = form.get_constant(low_freq, high_freq, low_data_v, )
         sigma_vector = form.get_sigma_vector(rho, num_high_periods, )
 
-        F, C = _create_basic_system_matrices(num_high_periods, rho, const, sigma_vector, )
+        F, C = _create_basic_system_matrices(
+            num_high_periods,
+            rho,
+            const,
+            sigma_vector,
+        )
 
         multiplier_columns = tuple(
             create_multiplier_column(i, )
@@ -307,7 +336,10 @@ def disaggregate_arip_data(
             for i in where_finite_target
         )
 
-        right_padding = _np.zeros((1, num_finite+num_finite_target, ), dtype=float, )
+        right_padding = _np.zeros(
+            (1, num_finite+num_finite_target, ),
+            dtype=float,
+        )
 
         aggregation_rows = tuple(
             _np.hstack((create_aggregation_row(i, ), right_padding, ), )
@@ -324,13 +356,13 @@ def disaggregate_arip_data(
 
         C = _np.vstack((
             C,
-            low_data_variant[where_finite].reshape(-1, 1, ),
+            low_data_v[where_finite].reshape(-1, 1, ),
             target_data[where_finite_target].reshape(-1, 1, ),
         ))
 
-        high_data_variant = _np.linalg.solve(F, C, )
-        high_data_variant = high_data_variant[:num_high_periods].flatten()
-        high_data += (high_data_variant, )
+        high_data_v = _np.linalg.solve(F, C, )
+        high_data_v = high_data_v[:num_high_periods].flatten()
+        high_data += (high_data_v, )
 
     return high_data
 

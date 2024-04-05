@@ -175,6 +175,7 @@ class Inlay:
         """
         with open(file_name, "rb") as fid:
             return _pickle.load(fid, **kwargs, )
+
     #]
 
 

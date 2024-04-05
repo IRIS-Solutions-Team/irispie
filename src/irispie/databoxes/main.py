@@ -80,6 +80,8 @@ def _extended_range_tuple_from_base_span(
     path=("data_management", "databoxes.md", ),
     categories={
         "constructor": "Creating new databoxes",
+        "information": "Getting information about databoxes",
+        "manipulation": "Manipulating databoxes",
         "import_export": "Importing and exporting databoxes",
     },
 )
@@ -129,11 +131,28 @@ a databox can be of any type.
         /,
     ) -> Self:
         """
-......................................................................
+················································································
 
-==Create a new empty `Databox`==
+==Create an empty Databox==
 
-......................................................................
+Generate a new, empty Databox instance. This class method is useful for 
+initializing a Databox without any pre-existing data.
+
+    Databox.empty()
+
+
+### Input arguments ###
+
+No input arguments are required for this method.
+
+
+### Returns ###
+
+
+???+ return "Databox"
+    Returns a new instance of an empty Databox.
+
+················································································
         """
         return klass()
 
@@ -145,11 +164,33 @@ a databox can be of any type.
         /,
     ) -> Self:
         """
-......................................................................
+················································································
 
-==Create a `Databox` from a `dict`==
+==Create a Databox from a Dictionary==
 
-......................................................................
+Create a new Databox instance populated with data from a provided dictionary. 
+This class method can be used to convert a standard Python dictionary into a 
+Databox, incorporating all its functionalities.
+
+    Databox.from_dict(_dict)
+
+
+### Input arguments ###
+
+
+???+ input "_dict"
+    A dictionary containing the data to populate the new Databox. Each key-value 
+    pair in the dictionary will be an item in the Databox.
+
+
+### Returns ###
+
+
+???+ return "Databox"
+    Returns a new Databox instance populated with the contents of the provided 
+    dictionary.
+
+················································································
         """
         self = klass()
         for k, v in _dict.items():
@@ -170,11 +211,60 @@ a databox can be of any type.
         orientation: Literal["vertical", "horizontal", ] = "vertical",
     ) -> Self:
         """
-......................................................................
+················································································
 
-==Create a `Databox` from a NumPy array==
+==Create a Databox from a numpy array==
 
-......................................................................
+Convert a multidimensional array data into a Databox, with the individual
+time series created from the rows or columns of the numeric array.
+
+    Databox.from_array(
+        array,
+        names,
+        descriptions=None,
+        dates=None,
+        start_date=None,
+        target_databox=None,
+        orientation="vertical",
+    )
+
+
+### Input arguments ###
+
+
+???+ input "array"
+    A numpy array containing the data to be included in the Databox.
+
+???+ input "names"
+    A sequence of names corresponding to the series in the array.
+
+???+ input "descriptions"
+    Descriptions for each series in the array.
+
+???+ input "dates"
+    An iterable of dates corresponding to the rows of the array. Used if the data
+    represents time series.
+
+???+ input "start_date"
+    The starting date for the time series data. Used if 'dates' is not provided.
+
+???+ input "target_databox"
+    An existing Databox to which the array data will be added. If `None`, a new 
+    Databox is created.
+
+???+ input "orientation"
+    The orientation of the array, indicating how time series are arranged: 
+    'horizontal' means each row is a time series, 'vertical' means each column 
+    is a time series.
+
+
+### Returns ###
+
+
+???+ return "Databox"
+    Returns a Databox instance populated with the data from the numpy array.
+
+················································································
         """
         array = array if orientation == "horizontal" else array.T
         series_constructor = _get_series_constructor(start_date, dates, )
@@ -226,22 +316,63 @@ a databox can be of any type.
         while True:
             yield { k: next(v, ) for k, v in dict_variant_iter.items() }
 
+    @_pages.reference(category="information", )
     def get_names(self, /, ) -> list[str]:
         """
-        Get all names stored in a databox save for private attributes
+················································································
+
+==Get all item names from a Databox==
+
+
+    names = self.get_names()
+
+
+### Input arguments ###
+
+
+No input arguments are required for this method.
+
+
+### Returns ###
+
+
+???+ return "names"
+    A tuple containing all the names of items in the Databox.
+
+················································································
         """
         return tuple(self.keys())
 
+    @_pages.reference(category="information", )
     def get_missing_names(self, names: Iterable[str], /, ) -> tuple[str]:
         """
-        Get names that are not in the databox
+················································································
+
+==Identify names not present in a Databox==
+
+Find and return the names from a provided list that are not present in the 
+Databox. This method is helpful for checking which items are missing or have 
+yet to be added to the Databox.
+
+    missing_names = self.get_missing_names(names)
+
+
+### Input arguments ###
+
+
+???+ input "names"
+    An iterable of names to check against the Databox's items.
+
+
+### Returns ###
+
+
+???+ return "missing_names"
+    A tuple of names that are not found in the Databox.
+
+················································································
         """
         return tuple(name for name in names if name not in self)
-
-    def get_num_items(self, /, ) -> int:
-        """
-        """
-        return len(self.keys())
 
     @property
     @_pages.reference(category="property", )
@@ -255,6 +386,7 @@ a databox can be of any type.
         """
         return { k: v for k, v in self.items() }
 
+    @_pages.reference(category="manipulation", )
     def copy(
         self: Self,
         /,
@@ -263,8 +395,48 @@ a databox can be of any type.
         strict_names: bool = False,
     ) -> Self:
         """
+················································································
+
+==Create a copy of the Databox==
+
+Produce a deep copy of the Databox, with options to filter and rename items 
+during the duplication process.
+
+    new_databox = self.copy(
+        source_names=None,
+        target_names=None,
+        strict_names=False,
+    )
+
+
+### Input arguments ###
+
+
+???+ input "source_names"
+    Names of the items to include in the copy. Can be a list of names, a single 
+    name, a callable returning `True` for names to include, or `None` to copy 
+    all items.
+
+???+ input "target_names"
+    New names for the copied items, corresponding to 'source_names'. Can be a 
+    list of names, a single name, or a callable function taking a source name 
+    and returning the new target name.
+
+???+ input "strict_names"
+    If set to `True’, strictly adheres to the provided names, raising an error 
+    if any source name is not found in the Databox.
+
+
+### Returns ###
+
+
+???+ return "new_databox"
+    A new Databox instance that is a deep copy of the current one, containing 
+    either all items or only those specified.
+
+················································································
         """
-        new_databox = _co.deepcopy(self)
+        new_databox = _co.deepcopy(self, )
         if source_names is None and target_names is None:
             return new_databox
         source_names, target_names, *_ = self._resolve_source_target_names(
@@ -291,6 +463,7 @@ a databox can be of any type.
             for s, t in zip(source_names, target_names, )
         )
 
+    @_pages.reference(category="manipulation", )
     def rename(
         self: Self,
         /,
@@ -299,6 +472,47 @@ a databox can be of any type.
         strict_names: bool = False,
     ) -> None:
         """
+················································································
+
+==Rename items in a Databox==
+
+Rename existing items in a Databox by specifying `source_names` and 
+`target_names`. The `source_names` can be a list of names, a single name, or a 
+callable function returning `True` for names to be renamed. Define `target_names`
+as the new names for these items, either as a corresponding list, a single name,
+or a callable function taking a source name and returning the new target name.
+
+    self.rename(
+        source_names=None,
+        target_names=None,
+        strict_names=False,
+    )
+
+
+### Input arguments ###
+
+
+???+ input "source_names"
+    The current names of the items to be renamed. Accepts a list of names, a 
+    single name, or a callable that generates new names based on the given ones.
+
+???+ input "target_names"
+    The new names for the items. Should align with 'source_names'. Can be a list 
+    of names, a single name, or a callable function taking each source name and 
+    returning the corresponding target name.
+
+???+ input "strict_names"
+    If set to `True`, enforces strict adherence to the provided names, with an 
+    error raised for any source name not found in the Databox.
+
+
+### Returns ###
+
+
+???+ return "None"
+    Alters the Databox in-place without returning a value.
+
+················································································
         """
         source_names, target_names, *_ = self._resolve_source_target_names(
             source_names, target_names, strict_names,
@@ -308,16 +522,52 @@ a databox can be of any type.
                 continue
             self[t] = self.pop(s)
 
+    @_pages.reference(category="manipulation", )
     def remove(
         self: Self,
-        /,
         remove_names: SourceNames = None,
+        *,
         strict_names: bool = False,
     ) -> None:
         """
+················································································
+
+==Remove specified items from a Databox==
+
+Remove specified items from the Databox based on the provided names or a 
+filtering function. Items to be removed can be specified as a list of names, a 
+single name, a callable that returns `True` for names to be removed, or `None`.
+
+    self.remove(
+        remove_names=None,
+        *,
+        strict_names=False,
+    )
+
+
+### Input arguments ###
+
+
+???+ input "remove_names"
+    Names of the items to be removed from the Databox. Can be a list of names, a 
+    single name, a callable that returns `True` for names to be removed, or 
+    `None`. If `None`, no items are removed.
+
+???+ input "strict_names"
+    If `True`, strictly adheres to the provided names, raising an error if any 
+    name is not found in the Databox.
+
+
+### Returns ###
+
+
+???+ return "None"
+    This method does not return any value but modifies the Databox in-place.
+
+················································································
         """
         if remove_names is None:
-            return self
+            return
         context_names = self.get_names()
         remove_names, *_ = self._resolve_source_target_names(
             remove_names, None, strict_names,
@@ -325,13 +575,49 @@ a databox can be of any type.
         for n in remove_names:
             del self[n]
 
+
+    @_pages.reference(category="manipulation", )
     def keep(
         self: Self,
         /,
         keep_names: SourceNames = None,
         strict_names: bool = False,
     ) -> None:
-        """
+        r"""
+················································································
+
+==Keep specified items in a Databox==
+
+Retain selected items in a Databox, removing all others. Specify the items to 
+keep using `keep_names`, which can be a list of names, a single name, or a 
+callable function determining which items to retain.
+
+    self.keep(
+        keep_names=None,
+        strict_names=False,
+    )
+
+
+### Input arguments ###
+
+
+???+ input "keep_names"
+    The names of the items to be retained in the Databox. Can be a list of names, 
+    a single name, or a callable function determining the items to keep.
+
+???+ input "strict_names"
+    If set to `True`, enforces strict adherence to the provided names, with an 
+    error raised for any name not found in the Databox.
+
+
+### Returns ###
+
+
+???+ return "None"
+    Modifies the Databox in-place, keeping only the specified items, and does not 
+    return a value.
+
+················································································
         """
         if keep_names is None:
             return self
@@ -343,6 +629,7 @@ a databox can be of any type.
                 continue
             del self[n]
 
+    @_pages.reference(category="manipulation", )
     def apply(
         self,
         func: Callable,
@@ -352,7 +639,60 @@ a databox can be of any type.
         when_fails: Literal["critical", "error", "warning", "silent", ] = "critical",
         strict_names: bool = False,
     ) -> None:
-        """
+        r"""
+················································································
+
+
+==Apply a function to items in a Databox==
+
+Apply a function to selected Databox items, either in place or by reassigning 
+the results.
+
+    self.apply(
+        func,
+        source_names=None,
+        in_place=True,
+        when_fails="critical",
+        strict_names=False,
+    )
+
+
+### Input arguments ###
+
+
+???+ input "func"
+    The function to apply to each selected item in the Databox.
+
+???+ input "source_names"
+    Names of the items to which the function will be applied. Can be a list of 
+    names, a single name, a callable returning `True’ for names to include, or 
+    `None` to apply to all items.
+
+???+ input "in_place"
+    Determines if the results of the function should be assigned back to the 
+    items in-place. If `True`, items are updated in-place; if `False`, the
+    results are reassigned to the items.
+
+???+ input "when_fails"
+    Specifies the action to take if applying the function fails. Options are 
+    "critical", "error", "warning", or "silent".
+
+???+ input "strict_names"
+    If set to `True`, strictly adheres to the provided names, raising an error 
+    if any source name is not found in the Databox.
+
+
+### Returns ###
+
+
+???+ return "None"
+    Modifies items in the Databox in-place (note that the `in_place` input
+    argument only applies to the Databox items, and not the Databox itself)
+    and does not return a value. Errors are handled based on the
+    `when_fails’ setting.
+
+
+················································································
         """
         source_names, *_ = self._resolve_source_target_names(
             source_names, None, strict_names,
@@ -369,13 +709,47 @@ a databox can be of any type.
                 when_fails_stream.add(f"{s}: {repr(e)}", )
         when_fails_stream._raise()
 
+    @_pages.reference(category="information", )
     def filter(
         self,
         /,
         name_test: Callable | None = None,
         value_test: Callable | None = None,
     ) -> Iterable[str]:
-        """
+        r"""
+················································································
+
+
+==Filter items in a Databox==
+
+Select Databox items based on custom name or value test functions.
+
+    filtered_names = self.filter(
+        name_test=None,
+        value_test=None,
+    )
+
+
+### Input arguments ###
+
+
+???+ input "name_test"
+    A callable function to test each item's name. Returns `True` for names that 
+    meet the specified condition.
+
+???+ input "value_test"
+    A callable function to test each item's value. Returns `True` for values that 
+    meet the specified condition.
+
+
+### Returns ###
+
+
+???+ return "filtered_names"
+    A tuple of item names that meet the specified conditions.
+
+
+················································································
         """
         names = tuple(self.get_names())
         if name_test is None and value_test is None:
@@ -391,7 +765,7 @@ a databox can be of any type.
     def get_series_names_by_frequency(
         self,
         frequency: _dates.Frequency,
-    ) -> Iterable[str]:
+    ) -> tuple[str]:
         """
         Get all time series names with the given frequency
         """

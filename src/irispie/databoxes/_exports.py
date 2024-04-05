@@ -133,7 +133,7 @@ class Inlay:
         numeric_format="g",
         nan_str="",
         delimiter=",",
-        round=12,
+        round=None,
         date_formatter=None,
         csv_writer_settings={},
         when_empty="warning",

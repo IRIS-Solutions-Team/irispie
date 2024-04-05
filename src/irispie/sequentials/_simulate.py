@@ -10,6 +10,7 @@ from numbers import Real
 import numpy as _np
 import itertools as _it
 import wlogging as _wl
+import functools as _ft
 
 from .. import pages as _pages
 from .. import wrongdoings as _wrongdoings
@@ -175,31 +176,49 @@ simulating the model.
         """
         when_nonfinite_stream = \
             _wrongdoings.STREAM_FACTORY[when_nonfinite] \
-            ("These simulated data point(s) are non-finite values:", )
+            ("These simulated data point(s) are nan or inf:", )
         #
         name_to_row = ds.create_name_to_row()
         base_columns = ds.base_columns
         first_base_column = base_columns[0] if base_columns else None
         working_data = ds.get_data_variant(0, )
         columns_dates = ( (c, ds.dates[c]) for c in base_columns )
-        execution_iterator_creator = _CREATE_EXECUTION_ITERATOR[execution_order]
-        columns_dates_equations = execution_iterator_creator(columns_dates, self.iter_equations(), )
+        iterator_creator = _CREATE_EXECUTION_ITERATOR[execution_order]
+        #
+        columns_dates_equations = iterator_creator(
+            columns_dates,
+            self.iter_equations(),
+        )
+        #
+        detect_exogenized = _ft.partial(
+            _detect_exogenized,
+            name_to_row=name_to_row,
+            data=working_data,
+        )
+        #
         for (column, date), equation in columns_dates_equations:
+            lhs_date_str = f"{equation.lhs_name}[{date}]"
+            residual_date_str = f"{equation.residual_name}[{date}]"
             transform = _get_transform(plan, equation, date)
-            is_exogenized, implied_value = _is_exogenized(
-                equation.lhs_name,
-                transform,
-                working_data,
-                column,
-                name_to_row,
-            )
+            try:
+                implied_value = detect_exogenized(equation.lhs_name, transform, column, )
+                simulation_func = (
+                    equation.simulate
+                    if implied_value is None
+                    else equation.exogenize
+                )
+                info = simulation_func(working_data, column, implied_value, )
+            except Exception as exc:
+                message = (
+                    f"Error when simulating {lhs_date_str}"
+                    f"\nDirect cause: {str(exc)}"
+                )
+                raise _wrongdoings.IrisPieCritical(message, ) from exc
             #
-            simulation_function = equation.simulate if not is_exogenized else equation.exogenize
-            info = simulation_function(working_data, column, implied_value, )
             logger.debug(
-                f"{simulation_function.__name__}"
-                f" {equation.lhs_name}[{date}]={info['lhs_value']}"
-                f" (equation.residual_name[{date}]={info['residual_value']})"
+                f"{simulation_func.__name__}"
+                f" {lhs_date_str}={info['lhs_value']}"
+                f" {residual_date_str}={info['residual_value']}"
             )
             #
             _catch_nonfinite(
@@ -227,18 +246,19 @@ def _get_transform(
     )
 
 
-def _is_exogenized(
+def _detect_exogenized(
     lhs_name: str,
     transform: _plans.Transform | None,
-    data: _np.ndarray,
     data_column: int,
+    *,
+    data: _np.ndarray,
     name_to_row: dict[str, int],
-) -> tuple[bool, Real | None]:
+) -> Real | None:
     """
     """
     #[
     if transform is None:
-        return False, None
+        return None
     #
     lhs_name_row = name_to_row[lhs_name]
     values_before = data[lhs_name_row, :data_column]
@@ -246,11 +266,14 @@ def _is_exogenized(
     #
     transform_name = transform.resolve_databox_name(lhs_name, )
     transform_row = name_to_row.get(transform_name, None, )
-    transform_values_after = data[transform_row, data_column:] if transform_row is not None else None
+    transform_values_after = (
+        data[transform_row, data_column:]
+        if transform_row is not None else None
+    )
     implied_value = transform.eval_exogenized(transform_values_after, values_before, values_after_inclusive, )
     if transform.when_data and _np.isnan(implied_value):
-        return False, None
-    return True, implied_value
+        return None
+    return implied_value
     #]
 
 
