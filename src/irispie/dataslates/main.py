@@ -36,12 +36,13 @@ __all__ = (
 class SlatableProtocol(Protocol, ):
     """
     """
-    def get_min_max_shift(self, /, ) -> tuple[int, int]: ...
-    def get_databox_names(self, /, ) -> tuple[str, ...]: ...
-    def get_fallbacks(self, /, ) -> dict[str, Number]: ...
-    def get_overwrites(self, /, ) -> dict[str, Number]: ...
-    def get_output_names(self, /, ) -> Iterable[str, ...]: ...
-    def create_qid_to_logly(self, /, ) -> dict[int, bool | None]: ...
+    max_lag: int
+    max_lead: int
+    databox_names: Iterable[str]
+    fallbacks: dict[str, Real]
+    overwrites: dict[str, Real]
+    output_names: Iterable[str]
+    qid_to_logly: dict[int, bool | None]
 
 
 @_dc.dataclass
@@ -116,6 +117,7 @@ class Dataslate(
         num_variants: int = 1,
         fallbacks: dict[str, Number] | None = None,
         overwrites: dict[str, Number] | None = None,
+        clip_data_to_base_span: bool = False,
         **kwargs,
     ) -> Self:
         """
@@ -154,6 +156,7 @@ class Dataslate(
                 databox_v, self._invariant,
                 fallbacks=fallbacks_v,
                 overwrites=overwrites_v,
+                clip_data_to_base_span=clip_data_to_base_span,
             )
             for vid, databox_v, fallbacks_v, overwrites_v in zipped
         ]
@@ -167,25 +170,31 @@ class Dataslate(
         base_span: Iterable[_dates.Dater],
         /,
         extra_databox_names: Iterable[str] | None = None,
-        extend_span: bool = True,
+        prepend_initial: bool = True,
+        append_terminal: bool = True,
+        clip_data_to_base_span: bool = False,
         **kwargs,
     ) -> Self:
         """
         """
-        names = tuple(slatable.get_databox_names())
+        names = tuple(slatable.databox_names, )
         if extra_databox_names:
             names = names + tuple(i for i in extra_databox_names if i not in names)
-        dates, base_columns, *min_max_shift = _get_extended_span(slatable, base_span, extend_span=extend_span,)
-        qid_to_logly = slatable.create_qid_to_logly()
+        dates, base_columns, *min_max_shift = _get_extended_span(
+            slatable, base_span,
+            prepend_initial=prepend_initial,
+            append_terminal=append_terminal,
+        )
         #
         return klass.from_databox(
             databox, names, dates,
-            fallbacks=slatable.get_fallbacks(),
-            overwrites=slatable.get_overwrites(),
             base_columns=base_columns,
-            output_names=slatable.get_output_names(),
             min_max_shift=min_max_shift,
-            qid_to_logly=qid_to_logly,
+            qid_to_logly=slatable.qid_to_logly,
+            fallbacks=slatable.fallbacks,
+            overwrites=slatable.overwrites,
+            clip_data_to_base_span=clip_data_to_base_span,
+            output_names=slatable.output_names,
             **kwargs,
         )
 
@@ -422,18 +431,15 @@ def _get_extended_span(
     slatable: SlatableProtocol,
     base_span: Iterable[_dates.Dater],
     /,
-    extend_span: bool = True,
+    prepend_initial: bool,
+    append_terminal: bool,
 ) -> tuple[Iterable[_dates.Dater], tuple[int, ...]]:
     """
     """
     base_span = tuple(t for t in base_span)
     num_base_periods = len(base_span)
-    if extend_span:
-        min_shift, max_shift = slatable.get_min_max_shifts()
-        # if min_shift == 0:
-        #    min_shift = -1
-    else:
-        min_shift, max_shift = 0, 0
+    min_shift = slatable.max_lag if prepend_initial else 0
+    max_shift = slatable.max_lead if append_terminal else 0
     min_base_date = min(base_span)
     max_base_date = max(base_span)
     start_date = min_base_date + min_shift

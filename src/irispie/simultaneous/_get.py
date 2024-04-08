@@ -19,7 +19,7 @@ from .. import dates as _dates
 from .. import has_variants as _has_variants
 from ..series import main as _series
 from ..incidences import main as _incidence
-from ..databoxes import main as _databoxes
+from ..databoxes.main import (Databox, )
 from ..fords import solutions as _solutions
 from ..fords import descriptors as _descriptors
 
@@ -40,7 +40,7 @@ def _cast_as_output_type(func: Callable, ):
     @_ft.wraps(func)
     def _wrapper(*args, **kwargs):
         output = func(*args, **kwargs)
-        output_type = kwargs.get("output_type", _databoxes.Databox, )
+        output_type = kwargs.get("output_type", Databox, )
         return output_type(output, ) if output_type else output
     return _wrapper
     #]
@@ -271,13 +271,15 @@ steady_changes = self.get_steady_changes(
         return _incidence.print_tokens(initial_tokens, qid_to_name, qid_to_logly, )
         # [^1] Do not wrap initial conditions in log(...)
 
+    # REFACTOR:
+    # Create a SteadyBoxable class
     def generate_steady_items(
         self,
         start_date: _dates.Dater,
         end_date: _dates.Dater,
         /,
         deviation: bool = False,
-    ) -> _databoxes.Databox:
+    ) -> Iterable[tuple[str, _series.Series | Real]]:
         """
         """
         num_columns = int(end_date - start_date + 1)
@@ -325,12 +327,12 @@ steady_changes = self.get_steady_changes(
         qid_to_name = self.create_qid_to_name()
         qid_to_logly = self.create_qid_to_logly()
         return _descriptors.HumanSolutionVectors(
-            self._solution_vectors,
+            self.solution_vectors,
             qid_to_name,
             qid_to_logly,
         )
 
-    def get_solution_matrices(
+    def get_solution(
         self,
         /,
         unpack_singleton: bool = True,

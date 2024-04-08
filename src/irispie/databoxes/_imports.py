@@ -136,7 +136,7 @@ class Inlay:
 ### Returns ###
 
 
-???+ return "self"
+???+ returns "self"
     An `Databox` populated with time series from the CSV file.
 
 ················································································

@@ -42,6 +42,7 @@ class Variant:
         /,
         fallbacks: dict[str, Number] | None = None,
         overwrites: dict[str, Number] | None = None,
+        clip_data_to_base_span: bool = False,
     ) -> None:
         """
         """
@@ -53,10 +54,14 @@ class Variant:
             new_data = _create_nan_vector()
             if n in databox_v:
                 new_data[:] = databox_v[n]
+
             data_list.append(new_data, )
         self.data = _np.vstack(data_list, )
-        self._fill_fallbacks(fallbacks, invariant, )
-        self._fill_overwrites(overwrites, invariant, )
+        nonbase_columns = invariant.nonbase_columns
+        if clip_data_to_base_span and nonbase_columns:
+            self.data[:, nonbase_columns] = _np.nan
+        self._apply_fallbacks(fallbacks, invariant, )
+        self._apply_overwrites(overwrites, invariant, )
         return self
 
     @classmethod
@@ -126,7 +131,7 @@ class Variant:
         else:
             self.data[record_id, columns] = values
 
-    def _fill_fallbacks(
+    def _apply_fallbacks(
         self,
         fallbacks: dict[str, Number] | None,
         invariant: _invariants.Invariant,
@@ -143,7 +148,7 @@ class Variant:
                 values[index_nan] = _np.float64(fallbacks[name])
                 self.store_record(values, record_id, )
 
-    def _fill_overwrites(
+    def _apply_overwrites(
         self,
         overwrites: dict[str, Number] | None,
         invariant: _invariants.Invariant,

@@ -5,8 +5,8 @@
 #[
 from __future__ import annotations
 
-from typing import Any
-from numbers import Real
+from typing import (Self, Any, )
+from numbers import (Real, )
 import numpy as _np
 import itertools as _it
 import wlogging as _wl
@@ -14,15 +14,15 @@ import functools as _ft
 
 from .. import pages as _pages
 from .. import wrongdoings as _wrongdoings
-from ..databoxes import main as _databoxes
+from .. import has_variants as _has_variants
+from ..databoxes.main import (Databox, )
 from ..plans import main as _plans
 from ..explanatories import main as _explanatories
-from ..dataslates import main as _dataslates
+from ..dataslates.main import (Dataslate, )
 #]
 
 
 _LOGGER_NAME = "Sequential.simulate"
-_dataslate_constructor = _dataslates.Dataslate.from_databox_for_slatable
 
 
 class Inlay:
@@ -33,20 +33,22 @@ class Inlay:
     @_pages.reference(category="simulation", )
     def simulate(
         self,
-        input_db: _databoxes.Databox,
+        input_db: Databox,
         span: Iterable[Dater],
         /,
         plan: _plans.Plan | None = None,
         prepend_input: bool = True,
-        target_databox: _databoxes.Databox | None = None,
+        target_databox: Databox | None = None,
         when_nonfinite: Literal["error", "warning", "silent", ] = "warning",
         execution_order: Literal["dates_equations", "equations_dates", ] = "dates_equations",
         num_variants: int | None = None,
         remove_initial: bool = True,
         remove_terminal: bool = True,
-        shocks_from_databox: bool = True,
+        shocks_from_data: bool = True,
         logging_level: int = _wl.INFO,
-    ) -> tuple[_databoxes.Databox, dict[str, Any]]:
+        unpack_singleton: bool = True,
+        method: Literal["sequential", ] = "sequential",
+    ) -> tuple[Databox, dict[str, Any]]:
         """
 ......................................................................
 
@@ -106,20 +108,16 @@ simulating the model.
         num_variants = self.num_variants if num_variants is None else num_variants
         base_dates = tuple(span, )
         #
-        work_db = input_db.shallow()
-        if not shocks_from_databox:
-            # REFACTOR: Create `quantities` in Sequential.invariant and
-            # create a `get_names` method
-            shock_names = self.residual_names
-            work_db.remove(shock_names, strict_names=False, )
-        #
         extra_databox_names = None
         if plan is not None:
             plan.check_consistency(self, base_dates, )
             extra_databox_names = plan.get_databox_names()
         #
-        dataslate = _dataslate_constructor(
-            self, work_db, base_dates,
+        slatable = self.get_slatable(
+            shocks_from_data=shocks_from_data,
+        )
+        dataslate = Dataslate.from_databox_for_slatable(
+            slatable, input_db, base_dates,
             num_variants=self.num_variants,
             extra_databox_names=extra_databox_names,
         )
@@ -132,14 +130,16 @@ simulating the model.
         #
         #=======================================================================
         # Main loop over variants
+        info = []
+        simulate_method = _SIMULATE_METHODS[method]
         for vid, model_v, dataslate_v in zipped:
-            model_v._simulate_v(
-                dataslate_v,
-                logger,
+            info_v = simulate_method(
+                model_v, dataslate_v, vid, logger,
                 plan=plan,
                 when_nonfinite=when_nonfinite,
                 execution_order=execution_order,
             )
+            info.append(info_v, )
         #=======================================================================
         #
         # Remove initial and terminal condition data (all lags and leads
@@ -158,78 +158,88 @@ simulating the model.
         if target_databox is not None:
             output_db = target_databox | output_db
         #
-        info = {}
-        #
+        info = _has_variants.unpack_singleton(
+            info, self.is_singleton,
+            unpack_singleton=unpack_singleton,
+        )
         return output_db, info
 
-    def _simulate_v(
-        self,
-        ds: _dataslates.Dataslate,
-        logger: _wl.Logger,
-        /,
-        *,
-        plan,
-        when_nonfinite,
-        execution_order,
-    ) -> None:
-        """
-        """
-        when_nonfinite_stream = \
-            _wrongdoings.STREAM_FACTORY[when_nonfinite] \
-            ("These simulated data point(s) are nan or inf:", )
-        #
-        name_to_row = ds.create_name_to_row()
-        base_columns = ds.base_columns
-        first_base_column = base_columns[0] if base_columns else None
-        working_data = ds.get_data_variant(0, )
-        columns_dates = ( (c, ds.dates[c]) for c in base_columns )
-        iterator_creator = _CREATE_EXECUTION_ITERATOR[execution_order]
-        #
-        columns_dates_equations = iterator_creator(
-            columns_dates,
-            self.iter_equations(),
-        )
-        #
-        detect_exogenized = _ft.partial(
-            _detect_exogenized,
-            name_to_row=name_to_row,
-            data=working_data,
-        )
-        #
-        for (column, date), equation in columns_dates_equations:
-            lhs_date_str = f"{equation.lhs_name}[{date}]"
-            residual_date_str = f"{equation.residual_name}[{date}]"
-            transform = _get_transform(plan, equation, date)
-            try:
-                implied_value = detect_exogenized(equation.lhs_name, transform, column, )
-                simulation_func = (
-                    equation.simulate
-                    if implied_value is None
-                    else equation.exogenize
-                )
-                info = simulation_func(working_data, column, implied_value, )
-            except Exception as exc:
-                message = (
-                    f"Error when simulating {lhs_date_str}"
-                    f"\nDirect cause: {str(exc)}"
-                )
-                raise _wrongdoings.IrisPieCritical(message, ) from exc
-            #
-            logger.debug(
-                f"{simulation_func.__name__}"
-                f" {lhs_date_str}={info['lhs_value']}"
-                f" {residual_date_str}={info['residual_value']}"
-            )
-            #
-            _catch_nonfinite(
-                when_nonfinite_stream,
-                info["is_finite"],
-                info["simulated_name"],
-                date,
-            )
-        when_nonfinite_stream._raise()
-
     #]
+
+
+def _simulate_v(
+    self,
+    ds: Dataslate,
+    vid: int,
+    logger: _wl.Logger,
+    /,
+    *,
+    plan,
+    when_nonfinite,
+    execution_order,
+) -> dict[str, Any]:
+    """
+    """
+    when_nonfinite_stream = \
+        _wrongdoings.STREAM_FACTORY[when_nonfinite] \
+        ("These simulated data point(s) are nan or inf:", )
+    #
+    name_to_row = ds.create_name_to_row()
+    base_columns = ds.base_columns
+    first_base_column = base_columns[0] if base_columns else None
+    working_data = ds.get_data_variant(0, )
+    columns_dates = ( (c, ds.dates[c]) for c in base_columns )
+    iterator_creator = _CREATE_EXECUTION_ITERATOR[execution_order]
+    #
+    columns_dates_equations = iterator_creator(
+        columns_dates,
+        self.iter_equations(),
+    )
+    #
+    detect_exogenized = _ft.partial(
+        _detect_exogenized,
+        name_to_row=name_to_row,
+        data=working_data,
+    )
+    #
+    info = {
+        "method": "sequential",
+    }
+    #
+    for (column, date), equation in columns_dates_equations:
+        lhs_date_str = f"{equation.lhs_name}[{date}]"
+        residual_date_str = f"{equation.residual_name}[{date}]"
+        transform = _get_transform(plan, equation, date)
+        try:
+            implied_value = detect_exogenized(equation.lhs_name, transform, column, )
+            simulation_func = (
+                equation.simulate
+                if implied_value is None
+                else equation.exogenize
+            )
+            info_eq = simulation_func(working_data, column, implied_value, )
+        except Exception as exc:
+            message = (
+                f"Error when simulating {lhs_date_str}"
+                f"\nDirect cause: {str(exc)}"
+            )
+            raise _wrongdoings.IrisPieCritical(message, ) from exc
+        #
+        logger.debug(
+            f"{simulation_func.__name__}"
+            f" {lhs_date_str}={info_eq['lhs_value']}"
+            f" {residual_date_str}={info_eq['residual_value']}"
+        )
+        #
+        _catch_nonfinite(
+            when_nonfinite_stream,
+            info_eq["is_finite"],
+            info_eq["simulated_name"],
+            date,
+        )
+    when_nonfinite_stream._raise()
+    #
+    return info
 
 
 def _get_transform(
@@ -310,4 +320,8 @@ _CREATE_EXECUTION_ITERATOR = {
     "equations_dates": _iter_equations_dates,
 }
 
+
+_SIMULATE_METHODS = {
+    "sequential": _simulate_v,
+}
 

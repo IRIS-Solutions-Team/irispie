@@ -10,7 +10,8 @@ import numpy as _np
 from .. import quantities as _quantities
 from .. import pages as _pages
 from .. import wrongdoings as _wrongdoings
-from ..databoxes import main as _databoxes
+from .. import has_variants as _has_variants
+from ..databoxes.main import (Databox, )
 #]
 
 
@@ -85,7 +86,7 @@ etc...
         for v in self._variants:
             v.assign_from_dict_like(kwargs_to_assign, )
 
-    def check_missing_parameters(self, /, ) -> _databoxes.Databox:
+    def check_missing_parameters(self, /, ) -> Databox:
         """
         """
         parameters = self.get_parameters()
@@ -94,22 +95,27 @@ etc...
             if _np.isnan(_np.array(v, dtype=float)).any()
         )
         if missing:
-            raise _wrongdoings.IrisPieCritical(("Missing parameters", ) + missing)
+            message = ("Missing parameters: ", ) + missing
+            raise _wrongdoings.IrisPieCritical(message, )
 
-    def get_parameters(self, /, ) -> _databoxes.Databox:
+    def get_parameters(
+        self,
+        /,
+        unpack_singleton: bool = True,
+    ) -> Databox:
         """
         """
         parameter_names = self._invariant.parameter_names
-        if self.is_singleton:
-            return _databoxes.Databox(**{
-                n: self._variants[0].parameters[n]
-                for n in parameter_names
-            })
-        else:
-            return _databoxes.Databox(**{
-                n: [ v.parameters[n] for v in self._variants ]
-                for n in parameter_names
-            })
+        parameters = {
+            n: [ v.parameters[n] for v in self._variants ]
+            for n in parameter_names
+        }
+        parameters = _has_variants.unpack_singleton_in_dict(
+            parameters,
+            self.is_singleton,
+            unpack_singleton=unpack_singleton,
+        )
+        return Databox.from_dict(parameters, )
 
     #]
 

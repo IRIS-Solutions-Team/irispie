@@ -12,14 +12,21 @@ import dataclasses as _dc
 import numpy as _np
 import scipy as _sp
 
+from .. import has_variants as _has_variants
+from .. import quantities as _quantities
+from .. import pages as _pages
 from ..dataslates.main import (Dataslate, )
 from ..databoxes.main import (Databox, )
 from .solutions import (right_div, left_div, )
-
 from ..dates import (Dater, )
-from .. import quantities as _quantities
-from . import initializers as _initializers
+
+from . import initializers as _ford_initializers
+from . import simulators as _ford_simulators
 #]
+
+
+simulate_anticipated_shocks \
+    = _ford_simulators.simulate_triangular_anticipated_shocks
 
 
 class KalmanOutputData:
@@ -111,7 +118,6 @@ class _LogDataslate:
         klass,
         measurement_names: Iterable[str],
         dates: Iterable[Dater],
-        base_columns: Iterable[int],
         num_variants: int,
         name_to_log_name: dict[str, str],
     ) -> Self:
@@ -120,7 +126,6 @@ class _LogDataslate:
         self = klass()
         self._dataslate = Dataslate.nan_from_names_dates(
             measurement_names, dates,
-            base_columns=base_columns,
             num_variants=num_variants,
         )
         self._prepare_log_names(name_to_log_name, )
@@ -266,7 +271,6 @@ class _OutputStore:
             self.predict_err = _MedLogDataslate.from_names_dates(
                 measurement_names,
                 input_ds.dates,
-                input_ds.base_columns,
                 num_variants,
                 name_to_log_name,
             )
@@ -301,122 +305,123 @@ class _OutputStore:
     #]
 
 
-@_dc.dataclass(slots=True, )
 class _Cache:
     """
     """
     #[
+
     LOG_2_PI = _np.log(2 * _np.pi)
 
-    needs: _Needs | None = None
+    __slots_to_input__ = (
+        "model_v",
+        "input_ds_v",
+        "solution",
+        "needs",
+        "curr_qids",
+        "curr_pos",
+        "y_qids",
+        "u_qids",
+        "v_qids",
+        "w_qids",
+        "std_u_qids",
+        "std_w_qids",
+        "logly_within_y",
+    )
 
-    base_columns: Any | None = None
-    nonbase_columns: Any | None = None
-    needs: Any | None = None
+    __slots_to_preallocate__ = (
+        "all_num_obs",
+        "all_pex_invFx_pex",
+        "all_invFx_pex",
+        "all_log_det_Fx",
+        "all_L",
+        "all_a0",
+        "all_P0",
+        "all_ZaxT_invFx_Zax",
+        "all_ZaxT_invFx",
+        "all_G",
+        "all_inx_y",
+        "all_pex",
+        "all_invFx",
+        "all_a1",
+        "all_P1",
+        "all_cov_u",
+        "all_cov_w",
+    )
 
-    all_num_obs: Any | None = None
-    all_pex_invFx_pex: Any | None = None
-    all_invFx_pex: Any | None = None
-    all_det_Fx: Any | None = None
+    __slots_to_create__ = (
+        "num_periods",
+        "base_columns",
+        "nonbase_columns",
+        "sum_num_obs",
+        "sum_log_det_Fx",
+        "sum_pex_invFx_pex",
+        "y1_array",
+        "u0_array",
+        "v0_array",
+        "w0_array",
+        "all_v_impact",
+        "std_u_array",
+        "std_w_array",
+        "var_scale",
+        "neg_log_likelihood",
+        "neg_log_likelihood_contributions",
+        "diffuse_factor",
+    )
 
-    all_L: Any | None = None
-    all_a0: Any | None = None
-    all_P0: Any | None = None
-    all_ZaxT_invFx_Zax: Any | None = None
-    all_ZaxT_invFx: Any | None = None
-    all_G: Any | None = None
-    all_inx_y: Any | None = None
-    all_pex: Any | None = None
-    all_invFx: Any | None = None
+    __slots__ = __slots_to_input__ + __slots_to_preallocate__ + __slots_to_create__
 
-    all_a1: Any | None = None
-    all_P1: Any | None = None
-
-    sum_num_obs: Any | None = None
-    sum_log_det_Fx: Any | None = None
-    sum_pex_invFx_pex: Any | None = None
-
-    y1_array: Any | None = None
-    u0_array: Any | None = None
-    v0_array: Any | None = None
-    w0_array: Any | None = None
-
-    std_u_array: Any | None = None
-    std_w_array: Any | None = None
-    all_cov_u: Any | None = None
-    all_cov_w: Any | None = None
-
-    var_scale: Any | None = None
-    neg_log_likelihood: Any | None = None
-    diffuse_factor: Any | None = None
-
-    curr_qids: list[int] | None = None
-    curr_pos: list[int] | None = None
-    y_qids: list[int] | None = None
-    u_qids: list[int] | None = None
-    v_qids: list[int] | None = None
-    w_qids: list[int] | None = None
-    std_u_qids: list[int] | None = None
-    std_w_qids: list[int] | None = None
-
-    logly_within_y: list[int] | None = None
-
-    def __init__(
-        self: Self,
-        input_ds: Dataslate,
-        needs: _Needs,
-    ) -> None:
+    def __init__(self: Self, **kwargs, ) -> None:
         """
         """
-        num_ext_periods = input_ds.num_periods
-        self.base_columns = input_ds.base_columns
-        self.nonbase_columns = input_ds.nonbase_columns
-        self.needs = needs
+        for n in self.__slots_to_input__:
+            setattr(self, n, kwargs[n], )
         #
-        self.all_num_obs = [None] * num_ext_periods
-        self.all_pex_invFx_pex = [None] * num_ext_periods
-        self.all_invFx_pex = [None] * num_ext_periods
-        self.all_det_Fx = [None] * num_ext_periods
-        self.all_L = [None] * num_ext_periods
-        self.all_a0 = [None] * num_ext_periods
-        self.all_P0 = [None] * num_ext_periods
-        self.all_pex = [None] * num_ext_periods
-        self.all_invFx = [None] * num_ext_periods
-        self.all_ZaxT_invFx = [None] * num_ext_periods
-        self.all_ZaxT_invFx_Zax = [None] * num_ext_periods
-        self.all_G = [None] * num_ext_periods
-        self.all_a1 = [None] * num_ext_periods
-        self.all_P1 = [None] * num_ext_periods
-        self.all_cov_u = [None] * num_ext_periods
-        self.all_cov_w = [None] * num_ext_periods
+        self.num_periods = self.input_ds_v.num_periods
+        self.base_columns = self.input_ds_v.base_columns
+        self.nonbase_columns = self.input_ds_v.nonbase_columns
         #
-        self.var_scale = None
-        self.neg_log_likelihood = None
-        self.diffuse_factor = None
+        # Preallocate time-varying arrayas
+        for n in self.__slots_to_preallocate__:
+            setattr(self, n, [None] * self.num_periods, )
         #
-        self.curr_qids = None
-        self.curr_pos = None
-        self.y_qids = None
-        self.u_qids = None
-        self.v_qids = None
-        self.w_qids = None
-        self.std_u_qids = None
-        self.std_w_qids = None
-
-    @property
-    def reversed_base_columns(self: Self, /, ) -> Any:
-        """
-        """
-        return reversed(self.base_columns, )
+        # Extract arrays from input dataslate
+        input_data_array = self.input_ds_v.get_data_variant(0, )
+        self.y1_array = input_data_array[self.y_qids, :]
+        self.u0_array = input_data_array[self.u_qids, :]
+        self.v0_array = input_data_array[self.v_qids, :]
+        self.w0_array = input_data_array[self.w_qids, :]
+        self.std_u_array = input_data_array[self.std_u_qids, :]
+        self.std_w_array = input_data_array[self.std_w_qids, :]
+        if self.logly_within_y:
+            self.y1_array[self.logly_within_y, :] = _np.log(self.y1_array[self.logly_within_y, :])
+        #
+        # Detect observations available in each period
+        self.all_inx_y = [
+            _np.isfinite(column_data, )
+            for column_data in self.y1_array.T
+        ]
+        # Simulate impact of anticipated shocks
+        self.all_v_impact = simulate_anticipated_shocks(
+            self.model_v,
+            self.input_ds_v,
+        )
 
     def calculate_likelihood(self: Self, /, ) -> None:
         """
         """
         self.sum_num_obs = sum(i for i in self.all_num_obs if i is not None)
-        self.sum_log_det_Fx = sum(i for i in self.all_det_Fx if i is not None)
+        self.sum_log_det_Fx = sum(i for i in self.all_log_det_Fx if i is not None)
         self.sum_pex_invFx_pex = sum(i for i in self.all_pex_invFx_pex if i is not None)
         #
         self._calculate_variance_scale()
+        #
+        self.neg_log_likelihood_contributions = [
+            (log_det_Fx + pex_invFx_pex + num_obs * self.LOG_2_PI)/2 if num_obs else 0
+            for log_det_Fx, pex_invFx_pex, num_obs in zip(
+                self.all_log_det_Fx, self.all_pex_invFx_pex, self.all_num_obs,
+            )
+            if num_obs is not None
+        ]
         #
         self.neg_log_likelihood = (
             + self.sum_num_obs*self.LOG_2_PI
@@ -443,9 +448,10 @@ class _Cache:
         """
         return {
             "neg_log_likelihood": self.neg_log_likelihood,
+            "neg_log_likelihood_contributions": self.neg_log_likelihood_contributions,
             "var_scale": self.var_scale,
             "diffuse_factor": self.diffuse_factor,
-            "cache": self,
+            "anticipated_shocks_impact": self.all_v_impact,
         }
 
     #]
@@ -464,6 +470,7 @@ class Mixin:
     """
     #[
 
+    @_pages.reference(category="filtering", )
     def kalman_filter(
         self,
         #
@@ -478,26 +485,150 @@ class Mixin:
         return_smooth: bool = True,
         rescale_variance: bool = False,
         #
-        shocks_from_databox: bool = False,
-        stds_from_databox: bool = False,
+        shocks_from_data: bool = False,
+        stds_from_data: bool = False,
+        #
+        prepend_initial: bool = False,
+        append_terminal: bool = False,
+        #
+        unpack_singleton: bool = True,
     ) -> Databox:
-        """
-        """
-        #[
+        r"""
+················································································
 
+==Run Kalman filter on a model using time series data==
+
+Executes a Kalman filter on a model, compliant with `KalmanFilterableProtocol`, 
+using time series observations from the input Databox. This method enables state 
+estimation and uncertainty quantification in line with the model's dynamics and 
+the time series data.
+
+    kalman_output, output_info = self.kalman_filter(
+        input_db, 
+        span, 
+        diffuse_factor=None, 
+        return_=("predict", "update", "smooth"),
+        return_predict=True, 
+        return_update=True, 
+        return_smooth=True, 
+        rescale_variance=False,
+        shocks_from_data=False, 
+        stds_from_data=False, 
+        prepend_initial=False,
+        append_terminal=False, 
+        unpack_singleton=True
+    )
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    The model, compliant with `KalmanFilterableProtocol`, performing the 
+    Kalman filtering.
+
+???+ input "input_db"
+    A Databox containing time series data to be used for filtering.
+
+???+ input "span"
+    A date span over which the filtering process is executed based on the
+    measurement time series.
+
+???+ input "diffuse_factor"
+    A real number or `None`, specifying the scale factor for the diffuse
+    initialization. If `None`, the default value is used.
+
+???+ input "return_"
+    An iterable of strings indicating which steps' results to return: 
+    "predict", "update", "smooth".
+
+???+ input "return_predict"
+    If `True`, return prediction step results.
+
+???+ input "return_update"
+    If `True`, return update step results.
+
+???+ input "return_smooth"
+    If `True`, return smoothing step results.
+
+???+ input "rescale_variance"
+    If `True`, rescale all variances by the optimal variance scale factor
+    estimated using maximum likelihood after the filtering process.
+
+???+ input "shocks_from_data"
+    If `True`, use possibly time-varying shock values from the data; these
+    values are interpreted as the medians (means) of the shocks. If `False`,
+    zeros are used for all shocks.
+
+???+ input "stds_from_data"
+    If `True`, use possibly time-varying standard deviation values from the
+    data. If `False`, currently assigned constant values are used for the
+    standard deviations of all shocks.
+
+???+ input "prepend_initial"
+    If `True`, prepend observations to the resulting time series to cover
+    initial conditions based on the model's maximum lag. No measurement
+    observations are used in these initial time periods (even if some are
+    available in the input data).
+
+???+ input "append_terminal"
+    If `True`, append observations to the resulting time series to cover
+    terminal conditions based on the model's maximum lead. No measurement
+    observations are used in these terminal time periods (even if some are
+    available in the input data).
+
+???+ input "unpack_singleton"
+    If `True`, unpack `output_info` into a plain dictionary for models with a
+    single variant.
+
+
+### Returns ###
+
+
+???+ returns "kalman_output"
+    An object containing the following attributes, each being a Databox:
+
+    | Attribute                  | Description
+    |----------------------------|---------------------------------------------------
+    | `predict_med`              | Medians from the prediction step.
+    | `predict_std`              | Standard deviations from the prediction step.
+    | `predict_mse_measurement`  | Mean squared error matrices from the prediction step.
+    | `update_med`               | Medians from the update step.
+    | `update_std`               | Standard deviations from the update step.
+    | `predict_err`              | Prediction errors.
+    | `smooth_med`               | Medians from the smoothing step.
+    | `smooth_std`               | Standard deviations from the smoothing step.
+
+    Some of these attributes may be `None` if the corresponding step was not
+    requested in `return_`.
+
+???+ returns "output_info"
+    A dictionary containing additional information about the filtering process,
+    such as log likelihood and variance scale. For models with multiple
+    variants, `output_info` is a list of such dictionaries. If
+    `unpack_singleton=False`, also `output_info` is a one-element list
+    containing the dictionary for singleton models, too.
+
+················································································
+        """
         work_db = input_db.shallow()
-        if not shocks_from_databox:
+        if not shocks_from_data:
             shock_names = self.get_names(kind=_quantities.ANY_SHOCK, )
             work_db.remove(shock_names, strict_names=False, )
-        if not stds_from_databox:
+        if not stds_from_data:
             std_names = self.get_names(kind=_quantities.ANY_STD, )
             work_db.remove(std_names, strict_names=False, )
 
+        slatable = self.get_slatable(
+            shocks_from_data=shocks_from_data,
+            stds_from_data=stds_from_data,
+        )
+
         input_ds = Dataslate.from_databox_for_slatable(
-            self,
-            work_db,
-            span,
-            extend_span=False,
+            slatable, work_db, span,
+            prepend_initial=prepend_initial,
+            append_terminal=append_terminal,
+            clip_data_to_base_span=True,
         )
 
         needs = _Needs(
@@ -507,9 +638,13 @@ class Mixin:
             rescale_variance=rescale_variance,
         )
 
-        solution_vectors = self._solution_vectors
-        temp = [(t.qid, i) for i, t in enumerate(solution_vectors.transition_variables) if not t.shift ]
-        curr_qids, curr_pos = tuple(zip(*temp))
+        solution_vectors = self.solution_vectors
+        qid_pos_tuples = [
+            (tok.qid, pos)
+            for pos, tok in enumerate(solution_vectors.transition_variables, )
+            if not tok.shift
+        ]
+        curr_qids, curr_pos = tuple(zip(*qid_pos_tuples))
         curr_qids = list(curr_qids)
         curr_pos = list(curr_pos)
 
@@ -545,42 +680,49 @@ class Mixin:
 
         output_info = []
 
+        create_cache = _ft.partial(
+            _Cache,
+            needs=needs,
+            curr_qids=curr_qids,
+            curr_pos=curr_pos,
+            y_qids=y_qids,
+            u_qids=u_qids,
+            v_qids=v_qids,
+            w_qids=w_qids,
+            std_u_qids=std_u_qids,
+            std_w_qids=std_w_qids,
+            logly_within_y=logly_within_y,
+        )
+
+
+        # TODO: Iterate over variants
 
         #
         # Variant dependent from here
         #
         input_ds_v = input_ds.get_variant(0, )
-        solution = self.get_solution_matrices()
+        self_v = self.get_variant(0, )
 
         output_store_v = _OutputStore(
-            input_ds=input_ds,
+            input_ds=input_ds_v,
             num_variants=1,
             measurement_names=y_names,
             needs=needs,
             name_to_log_name=name_to_log_name,
         )
 
-        cache = _Cache(
-            input_ds=input_ds,
-            needs=needs,
+        cache_v = create_cache(
+            model_v=self_v,
+            input_ds_v=input_ds_v,
+            solution=self_v.get_solution(),
         )
 
-        cache.curr_qids = list(curr_qids)
-        cache.curr_pos = list(curr_pos)
-        cache.y_qids = list(y_qids)
-        cache.u_qids = list(u_qids)
-        cache.v_qids = list(v_qids)
-        cache.w_qids = list(w_qids)
-        cache.std_u_qids = list(std_u_qids)
-        cache.std_w_qids = list(std_w_qids)
-        cache.logly_within_y = logly_within_y
-
         #
-        # Calculate initial med and mse
+        # Initialize medians and stds
         #
-        init_cov_u = self.get_cov_unanticipated_shocks()
-        init_med, init_mse, cache.diffuse_factor = _initializers.initialize(
-            solution,
+        init_cov_u = self_v.get_cov_unanticipated_shocks()
+        init_med, init_mse, cache_v.diffuse_factor = _ford_initializers.initialize(
+            cache_v.solution,
             init_cov_u,
             diffuse_scale=diffuse_factor,
         )
@@ -590,102 +732,94 @@ class Mixin:
         # Ua[_np.abs(Ua)<tolerance] = 0
         # Pa[_np.abs(Pa)<tolerance] = 0
 
-        input_data_array = input_ds_v.get_data_variant()
-
-
         a1, P1 = init_med, init_mse
-        Ta = solution.Ta
-        Ra = solution.Ra
-        Pa = solution.Pa
-        Ka = solution.Ka
-        Za = solution.Za
-        H = solution.H
-        D = solution.D
-        Ua = solution.Ua
+        Ta = cache_v.solution.Ta
+        Ra = cache_v.solution.Ra
+        Pa = cache_v.solution.Pa
+        Ka = cache_v.solution.Ka
+        Za = cache_v.solution.Za
+        H = cache_v.solution.H
+        D = cache_v.solution.D
+        Ua = cache_v.solution.Ua
 
-        cache.y1_array = input_data_array[cache.y_qids, :]
-        cache.u0_array = input_data_array[cache.u_qids, :]
-        cache.v0_array = input_data_array[cache.v_qids, :]
-        cache.w0_array = input_data_array[cache.w_qids, :]
-        cache.std_u_array = input_data_array[cache.std_u_qids, :]
-        cache.std_w_array = input_data_array[cache.std_w_qids, :]
-
-        if cache.logly_within_y:
-            cache.y1_array[cache.logly_within_y, :] = _np.log(cache.y1_array[cache.logly_within_y, :])
-
-        for n in ("y1_array", "u0_array", "v0_array", "w0_array", ):
-            array = getattr(cache, n, )
-            array[:, cache.nonbase_columns] = _np.nan
-            setattr(cache, n, array, )
-
-        cache.all_inx_y = tuple(
-            _np.isfinite(column_data, )
-            for column_data in cache.y1_array.T
-        )
 
         if needs.return_predict:
-            output_store_v.predict_med.store(cache.u0_array, (cache.u_qids, ...), )
-            output_store_v.predict_med.store(cache.v0_array, (cache.v_qids, ...), )
-            output_store_v.predict_med.store(cache.w0_array, (cache.w_qids, ...), )
+            output_store_v.predict_med.store(cache_v.u0_array, (cache_v.u_qids, ...), )
+            output_store_v.predict_med.store(cache_v.v0_array, (cache_v.v_qids, ...), )
+            output_store_v.predict_med.store(cache_v.w0_array, (cache_v.w_qids, ...), )
 
         if needs.return_update:
-            output_store_v.update_med.store(cache.y1_array, (cache.y_qids, ...), )
+            output_store_v.update_med.store(cache_v.y1_array, (cache_v.y_qids, ...), )
 
         if needs.return_smooth:
             pass
 
-        for t in cache.base_columns:
+        for t in range(cache_v.num_periods, ):
 
-            inx_y = cache.all_inx_y[t]
+            inx_y = cache_v.all_inx_y[t]
 
             # Extract time-varying means and stds for shocks
-            u0 = cache.u0_array[:, t]
-            v0 = cache.v0_array[:, t]
-            w0 = cache.w0_array[:, t]
-            cov_u = _np.diag(cache.std_u_array[:, t]**2, )
-            cov_w = _np.diag(cache.std_w_array[:, t]**2, )
+            u0 = cache_v.u0_array[:, t]
+            v0 = cache_v.v0_array[:, t]
+            w0 = cache_v.w0_array[:, t]
+            cov_u = _np.diag(cache_v.std_u_array[:, t]**2, )
+            cov_w = _np.diag(cache_v.std_w_array[:, t]**2, )
+            v_impact = cache_v.all_v_impact[t] if cache_v.all_v_impact[t] is not None else 0
 
+            #
             # MSE prediction step
+            #
             P0 = Ta @ P1 @ Ta.T + Pa @ cov_u @ Pa.T
             P0 = (P0 + P0.T) / 2
             F = Za @ P0 @ Za.T + H @ cov_w @ H.T
             F = (F + F.T) / 2
             Fx = F[inx_y, :][:, inx_y]
             if needs.return_predict:
-                output_store_v.predict_std.store(P0, (cache.curr_qids, t), rhs_indexes=cache.curr_pos, transform=Ua, )
+                output_store_v.predict_std.store(P0, (cache_v.curr_qids, t), rhs_indexes=cache_v.curr_pos, transform=Ua, )
                 output_store_v.predict_mse_measurement[0] += (Fx, )
 
+            #
             # Mean prediction step
-            a0 = Ta @ a1 + Ka + Pa @ u0
+            #
+            a0 = Ta @ a1 + Ka + Pa @ u0 + v_impact
             y0 = Za @ a0 + D + H @ w0
             y0[~inx_y] = _np.nan
 
             if needs.return_predict:
-                output_store_v.predict_med.store(a0, (cache.curr_qids, t), rhs_indexes=cache.curr_pos, transform=Ua, )
-                output_store_v.predict_med.store(y0, (cache.y_qids, t), )
-                output_store_v.predict_med.store(u0, (cache.u_qids, t), )
-                output_store_v.predict_med.store(v0, (cache.v_qids, t), )
-                output_store_v.predict_med.store(w0, (cache.w_qids, t), )
+                output_store_v.predict_med.store(a0, (cache_v.curr_qids, t), rhs_indexes=cache_v.curr_pos, transform=Ua, )
+                output_store_v.predict_med.store(y0, (cache_v.y_qids, t), )
+                output_store_v.predict_med.store(u0, (cache_v.u_qids, t), )
+                output_store_v.predict_med.store(v0, (cache_v.v_qids, t), )
+                output_store_v.predict_med.store(w0, (cache_v.w_qids, t), )
 
+            #
             # MSE updating step
+            #
+            if Fx.size:
+                # sing_values = _np.linalg.svd(Fx, compute_uv=False, )
+                # relative_cond = sing_values[-1] / sing_values[0]
+                # print(t, Fx.size, relative_cond, sing_values[0], )
+                # TODO: Check if Fx singularity if requested by user
+                invFx = _np.linalg.inv(Fx)
+            else:
+                invFx = _np.zeros((0, 0), dtype=_np.float64, )
+            #
             Zax = Za[inx_y, :]
             # ZaxT_invFx = right_div(Zax.T, Fx, )
-            # if Fx.size > 0:
-            #     sing_values = _np.linalg.svd(Fx, compute_uv=False, )
-            #     relative_cond = sing_values[-1] / sing_values[0]
-            #     print(t, Fx.size, relative_cond, sing_values[0], )
-            invFx = _np.linalg.inv(Fx)
+            #
             ZaxT_invFx = Zax.T @ invFx
             G = P0 @ ZaxT_invFx
             P1 = P0 - G @ Zax @ P0
             P1 = (P1 + P1.T) / 2
 
             if needs.return_update:
-                output_store_v.update_std.store(P1, (cache.curr_qids, t), rhs_indexes=cache.curr_pos, transform=Ua, )
+                output_store_v.update_std.store(P1, (cache_v.curr_qids, t), rhs_indexes=cache_v.curr_pos, transform=Ua, )
 
+            #
             # Mean updating step
-            cache.all_num_obs[t] = _np.count_nonzero(inx_y, )
-            y1 = cache.y1_array[:, t]
+            #
+            cache_v.all_num_obs[t] = _np.count_nonzero(inx_y, )
+            y1 = cache_v.y1_array[:, t]
             pe = y1 - y0
             pex = pe[inx_y]
             a1 = a0 + G @ pex
@@ -700,40 +834,46 @@ class Mixin:
                 r = ZaxT_invFx @ pex # Z' * inv(F) * pe
                 u1 = u0 + Pa_cov_u.T @ r
                 v1 = v0
-                output_store_v.update_med.store(a1, (cache.curr_qids, t), rhs_indexes=cache.curr_pos, transform=Ua, )
-                output_store_v.update_med.store(y1, (cache.y_qids, t), )
-                output_store_v.update_med.store(u1, (cache.u_qids, t), )
-                output_store_v.update_med.store(v1, (cache.v_qids, t), )
-                output_store_v.update_med.store(w1, (cache.w_qids, t), )
+                output_store_v.update_med.store(a1, (cache_v.curr_qids, t), rhs_indexes=cache_v.curr_pos, transform=Ua, )
+                output_store_v.update_med.store(y1, (cache_v.y_qids, t), )
+                output_store_v.update_med.store(u1, (cache_v.u_qids, t), )
+                output_store_v.update_med.store(v1, (cache_v.v_qids, t), )
+                output_store_v.update_med.store(w1, (cache_v.w_qids, t), )
                 output_store_v.predict_err.store(pe, (..., t), )
 
             if needs.return_smooth:
-                cache.all_a0[t] = a0
-                cache.all_P0[t] = P0
-                cache.all_a1[t] = a1
-                cache.all_P1[t] = P1
-                cache.all_invFx_pex[t] = invFx_pex
-                cache.all_ZaxT_invFx[t] = Zax.T @ invFx
-                cache.all_ZaxT_invFx_Zax[t] = ZaxT_invFx @ Zax
-                cache.all_L[t] = Ta - (Ta @ G) @ Zax
-                cache.all_G[t] = G
-                cache.all_cov_u[t] = cov_u
-                cache.all_cov_w[t] = cov_w
+                cache_v.all_a0[t] = a0
+                cache_v.all_P0[t] = P0
+                cache_v.all_a1[t] = a1
+                cache_v.all_P1[t] = P1
+                cache_v.all_invFx_pex[t] = invFx_pex
+                cache_v.all_ZaxT_invFx[t] = Zax.T @ invFx
+                cache_v.all_ZaxT_invFx_Zax[t] = ZaxT_invFx @ Zax
+                cache_v.all_L[t] = Ta - (Ta @ G) @ Zax
+                cache_v.all_G[t] = G
+                cache_v.all_cov_u[t] = cov_u
+                cache_v.all_cov_w[t] = cov_w
 
-            cache.all_pex[t] = pex
-            cache.all_invFx[t] = invFx
-            cache.all_pex_invFx_pex[t] = pex @ invFx_pex
-            cache.all_det_Fx[t] = _np.log(_np.linalg.det(Fx))
+            cache_v.all_pex[t] = pex
+            cache_v.all_invFx[t] = invFx
+            cache_v.all_pex_invFx_pex[t] = pex @ invFx_pex
+            cache_v.all_log_det_Fx[t] = _np.log(_np.linalg.det(Fx))
 
 
         if needs.return_smooth:
-            _smooth_backward(cache, output_store_v, needs, solution, )
+            _smooth_backward(cache_v, output_store_v, )
 
-        cache.calculate_likelihood()
-        output_store_v.rescale_stds(cache.var_scale, )
+        cache_v.calculate_likelihood()
+        output_store_v.rescale_stds(cache_v.var_scale, )
+        output_info_v = cache_v.create_output_info()
 
         output_store.extend(output_store_v, )
-        output_info.append(cache.create_output_info(), )
+        output_info.append(output_info_v, )
+
+        output_info = _has_variants.unpack_singleton(
+            output_info, self.is_singleton,
+            unpack_singleton=True,
+        )
 
         return output_store.create_output_data(), output_info
 
@@ -741,62 +881,60 @@ class Mixin:
 
 
 def _smooth_backward(
-    cache: _Cache,
+    cache_v: _Cache,
     output_store_v: _OutputStore,
-    needs: _Needs,
-    solution: _simultaneous.Solution,
 ) -> None:
     """
     """
     #[
 
-    Ta = solution.Ta
-    Ua = solution.Ua
-    Pa = solution.Pa
-    H = solution.H
+    Ta = cache_v.solution.Ta
+    Ua = cache_v.solution.Ua
+    Pa = cache_v.solution.Pa
+    H = cache_v.solution.H
 
     N = None
     r = None
 
-    for t in cache.reversed_base_columns:
+    for t in reversed(range(cache_v.num_periods, )):
 
-        inx_y = cache.all_inx_y[t]
-        u0 = cache.u0_array[:, t]
-        v0 = cache.v0_array[:, t]
-        w0 = cache.w0_array[:, t]
-        cov_u = cache.all_cov_u[t]
-        cov_w = cache.all_cov_w[t]
+        inx_y = cache_v.all_inx_y[t]
+        u0 = cache_v.u0_array[:, t]
+        v0 = cache_v.v0_array[:, t]
+        w0 = cache_v.w0_array[:, t]
+        cov_u = cache_v.all_cov_u[t]
+        cov_w = cache_v.all_cov_w[t]
 
-        a0 = cache.all_a0[t]
-        L = cache.all_L[t]
-        G = cache.all_G[t]
-        P0 = cache.all_P0[t]
-        ZaxT_invFx = cache.all_ZaxT_invFx[t]
-        ZaxT_invFx_Zax = cache.all_ZaxT_invFx_Zax[t]
-        invFx = cache.all_invFx[t]
-        pex = cache.all_pex[t]
+        a0 = cache_v.all_a0[t]
+        L = cache_v.all_L[t]
+        G = cache_v.all_G[t]
+        P0 = cache_v.all_P0[t]
+        ZaxT_invFx = cache_v.all_ZaxT_invFx[t]
+        ZaxT_invFx_Zax = cache_v.all_ZaxT_invFx_Zax[t]
+        invFx = cache_v.all_invFx[t]
+        pex = cache_v.all_pex[t]
 
         N = ZaxT_invFx_Zax + ((L.T @ N @ L) if N is not None else 0)
         P2 = P0 - P0 @ N @ P0
-        output_store_v.smooth_std.store(P2, (cache.curr_qids, t), rhs_indexes=cache.curr_pos, transform=Ua, )
+        output_store_v.smooth_std.store(P2, (cache_v.curr_qids, t), rhs_indexes=cache_v.curr_pos, transform=Ua, )
 
         H_cov_w = H[inx_y, :] @ cov_w
         w2 = w0 + H_cov_w.T @ (invFx @ pex - (((Ta @ G).T @ r) if r is not None else 0))
-        output_store_v.smooth_med.store(w2, (cache.w_qids, t), )
+        output_store_v.smooth_med.store(w2, (cache_v.w_qids, t), )
 
         r = ZaxT_invFx @ pex + ((L.T @ r) if r is not None else 0)
         a2 = a0 + P0 @ r
-        output_store_v.smooth_med.store(a2, (cache.curr_qids, t), rhs_indexes=cache.curr_pos, transform=Ua, )
+        output_store_v.smooth_med.store(a2, (cache_v.curr_qids, t), rhs_indexes=cache_v.curr_pos, transform=Ua, )
 
-        y2 = cache.y1_array[:, t]
-        output_store_v.smooth_med.store(y2, (cache.y_qids, t), )
+        y2 = cache_v.y1_array[:, t]
+        output_store_v.smooth_med.store(y2, (cache_v.y_qids, t), )
 
         Pa_cov_u = Pa @ cov_u
         u2 = u0 + Pa_cov_u.T @ r
-        output_store_v.smooth_med.store(u2, (cache.u_qids, t), )
+        output_store_v.smooth_med.store(u2, (cache_v.u_qids, t), )
 
         v2 = v0
-        output_store_v.smooth_med.store(v2, (cache.v_qids, t), )
+        output_store_v.smooth_med.store(v2, (cache_v.v_qids, t), )
 
     #]
 

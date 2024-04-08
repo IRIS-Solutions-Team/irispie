@@ -23,7 +23,7 @@ from . import wrongdoings as _wrongdoings
 __all__ = [
     "Frequency", "Freq",
     "yy", "hh", "qq", "mm", "dd", "ii",
-    "Ranger", "EmptyRanger", "start", "end",
+    "Span", "Ranger", "EmptySpan", "EmptyRanger", "start", "end",
     "Dater", "daters_from_sdmx_strings", "daters_from_iso_strings", "daters_from_to",
     "YEARLY", "HALFYEARLY", "QUARTERLY", "MONTHLY", "WEEKLY", "DAILY",
     "DATER_CLASS_FROM_FREQUENCY_RESOLUTION",
@@ -202,31 +202,35 @@ def _remove_blanks(func: Callable,) -> Callable:
     return wrapper
 
 
-class RangeableMixin:
+class _SpannableMixin:
+    """
+    """
     #[
-    def __rshift__(self, end_date: Self | None, ) -> Ranger:
+
+    def __rshift__(self, end_date: Self | None, ) -> Span:
         """
         Dater >> Dater or Dater >> None
         """
-        return Ranger(self, end_date, 1)
+        return Span(self, end_date, 1)
 
-    def __rrshift__(self, start_date: Self | None, ) -> Ranger:
+    def __rrshift__(self, start_date: Self | None, ) -> Span:
         """
         None >> Dater
         """
-        return Ranger(start_date, self, 1)
+        return Span(start_date, self, 1)
 
-    def __lshift__(self, start_date: Self | None, ) -> Ranger:
+    def __lshift__(self, start_date: Self | None, ) -> Span:
         """
         Dater << Dater or Dater << None
         """
-        return Ranger(start_date, self, -1) 
+        return Span(start_date, self, -1) 
 
-    def __rlshift__(self, end_date: Self | None, ) -> Ranger:
+    def __rlshift__(self, end_date: Self | None, ) -> Span:
         """
         None << Dater
         """
-        return Ranger(self, end_date, -1) 
+        return Span(self, end_date, -1) 
+
     #]
 
 
@@ -238,7 +242,7 @@ class RangeableMixin:
     },
 )
 class Dater(
-    RangeableMixin,
+    _SpannableMixin,
     _copies.CopyMixin,
 ):
     """
@@ -250,6 +254,7 @@ Dates and date ranges
 ......................................................................
     """
     #[
+
     frequency = None
     needs_resolve = False
 
@@ -411,6 +416,7 @@ Dates and date ranges
                 return self.create_tty()
             case _:
                 return self + by
+
     #]
 
 
@@ -801,7 +807,7 @@ def _dater_or_ranger_decorator(
             index = args.index(Ellipsis)
             start_date = func(*args[:index], ) if args[:index] else None
             end_date = func(*args[index+1:], ) if args[index+1:] else None
-            return Ranger(start_date, end_date, )
+            return Span(start_date, end_date, )
         except ValueError:
             return func(*args, )
     return wrapper
@@ -845,7 +851,7 @@ A `YearlyDater` object (if only a single year is specified as an input
 argument).
 
 ### `range` ###
-A `Ranger` object (if a start and end year are specified as input
+A `Span` object (if a start and end year are specified as input
 arguments).
 
 
@@ -879,7 +885,7 @@ def dd(year: int, month: int | ellipsis, day: int) -> DailyDater:
         return DailyDater.from_ymd(year, month, day)
 
 
-class Ranger(_copies.CopyMixin, ):
+class Span(_copies.CopyMixin, ):
     """
     """
     #[
@@ -948,7 +954,7 @@ class Ranger(_copies.CopyMixin, ):
         self._step = -self._step
         #]
 
-    def reversed(self, ) -> Ranger:
+    def reversed(self, ) -> Self:
         """
         """
         #[
@@ -964,7 +970,7 @@ class Ranger(_copies.CopyMixin, ):
     ) -> Self:
         """
         """
-        return Ranger(self._start_date, self._end_date+k, self._step, )
+        return type(self)(self._start_date, self._end_date+k, self._step, )
 
     def shift_start_date(
         self,
@@ -973,7 +979,7 @@ class Ranger(_copies.CopyMixin, ):
     ) -> Self:
         """
         """
-        return Ranger(self._start_date+k, self._end_date, self._step, )
+        return type(self)(self._start_date+k, self._end_date, self._step, )
 
     def to_plotly_dates(self, *args, **kwargs, ) -> Iterable[str]:
         return [t.to_plotly_date(*args, **kwargs, ) for t in self]
@@ -988,19 +994,16 @@ class Ranger(_copies.CopyMixin, ):
         return len(self._serials) if not self.needs_resolve else None
 
     def __str__(self) -> str:
-        step_str = f", {self._step}" if self._step!=1 else ""
-        start_date_str = self._start_date.__str__()
-        end_date_str = self._end_date.__str__()
-        return f"Ranger({start_date_str}, {end_date_str}{step_str})"
+        return repr(self)
 
     def __repr__(self) -> str:
         step_rep = f", {self._step}" if self._step!=1 else ""
         start_date_rep = self._start_date.__repr__()
         end_date_rep = self._end_date.__repr__()
-        return f"Ranger({start_date_rep}, {end_date_rep}{step_rep})"
+        return f"Span({start_date_rep}, {end_date_rep}{step_rep})"
 
     def __add__(self, offset: int) -> range:
-        return Ranger(self._start_date+offset, self._end_date+offset, self._step)
+        return type(self)(self._start_date+offset, self._end_date+offset, self._step)
 
     __radd__ = __add__
 
@@ -1008,7 +1011,7 @@ class Ranger(_copies.CopyMixin, ):
         if _is_dater(offset, ):
             return range(self._start_date-offset, self._end_date-offset, self._step) if not self.needs_resolve else None
         else:
-            return Ranger(self._start_date-offset, self._end_date-offset, self._step)
+            return type(self)(self._start_date-offset, self._end_date-offset, self._step)
 
     def __rsub__(self, ather: Dater) -> range|None:
         if _is_dater(other, ):
@@ -1025,7 +1028,7 @@ class Ranger(_copies.CopyMixin, ):
     def resolve(self, context: ResolutionContextProtocol, /, ) -> Self:
         resolved_start_date = self._start_date if self._start_date else self._start_date.resolve(context, )
         resolved_end_date = self._end_date if self._end_date else self._end_date.resolve(context, )
-        return Ranger(resolved_start_date, resolved_end_date, self._step, )
+        return type(self)(resolved_start_date, resolved_end_date, self._step, )
 
     def shift(self, by: int) -> None:
         self._start_date += by
@@ -1046,10 +1049,10 @@ class Ranger(_copies.CopyMixin, ):
     #]
 
 
-Span = Ranger
+Ranger = Span
 
 
-class EmptyRanger:
+class EmptySpan:
     """
     """
     #[
@@ -1081,6 +1084,9 @@ class EmptyRanger:
     #]
 
 
+EmptyRanger = EmptySpan
+
+
 def _sign(x: Real, ) -> int:
     return 1 if x>0 else (0 if x==0 else -1)
 
@@ -1094,7 +1100,10 @@ def date_index(dates: Iterable[Dater | None], base: Dater) -> Iterable[int]:
     )
 
 
-class ContextualDater(Dater, RangeableMixin, ):
+class ContextualDater(
+    Dater,
+    _SpannableMixin,
+):
     """
     Dates with context dependent resolution
     """
@@ -1106,10 +1115,10 @@ class ContextualDater(Dater, RangeableMixin, ):
         self._offset = offset
 
     def __add__(self, offset: int) -> None:
-        return type(self)(self._resolve_from, self._offset+offset)
+        return Span(self._resolve_from, self._offset+offset, )
 
     def __sub__(self, offset: int) -> None:
-        return type(self)(self._resolve_from, self._offset-offset)
+        return Span(self._resolve_from, self._offset-offset, )
 
     def __str__(self) -> str:
         return "<>." + self._resolve_from + (f"{self._offset:+g}" if self._offset else "")
@@ -1170,7 +1179,7 @@ def daters_from_iso_strings(freq: Frequency, iso_strings: Iterable[str], ) -> It
     return ( dater_class.from_iso_string(x) for x in iso_strings )
 
 
-def get_encompassing_span(*args: ResolutionContextProtocol, ) -> Ranger:
+def get_encompassing_span(*args: ResolutionContextProtocol, ) -> Span:
     """
     """
     start_dates = tuple(_get_date(x, "start_date", min, ) for x in args)
@@ -1179,7 +1188,7 @@ def get_encompassing_span(*args: ResolutionContextProtocol, ) -> Ranger:
     end_dates = tuple(d for d in end_dates if d is not None)
     start_date = min(start_dates) if start_dates else None
     end_date = max(end_dates) if end_dates else None
-    return Ranger(start_date, end_date), start_date, end_date
+    return Span(start_date, end_date), start_date, end_date
 
 
 def _get_date(something, attr_name, select_func, ) -> Dater | None:

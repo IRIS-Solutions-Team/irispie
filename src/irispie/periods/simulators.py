@@ -11,6 +11,7 @@ from typing import (Callable, Any, Literal, )
 import numpy as _np
 import scipy as _sp
 import functools as _ft
+import wlogging as _wl
 
 from ..evaluators.base import (DEFAULT_INIT_GUESS, )
 from ..simultaneous import main as _simultaneous
@@ -27,9 +28,10 @@ _DEFAULT_FALLBACK_VALUE = 1/9
 
 
 def simulate(
-    model: _simultaneous.Simultaneous,
-    dataslate: _dataslate.Dataslate,
+    simulatable_v: _simultaneous.Simultaneous,
+    dataslate_v: _dataslate.Dataslate,
     vid: int,
+    logger: _wl.Logger,
     /,
     *,
     plan: _plans.PlanSimulate | None,
@@ -39,24 +41,27 @@ def simulate(
     when_fails: Literal["critical", "error", "warning", "silent"] = "critical",
     when_missing: Literal["critical", "error", "warning", "silent"] = "critical",
     fallback_value: Real = _DEFAULT_FALLBACK_VALUE,
-) -> None:
+) -> dict[str, Any]:
     """
     """
+    if simulatable_v.num_variants != 1:
+        raise ValueError("Simulator requires a singleton simulatable object")
+    #
     root_settings = (
         _DEFAULT_ROOT_SETTINGS
         if root_settings is None
         else _DEFAULT_ROOT_SETTINGS | root_settings
     )
 
-    qid_to_name = model.create_qid_to_name()
-    name_to_qid = model.create_name_to_qid()
-    all_quantities = model.get_quantities()
-    endogenous_names = model.simulate_can_be_exogenized
-    exogenous_names = model.simulate_can_be_endogenized
+    qid_to_name = simulatable_v.create_qid_to_name()
+    name_to_qid = simulatable_v.create_name_to_qid()
+    all_quantities = simulatable_v.get_quantities()
+    endogenous_names = simulatable_v.simulate_can_be_exogenized
+    exogenous_names = simulatable_v.simulate_can_be_endogenized
     endogenous_qids = tuple(name_to_qid[name] for name in endogenous_names)
     exogenous_qids = tuple(name_to_qid[name] for name in exogenous_names)
     wrt_qids = endogenous_qids
-    wrt_equations = model.get_dynamic_equations(kind=_equations.EquationKind.ENDOGENOUS_EQUATION, )
+    wrt_equations = simulatable_v.get_dynamic_equations(kind=_equations.EquationKind.ENDOGENOUS_EQUATION, )
 
     if len(wrt_equations) != len(wrt_qids):
         raise _wrongdoings.IrisPieError(
@@ -71,7 +76,7 @@ def simulate(
         _evaluators.PeriodEvaluator,
         wrt_equations=wrt_equations,
         all_quantities=all_quantities,
-        context=model.get_context(),
+        context=simulatable_v.get_context(),
         iter_printer_settings=iter_printer_settings,
     )
 
@@ -85,34 +90,40 @@ def simulate(
 
     catch_missing = _ft.partial(
         _catch_missing,
-        dataslate=dataslate,
+        dataslate_v=dataslate_v,
         qid_to_name=qid_to_name,
         fallback_value=fallback_value,
         when_missing_stream=when_missing_stream,
     )
 
-    for t in dataslate.base_columns:
+    for t in dataslate_v.base_columns:
         current_wrt_qids, current_evaluator = \
-            _set_up_current_period(plan, evaluator_factory, wrt_qids, dataslate.dates[t], base_evaluator, name_to_qid, )
+            _set_up_current_period(plan, evaluator_factory, wrt_qids, dataslate_v.dates[t], base_evaluator, name_to_qid, )
         current_evaluator.iter_printer.header_message = \
-            _create_header_message(vid, t, dataslate.dates[t], )
-        dataslate.data[current_wrt_qids, t] = starter(dataslate.data, current_wrt_qids, t, )
-        catch_missing(dataslate.data, t, )
+            _create_header_message(vid, t, dataslate_v.dates[t], )
+        dataslate_v.data[current_wrt_qids, t] = starter(dataslate_v.data, current_wrt_qids, t, )
+        catch_missing(dataslate_v.data, t, )
         #
-        init = current_evaluator.get_init_guess(dataslate.data, t, )
+        init = current_evaluator.get_init_guess(dataslate_v.data, t, )
         root_final = _sp.optimize.root(
             current_evaluator.eval, init,
-            args=(dataslate.data, t, None, ),
+            args=(dataslate_v.data, t, None, ),
             jac=True,
             **root_settings,
         )
         #
         if not root_final.success:
             _catch_fail(root_final, when_fails, )
-        current_evaluator.update(root_final.x, dataslate.data, t, )
+        current_evaluator.update(root_final.x, dataslate_v.data, t, )
         #
         current_evaluator.iter_printer.print_footer()
         current_evaluator.iter_printer.reset()
+    #
+    info = {
+        "method": "period",
+    }
+    #
+    return info
 
 
 # REFACTOR
@@ -184,7 +195,7 @@ def _catch_missing(
     data: _np.ndarray,
     t: int,
     /,
-    dataslate: _dataslate.Dataslate,
+    dataslate_v: _dataslate.Dataslate,
     qid_to_name: dict[int, str],
     fallback_value: Real,
     when_missing_stream: _wrongdoings.Stream,
@@ -197,7 +208,7 @@ def _catch_missing(
     #
     data[missing, t] = fallback_value
     #
-    current_period = dataslate.dates[t]
+    current_period = dataslate_v.dates[t]
     shift = 0
     for qid in _np.flatnonzero(missing):
         when_missing_stream.add(

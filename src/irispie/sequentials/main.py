@@ -26,6 +26,7 @@ from . import _variants as _variants
 from . import _simulate as _simulate
 from . import _assigns as _assigns
 from . import _get as _get
+from . import _slatable_protocol as _slatable_protocol
 
 #]
 
@@ -36,7 +37,7 @@ __all__ = (
 
 
 @_pages.reference(
-    path=("structural_models", "sequential_models", "reference.md", ),
+    path=("structural_models", "sequential.md", ),
     categories={
         "constructor": "Creating new `Sequential` models",
         "property": None,
@@ -50,14 +51,15 @@ class Sequential(
     _simulate.Inlay,
     _assigns.Inlay,
     _get.Inlay,
+    _slatable_protocol.Inlay,
     #
     _has_variants.HasVariantsMixin,
 ):
     """
 ......................................................................
 
-`Sequential` model objects
-============================
+`Sequential` models
+====================
 
 ......................................................................
     """
@@ -345,7 +347,7 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
 
     @property
     @_pages.reference(category="property", )
-    def min_shift(self, /, ) -> int:
+    def max_lag(self, /, ) -> int:
         """==Maximum lag occurring on the RHS of equations=="""
         return min(
             x.min_shift
@@ -353,13 +355,21 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
         )
 
     @property
+    def min_shift(self, /, ) -> int:
+        return self.max_lag
+
+    @property
     @_pages.reference(category="property", )
-    def max_shift(self, /, ) -> int:
+    def max_lead(self, /, ) -> int:
         """==Maximum lead occurring on the RHS of equations=="""
         return max(
             x.max_shift
             for x in self._invariant.explanatories
         )
+
+    @property
+    def max_shift(self, /, ) -> int:
+        return self.max_lead
 
     @property
     @_pages.reference(category="property", )
@@ -562,100 +572,6 @@ self.set_description(description, )
         """
         """
         return self.get_variant(request, )
-
-    #
-    # ===== Implement SlatableProtocol =====
-    #
-
-    @_pages.reference(category="information", )
-    def get_min_max_shifts(self, /, ) -> tuple[int, int]:
-        """
-················································································
-
-==Get minimum and maximum shifts==
-
-```
-min_shift, max_shift = self.get_min_max_shifts()
-```
-
-Get the minimum shift (i.e., the maximum lag) and the maximum shift (i.e.,
-the maximum lead) among all variables occuring in the model equations.
-
-
-### Input arguments ###
-
-
-???+ input "self"
-
-    `Sequential` model object whose minimum and maximum shifts will be
-    returned.
-
-
-### Returns ###
-
-
-???+ returns "min_shift"
-
-    Minimum shift (i.e., the maximum lag).
-
-???+ returns "max_shift"
-
-    Maximum shift (i.e., the maximum lead).
-
-················································································
-        """
-        return self.min_shift, self.max_shift
-
-    @_pages.reference(category="information", )
-    def get_databox_names(self, /, ) -> tuple[str]:
-        """
-················································································
-
-==Get list of names that are extracted from databox for simulation==
-
-```
-names = self.get_databox_names()
-```
-
-
-### Input arguments ###
-
-
-???+ input "self"
-
-    `Sequential` model object whose databox names will be returned.
-
-
-### Returns ###
-
-
-???+ returns "names"
-
-    List of names that are extracted from databox when the model is simulated.
-
-················································································
-        """
-        return tuple(self._invariant.all_names)
-
-    def get_fallbacks(self, /, ) -> dict[str, Any]:
-        """
-        """
-        return { n: 0 for n in tuple(self._invariant.residual_names) }
-
-    def get_overwrites(self, /, ) -> dict[str, Any]:
-        """
-        """
-        return self.get_parameters()
-
-    def get_output_names(self, /, ) -> tuple[str]:
-        """
-        """
-        return self.lhs_names + self.rhs_only_names + self.residual_names
-
-    def create_qid_to_logly(self, /, ) -> dict[str, bool]:
-        """
-        """
-        return {}
 
     #
     # ===== Implement PlannableSimulateProtocol =====

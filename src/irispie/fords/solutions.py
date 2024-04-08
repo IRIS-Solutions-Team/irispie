@@ -291,24 +291,17 @@ class Solution:
             for i in self.measurement_vector_stability
         ), dtype=bool, )
 
-    def expand_square_solution(self, forward, /, ) -> list[_np.ndarray]:
+    def expand_square_solution(self, forward, /, ) -> tuple[_np.ndarray]:
         """
         Expand R matrices of square solution for t+1...t+forward
         """
-        R, X, J, Ru = self.R, self.X, self.J, self.Ru
-        if (R is None) or (X is None) or (J is None) or (Ru is None):
-            return None
-        #
-        # return [R(t), R(t+1), R(t+2), ..., R(t+forward)]
-        #
-        # R(t) = R
-        # R(t+k) = -X J**(k-1) Ru e(t+k)
-        # k = 1, ..., forward or k-1 = 0, ..., forward-1
-        #
-        return [
-            -X @ _np.linalg.matrix_power(J, k_minus_1) @ Ru
-            for k_minus_1 in range(0, forward)
-        ]
+        return _expand_solution(self.R, self.X, self.J, self.Ru, forward, )
+
+    def expand_triangular_solution(self, forward, /, ) -> tuple[_np.ndarray]:
+        """
+        Expand Ra matrices of square solution for t+1...t+forward
+        """
+        return _expand_solution(self.Ra, self.Xa, self.J, self.Ru, forward, )
 
     def _classify_eigenvalues_stability(
         self,
@@ -566,4 +559,23 @@ def _classify_solution_vector_stability(
         for i in index
     )
     #]
+
+
+def _expand_solution(R, X, J, Ru, forward, /, ) -> tuple[_np.ndarray]:
+    """
+    Expand R matrices of square solution for t+1...t+forward
+    """
+    if (R is None) or (X is None) or (J is None) or (Ru is None):
+        return None
+    #
+    # return [R(t), R(t+1), R(t+2), ..., R(t+forward)]
+    #
+    # R(t) = R
+    # R(t+k) = -X J**(k-1) Ru e(t+k)
+    # k = 1, ..., forward or k-1 = 0, ..., forward-1
+    #
+    return (R, ) + tuple(
+        -X @ _np.linalg.matrix_power(J, k_minus_1) @ Ru
+        for k_minus_1 in range(0, forward)
+    )
 

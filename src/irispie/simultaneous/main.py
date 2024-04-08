@@ -41,6 +41,7 @@ from . import _steady as _steady
 from . import _logly as _logly
 from . import _get as _get
 from . import _assigns as _assigns
+from . import _slatable_protocol as _slatable_protocol
 #]
 
 
@@ -55,9 +56,10 @@ _SIMULATE_CAN_BE_ENDOGENIZED = _quantities.QuantityKind.EXOGENOUS_VARIABLE | _qu
 
 
 @_pages.reference(
-    path=("structural_models", "simultaneous_models", "reference.md", ),
+    path=("structural_models", "simultaneous.md", ),
     categories={
         "constructor": "Creating new simultaneous models",
+        "filtering": "Applying structural filters on models",
         "property": None,
     },
 )
@@ -65,18 +67,20 @@ class Simultaneous(
     _assigns.AssignMixin,
     _has_invariant.HasInvariantMixin,
     _has_variants.HasVariantsMixin,
-    _simulate.SimulateMixin,
+    _kalmans.Mixin,
+
+    _simulate.Inlay,
     _steady.Inlay,
     _logly.Inlay,
     _get.Inlay,
     _covariances.Inlay,
-    _kalmans.Mixin,
+    _slatable_protocol.Inlay,
 ):
     """
 ················································································
 
-`Simultaneous` model objects
-==============================
+`Simultaneous` models
+======================
 
 ················································································
     """
@@ -230,7 +234,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         """
         indented = " " * 4
-        min_shift, max_shift = self.get_min_max_shifts()
         return "\n".join((
             f"",
             f"{self.__class__.__name__} model",
@@ -238,7 +241,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
             f"|",
             f"| Num of variants: {self.num_variants}",
             f"| Num of equations [transition, measurement]: [{self.num_transition_equations}, {self.num_measurement_equations}]",
-            f"| Time shifts [min, max]: [{min_shift:+g}, {max_shift:+g}]",
+            f"| [Max lag, max lead]: [{self.max_lag:+g}, {self.max_lead:+g}]",
             f"|",
         ))
 
@@ -318,7 +321,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         return self._invariant._max_shift
 
     @property
-    def _solution_vectors(self, /, ) -> _descriptors.SolutionVectors:
+    def solution_vectors(self, /, ) -> _descriptors.SolutionVectors:
         """
         """
         return self._invariant.dynamic_descriptor.solution_vectors
@@ -419,7 +422,8 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         Create unsolved first-order system for one variant
         """
-        min_shift, max_shift = self.get_min_max_shifts()
+        min_shift = self._invariant._min_shift
+        max_shift = self._invariant._max_shift
         num_columns = -min_shift + 1 + max_shift
         qid_to_logly = self.create_qid_to_logly()
         #
@@ -512,43 +516,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         """
         return self._invariant._context
-
-    #
-    # ===== Implement SlatableProtocol =====
-    #
-
-    def get_min_max_shifts(self, ) -> tuple[int, int]:
-        """
-        """
-        return self._invariant._min_shift, self._invariant._max_shift
-
-    def get_databox_names(self, /, ) -> tuple[str, ...]:
-        """
-        """
-        qid_to_name = self.create_qid_to_name()
-        return tuple(qid_to_name[qid] for qid in sorted(qid_to_name))
-
-    def get_fallbacks(self, /, ) -> dict[str, list[Real]]:
-        """
-        """
-        shock_meds = self.get_steady_levels(
-            kind=_quantities.QuantityKind.ANY_SHOCK,
-            unpack_singleton=False,
-        )
-        shock_stds = self.get_stds(unpack_singleton=False, )
-        return shock_meds | shock_stds
-
-    def get_overwrites(self, /, ) -> dict[str, list[Real]]:
-        """
-        """
-        return self.get_parameters(unpack_singleton=False, )
-
-    def get_output_names(self, /, ) -> tuple[str, ...]:
-        """
-        """
-        return self.get_names(
-            kind=_quantities.ANY_VARIABLE | _quantities.ANY_SHOCK,
-        )
 
     #
     # ===== Implement PlannableSimulateProtocol =====

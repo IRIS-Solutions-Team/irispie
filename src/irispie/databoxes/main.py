@@ -53,7 +53,8 @@ class SteadyDataboxableProtocol(Protocol):
     """
     #[
 
-    def get_min_max_shifts(self, *args) -> tuple(int, int): ...
+    max_lag: int
+    max_lead: int
     def generate_steady_items(self, *args) -> Any: ...
 
     #]
@@ -149,7 +150,7 @@ No input arguments are required for this method.
 ### Returns ###
 
 
-???+ return "Databox"
+???+ returns "Databox"
     Returns a new instance of an empty Databox.
 
 ················································································
@@ -186,7 +187,7 @@ Databox, incorporating all its functionalities.
 ### Returns ###
 
 
-???+ return "Databox"
+???+ returns "Databox"
     Returns a new Databox instance populated with the contents of the provided 
     dictionary.
 
@@ -261,7 +262,7 @@ time series created from the rows or columns of the numeric array.
 ### Returns ###
 
 
-???+ return "Databox"
+???+ returns "Databox"
     Returns a Databox instance populated with the data from the numpy array.
 
 ················································································
@@ -336,7 +337,7 @@ No input arguments are required for this method.
 ### Returns ###
 
 
-???+ return "names"
+???+ returns "names"
     A tuple containing all the names of items in the Databox.
 
 ················································································
@@ -367,7 +368,7 @@ yet to be added to the Databox.
 ### Returns ###
 
 
-???+ return "missing_names"
+???+ returns "missing_names"
     A tuple of names that are not found in the Databox.
 
 ················································································
@@ -430,7 +431,7 @@ during the duplication process.
 ### Returns ###
 
 
-???+ return "new_databox"
+???+ returns "new_databox"
     A new Databox instance that is a deep copy of the current one, containing 
     either all items or only those specified.
 
@@ -509,7 +510,7 @@ or a callable function taking a source name and returning the new target name.
 ### Returns ###
 
 
-???+ return "None"
+???+ returns "None"
     Alters the Databox in-place without returning a value.
 
 ················································································
@@ -561,7 +562,7 @@ single name, a callable that returns `True` for names to be removed, or `None`.
 ### Returns ###
 
 
-???+ return "None"
+???+ returns "None"
     This method does not return any value but modifies the Databox in-place.
 
 ················································································
@@ -613,7 +614,7 @@ callable function determining which items to retain.
 ### Returns ###
 
 
-???+ return "None"
+???+ returns "None"
     Modifies the Databox in-place, keeping only the specified items, and does not 
     return a value.
 
@@ -685,7 +686,7 @@ the results.
 ### Returns ###
 
 
-???+ return "None"
+???+ returns "None"
     Modifies items in the Databox in-place (note that the `in_place` input
     argument only applies to the Databox items, and not the Databox itself)
     and does not return a value. Errors are handled based on the
@@ -745,7 +746,7 @@ Select Databox items based on custom name or value test functions.
 ### Returns ###
 
 
-???+ return "filtered_names"
+???+ returns "filtered_names"
     A tuple of item names that meet the specified conditions.
 
 
@@ -762,34 +763,89 @@ Select Databox items based on custom name or value test functions.
             if name_test(name) and value_test(self[name], )
         )
 
+    @_pages.reference(category="information", )
     def get_series_names_by_frequency(
         self,
         frequency: _dates.Frequency,
     ) -> tuple[str]:
+        r"""
+················································································
+
+==Retrieve time series names by frequency==
+
+Obtain a list of time series names that match a specified frequency.
+
+    time_series_names = self.get_series_names_by_frequency(frequency)
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    The Databox object from which to retrieve time series names.
+
+???+ input "frequency"
+    The frequency to filter the time series names by. It should be a valid 
+    frequency from the `irispie.Frequency` enumeration.
+
+
+### Returns ###
+
+
+???+ returns "time_series_names"
+    A list of time series names in the Databox that match the specified frequency.
+
+················································································
         """
-        Get all time series names with the given frequency
-        """
-        def _is_series_with_frequency(x):
+        def _is_series_with_frequency(x, ):
             return isinstance(x, _series.Series) and x.frequency == frequency
         return self.filter(value_test=_is_series_with_frequency, )
 
+    @_pages.reference(category="information", )
     def get_span_by_frequency(
         self,
         frequency: _dates.Frequency,
-    ) -> _dates.Ranger:
-        """
-        Get the encompassing date range for all time series with the given frequency
+    ) -> _dates.Span:
+        r"""
+················································································
+
+==Retrieve the date span for time series by frequency==
+
+Get the encompassing date span for all time series with a specified frequency.
+
+    date_span = self.get_span_by_frequency(frequency)
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    The Databox object from which to retrieve the date span.
+
+???+ input "frequency"
+    The frequency for which to determine the date span. Can be an instance of 
+    `irispie.Frequency` or a plain integer representing the frequency.
+
+
+### Returns ###
+
+
+???+ returns "date_span"
+    The date span, as a `Span` object, encompassing all time series in the 
+    Databox that match the specified frequency.
+
+················································································
         """
         if frequency == _dates.Frequency.UNKNOWN:
-            return _dates.EmptyRanger()
+            return _dates.EmptySpan()
         names = self.get_series_names_by_frequency(frequency)
         if not names:
-            return _dates.EmptyRanger()
+            return _dates.EmptySpan()
         start_dates = (self[n].start_date for n in names)
         end_dates = (self[n].end_date for n in names)
         min_start_date = min(start_dates, key=_op.attrgetter("serial"), )
         max_end_date = max(end_dates, key=_op.attrgetter("serial"), )
-        return _dates.Ranger(min_start_date, max_end_date, )
+        return _dates.Span(min_start_date, max_end_date, )
 
     def to_json(self, file_name, **kwargs):
         """
@@ -823,15 +879,18 @@ Select Databox items based on custom name or value test functions.
         func: Callable,
         /,
         names: Iterable[str] | None = None,
+        strict_names: bool = False,
         **kwargs,
     ) -> None:
         """"
         """
         if names is None:
-            value_test = lambda x: isinstance(x, _series.Series)
+            def value_test(x): return isinstance(x, _series.Series)
             self_names = self.filter(value_test=value_test, )
             other_names = other.filter(value_test=value_test, )
-            names = set(self_names).intersection(other_names)
+            names = tuple(set(self_names) & set(other_names))
+        if not strict_names:
+            names = tuple(set(names) & set(self.keys()) & set(other.keys()))
         for n in names:
             if self[n].frequency == other[n].frequency:
                 func(self[n], other[n], **kwargs, )
@@ -919,15 +978,17 @@ Select Databox items based on custom name or value test functions.
         """
         """
         self = klass()
-        min_shift, max_shift = steady_databoxable.get_min_max_shifts()
         start_date, end_date = _extended_range_tuple_from_base_span(
             input_span,
-            min_shift,
-            max_shift,
+            steady_databoxable.max_lag,
+            steady_databoxable.max_lead,
             prepend_initial,
             append_terminal,
         )
-        items = steady_databoxable.generate_steady_items(start_date, end_date, deviation=deviation, )
+        items = steady_databoxable.generate_steady_items(
+            start_date, end_date,
+            deviation=deviation,
+        )
         for name, value in items:
             self[name] = value
         return self

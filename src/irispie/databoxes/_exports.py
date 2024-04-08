@@ -187,7 +187,7 @@ class Inlay:
 ### Returns ###
 
 
-???+ return "info"
+???+ returns "info"
     A dictionary with details about the export:
 
     * `names_exported`: Names of the series exported to the CSV file.
