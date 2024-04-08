@@ -4,7 +4,7 @@
 
 [project]
     name = "irispie"
-    version = "0.39.7"
+    version = "0.39.8"
     authors = [
       { name="Jaromir Benes", email="jaromir.benes@gmail.com" },
     ]
@@ -25,13 +25,13 @@
         "dsge",
     ]
     dependencies = [
-        "numpy >= 1.25",
-        "scipy >= 1.11",
-        "plotly >= 5.15",
+        "numpy >= 1.26",
+        "scipy >= 1.13",
+        "plotly >= 5.20",
         "parsimonious >= 0.10",
-        "prettytable >= 3.9",
-        "pandas >= 2.1.2",
-        "dill >= 0.3.7",
+        "prettytable >= 3.10",
+        "pandas >= 2.2.1",
+        "dill >= 0.3.8",
         "requests >= 2.31.0",
         "wlogging >= 0.1.2",
     ]
