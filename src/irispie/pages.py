@@ -23,7 +23,7 @@ def reference(**kwargs, ) -> Callable:
         if not hasattr(callable_obj, "_pages_category", ):
             callable_obj._pages_category = None
         if not hasattr(callable_obj, "_pages_call_name", ):
-            callable_obj._pages_call_name = f"{callable_obj.__name__}"
+            callable_obj._pages_call_name = callable_obj.__name__
         if not hasattr(callable_obj, "_pages_priority", ):
             callable_obj._pages_priority = _PRIORITY.get(callable_obj._pages_category, _PRIORITY[None], )
         if not hasattr(callable_obj, "_pages_add_heading", ):

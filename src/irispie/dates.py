@@ -23,8 +23,9 @@ from . import wrongdoings as _wrongdoings
 __all__ = [
     "Frequency", "Freq",
     "yy", "hh", "qq", "mm", "dd", "ii",
-    "Span", "Ranger", "EmptySpan", "EmptyRanger", "start", "end",
-    "Dater", "daters_from_sdmx_strings", "daters_from_iso_strings", "daters_from_to",
+    "Span", "EmptySpan", "start", "end",
+    "Period", "daters_from_sdmx_strings", "daters_from_iso_strings", "daters_from_to",
+    "Dater", "Ranger", "EmptyRanger",
     "YEARLY", "HALFYEARLY", "QUARTERLY", "MONTHLY", "WEEKLY", "DAILY",
     "DATER_CLASS_FROM_FREQUENCY_RESOLUTION",
     "convert_to_new_freq",
@@ -148,8 +149,8 @@ class ResolutionContext:
 
     def __init__(
         self,
-        start_date: Dater | None = None,
-        end_date: Dater | None = None,
+        start_date: Period | None = None,
+        end_date: Period | None = None,
         /,
     ) -> None:
         """
@@ -209,47 +210,76 @@ class _SpannableMixin:
 
     def __rshift__(self, end_date: Self | None, ) -> Span:
         """
-        Dater >> Dater or Dater >> None
+        Period >> Period or Period >> None
         """
         return Span(self, end_date, 1)
 
     def __rrshift__(self, start_date: Self | None, ) -> Span:
         """
-        None >> Dater
+        None >> Period
         """
         return Span(start_date, self, 1)
 
     def __lshift__(self, start_date: Self | None, ) -> Span:
         """
-        Dater << Dater or Dater << None
+        Period << Period or Period << None
         """
         return Span(start_date, self, -1) 
 
     def __rlshift__(self, end_date: Self | None, ) -> Span:
         """
-        None << Dater
+        None << Period
         """
         return Span(self, end_date, -1) 
 
     #]
 
 
+def _dater_with_ellipsis(
+    func: Callable,
+    /,
+) -> Callable:
+    """
+    """
+    #[
+    @_ft.wraps(func, )
+    def wrapper(*args, ):
+        try:
+            index = args.index(Ellipsis, )
+            start_date = func(*args[:index], ) if args[:index] else None
+            end_date = func(*args[index+1:], ) if args[index+1:] else None
+            return Span(start_date, end_date, )
+        except ValueError:
+            return func(*args, )
+    return wrapper
+    #]
+
+
+
 @_pages.reference(
-    path=("data_management", "dates.md", ),
+    path=("data_management", "periods.md", ),
     categories={
-        "constructor": "Creating new dates",
+        "constructor": "Creating new time periods",
         "property": None,
     },
 )
-class Dater(
+class Period(
     _SpannableMixin,
     _copies.CopyMixin,
 ):
     """
 ......................................................................
 
-Dates and date ranges
-======================
+Time periods
+=============
+
+Time periods represent one single calendar period of time of a given
+frequency (yearly, half-yearly, quarterly, monthly, daily, or a special
+integer frequency). The time `Periods` are used to time stamp individual
+observations in [`Series`](series.md) objects.
+
+Time spans represent a range of time periods, from a start period to an end
+period.
 
 ......................................................................
     """
@@ -259,21 +289,90 @@ Dates and date ranges
     needs_resolve = False
 
     @staticmethod
-    def from_iso_string(freq: Frequency, iso_string: str, ) -> Dater:
+    @_pages.reference(
+        category=None,
+        call_name="Time period constructors",
+        call_name_is_code=False,
+        priority=20,
+    )
+    def constructors() -> NoReturn:
+        r"""
+......................................................................
+
+Overview of time period constructors:
+
+| Constructor | Description
+|-------------|-------------
+| `yy`        | Yearly period
+| `hh`        | Half-yearly period
+| `qq`        | Quarterly period
+| `mm`        | Monthly period
+| `dd`        | Daily period
+| `ii`        | Integer period (numbered observations)
+
+
+### Syntax for creating new time periods ###
+
+    per = yy(year)
+    per = hh(year, halfyear)
+    per = qq(year, quarter)
+    per = mm(year, month)
+    per = dd(year, month, day_in_month)
+    per = dd(year, None, day_in_year)
+    per = ii(number)
+
+
+### Input arguments ###
+
+???+ input "year"
+    Calendar year as integer.
+
+???+ input "halfyear"
+    Half-year as integer, 1 or 2.
+
+???+ input "quarter"
+    Quarter as integer, 1 to 4.
+
+???+ input "month"
+    Month as integer, 1 to 12.
+
+???+ input "day_in_month"
+    Day in month as integer, 1 to 31.
+
+???+ input "day_in_year"
+    Day in year as integer, 1 to 365 (or 366 in leap years).
+
+???+ input "number"
+    Observation number as integer.
+
+
+### Returns ###
+
+
+???+ returns "per"
+    A `Period` object representing one single time period of a given
+    frequency.
+
+......................................................................
+        """
+        raise NotImplementedError
+
+    @staticmethod
+    def from_iso_string(freq: Frequency, iso_string: str, ) -> Self:
         """
         """
         year, month, day = iso_string.split("-", )
         return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_ymd(int(year), int(month), int(day), )
 
     @staticmethod
-    def from_sdmx_string(freq: Frequency, sdmx_string: str, ) -> Dater:
+    def from_sdmx_string(freq: Frequency, sdmx_string: str, ) -> Self:
         """
         """
         freq = Frequency.from_sdmx_string(sdmx_string, ) if freq is None else freq
         return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_sdmx_string(sdmx_string, )
 
     @staticmethod
-    def from_ymd(freq: Frequency, *args, ) -> Dater:
+    def from_ymd(freq: Frequency, *args, ) -> Self:
         """
         """
         return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_ymd(*args, )
@@ -281,7 +380,7 @@ Dates and date ranges
     dater_from_ymd = from_ymd
 
     @staticmethod
-    def today(freq: Frequency, ) -> Dater:
+    def today(freq: Frequency, ) -> Self:
         """
         """
         t = _dt.date.today()
@@ -299,7 +398,7 @@ Dates and date ranges
         """
         return self
 
-    def convert_to_new_freq(self, new_freq: Frequency, *args ,**kwargs, ) -> Dater:
+    def convert_to_new_freq(self, new_freq: Frequency, *args ,**kwargs, ) -> Self:
         """
         """
         year, month, day = self.to_ymd(*args, **kwargs, )
@@ -420,7 +519,7 @@ Dates and date ranges
     #]
 
 
-class IntegerDater(Dater, ):
+class IntegerPeriod(Period, ):
     """
     """
     #[
@@ -435,7 +534,7 @@ class IntegerDater(Dater, ):
     }
 
     @classmethod
-    def from_sdmx_string(klass, sdmx_string: str) -> IntegerDater:
+    def from_sdmx_string(klass, sdmx_string: str) -> IntegerPeriod:
         sdmx_string = sdmx_string.strip().removeprefix("(").removesuffix(")")
         return klass(int(sdmx_string))
 
@@ -455,7 +554,7 @@ class IntegerDater(Dater, ):
     #]
 
 
-class DailyDater(Dater, ):
+class DailyPeriod(Period, ):
     """
     """
     #[
@@ -476,12 +575,12 @@ class DailyDater(Dater, ):
         return klass(serial)
 
     @classmethod
-    def from_sdmx_string(klass, sdmx_string: str) -> DailyDater:
+    def from_sdmx_string(klass, sdmx_string: str) -> Self:
         year, month, day, *_ = sdmx_string.split("-")
         return klass.from_ymd(int(year), int(month), int(day))
 
     @classmethod
-    def from_iso_string(klass, iso_string: str, ) -> Dater:
+    def from_iso_string(klass, iso_string: str, ) -> Self:
         """
         """
         year, month, day, *_ = iso_string.split("-", )
@@ -561,7 +660,7 @@ def _serial_from_ypf(year: int, per: int, freq: int) -> int:
     return int(year)*int(freq) + int(per) - 1
 
 
-class RegularDaterMixin:
+class RegularPeriodMixin:
     """
     """
     #[
@@ -577,11 +676,11 @@ class RegularDaterMixin:
         return klass(new_serial)
 
     @classmethod
-    def from_ymd(klass, year: int, month: int=1, day: int=1, ) -> YearlyDater:
+    def from_ymd(klass, year: int, month: int=1, day: int=1, ) -> Self:
         return klass.from_year_period(year, klass.month_to_period(month, ), )
 
     @classmethod
-    def from_iso_string(klass, iso_string: str, ) -> Dater:
+    def from_iso_string(klass, iso_string: str, ) -> Self:
         """
         """
         year, month, day, *_ = iso_string.split("-", )
@@ -634,16 +733,16 @@ class RegularDaterMixin:
         self,
         /,
         position: Literal["start", "middle", "end", ] = "middle"
-    ) -> DailyDater:
+    ) -> DailyPeriod:
         try:
-            return DailyDater.from_ymd(*self.to_ymd(position=position, ), )
+            return DailyPeriod.from_ymd(*self.to_ymd(position=position, ), )
         except:
             raise IrisPieCritical("Cannot convert date to daily date.")
 
     #]
 
 
-class YearlyDater(RegularDaterMixin, Dater, ):
+class YearlyPeriod(RegularPeriodMixin, Period, ):
     """
     """
     #[
@@ -658,7 +757,7 @@ class YearlyDater(RegularDaterMixin, Dater, ):
     }
 
     @classmethod
-    def from_sdmx_string(klass, sdmx_string: str) -> YearlyDater:
+    def from_sdmx_string(klass, sdmx_string: str) -> YearlyPeriod:
         return klass(int(sdmx_string.strip()))
 
     def to_sdmx_string(self) -> str:
@@ -674,7 +773,7 @@ class YearlyDater(RegularDaterMixin, Dater, ):
     #]
 
 
-class HalfyearlyDater(RegularDaterMixin, Dater, ):
+class HalfyearlyPeriod(RegularPeriodMixin, Period, ):
     #[
     frequency: Frequency = Frequency.HALFYEARLY
     needs_resolve: bool = False
@@ -686,7 +785,7 @@ class HalfyearlyDater(RegularDaterMixin, Dater, ):
     }
 
     @classmethod
-    def from_sdmx_string(klass, sdmx_string: str) -> HalfyearlyDater:
+    def from_sdmx_string(klass, sdmx_string: str) -> HalfyearlyPeriod:
         year, halfyear = sdmx_string.strip().split("-H")
         return klass.from_year_period(int(year), int(halfyear))
 
@@ -722,7 +821,7 @@ class HalfyearlyDater(RegularDaterMixin, Dater, ):
     #]
 
 
-class QuarterlyDater(RegularDaterMixin, Dater, ):
+class QuarterlyPeriod(RegularPeriodMixin, Period, ):
     """
     """
     #[
@@ -737,7 +836,7 @@ class QuarterlyDater(RegularDaterMixin, Dater, ):
     }
 
     @classmethod
-    def from_sdmx_string(klass, sdmx_string: str) -> QuarterlyDater:
+    def from_sdmx_string(klass, sdmx_string: str) -> QuarterlyPeriod:
         year, quarter = sdmx_string.strip().split("-Q")
         return klass.from_year_period(int(year), int(quarter))
 
@@ -755,7 +854,7 @@ class QuarterlyDater(RegularDaterMixin, Dater, ):
     #]
 
 
-class MonthlyDater(RegularDaterMixin, Dater, ):
+class MonthlyPeriod(RegularPeriodMixin, Period, ):
     #[
     frequency: Frequency = Frequency.MONTHLY
     needs_resolve: bool = False
@@ -767,7 +866,7 @@ class MonthlyDater(RegularDaterMixin, Dater, ):
     }
 
     @classmethod
-    def from_sdmx_string(klass, sdmx_string: str) -> MonthlyDater:
+    def from_sdmx_string(klass, sdmx_string: str) -> MonthlyPeriod:
         year, month = sdmx_string.strip().split("-")
         return klass.from_year_period(int(year), int(month))
 
@@ -784,7 +883,7 @@ class MonthlyDater(RegularDaterMixin, Dater, ):
     #]
 
 
-class UnknownDater:
+class UnknownPeriod:
     """
     """
     #[
@@ -795,124 +894,113 @@ class UnknownDater:
     #]
 
 
-def _dater_or_ranger_decorator(
-    func: Callable,
-    /,
-) -> Callable:
-    """
-    """
-    #[
-    def wrapper(*args, ):
-        try:
-            index = args.index(Ellipsis)
-            start_date = func(*args[:index], ) if args[:index] else None
-            end_date = func(*args[index+1:], ) if args[index+1:] else None
-            return Span(start_date, end_date, )
-        except ValueError:
-            return func(*args, )
-    return wrapper
-    #]
+yy = _dater_with_ellipsis(YearlyPeriod.from_year_period, )
+yy.__doc__ = r"""
+················································································
 
+==Create a yearly-frequency time period or time span==
 
-yy = _dater_or_ranger_decorator(YearlyDater.from_year_period, )
-yy.__doc__ = \
+See documentation for the [`Period` constructors](#time-period-constructors)
+and the [`Span` constructors](spans.md).
+
+················································································
 """
-------------------------------------------------------------
+yy.__name__ = "yy"
+yy = _pages.reference(category="constructor", )(yy)
 
 
-`yy`
-=====
+hh = _dater_with_ellipsis(HalfyearlyPeriod.from_year_period, )
+hh.__doc__ = r"""
+················································································
 
-##### Create a yearly-frequency date or date range ####
+==Create a half-yearly-frequency time period or time span==
 
-Syntax
--------
+See documentation for the [`Period` constructors](#time-period-constructors)
+and the [`Span` constructors](spans.md).
 
-    date = yy(year)
-    range = yy(start_year, ..., end_year)
-
-Input arguments
-----------------
-
-### `year ###
-Year (an integer number).
-
-### `start_year` ###
-Start year for a date range.
-
-### `end_year` ###
-End year for a date range.
-
-Returns
---------
-
-### `date` ###
-A `YearlyDater` object (if only a single year is specified as an input
-argument).
-
-### `range` ###
-A `Span` object (if a start and end year are specified as input
-arguments).
-
-
-------------------------------------------------------------
+················································································
 """
+hh.__name__ = "hh"
+hh = _pages.reference(category="constructor", )(hh)
 
 
-hh = _dater_or_ranger_decorator(HalfyearlyDater.from_year_period, )
-hh.__doc__ = \
-"""
-------------------------------------------------------------
+qq = _dater_with_ellipsis(QuarterlyPeriod.from_year_period)
+mm = _dater_with_ellipsis(MonthlyPeriod.from_year_period)
+ii = _dater_with_ellipsis(IntegerPeriod)
 
 
-`hh`
-=====
-
-
-------------------------------------------------------------
-"""
-
-
-qq = _dater_or_ranger_decorator(QuarterlyDater.from_year_period)
-mm = _dater_or_ranger_decorator(MonthlyDater.from_year_period)
-ii = _dater_or_ranger_decorator(IntegerDater)
-
-
-def dd(year: int, month: int | ellipsis, day: int) -> DailyDater:
-    if month is Ellipsis:
-        return DailyDater.from_year_period(year, day)
+def dd(year: int, month: int | None, day: int) -> DailyPeriod:
+    if month is None:
+        return DailyPeriod.from_year_period(year, day)
     else:
-        return DailyDater.from_ymd(year, month, day)
+        return DailyPeriod.from_ymd(year, month, day)
 
 
+for n in ("yy", "hh", "qq", "mm", "dd", "ii", ):
+    setattr(Period, n, locals()[n], )
+
+
+
+@_pages.reference(
+    path=("data_management", "spans.md", ),
+    categories={
+        "constructor": "Creating new time spans",
+        "property": None,
+    },
+)
 class Span(_copies.CopyMixin, ):
     """
+......................................................................
+
+Time spans
+============
+
+Time spans represent a range of time periods of the same date frequency,
+from a start period to an end period (possibly with a step size other than
+1), going either forward or backward.
+
+......................................................................
     """
     #[
 
+    @_pages.reference(
+        category="constructor",
+        call_name="Span",
+        priority=20,
+    )
     def __init__(
         self, 
-        from_date: Dater | None = None,
-        until_date: Dater | None = None,
+        from_per: Period | None = None,
+        until_per: Period | None = None,
         step: int = 1,
     ) -> None:
+        r"""
+················································································
+
+==Create a time span==
+
+
+    span = Span(start_per, end_per, step=1)
+    span = start_per >> end_per
+    span = end_per << start_per
+
+
+················································································
         """
-        Date range constructor
-        """
-        from_date = resolve_dater_or_integer(from_date)
-        until_date = resolve_dater_or_integer(until_date)
+        from_per = resolve_dater_or_integer(from_per)
+        until_per = resolve_dater_or_integer(until_per)
         if step > 0:
-            default_from_date = start
-            default_until_date = end
+            default_from_per = start
+            default_until_per = end
         else:
-            default_from_date = end
-            default_until_date = start
-        self._start_date = from_date if from_date is not None else default_from_date
-        self._end_date = until_date if until_date is not None else default_until_date
+            default_from_per = end
+            default_until_per = start
+        self._start_date = from_per if from_per is not None else default_from_per
+        self._end_date = until_per if until_per is not None else default_until_per
         self._step = step
         self.needs_resolve = self._start_date.needs_resolve or self._end_date.needs_resolve
         if not self.needs_resolve:
-            _check_daters(from_date, until_date)
+            _check_daters(from_per, until_per)
 
     @property
     def start_date(self):
@@ -1007,22 +1095,22 @@ class Span(_copies.CopyMixin, ):
 
     __radd__ = __add__
 
-    def __sub__(self, offset: Dater | int) -> range | Self:
+    def __sub__(self, offset: Period | int, ) -> range | Self:
         if _is_dater(offset, ):
             return range(self._start_date-offset, self._end_date-offset, self._step) if not self.needs_resolve else None
         else:
             return type(self)(self._start_date-offset, self._end_date-offset, self._step)
 
-    def __rsub__(self, ather: Dater) -> range|None:
+    def __rsub__(self, ather: Period, ) -> range|None:
         if _is_dater(other, ):
             return range(other-self._start_date, other-self._end_date, -self._step) if not self.needs_resolve else None
         else:
             return None
 
-    def __iter__(self) -> Iterable:
+    def __iter__(self, /, ) -> Iterable:
         return (self._class(x) for x in self._serials) if not self.needs_resolve else None
 
-    def __getitem__(self, i: int) -> Dater|None:
+    def __getitem__(self, i: int, /, ) -> Perio | None:
         return self._class(self._serials[i]) if not self.needs_resolve else None
 
     def resolve(self, context: ResolutionContextProtocol, /, ) -> Self:
@@ -1047,9 +1135,6 @@ class Span(_copies.CopyMixin, ):
         return not self.needs_resolve
 
     #]
-
-
-Ranger = Span
 
 
 class EmptySpan:
@@ -1084,14 +1169,13 @@ class EmptySpan:
     #]
 
 
-EmptyRanger = EmptySpan
 
 
 def _sign(x: Real, ) -> int:
     return 1 if x>0 else (0 if x==0 else -1)
 
 
-def date_index(dates: Iterable[Dater | None], base: Dater) -> Iterable[int]:
+def date_index(dates: Iterable[Period | None], base: Period) -> Iterable[int]:
     """
     """
     return (
@@ -1100,8 +1184,8 @@ def date_index(dates: Iterable[Dater | None], base: Dater) -> Iterable[int]:
     )
 
 
-class ContextualDater(
-    Dater,
+class ContextualPeriod(
+    Period,
     _SpannableMixin,
 ):
     """
@@ -1129,36 +1213,36 @@ class ContextualDater(
     def __bool__(self) -> bool:
         return False
 
-    def resolve(self, context: ResolutionContextProtocol) -> Dater:
+    def resolve(self, context: ResolutionContextProtocol) -> Period:
         return getattr(context, self._resolve_from) + self._offset
     #]
 
 
-start = ContextualDater("start_date")
-end = ContextualDater("end_date")
+start = ContextualPeriod("start_date")
+end = ContextualPeriod("end_date")
 
 
-def resolve_dater_or_integer(input_date: Any) -> Dater:
+def resolve_dater_or_integer(input_date: Any) -> Period:
     """
     Convert non-dater to integer dater
     """
     if isinstance(input_date, Real):
-        input_date = IntegerDater(int(input_date))
+        input_date = IntegerPeriod(int(input_date))
     return input_date
 
 
 DATER_CLASS_FROM_FREQUENCY_RESOLUTION = {
-    Frequency.INTEGER: IntegerDater,
-    Frequency.YEARLY: YearlyDater,
-    Frequency.HALFYEARLY: HalfyearlyDater,
-    Frequency.QUARTERLY: QuarterlyDater,
-    Frequency.MONTHLY: MonthlyDater,
-    Frequency.DAILY: DailyDater,
-    Frequency.UNKNOWN: UnknownDater,
+    Frequency.INTEGER: IntegerPeriod,
+    Frequency.YEARLY: YearlyPeriod,
+    Frequency.HALFYEARLY: HalfyearlyPeriod,
+    Frequency.QUARTERLY: QuarterlyPeriod,
+    Frequency.MONTHLY: MonthlyPeriod,
+    Frequency.DAILY: DailyPeriod,
+    Frequency.UNKNOWN: UnknownPeriod,
 }
 
 
-def daters_from_sdmx_strings(freq: Frequency, sdmx_strings: Iterable[str], ) -> Iterable[Dater]:
+def daters_from_sdmx_strings(freq: Frequency, sdmx_strings: Iterable[str], ) -> Iterable[Period]:
     """
     """
     sdmx_strings = tuple(sdmx_strings)
@@ -1172,7 +1256,7 @@ def daters_from_sdmx_strings(freq: Frequency, sdmx_strings: Iterable[str], ) -> 
     return ( dater_class.from_sdmx_string(i) for i in sdmx_strings )
 
 
-def daters_from_iso_strings(freq: Frequency, iso_strings: Iterable[str], ) -> Iterable[Dater]:
+def daters_from_iso_strings(freq: Frequency, iso_strings: Iterable[str], ) -> Iterable[Period]:
     """
     """
     dater_class = DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq]
@@ -1191,7 +1275,7 @@ def get_encompassing_span(*args: ResolutionContextProtocol, ) -> Span:
     return Span(start_date, end_date), start_date, end_date
 
 
-def _get_date(something, attr_name, select_func, ) -> Dater | None:
+def _get_date(something, attr_name, select_func, ) -> Period | None:
     if hasattr(something, attr_name, ):
         return getattr(something, attr_name, )
     try:
@@ -1201,10 +1285,10 @@ def _get_date(something, attr_name, select_func, ) -> Dater | None:
 
 
 def daters_from_to(
-    start_date: Dater,
-    end_date: Dater,
+    start_date: Period,
+    end_date: Period,
     /,
-) -> tuple[Dater, ...]:
+) -> tuple[Period]:
     """
     """
     _check_daters(start_date, end_date, )
@@ -1214,9 +1298,9 @@ def daters_from_to(
 
 
 def ensure_date_tuple(
-    dater_or_string: Iterable[Dater] | str,
+    dater_or_string: Iterable[Period] | str,
     frequency: Frequency | None = None,
-) -> tuple[Dater, ...]:
+) -> tuple[Period, ...]:
     """
     """
     #[
@@ -1230,7 +1314,7 @@ def ensure_date_tuple(
 def _date_tuple_from_string(
     date_string: str,
     frequency: Frequency | None = None,
-) -> tuple[Dater, ...]:
+) -> tuple[Period, ...]:
     """
     """
     #[
@@ -1242,19 +1326,25 @@ def _date_tuple_from_string(
         return tuple(daters_from_to(*daters_from_sdmx_strings(frequency, (start, end, ))))
     if "," in date_string:
         return tuple(daters_from_sdmx_strings(frequency, date_string.split(",")))
-    return (Dater.from_sdmx_string(frequency, date_string), )
+    return (Period.from_sdmx_string(frequency, date_string), )
     #]
 
 
 def _is_dater(x: Any, ) -> bool:
-    return isinstance(x, Dater, )
+    return isinstance(x, Period, )
 
 
-def convert_to_new_freq(self, new_freq: Frequency, *args ,**kwargs, ) -> Dater:
+def convert_to_new_freq(self, new_freq: Frequency, *args ,**kwargs, ) -> Period:
     """
     Convert date to a new frequency
     """
     year, month, day = self.to_ymd(*args, **kwargs, )
     new_class = DATER_CLASS_FROM_FREQUENCY_RESOLUTION[new_freq]
     return new_class.from_ymd(year, month, day, )
+
+
+Dater = Period
+Ranger = Span
+EmptyRanger = EmptySpan
+
 
