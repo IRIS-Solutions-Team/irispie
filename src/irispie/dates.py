@@ -925,11 +925,62 @@ hh = _pages.reference(category="constructor", )(hh)
 
 
 qq = _dater_with_ellipsis(QuarterlyPeriod.from_year_period)
+qq.__doc__ = r"""
+················································································
+
+==Create a quarterly-frequency time period or time span==
+
+See documentation for the [`Period` constructors](#time-period-constructors)
+and the [`Span` constructors](spans.md).
+
+················································································
+"""
+qq.__name__ = "qq"
+qq = _pages.reference(category="constructor", )(qq)
+
+
 mm = _dater_with_ellipsis(MonthlyPeriod.from_year_period)
+mm.__doc__ = r"""
+················································································
+
+==Create a monthly-frequency time period or time span==
+
+See documentation for the [`Period` constructors](#time-period-constructors)
+and the [`Span` constructors](spans.md).
+
+················································································
+"""
+mm.__name__ = "mm"
+mm = _pages.reference(category="constructor", )(mm)
+
+
 ii = _dater_with_ellipsis(IntegerPeriod)
+ii.__doc__ = r"""
+················································································
+
+==Create an integer-frequency time period or time span==
+
+See documentation for the [`Period` constructors](#time-period-constructors)
+and the [`Span` constructors](spans.md).
+
+················································································
+"""
+ii.__name__ = "ii"
+ii = _pages.reference(category="constructor", )(ii)
 
 
+@_pages.reference(category="constructor", )
 def dd(year: int, month: int | None, day: int) -> DailyPeriod:
+    r"""
+················································································
+
+==Create a daily-frequency time period or time span==
+
+See documentation for the [`Period` constructors](#time-period-constructors)
+and the [`Span` constructors](spans.md).
+
+················································································
+    """
     if month is None:
         return DailyPeriod.from_year_period(year, day)
     else:
@@ -945,6 +996,7 @@ for n in ("yy", "hh", "qq", "mm", "dd", "ii", ):
     path=("data_management", "spans.md", ),
     categories={
         "constructor": "Creating new time spans",
+        "manipulation": "Time span manipulation",
         "property": None,
     },
 )
@@ -980,10 +1032,18 @@ from a start period to an end period (possibly with a step size other than
 ==Create a time span==
 
 
-    span = Span(start_per, end_per, step=1)
-    span = start_per >> end_per
-    span = end_per << start_per
+### Using the `Span` constructor ###
 
+    span = Span(start_per, end_per, step=1)
+
+
+### Shorthand using the `>>` and `<<` operators ###
+
+    span = start_per >> end_per #[^1]
+    span = end_per << start_per #[^2]
+
+1. Equivalent to `Span(start_per, end_per, step=1)`
+2. Equivalent to `Span(end_per, start_per, step=-1)`
 
 ················································································
         """
@@ -1034,8 +1094,31 @@ from a start period to an end period (possibly with a step size other than
     def frequency(self) -> Frequency:
         return self._class.frequency
 
+    @_pages.reference(category="manipulation", )
     def reverse(self, ) -> None:
-        """
+        r"""
+················································································
+
+==Reverse the time span==
+
+Reverses the direction of the time span, so that the start period becomes
+the end period and vice versa.
+
+
+    self.reverse()
+
+
+### Input arguments ###
+
+???+ input "self"
+    The time span to be reversed.
+
+
+### Returns ###
+
+The time span is reversed in place.
+
+················································································
         """
         #[
         self._start_date, self._end_date = self._end_date, self._start_date

@@ -57,7 +57,7 @@ def _extract_tagline(callable_obj, ) -> str:
 
 def _add_heading(docstring: str, call_name: str, call_name_is_code: bool, ) -> str:
     icon = "☐"
-    heading_text = f"{icon} `{call_name}`" if call_name_is_code else call_name
+    heading_text = f"{icon} `{call_name}`" if call_name_is_code else call_name
     heading_decor = "\n" + "-"*len(heading_text) + "--\n"
     docstring = _remove_visual_dividers(docstring, )
     docstring = "\n" + heading_text + heading_decor + docstring
