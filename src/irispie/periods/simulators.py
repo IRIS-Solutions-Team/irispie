@@ -57,12 +57,9 @@ def simulate(
     name_to_qid = simulatable_v.create_name_to_qid()
     all_quantities = simulatable_v.get_quantities()
     #
-    plannable = simulatable_v.get_simulation_plannable()
-    endogenous_names = plannable.can_be_exogenized_unanticipated
-    exogenous_names = plannable.can_be_endogenized_unanticipated
+    endogenous_qids, exogenous_qids \
+        = _get_exogenous_endogenous_qids(simulatable_v, name_to_qid, )
     #
-    endogenous_qids = tuple(name_to_qid[name] for name in endogenous_names)
-    exogenous_qids = tuple(name_to_qid[name] for name in exogenous_names)
     wrt_qids = endogenous_qids
     wrt_equations = simulatable_v.get_dynamic_equations(kind=_equations.EquationKind.ENDOGENOUS_EQUATION, )
 
@@ -240,6 +237,29 @@ def _create_header_message(
     """
     """
     return f"[Variant {vid}][Period {current_period}]"
+
+
+def _get_exogenous_endogenous_qids(
+    simulatable_v,
+    name_to_qid: dict[str, int],
+    /,
+) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    """
+    """
+    plannable = simulatable_v.get_simulation_plannable()
+    endogenous_names = (
+        set(plannable.can_be_exogenized_unanticipated)
+        | set(plannable.can_be_exogenized_anticipated)
+    )
+    exogenous_names = (
+        set(plannable.can_be_endogenized_unanticipated)
+        | set(plannable.can_be_endogenized_anticipated)
+    )
+    #
+    endogenous_qids = (name_to_qid[name] for name in endogenous_names)
+    exogenous_qids = (name_to_qid[name] for name in exogenous_names)
+    #
+    return sorted(endogenous_qids), sorted(exogenous_qids)
 
 
 _ITER_STARTER = {
