@@ -27,8 +27,10 @@ class Inlay:
         """
         """
         action_func = _MERGE_ACTIONS[action]
-        stream = _wrongdoings.create_stream(action, when_no_stream="silent", )(
+        stream = _wrongdoings.create_stream(
+            action,
             "Duplicate keys when merging databoxes",
+            when_no_stream="silent",
         )
         if hasattr(they, "items", ):
             they = (they, )

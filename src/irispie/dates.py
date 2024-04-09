@@ -1002,7 +1002,7 @@ for n in ("yy", "hh", "qq", "mm", "dd", "ii", ):
 )
 class Span(_copies.CopyMixin, ):
     """
-......................................................................
+················································································
 
 Time spans
 ============
@@ -1011,7 +1011,7 @@ Time spans represent a range of time periods of the same date frequency,
 from a start period to an end period (possibly with a step size other than
 1), going either forward or backward.
 
-......................................................................
+················································································
     """
     #[
 

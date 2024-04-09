@@ -15,11 +15,11 @@ import numpy as _np
 import functools as _ft
 import itertools as _it
 
-from ..series import main as _series
-from ..databoxes import main as _databoxes
-from ..plans import main as _plans
+from ..series.main import (Series, )
+from ..databoxes.main import (Databox, )
 from ..incidences import main as _incidences
 from ..conveniences import iterators as _iterators
+from ..dates import (Period, Span, )
 from .. import dates as _dates
 from .. import has_variants as _has_variants
 
@@ -39,6 +39,7 @@ class SlatableProtocol(Protocol, ):
     max_lag: int
     max_lead: int
     databox_names: Iterable[str]
+    databox_validators: dict[str, Callable]
     fallbacks: dict[str, Real]
     overwrites: dict[str, Real]
     output_names: Iterable[str]
@@ -72,7 +73,7 @@ class Dataslate(
     def nan_from_names_dates(
         klass,
         names: Iterable[str],
-        dates: Iterable[_dates.Dater] | string,
+        dates: Iterable[Period] | string,
         /,
         num_variants: int = 1,
         **kwargs,
@@ -110,14 +111,15 @@ class Dataslate(
     @classmethod
     def from_databox(
         klass,
-        databox: _databoxes.Databox | dict,
+        databox: Databox | dict,
         names: Iterable[str],
-        dates: Iterable[_dates.Dater] | string,
+        dates: Iterable[Period] | string,
         /,
         num_variants: int = 1,
         fallbacks: dict[str, Number] | None = None,
         overwrites: dict[str, Number] | None = None,
         clip_data_to_base_span: bool = False,
+        validators: dict[str, Callable] | None = None,
         **kwargs,
     ) -> Self:
         """
@@ -125,20 +127,23 @@ class Dataslate(
         names = tuple(names or databox.keys())
         dates = _dates.ensure_date_tuple(dates, )
         #
+        if validators:
+            Databox.validate(databox, validators, )
+        #
         from_to = dates[0], dates[-1] if dates else ()
         item_iterator = \
             _ft.partial(_slate_value_variant_iterator, from_to=from_to, )
         #
         databox_variant_iterator = \
-            _databoxes.Databox.iter_variants(databox, item_iterator=item_iterator, names=names, )
+            Databox.iter_variants(databox, item_iterator=item_iterator, names=names, )
         #
         fallbacks_variant_iterator = (
-            _databoxes.Databox.iter_variants(fallbacks, item_iterator=item_iterator, names=names, )
+            Databox.iter_variants(fallbacks, item_iterator=item_iterator, names=names, )
             if fallbacks else _it.repeat(None, )
         )
         #
         overwrites_variant_iterator = (
-            _databoxes.Databox.iter_variants(overwrites, item_iterator=item_iterator, names=names, )
+            Databox.iter_variants(overwrites, item_iterator=item_iterator, names=names, )
             if overwrites else _it.repeat(None, )
         )
         #
@@ -166,8 +171,8 @@ class Dataslate(
     def from_databox_for_slatable(
         klass,
         slatable: SlatableProtocol,
-        databox: _databoxes.Databox | dict,
-        base_span: Iterable[_dates.Dater],
+        databox: Databox | dict,
+        base_span: Iterable[Period],
         /,
         extra_databox_names: Iterable[str] | None = None,
         prepend_initial: bool = True,
@@ -195,6 +200,7 @@ class Dataslate(
             overwrites=slatable.overwrites,
             clip_data_to_base_span=clip_data_to_base_span,
             output_names=slatable.output_names,
+            validators=slatable.databox_validators,
             **kwargs,
         )
 
@@ -281,14 +287,14 @@ class Dataslate(
     def to_databox(
         self,
         /,
-        target_databox: _databoxes.Databox | None = None,
-    ) -> _databoxes.Databox:
+        target_databox: Databox | None = None,
+    ) -> Databox:
         """
         Add data from a dataslate to a new or existing databox
         """
         #[
         if target_databox is None:
-            target_databox = _databoxes.Databox()
+            target_databox = Databox()
         num_names = self.num_names
         num_variants = self.num_variants
         start_date = self._invariant.dates[0]
@@ -298,7 +304,7 @@ class Dataslate(
             values = _np.vstack(tuple(
                 v.data[qid, :] for v in self._variants
             )).T
-            target_databox[name] = _series.Series(
+            target_databox[name] = Series(
                 num_variants=num_variants,
                 start_date=start_date,
                 values=values,
@@ -374,7 +380,7 @@ class Dataslate(
 #    _record_reshape = (-1, 1, )
 #
 #    @property
-#    def row_dates(self, /, ) -> tuple[_dates.Dater, ...]:
+#    def row_dates(self, /, ) -> tuple[Period]:
 #        """
 #        """
 #        return self.dates
@@ -429,11 +435,11 @@ class Dataslate(
 
 def _get_extended_span(
     slatable: SlatableProtocol,
-    base_span: Iterable[_dates.Dater],
+    base_span: Iterable[Period],
     /,
     prepend_initial: bool,
     append_terminal: bool,
-) -> tuple[Iterable[_dates.Dater], tuple[int, ...]]:
+) -> tuple[Iterable[Period], tuple[int, ...]]:
     """
     """
     base_span = tuple(t for t in base_span)
@@ -445,14 +451,14 @@ def _get_extended_span(
     start_date = min_base_date + min_shift
     end_date = max_base_date + max_shift
     base_columns = tuple(_dates.date_index(base_span, start_date))
-    extended_dates = tuple(_dates.Ranger(start_date, end_date))
+    extended_dates = tuple(Span(start_date, end_date))
     return extended_dates, base_columns, min_shift, max_shift
 
 
 def _slate_value_variant_iterator(
     value: Any,
     /,
-    from_to: tuple[_dates.Dater, _dates.Dater],
+    from_to: tuple[Period, Period],
 ) -> Iterator[Any]:
     """
     """

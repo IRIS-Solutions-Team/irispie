@@ -7,6 +7,7 @@ Implement SlatableProtocol
 from __future__ import annotations
 
 from .. import quantities as _quantities
+from ..series.main import (Series, )
 #]
 
 
@@ -36,6 +37,17 @@ class Slatable:
             qid_to_name[qid]
             for qid in sorted(qid_to_name)
         )
+        #
+        # Databox validation - all variables must be time series
+        variable_names = simultaneous.get_names(kind=_quantities.ANY_VARIABLE, )
+        validator = (
+            lambda x: isinstance(x, Series),
+            "Data for this variable is not a time series",
+        )
+        self.databox_validators = {
+            name: validator
+            for name in variable_names
+        }
         #
         # Fallbacks and overwrites
         self.fallbacks = {}

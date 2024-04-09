@@ -35,7 +35,7 @@ class Inlay:
         self,
         input_db: Databox,
         span: Iterable[Dater],
-        /,
+        *,
         plan: _plans.Plan | None = None,
         prepend_input: bool = True,
         target_databox: Databox | None = None,
@@ -50,16 +50,18 @@ class Inlay:
         method: Literal["sequential", ] = "sequential",
     ) -> tuple[Databox, dict[str, Any]]:
         """
-......................................................................
+················································································
 
 ==Simulate sequential model==
 
 ```
 output_db, info = self.simulate(
-    input_db, span,
-    /,
-    prepend_input=True,
+    input_db,
+    simulation_span,
+    *,
     plan=None,
+    execution_order="dates_equations",
+    prepend_input=True,
     target_databox=None,
     when_nonfinite="warning",
     num_variants=None,
@@ -90,8 +92,49 @@ simulating the model.
     which LHS variables to exogenize at which dates. If `plan=None`, no
     simulation plan is imposed on the simulation.
 
+???+ input "simulation_span"
+    [Time span](../data_management/spans.md) for the simulation; the time
+    span needs to go forward and have a one-period step.
+
+???+ input "plan"
+    [Simulation plan](plans.md) for the simulation specifying the
+    exogenized data points. If `None`, no simulation plan is imposed.
+
+???+ input "prepend_input"
+    If `True`, the input time series observations are prepended to the results.
+
+???+ input "target_databox"
+    Custom databox to which the simulated time series will be added. If
+    `None`, a new databox is created.
+
+???+ input "when_nonfinite"
+    Action to take when a simulated data point is non-finite (`nan` or `inf` or `-inf`). The options are
+
+    * `"error"`: raise an error,
+    * `"warning"`: log a warning,
+    * `"silent"`: do nothing.
+
+???+ input "execution_order"
+    Order in which the model equations and simulation periods are executed. The options are
+
+    * `"dates_equations"`: all equations for the first period, all equations for the second period, …
+    * `"equations_dates"`: all periods for the first equation, all periods for the second equation, …
+
+???+ input "num_variants"
+    Number of variants to simulate. If `None`, the number of variants is
+    determined by the number of variants in the `self` model.
+
+???+ input "remove_initial"
+    If `True`, remove the initial condition data, i.e. all lags before the
+    start of the simulation span.
+
+???+ input "remove_terminal"
+    If `True`, remove the terminal condition data, i.e. all leads after the
+    end of the simulation span.
+
 
 ### Returns ###
+
 
 ???+ returns "output_db"
 
@@ -102,7 +145,7 @@ simulating the model.
     Information about the simulation; `info` is a dict with the following
     items.
 
-......................................................................
+················································································
         """
         logger = _wl.get_colored_logger(_LOGGER_NAME, level=logging_level, )
         num_variants = self.num_variants if num_variants is None else num_variants

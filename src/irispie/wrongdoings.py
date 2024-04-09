@@ -237,12 +237,12 @@ STREAM_FACTORY = {
 }
 
 
-def create_stream(name: str, /, when_no_stream=None, ) -> _Stream:
+def create_stream(kind: str, title: str, /, when_no_stream=None, ) -> _Stream:
     """
     """
     #[
-    if name not in STREAM_FACTORY and when_no_stream:
-        name = when_no_stream
-    return STREAM_FACTORY[name]
+    if kind not in STREAM_FACTORY and when_no_stream:
+        kind = when_no_stream
+    return STREAM_FACTORY[kind](title, )
     #]
 

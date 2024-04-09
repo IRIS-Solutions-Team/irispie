@@ -5,6 +5,9 @@
 #[
 from __future__ import annotations
 
+from typing import (Self, TypeAlias, Literal, Sequence, Protocol, Any, NoReturn, )
+from collections.abc import (Iterable, Iterator, Callable, )
+from numbers import (Number, )
 import json as _js
 import copy as _co
 import types as _ty
@@ -14,15 +17,11 @@ import operator as _op
 import functools as _ft
 import itertools as _it
 import os as _os
-from typing import (Self, TypeAlias, Literal, Sequence, Protocol, Any, )
-from collections.abc import (Iterable, Iterator, Callable, )
-from numbers import (Number, )
 
 from ..conveniences import views as _views
 from ..conveniences import descriptions as _descriptions
 from ..conveniences import iterators as _iterators
 from ..series import main as _series
-from ..dataslates import main as _dataslates
 from .. import quantities as _quantities
 from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
@@ -463,6 +462,37 @@ during the duplication process.
             (t, self[s])
             for s, t in zip(source_names, target_names, )
         )
+
+    @_pages.reference(category="validation", )
+    def validate(
+        self: Self,
+        validators: dict[str, Callable] | None,
+        /,
+        strict_names: bool = False,
+        when_fails: Literal["critical", "error", "warning", "silent", ] = "error",
+        title: str = "Databox validation errors",
+        message_when_fails: str = "Failed validation",
+        message_when_missing: str = "Missing item",
+    ) -> None | NoReturn:
+        r"""
+        """
+        if not validators:
+            return
+        when_fails_stream = _wrongdoings.create_stream(when_fails, title, )
+        keys_to_validate = set(validators.keys())
+        if not strict_names:
+            keys_to_validate &= set(self.keys())
+        for key in keys_to_validate:
+            if key not in self:
+                message = f"{message_when_missing}: {key}"
+                when_fails_stream.add(message, )
+                continue
+            func = validators[key][0]
+            result = func(self[key], ) if callable(func) else True
+            if not result:
+                message = validators[key][1] if len(validators[key]) > 1 else message_when_fails
+                when_fails_stream.add(f"{message}: {key}", )
+        when_fails_stream._raise()
 
     @_pages.reference(category="manipulation", )
     def rename(
