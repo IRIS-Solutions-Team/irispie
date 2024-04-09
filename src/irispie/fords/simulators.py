@@ -32,6 +32,20 @@ class _FordSimulatableProtocol:
     #]
 
 
+def iter_frames(
+    simulatable_v: _FordSimulatableProtocol,
+    dataslate_v: _dataslates.Dataslate,
+    vid: int,
+    logger: _wl.Logger,
+    /,
+    *,
+    plan: _plans.PlanSimulate | None = None,
+) -> None:
+    """
+    """
+    pass
+
+
 def simulate(
     simulatable_v: _FordSimulatableProtocol,
     dataslate_v: _dataslates.Dataslate,
@@ -42,6 +56,8 @@ def simulate(
     plan: _plans.PlanSimulate | None = None,
     deviation: bool = False,
 ) -> dict[str, Any]:
+    """
+    """
     return simulate_flat(
         simulatable_v, dataslate_v, vid,
         plan=plan,

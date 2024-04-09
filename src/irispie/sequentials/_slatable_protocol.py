@@ -8,7 +8,7 @@ from __future__ import annotations
 #]
 
 
-class Slatable:
+class _Slatable:
     """
     """
     #[
@@ -54,9 +54,9 @@ class Inlay:
     """
     #[
 
-    def get_slatable(self, **kwargs, ) -> Slatable:
+    def get_slatable(self, **kwargs, ) -> _Slatable:
         """
         """
-        return Slatable(self, **kwargs, )
+        return _Slatable(self, **kwargs, )
 
 

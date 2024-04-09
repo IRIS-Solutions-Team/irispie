@@ -20,7 +20,7 @@ _PRINT_TOKEN_ZERO_SHIFT = "x[({qid},t)]"
 _PRINT_SHIFT = "[{shift:+g}]"
 
 
-class Token(NamedTuple):
+class Token(NamedTuple, ):
     """
     Incidence
     """

@@ -8,8 +8,7 @@ from __future__ import annotations
 from typing import (Any, Self, Iterable, )
 import numpy as _np
 
-from .. import dates as _dates
-from ..databoxes import main as _databoxes
+from ..databoxes.main import (Databox, )
 from . import _invariants as _invariants
 #]
 
@@ -37,7 +36,7 @@ class Variant:
     @classmethod
     def from_databox_variant(
         klass,
-        databox_v: _databoxes.Databox | dict,
+        databox_v: Databox | dict,
         invariant: _invariants.Invariant,
         /,
         fallbacks: dict[str, Number] | None = None,

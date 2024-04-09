@@ -59,6 +59,7 @@ Chartpacks
     highlight: Iterable[_dates.Dater] | None = None
     legend: Iterable[str] | None = None
     reverse_plot_order: bool = False
+    shared_xaxes: bool = False
     _figures = None
     _description = None
 
@@ -259,14 +260,17 @@ class _Figure:
         highlight: tuple[_dates.Dater, ...] | None = None,
         legend: Iterable[str, ...] | None = None,
         reverse_plot_order: bool = False,
+        shared_xaxes: bool = False,
         **kwargs,
     ) -> None:
         """
         """
         tiles = _resolve_tiles(tiles, self.num_charts, )
         figure = _plotly_wrap.make_subplots(
-            rows=tiles[0], columns=tiles[1],
+            rows=tiles[0],
+            columns=tiles[1],
             subplot_titles=tuple(c.caption for c in self),
+            shared_xaxes=shared_xaxes,
         )
         for i, chart in enumerate(self, ):
             chart.plot(
@@ -358,7 +362,7 @@ class _Chart:
         """
         """
         self._expression = (expression or "").strip()
-        self.title = (title or "").strip()
+        self.title = (title or "").strip() or self._expression
         self._transform = (transform or "").strip()
 
     @classmethod

@@ -22,8 +22,8 @@ from ..conveniences import views as _views
 from ..conveniences import descriptions as _descriptions
 from ..conveniences import iterators as _iterators
 from ..series import main as _series
+from ..dates import (Period, Frequency, Span, EmptySpan, )
 from .. import quantities as _quantities
-from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
 from .. import pages as _pages
 
@@ -60,13 +60,13 @@ class SteadyDataboxableProtocol(Protocol):
 
 
 def _extended_range_tuple_from_base_span(
-    input_span: Iterable[_dates.Dater],
+    input_span: Iterable[Period],
     min_shift: int,
     max_shift: int,
     prepend_initial: bool,
     append_terminal: bool,
     /,
-) -> tuple[_dates.Date, _dates.Date]:
+) -> tuple[Period, Period]:
     """
     """
     range_list = tuple(t for t in input_span)
@@ -205,8 +205,8 @@ Databox, incorporating all its functionalities.
         names: Sequence[str],
         *,
         descriptions: Iterable[str] | None = None,
-        dates: Iterable[_dates.Date] | None = None,
-        start_date: _dates.Date | None = None,
+        periods: Iterable[Period] | None = None,
+        start_date: Period | None = None,
         target_databox: Self | None = None,
         orientation: Literal["vertical", "horizontal", ] = "vertical",
     ) -> Self:
@@ -222,7 +222,7 @@ time series created from the rows or columns of the numeric array.
         array,
         names,
         descriptions=None,
-        dates=None,
+        periods=None,
         start_date=None,
         target_databox=None,
         orientation="vertical",
@@ -241,12 +241,12 @@ time series created from the rows or columns of the numeric array.
 ???+ input "descriptions"
     Descriptions for each series in the array.
 
-???+ input "dates"
-    An iterable of dates corresponding to the rows of the array. Used if the data
+???+ input "periods"
+    An iterable of time periods corresponding to the rows of the array. Used if the data
     represents time series.
 
 ???+ input "start_date"
-    The starting date for the time series data. Used if 'dates' is not provided.
+    The starting date for the time series data. Used if 'periods' is not provided.
 
 ???+ input "target_databox"
     An existing Databox to which the array data will be added. If `None`, a new 
@@ -267,7 +267,7 @@ time series created from the rows or columns of the numeric array.
 ················································································
         """
         array = array if orientation == "horizontal" else array.T
-        series_constructor = _get_series_constructor(start_date, dates, )
+        series_constructor = _get_series_constructor(start_date, periods, )
         return klass._from_horizontal_array_and_constructor(
             array,
             names,
@@ -796,7 +796,7 @@ Select Databox items based on custom name or value test functions.
     @_pages.reference(category="information", )
     def get_series_names_by_frequency(
         self,
-        frequency: _dates.Frequency,
+        frequency: Frequency,
     ) -> tuple[str]:
         r"""
 ················································································
@@ -834,8 +834,8 @@ Obtain a list of time series names that match a specified frequency.
     @_pages.reference(category="information", )
     def get_span_by_frequency(
         self,
-        frequency: _dates.Frequency,
-    ) -> _dates.Span:
+        frequency: Frequency,
+    ) -> Span:
         r"""
 ················································································
 
@@ -866,16 +866,16 @@ Get the encompassing date span for all time series with a specified frequency.
 
 ················································································
         """
-        if frequency == _dates.Frequency.UNKNOWN:
-            return _dates.EmptySpan()
+        if frequency == Frequency.UNKNOWN:
+            return EmptySpan()
         names = self.get_series_names_by_frequency(frequency)
         if not names:
-            return _dates.EmptySpan()
-        start_dates = (self[n].start_date for n in names)
-        end_dates = (self[n].end_date for n in names)
-        min_start_date = min(start_dates, key=_op.attrgetter("serial"), )
-        max_end_date = max(end_dates, key=_op.attrgetter("serial"), )
-        return _dates.Span(min_start_date, max_end_date, )
+            return EmptySpan()
+        start_periods = (self[n].start_date for n in names)
+        end_periods = (self[n].end_date for n in names)
+        min_start_date = min(start_periods, key=_op.attrgetter("serial"), )
+        max_end_date = max(end_periods, key=_op.attrgetter("serial"), )
+        return Span(min_start_date, max_end_date, )
 
     def to_json(self, file_name, **kwargs):
         """
@@ -928,8 +928,8 @@ Get the encompassing date span for all time series with a specified frequency.
     def clip(
         self,
         /,
-        new_start_date: _dates.Dater | None = None,
-        new_end_date: _dates.Dater | None = None,
+        new_start_date: Period | None = None,
+        new_end_date: Period | None = None,
     ) -> None:
         """
         """
@@ -948,7 +948,7 @@ Get the encompassing date span for all time series with a specified frequency.
     def prepend(
         self,
         prepending: Self,
-        end_prepending: _dates.Dater,
+        end_prepending: Period,
         /,
     ) -> Self:
         """
@@ -999,7 +999,7 @@ Get the encompassing date span for all time series with a specified frequency.
     def steady(
         klass,
         steady_databoxable: SteadyDataboxableProtocol,
-        input_span: Iterable[_dates.Dater],
+        input_span: Iterable[Period],
         /,
         deviation: bool = False,
         prepend_initial: bool = True,
@@ -1126,8 +1126,8 @@ def _default_item_iterator(value: Any, /, ) -> Iterator[Any]:
 
 
 def _get_series_constructor(
-    start_date: _dates.Dater | None = None,
-    dates: Iterable[_dates.Dater] | None = None,
+    start_date: Period | None = None,
+    periods: Iterable[Period] | None = None,
     /,
 ) -> Callable:
     """
@@ -1138,10 +1138,10 @@ def _get_series_constructor(
             _series.Series.from_start_date_and_values,
             start_date=start_date,
         )
-    elif dates is not None:
+    elif periods is not None:
         return _ft.partial(
             _series.Series.from_dates_and_values,
-            dates=dates,
+            dates=periods,
         )
     #]
 

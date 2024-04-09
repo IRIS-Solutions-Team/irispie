@@ -124,7 +124,7 @@ class _LogDataslate:
         """
         """
         self = klass()
-        self._dataslate = Dataslate.nan_from_names_dates(
+        self._dataslate = Dataslate.nan_from_names_periods(
             measurement_names, dates,
             num_variants=num_variants,
         )

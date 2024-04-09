@@ -15,22 +15,34 @@ from .. import quantities as _quantities
 from .. import has_variants as _has_variants
 from ..databoxes.main import (Databox, )
 from ..dataslates.main import (Dataslate, )
-from ..fords import simulators as _ford_simulators
 from ..fords import solutions as _solutions
-from ..periods import simulators as _period_simulators
+from ..fords import simulators as _ford_simulator
+from ..periods import simulators as _period_simulator
 from ..plans import main as _plans
 
 from . import main as _simultaneous
 #]
 
 
-_SIMULATE_METHODS = {
-    "first_order": _ford_simulators.simulate,
-    "period": _period_simulators.simulate,
+_SIMULATION_MODULE = {
+    "first_order": _ford_simulator,
+    "period": _period_simulator,
 }
 
 
 InfoOutput = dict[str, Any] | list[dict[str, Any]]
+
+
+class _SimulationModuleProtocol(Protocol, ):
+    """
+    """
+    #[
+
+    def simulate(self, *args, **kwargs, ) -> dict[str, Any]: ...
+
+    def iter_frames(self, *args, **kwargs, ) -> Iterable[Any]: ...
+
+    #]
 
 
 class Inlay:
@@ -85,11 +97,11 @@ class Inlay:
         #=======================================================================
         # Main loop over variants
         info = []
-        simulate_method = _SIMULATE_METHODS[method]
+        simulation_module = _SIMULATION_MODULE[method]
         for vid, model_v, dataslate_v in zipped:
             #
             # Simulate and write to dataslate
-            info_v = simulate_method(
+            info_v = simulation_module.simulate(
                 model_v, dataslate_v, vid, logger,
                 plan=plan,
                 **kwargs,

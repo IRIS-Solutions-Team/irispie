@@ -56,8 +56,11 @@ def simulate(
     qid_to_name = simulatable_v.create_qid_to_name()
     name_to_qid = simulatable_v.create_name_to_qid()
     all_quantities = simulatable_v.get_quantities()
-    endogenous_names = simulatable_v.simulate_can_be_exogenized
-    exogenous_names = simulatable_v.simulate_can_be_endogenized
+    #
+    plannable = simulatable_v.get_simulation_plannable()
+    endogenous_names = plannable.can_be_exogenized_unanticipated
+    exogenous_names = plannable.can_be_endogenized_unanticipated
+    #
     endogenous_qids = tuple(name_to_qid[name] for name in endogenous_names)
     exogenous_qids = tuple(name_to_qid[name] for name in exogenous_names)
     wrt_qids = endogenous_qids
@@ -95,26 +98,29 @@ def simulate(
         fallback_value=fallback_value,
         when_missing_stream=when_missing_stream,
     )
-
+    #
+    periods = dataslate_v.periods
+    data = dataslate_v.get_data_variant(0, )
+    #
     for t in dataslate_v.base_columns:
         current_wrt_qids, current_evaluator = \
-            _set_up_current_period(plan, evaluator_factory, wrt_qids, dataslate_v.dates[t], base_evaluator, name_to_qid, )
+            _set_up_current_period(plan, evaluator_factory, wrt_qids, periods[t], base_evaluator, name_to_qid, )
         current_evaluator.iter_printer.header_message = \
-            _create_header_message(vid, t, dataslate_v.dates[t], )
-        dataslate_v.data[current_wrt_qids, t] = starter(dataslate_v.data, current_wrt_qids, t, )
-        catch_missing(dataslate_v.data, t, )
+            _create_header_message(vid, t, periods[t], )
+        data[current_wrt_qids, t] = starter(data, current_wrt_qids, t, )
+        catch_missing(data, t, )
         #
-        init = current_evaluator.get_init_guess(dataslate_v.data, t, )
+        init = current_evaluator.get_init_guess(data, t, )
         root_final = _sp.optimize.root(
             current_evaluator.eval, init,
-            args=(dataslate_v.data, t, None, ),
+            args=(data, t, None, ),
             jac=True,
             **root_settings,
         )
         #
         if not root_final.success:
             _catch_fail(root_final, when_fails, )
-        current_evaluator.update(root_final.x, dataslate_v.data, t, )
+        current_evaluator.update(root_final.x, data, t, )
         #
         current_evaluator.iter_printer.print_footer()
         current_evaluator.iter_printer.reset()
@@ -141,8 +147,8 @@ def _set_up_current_period(
     if plan is None:
         return wrt_qids, base_evaluator
     #
-    names_exogenized = plan.get_names_exogenized_in_period(current_period, )
-    names_endogenized = plan.get_names_endogenized_in_period(current_period, )
+    names_exogenized = plan.get_names_exogenized_unanticipated_in_period(current_period, )
+    names_endogenized = plan.get_names_endogenized_unanticipated_in_period(current_period, )
     if not names_exogenized and not names_endogenized:
         return wrt_qids, base_evaluator
     #
@@ -208,7 +214,7 @@ def _catch_missing(
     #
     data[missing, t] = fallback_value
     #
-    current_period = dataslate_v.dates[t]
+    current_period = dataslate_v.periods[t]
     shift = 0
     for qid in _np.flatnonzero(missing):
         when_missing_stream.add(

@@ -41,7 +41,8 @@ from . import _steady as _steady
 from . import _logly as _logly
 from . import _get as _get
 from . import _assigns as _assigns
-from . import _slatable_protocol as _slatable_protocol
+from . import _slatable_protocols as _slatable_protocols
+from . import _plannable_protocols as _plannable_protocols
 #]
 
 
@@ -49,10 +50,6 @@ __all__ = [
     "Simultaneous",
     "Model",
 ]
-
-
-_SIMULATE_CAN_BE_EXOGENIZED = _quantities.QuantityKind.ENDOGENOUS_VARIABLE
-_SIMULATE_CAN_BE_ENDOGENIZED = _quantities.QuantityKind.EXOGENOUS_VARIABLE | _quantities.QuantityKind.ANY_SHOCK
 
 
 @_pages.reference(
@@ -74,7 +71,8 @@ class Simultaneous(
     _logly.Inlay,
     _get.Inlay,
     _covariances.Inlay,
-    _slatable_protocol.Inlay,
+    _slatable_protocols.Inlay,
+    _plannable_protocols.Inlay,
 ):
     """
 ················································································
@@ -516,24 +514,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         """
         return self._invariant._context
-
-    #
-    # ===== Implement PlannableSimulateProtocol =====
-    #
-
-    @property
-    def simulate_can_be_exogenized(self, /, ) -> tuple[str, ...]:
-        return tuple(_quantities.generate_quantity_names_by_kind(
-            self._invariant.quantities, _SIMULATE_CAN_BE_EXOGENIZED,
-        ))
-
-    @property
-    def simulate_can_be_endogenized(self, /, ) -> tuple[str, ...]:
-        return tuple(_quantities.generate_quantity_names_by_kind(
-            self._invariant.quantities, _SIMULATE_CAN_BE_ENDOGENIZED,
-        ))
-
-    simulate_can_be_when_data = ()
 
     #]
 

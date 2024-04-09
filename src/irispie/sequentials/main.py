@@ -27,6 +27,7 @@ from . import _simulate as _simulate
 from . import _assigns as _assigns
 from . import _get as _get
 from . import _slatable_protocol as _slatable_protocol
+from . import _plannable_protocols as _plannable_protocols
 
 #]
 
@@ -52,6 +53,7 @@ class Sequential(
     _assigns.Inlay,
     _get.Inlay,
     _slatable_protocol.Inlay,
+    _plannable_protocols.Inlay,
     #
     _has_variants.HasVariantsMixin,
 ):
@@ -572,27 +574,6 @@ self.set_description(description, )
         """
         """
         return self.get_variant(request, )
-
-    #
-    # ===== Implement PlannableSimulateProtocol =====
-    #
-
-    @property
-    def simulate_can_be_exogenized(self, /, ) -> tuple[str, ...]:
-        return tuple(set(
-            i.lhs_name for i in self._invariant.explanatories
-            if not i.is_identity
-        ))
-
-    @property
-    def simulate_can_be_endogenized(self, /, ) -> tuple[str, ...]:
-        return tuple(set(
-            i.residual_name for i in self._invariant.explanatories
-            if not i.is_identity
-        ))
-
-    simulate_can_be_anticipated = ()
-    simulate_can_be_when_data = simulate_can_be_exogenized
 
     #]
 

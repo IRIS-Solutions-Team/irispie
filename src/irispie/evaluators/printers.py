@@ -165,7 +165,7 @@ class BasicIterPrinter(IterPrinter, ):
     ) -> None:
         self._qids = tuple(qids)
         self._qid_to_print = {
-            i: _quantities.wrap_logly(qid_to_name[i], qid_to_logly[i], )
+            i: _quantities.wrap_logly(qid_to_name[i], qid_to_logly.get(i, False), )
             for i in qids
         }
     #]

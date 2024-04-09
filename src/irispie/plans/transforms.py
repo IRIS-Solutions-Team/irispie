@@ -46,6 +46,14 @@ class PlanTransform:
     """
     """
     #[
+    _DEFAULT_NAME_FORMAT = None
+    _SYMBOL = None
+
+    __slots__ = (
+        "when_data",
+        "_name_format",
+        "_shift",
+    )
 
     def __init__(
         self,

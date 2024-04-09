@@ -11,11 +11,11 @@ import dataclasses as _dc
 import copy as _cp
 import numpy as _np
 
-from .. import dates as _dates
-from .. import has_variants as _has_variants
+from ..dates import (Period, Frequency, )
 from ..conveniences import descriptions as _descriptions
 from ..series import main as _series
 from ..databoxes import main as _databoxes
+from .. import has_variants as _has_variants
 #]
 
 
@@ -36,14 +36,14 @@ class Invariant:
         "index_base_columns",
         "names",
         "output_qids",
-        "dates",
+        "periods",
         "min_max_shift",
     )
 
     def __init__(
         self,
         names: Iterable[str],
-        dates: Iterable[_dates.Dater],
+        periods: Iterable[Period],
         /,
         *,
         base_columns: Iterable[int] | None = None,
@@ -51,13 +51,13 @@ class Invariant:
         output_names: Iterable[str] | None = None,
         qid_to_logly: dict[int, bool | None] | None = None,
         min_max_shift: tuple[int, int] = (0, 0),
-        frequency: _dates.Frequency | None = None,
+        frequency: Frequency | None = None,
         tag_alongs: dict[str, Any] | None = None,
     ) -> None:
         """
         """
         self.names = tuple(names)
-        self.dates = tuple(dates)
+        self.periods = tuple(periods)
         base_columns = base_columns or ()
         self.index_base_columns = tuple(i in base_columns for i in range(self.num_periods))
         self._populate_descriptions(descriptions, )
@@ -86,7 +86,7 @@ class Invariant:
     def num_periods(self, /, ) -> int:
         """
         """
-        return len(self.dates)
+        return len(self.periods)
 
     @property
     def num_names(self, /, ) -> int:
@@ -95,16 +95,22 @@ class Invariant:
         return len(self.names)
 
     @property
-    def from_to(self, /, ) -> tuple[_dates.Dater, _dates.Dater]:
+    def from_to(self, /, ) -> tuple[Period, Period]:
         """
         """
-        return self.dates[0], self.dates[-1]
+        return self.periods[0], self.periods[-1]
 
     @property
     def base_columns(self, /, ) -> tuple[int]:
         """
         """
         return tuple(i for i in range(self.num_periods) if self.index_base_columns[i])
+
+    @property
+    def base_periods(self, /, ) -> tuple[Period]:
+        """
+        """
+        return tuple(self.periods[i] for i in self.base_columns)
 
     @property
     def nonbase_columns(self, /, ) -> tuple[int]:
@@ -160,7 +166,7 @@ class Invariant:
         """
         """
         if remove:
-            self.dates = self.dates[remove:]
+            self.periods = self.periods[remove:]
             self.index_base_columns = self.index_base_columns[remove:]
 
     def remove_periods_from_end(
@@ -171,7 +177,7 @@ class Invariant:
         """
         """
         if remove:
-            self.dates = self.dates[:-remove]
+            self.periods = self.periods[:-remove]
             self.index_base_columns = self.index_base_columns[:-remove]
 
 

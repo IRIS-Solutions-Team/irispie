@@ -1193,8 +1193,12 @@ The time span is reversed in place.
     def __iter__(self, /, ) -> Iterable:
         return (self._class(x) for x in self._serials) if not self.needs_resolve else None
 
-    def __getitem__(self, i: int, /, ) -> Perio | None:
-        return self._class(self._serials[i]) if not self.needs_resolve else None
+    def __getitem__(self, i: int, /, ) -> Period | tuple[Period] | None:
+        if isinstance(i, int):
+            return self._class(self._serials[i]) if not self.needs_resolve else None
+        elif isinstance(i, slice):
+            indexes = range(*i.indices(len(self)))
+            return tuple(t for i, t in enumerate(self) if i in indexes)
 
     def resolve(self, context: ResolutionContextProtocol, /, ) -> Self:
         resolved_start_date = self._start_date if self._start_date else self._start_date.resolve(context, )

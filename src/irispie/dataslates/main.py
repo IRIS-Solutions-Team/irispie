@@ -70,10 +70,10 @@ class Dataslate(
         return self
 
     @classmethod
-    def nan_from_names_dates(
+    def nan_from_names_periods(
         klass,
         names: Iterable[str],
-        dates: Iterable[Period] | string,
+        periods: Iterable[Period] | string,
         /,
         num_variants: int = 1,
         **kwargs,
@@ -81,11 +81,11 @@ class Dataslate(
         """
         """
         names = tuple(names or databox.keys())
-        dates = _dates.ensure_date_tuple(dates, )
+        periods = _dates.ensure_date_tuple(periods, )
         num_names = len(names)
-        num_dates = len(dates)
+        num_periods = len(periods)
         self = klass()
-        self._invariant = _invariants.Invariant(names, dates, **kwargs, )
+        self._invariant = _invariants.Invariant(names, periods, **kwargs, )
         self._variants = [
             _variants.Variant.nan_data_array(self._invariant, )
             for _ in range(num_variants, )
@@ -113,7 +113,7 @@ class Dataslate(
         klass,
         databox: Databox | dict,
         names: Iterable[str],
-        dates: Iterable[Period] | string,
+        periods: Iterable[Period] | string,
         /,
         num_variants: int = 1,
         fallbacks: dict[str, Number] | None = None,
@@ -125,12 +125,12 @@ class Dataslate(
         """
         """
         names = tuple(names or databox.keys())
-        dates = _dates.ensure_date_tuple(dates, )
+        periods = _dates.ensure_date_tuple(periods, )
         #
         if validators:
             Databox.validate(databox, validators, )
         #
-        from_to = dates[0], dates[-1] if dates else ()
+        from_to = periods[0], periods[-1] if periods else ()
         item_iterator = \
             _ft.partial(_slate_value_variant_iterator, from_to=from_to, )
         #
@@ -155,7 +155,7 @@ class Dataslate(
         )
         #
         self = klass()
-        self._invariant = _invariants.Invariant(names, dates, **kwargs, )
+        self._invariant = _invariants.Invariant(names, periods, **kwargs, )
         self._variants = [
             _variants.Variant.from_databox_variant(
                 databox_v, self._invariant,
@@ -185,14 +185,14 @@ class Dataslate(
         names = tuple(slatable.databox_names, )
         if extra_databox_names:
             names = names + tuple(i for i in extra_databox_names if i not in names)
-        dates, base_columns, *min_max_shift = _get_extended_span(
+        periods, base_columns, *min_max_shift = _get_extended_span(
             slatable, base_span,
             prepend_initial=prepend_initial,
             append_terminal=append_terminal,
         )
         #
         return klass.from_databox(
-            databox, names, dates,
+            databox, names, periods,
             base_columns=base_columns,
             min_max_shift=min_max_shift,
             qid_to_logly=slatable.qid_to_logly,
@@ -213,10 +213,18 @@ class Dataslate(
         return self._invariant.logly_indexes
 
     @property
-    def dates(self, /, ) -> tuple[str]:
+    def periods(self, /, ) -> tuple[str]:
         """
         """
-        return self._invariant.dates
+        return self._invariant.periods
+
+    @property
+    def base_periods(self, /, ) -> tuple[Period]:
+        """
+        """
+        return self._invariant.base_periods
+
+    dates = periods
 
     @property
     def names(self, /, ) -> tuple[str]:
@@ -297,7 +305,7 @@ class Dataslate(
             target_databox = Databox()
         num_names = self.num_names
         num_variants = self.num_variants
-        start_date = self._invariant.dates[0]
+        start_date = self._invariant.periods[0]
         for qid in self._invariant.output_qids:
             name = self._invariant.names[qid]
             description = self._invariant.descriptions[qid]
@@ -372,66 +380,6 @@ class Dataslate(
 
     #]
 
-
-#class VerticalDataslate(_Dataslate, ):
-#    """
-#    """
-#    #[
-#    _record_reshape = (-1, 1, )
-#
-#    @property
-#    def row_dates(self, /, ) -> tuple[Period]:
-#        """
-#        """
-#        return self.dates
-#
-#    @property
-#    def column_names(self, /, ) -> tuple[str]:
-#        """
-#        """
-#        return self.names
-#
-#    @property
-#    def base_rows(self, /, ) -> tuple[int, ...]:
-#        """
-#        """
-#        return self._base_indexes
-#
-#    def retrieve_record(
-#        self,
-#        record_id: int,
-#        /,
-#        slice_: slice | None = None,
-#    ) -> _np.ndarray:
-#        """
-#        """
-#        if slice_ is None:
-#            return self.data[:, record_id]
-#        else:
-#            return self.data[slice_, record_id]
-#
-#    def _remove_terminal_data(
-#        self,
-#        last_base_index: int,
-#        /,
-#    ) -> None:
-#        self.data = self.data[:last_base_index+1, :]
-#
-#    def store_record(
-#        self,
-#        values: _np.ndarray,
-#        record_id: int,
-#        /,
-#        slice_: slice | None = None,
-#    ) -> None:
-#        """
-#        """
-#        if slice_ is None:
-#            self.data[:, record_id] = values
-#        else:
-#            self.data[slice_, record_id] = values
-#
-#    #]
 
 def _get_extended_span(
     slatable: SlatableProtocol,
