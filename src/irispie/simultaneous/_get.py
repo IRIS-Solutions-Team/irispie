@@ -352,6 +352,22 @@ steady_changes = self.get_steady_changes(
             if kind else self._invariant.dynamic_equations
         )
 
+    def get_human_equations(
+        self,
+        /,
+        kind: _equations.EquationKind | None = None,
+    ) -> tuple[str]:
+        def _concatenate(dynamic: str, steady: str) -> str:
+            return f"{dynamic} !! {steady}" if steady != dynamic else dynamic
+        zipper = zip(
+            self.get_dynamic_equations(kind=kind, ),
+            self.get_steady_equations(kind=kind, ),
+        )
+        return tuple(
+            _concatenate(dynamic.human, steady.human, )
+            for dynamic, steady in zipper
+        )
+
     def get_std_qids_for_shock_qids(
         self: Self,
         shock_qids: Iterable[int],

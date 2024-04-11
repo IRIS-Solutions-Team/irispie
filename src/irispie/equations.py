@@ -46,9 +46,11 @@ class EquationKind(_en.Flag):
     #]
 
 
-__all__  = [
-    "TRANSITION_EQUATION", "MEASUREMENT_EQUATION",
-]
+__all__  = (
+    "TRANSITION_EQUATION",
+    "MEASUREMENT_EQUATION",
+    "ENDOGENOUS_EQUATION",
+)
 for n in __all__:
     exec(f"{n} = EquationKind.{n}")
 

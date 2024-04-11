@@ -53,8 +53,8 @@ class Variant:
             new_data = _create_nan_vector()
             if n in databox_v:
                 new_data[:] = databox_v[n]
-
             data_list.append(new_data, )
+        #
         self.data = _np.vstack(data_list, )
         nonbase_columns = invariant.nonbase_columns
         if clip_data_to_base_span and nonbase_columns:

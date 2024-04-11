@@ -21,7 +21,7 @@ import os as _os
 from ..conveniences import views as _views
 from ..conveniences import descriptions as _descriptions
 from ..conveniences import iterators as _iterators
-from ..series import main as _series
+from ..series.main import (Series, )
 from ..dates import (Period, Frequency, Span, EmptySpan, )
 from .. import quantities as _quantities
 from .. import wrongdoings as _wrongdoings
@@ -206,7 +206,7 @@ Databox, incorporating all its functionalities.
         *,
         descriptions: Iterable[str] | None = None,
         periods: Iterable[Period] | None = None,
-        start_date: Period | None = None,
+        start: Period | None = None,
         target_databox: Self | None = None,
         orientation: Literal["vertical", "horizontal", ] = "vertical",
     ) -> Self:
@@ -223,7 +223,7 @@ time series created from the rows or columns of the numeric array.
         names,
         descriptions=None,
         periods=None,
-        start_date=None,
+        start=None,
         target_databox=None,
         orientation="vertical",
     )
@@ -245,8 +245,8 @@ time series created from the rows or columns of the numeric array.
     An iterable of time periods corresponding to the rows of the array. Used if the data
     represents time series.
 
-???+ input "start_date"
-    The starting date for the time series data. Used if 'periods' is not provided.
+???+ input "start"
+    The start period for the time series data. Used if 'periods' is not provided.
 
 ???+ input "target_databox"
     An existing Databox to which the array data will be added. If `None`, a new 
@@ -267,7 +267,7 @@ time series created from the rows or columns of the numeric array.
 ················································································
         """
         array = array if orientation == "horizontal" else array.T
-        series_constructor = _get_series_constructor(start_date, periods, )
+        series_constructor = _get_series_constructor(start, periods, )
         return klass._from_horizontal_array_and_constructor(
             array,
             names,
@@ -828,7 +828,7 @@ Obtain a list of time series names that match a specified frequency.
 ················································································
         """
         def _is_series_with_frequency(x, ):
-            return isinstance(x, _series.Series) and x.frequency == frequency
+            return isinstance(x, Series) and x.frequency == frequency
         return self.filter(value_test=_is_series_with_frequency, )
 
     @_pages.reference(category="information", )
@@ -891,7 +891,7 @@ Get the encompassing date span for all time series with a specified frequency.
     ) -> None:
         """
         """
-        self._lay(other, _series.Series.overlay, **kwargs)
+        self._lay(other, Series.overlay, **kwargs)
 
     def underlay(
         self,
@@ -901,7 +901,7 @@ Get the encompassing date span for all time series with a specified frequency.
     ) -> None:
         """
         """
-        self._lay(other, _series.Series.underlay, **kwargs)
+        self._lay(other, Series.underlay, **kwargs)
 
     def _lay(
         self,
@@ -915,7 +915,7 @@ Get the encompassing date span for all time series with a specified frequency.
         """"
         """
         if names is None:
-            def value_test(x): return isinstance(x, _series.Series)
+            def value_test(x): return isinstance(x, Series)
             self_names = self.filter(value_test=value_test, )
             other_names = other.filter(value_test=value_test, )
             names = tuple(set(self_names) & set(other_names))
@@ -940,7 +940,7 @@ Get the encompassing date span for all time series with a specified frequency.
             if new_start_date is not None
             else new_end_date.frequency
         )
-        value_test = lambda x: isinstance(x, _series.Series) and x.frequency == frequency
+        value_test = lambda x: isinstance(x, Series) and x.frequency == frequency
         names = self.filter(value_test=value_test, )
         for n in names:
             self[n].clip(new_start_date, new_end_date, )
@@ -1126,22 +1126,16 @@ def _default_item_iterator(value: Any, /, ) -> Iterator[Any]:
 
 
 def _get_series_constructor(
-    start_date: Period | None = None,
+    start: Period | None = None,
     periods: Iterable[Period] | None = None,
     /,
-) -> Callable:
+) -> Callable | None:
     """
     """
     #[
-    if start_date is not None:
-        return _ft.partial(
-            _series.Series.from_start_date_and_values,
-            start_date=start_date,
-        )
+    if start is not None:
+        return lambda values: Series(start=start, values=values, )
     elif periods is not None:
-        return _ft.partial(
-            _series.Series.from_dates_and_values,
-            dates=periods,
-        )
+        return lambda values: Series(periods=periods, values=values, )
     #]
 

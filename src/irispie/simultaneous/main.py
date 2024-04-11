@@ -255,9 +255,10 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         qids, invalid_names = _quantities.lookup_qids_by_name(quantities, names, )
         if invalid_names:
             raise _wrongdoings.IrisPieError(f"Invalid model name \"{invalid_names[0]}\"", )
-        else:
-            singleton_dict = self._get_values("levels", qids, )
-            return singleton_dict[name]
+        return _has_variants.unpack_singleton(
+            self._get_values("levels", qids, )[name],
+            self.is_singleton,
+        )
 
     def change_logly(
         self,

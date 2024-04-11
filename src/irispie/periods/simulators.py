@@ -57,11 +57,8 @@ def simulate(
     name_to_qid = simulatable_v.create_name_to_qid()
     all_quantities = simulatable_v.get_quantities()
     #
-    endogenous_qids, exogenous_qids \
-        = _get_exogenous_endogenous_qids(simulatable_v, name_to_qid, )
-    #
-    wrt_qids = endogenous_qids
-    wrt_equations = simulatable_v.get_dynamic_equations(kind=_equations.EquationKind.ENDOGENOUS_EQUATION, )
+    wrt_qids = _get_wrt_qids(simulatable_v, name_to_qid, )
+    wrt_equations = simulatable_v.get_dynamic_equations(kind=_equations.ENDOGENOUS_EQUATION, )
 
     if len(wrt_equations) != len(wrt_qids):
         raise _wrongdoings.IrisPieError(
@@ -239,27 +236,22 @@ def _create_header_message(
     return f"[Variant {vid}][Period {current_period}]"
 
 
-def _get_exogenous_endogenous_qids(
+def _get_wrt_qids(
     simulatable_v,
     name_to_qid: dict[str, int],
     /,
-) -> tuple[tuple[int, ...], tuple[int, ...]]:
+) -> tuple[int, ...]:
     """
     """
     plannable = simulatable_v.get_simulation_plannable()
-    endogenous_names = (
-        set(plannable.can_be_exogenized_unanticipated)
-        | set(plannable.can_be_exogenized_anticipated)
+    wrt_names \
+        = tuple(plannable.can_be_exogenized_unanticipated) \
+        + tuple(plannable.can_be_exogenized_anticipated)
+    wrt_qids = sorted(
+        name_to_qid[name]
+        for name in set(wrt_names)
     )
-    exogenous_names = (
-        set(plannable.can_be_endogenized_unanticipated)
-        | set(plannable.can_be_endogenized_anticipated)
-    )
-    #
-    endogenous_qids = (name_to_qid[name] for name in endogenous_names)
-    exogenous_qids = (name_to_qid[name] for name in exogenous_names)
-    #
-    return sorted(endogenous_qids), sorted(exogenous_qids)
+    return wrt_qids
 
 
 _ITER_STARTER = {

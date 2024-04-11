@@ -612,12 +612,12 @@ the time series data.
 ················································································
         """
         work_db = input_db.shallow()
-        if not shocks_from_data:
-            shock_names = self.get_names(kind=_quantities.ANY_SHOCK, )
-            work_db.remove(shock_names, strict_names=False, )
-        if not stds_from_data:
-            std_names = self.get_names(kind=_quantities.ANY_STD, )
-            work_db.remove(std_names, strict_names=False, )
+        #if not shocks_from_data:
+        #    shock_names = self.get_names(kind=_quantities.ANY_SHOCK, )
+        #    work_db.remove(shock_names, strict_names=False, )
+        #if not stds_from_data:
+        #    std_names = self.get_names(kind=_quantities.ANY_STD, )
+        #    work_db.remove(std_names, strict_names=False, )
 
         slatable = self.get_slatable(
             shocks_from_data=shocks_from_data,

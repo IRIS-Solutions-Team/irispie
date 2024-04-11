@@ -1,5 +1,5 @@
 """
-Dates, date ranges, and date frequencies
+Time periods and time spans
 """
 
 

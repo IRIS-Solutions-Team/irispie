@@ -20,6 +20,7 @@ import copy as _cp
 from ..conveniences import descriptions as _descriptions
 from ..conveniences import copies as _copies
 from ..conveniences import iterators as _iterators
+from ..dates import (Period, Span, Frequency, EmptyRanger, )
 from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
 from .. import has_variants as _has_variants
@@ -91,7 +92,7 @@ __all__ = (
     + FUNCTION_ADAPTATIONS
 )
 
-Dates: TypeAlias = _dates.Dater | Iterable[_dates.Dater] | _dates.Ranger | EllipsisType | None
+Dates: TypeAlias = Period | Iterable[Period] | Span | EllipsisType | None
 VariantsRequestType: TypeAlias = int | Iterable[int] | slice | None
 
 
@@ -182,9 +183,11 @@ variants of the data, stored as mutliple columns.
         num_variants: int = 1,
         data_type: type = _np.float64,
         description: str = "",
-        start_date: _dates.Dater | None = None,
-        dates: Iterable[_dates.Dater] | None = None,
-        frequency: _dates.Frequency | None = None,
+        start: Period | None = None,
+        start_date: Period | None = None,
+        periods: Iterable[Period] | None = None,
+        dates: Iterable[Period] | None = None,
+        frequency: Frequency | None = None,
         values: Any | None = None,
         func: Callable | None = None,
     ) -> None:
@@ -195,7 +198,7 @@ variants of the data, stored as mutliple columns.
 
 ```
 self = Series(
-    start_date=start_date,
+    start=start,
     values=values,
 )
 ```
@@ -210,9 +213,9 @@ self = Series(
 ### Input arguments ###
 
 
-???+ input "start_date"
+???+ input "start"
 
-    The date of the first value in the `values`.
+    The time period of the first value in the `values`.
 
 ???+ input "values"
 
@@ -232,8 +235,20 @@ self = Series(
         self.data = _np.full((0, num_variants), self._missing, dtype=self.data_type)
         self.metadata = {}
         self._description = description
-        test = (x is not None for x in (start_date, dates, values, func))
-        _SERIES_FACTORY.get(tuple(test), _invalid_constructor)(self, start_date=start_date, dates=dates, frequency=frequency, values=values, func=func, )
+        #
+        start = start_date if start is None else start
+        periods = dates if periods is None else periods
+        #
+        test = (x is not None for x in (start, periods, values, func))
+        populator = _SERIES_POPULATOR.get(tuple(test), _invalid_constructor)
+        populator(
+            self,
+            start=start,
+            periods=periods,
+            frequency=frequency,
+            values=values,
+            func=func,
+        )
 
     def reset(self, /, ) -> None:
         self.__init__(
@@ -279,7 +294,7 @@ self = Series(
     @_pages.reference(category="property", )
     def span(self, ):
         """==Time span of the time series=="""
-        return _dates.Ranger(self.start_date, self.end_date, ) if self.start_date else ()
+        return Span(self.start_date, self.end_date, ) if self.start_date else ()
 
     range = span
 
@@ -291,7 +306,7 @@ self = Series(
 
     @property
     @_pages.reference(category="property", )
-    def dates(self, /, ) -> tuple[_dates.Dater, ...]:
+    def dates(self, /, ) -> tuple[Period, ...]:
         """==N-tuple with the dates from the start date to the end date of the time series=="""
         return tuple(self.range, )
 
@@ -314,48 +329,7 @@ self = Series(
         return (
             self.start_date.frequency
             if self.start_date is not None
-            else _dates.Frequency.UNKNOWN
-        )
-
-    @classmethod
-    def from_dates_and_values(
-        klass,
-        dates: Dates,
-        values: Any,
-        **kwargs,
-    ) -> Self:
-        """
-        """
-        return klass(
-            dates=dates,
-            values=values,
-            **kwargs,
-        )
-
-    @classmethod
-    def from_start_date_and_values(
-        klass,
-        start_date: _dates.Dater,
-        values: _np.ndarray | Iterable,
-        **kwargs,
-    ) -> Self:
-        return klass(
-            start_date=start_date,
-            values=values,
-            **kwargs,
-        )
-
-    @classmethod
-    def from_dates_and_func(
-        klass,
-        dates: Iterable[_dates.Dater],
-        func: Callable,
-        **kwargs,
-    ) -> Self:
-        return klass(
-            dates=dates,
-            func=func,
-            **kwargs,
+            else Frequency.UNKNOWN
         )
 
     @_trim_decorate
@@ -410,7 +384,7 @@ self = Series(
         dates: Dates,
         variants: VariantsRequestType = None,
         /,
-    ) -> tuple[Iterable[_dates.Dater], Iterable[int], Iterable[int], _np.ndarray]:
+    ) -> tuple[Iterable[Period], Iterable[int], Iterable[int], _np.ndarray]:
         """
         """
         dates = [ t for t in self._resolve_dates(dates, ) ]
@@ -500,7 +474,7 @@ self = Series(
 
     def get_data_variant_from_to(
         self,
-        from_to: Iterable[_dates.Dater],
+        from_to: Iterable[Period],
         variant: int | None = None,
         /,
     ) -> _np.ndarray:
@@ -522,7 +496,7 @@ self = Series(
 
     def set_start_date(
         self,
-        new_start_date: _dates.Dater,
+        new_start_date: Period,
         /,
     ) -> Self:
         self.start_date = new_start_date
@@ -537,9 +511,9 @@ self = Series(
         if isinstance(dates, slice) and dates == slice(None, ):
             dates = ...
         if dates is ... and self.start_date is not None:
-            dates = _dates.Ranger(None, None, )
+            dates = Span(None, None, )
         if dates is ... and self.start_date is None:
-            dates = _dates.EmptyRanger()
+            dates = EmptyRanger()
         if hasattr(dates, "needs_resolve") and dates.needs_resolve:
             dates = dates.resolve(self, )
         return tuple(
@@ -634,8 +608,8 @@ self = Series(
     def clip(
         self,
         /,
-        new_start_date: _dates.Dater | None,
-        new_end_date: _dates.Dater | None,
+        new_start_date: Period | None,
+        new_end_date: Period | None,
     ) -> None:
         if new_start_date is None or new_start_date < self.start_date:
             new_start_date = self.start_date
@@ -700,8 +674,8 @@ self = Series(
 
     def redate(
         self,
-        new_date: _dates.Dater,
-        old_date: _dates.Dater | None = None,
+        new_date: Period,
+        old_date: Period | None = None,
         /,
     ) -> None:
         """
@@ -979,10 +953,6 @@ self = Series(
     #]
 
 
-Series.from_dates_and_data = _wrongdoings.obsolete(Series.from_dates_and_values)
-Series.from_start_date_and_data = _wrongdoings.obsolete(Series.from_start_date_and_values)
-
-
 def _get_num_leading_missing_rows(data, test_missing_period, /, ):
     try:
         num = next(
@@ -994,24 +964,17 @@ def _get_num_leading_missing_rows(data, test_missing_period, /, ):
     return num
 
 
-# def apply(x, func: Callable, /, *args, **kwargs) -> object:
-    # if isinstance(x, Series):
-        # return x.apply(func, *args, **kwargs)
-    # else:
-        # return func(x, *args, **kwargs)
-
-
 def hstack(first, *args) -> Self:
     return first.hstack(*args)
 
 
 def _create_data_variant_from_number(
     number: Real,
-    range: _dates.Ranger,
+    span: Span,
     data_type: type,
     /,
 ) -> _np.ndarray:
-    return _np.full((len(range), 1), number, dtype=data_type)
+    return _np.full((len(span), 1), number, dtype=data_type)
 
 
 for n in FUNCTION_ADAPTATIONS_ELEMENTWISE:
@@ -1047,26 +1010,26 @@ for n in FUNCTION_ADAPTATIONS_BUILTINS:
 #     )
 
 
-def _from_dates_and_values(
+def _from_periods_and_values(
     self,
-    dates: Iterable[_dates.Dater] | str,
+    periods: Iterable[Period] | str,
     values: _np.ndarray | Iterable,
-    frequency: _dates.Frequency | None = None,
+    frequency: Frequency | None = None,
     **kwargs,
 ) -> None:
     """
     """
     #[
     # dates = _dates.ensure_date_tuple(dates, frequency=frequency, )
-    self.set_data(dates, values, )
+    self.set_data(periods, values, )
     #]
 
 
-def _from_dates_and_func(
+def _from_periods_and_func(
     self,
-    dates: Iterable[_dates.Dater] | str,
+    periods: Iterable[Period] | str,
     func: Callable,
-    frequency: _dates.Frequency | None = None,
+    frequency: Frequency | None = None,
     **kwargs,
 ) -> Self:
     """
@@ -1076,25 +1039,25 @@ def _from_dates_and_func(
     # dates = _dates.ensure_date_tuple(dates, frequency=frequency, )
     data = [
         [func() for j in range(self.num_variants)]
-        for i in range(len(dates))
+        for i in range(len(periods))
     ]
     data = _np.array(data, dtype=self.data_type)
-    self.set_data(dates, data)
+    self.set_data(periods, data)
     #]
 
 
-def _from_start_date_and_values(
+def _from_start_and_values(
     self,
-    start_date: _dates.Dater,
+    start: Period,
     values: _np.ndarray | Iterable,
-    frequency: _dates.Frequency | None = None,
+    frequency: Frequency | None = None,
     **kwargs,
 ) -> None:
     """
     """
     #[
     # start_date = _dates.ensure_date_tuple(start_date, frequency=frequency, )[0]
-    self.start_date = start_date
+    self.start_date = start
     if isinstance(values, _np.ndarray):
         values = _reshape_numpy_array(values, )
     else:
@@ -1147,11 +1110,11 @@ def _invalid_constructor(
     raise _wrongdoings.IrisPieError("Invalid Series object constructor")
 
 
-_SERIES_FACTORY = {
+_SERIES_POPULATOR = {
     (False, False, False, False): lambda self, **kwargs: None,
-    (True, False, True, False): _from_start_date_and_values,
-    (False, True, True, False): _from_dates_and_values,
-    (False, True, False, True): _from_dates_and_func,
+    (True, False, True, False): _from_start_and_values,
+    (False, True, True, False): _from_periods_and_values,
+    (False, True, False, True): _from_periods_and_func,
 }
 
 

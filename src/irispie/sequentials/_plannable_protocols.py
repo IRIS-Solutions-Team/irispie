@@ -25,6 +25,11 @@ class _SimulationPlannable:
                 i.lhs_name for i in sequential._invariant.explanatories
                 if not i.is_identity
             ))
+        self.can_be_endogenized \
+            = tuple(set(
+                i.residual_name for i in sequential._invariant.explanatories
+                if not i.is_identity
+            ))
 
 
 class Inlay:
