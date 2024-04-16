@@ -94,8 +94,32 @@ Returns no value; the method modifies the model in place.
         for v in self._variants:
             v.assign_from_dict_like(kwargs_to_assign, )
 
+    @_pages.reference(category="parameters", )
     def check_missing_parameters(self, /, ) -> Databox:
-        """
+        r"""
+................................................................................
+
+==Check for missing parameters==
+
+Raises an error if any of the model parameters are missing values.
+
+    self.check_missing_parameters()
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    `Sequential` model to check for missing parameters.
+
+
+### Returns ###
+
+
+Returns no value; raises an error if any parameters are missing, and prints the
+list of missing parameter names.
+
+................................................................................
         """
         parameters = self.get_parameters()
         missing = tuple(
@@ -106,12 +130,41 @@ Returns no value; the method modifies the model in place.
             message = ("Missing parameters: ", ) + missing
             raise _wrongdoings.IrisPieCritical(message, )
 
+    @_pages.reference(category="parameters", )
     def get_parameters(
         self,
         /,
         unpack_singleton: bool = True,
     ) -> Databox:
-        """
+        r"""
+................................................................................
+
+==Get model parameters==
+
+Returns a `Databox` with the parameter values currently assigned within a
+`Sequential` model.
+
+    parameters = self.get_parameters(*, unpack_singleton=True, )
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    `Sequential` model whose parameters will be retrieved.
+
+???+ input "unpack_singleton"
+    If `True`, the method will unpack the parameters values for models with a
+    single parameter variant.
+
+
+### Returns ###
+
+
+???+ return "parameters"
+    `Databox` with the model parameters.
+
+................................................................................
         """
         parameter_names = self._invariant.parameter_names
         parameters = {
