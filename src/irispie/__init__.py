@@ -1,15 +1,3 @@
-"""
-------------------------------------------------------------
-
-
-Iris Pie
-=========
-
-#### A Python package for macroeconomic modelling ####
-
-
-------------------------------------------------------------
-"""
 
 import importlib.metadata as _md
 
@@ -60,6 +48,11 @@ from .namings import __all__ as namings_all
 
 
 __version__ = _md.version(__name__)
+__doc__ = _md.metadata(__name__).json["description"]
+
+
+def print_doc():
+    print(__doc__)
 
 
 #[
