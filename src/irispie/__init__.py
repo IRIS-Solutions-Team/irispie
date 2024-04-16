@@ -51,7 +51,7 @@ __version__ = _md.version(__name__)
 __doc__ = _md.metadata(__name__).json["description"]
 
 
-def print_doc():
+def print_readme():
     print(__doc__)
 
 
