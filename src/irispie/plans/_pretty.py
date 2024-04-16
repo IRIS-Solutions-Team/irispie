@@ -7,6 +7,9 @@ from __future__ import annotations
 
 from typing import (Self, Any, )
 import prettytable as _pt
+import itertools as _it
+
+from .. import pages as _pages
 #]
 
 
@@ -30,7 +33,7 @@ class PrettyMixin:
         """
         """
         table = _pt.PrettyTable()
-        table.field_names = ("NAME", "PERIOD", "REGISTER", "TRANSFORM", )
+        table.field_names = ("NAME", "PERIOD(S)", "REGISTER", "TRANSFORM", )
         table.align = "r"
         table.align["NAME"] = "l"
         for r in ("exogenized", "endogenized", ):
@@ -43,15 +46,42 @@ class PrettyMixin:
                 )
         return table
 
+    @_pages.reference(
+        category="information",
+    )
+    def print_table(self, *args, **kwargs, ) -> None:
+        r"""
+................................................................................
+
+==Print the `SimulationPlan` as a table==
+
+    self.print_table()
+
+
+### Input arguments ###
+
+???+ input "self"
+    `SimulationPlan` to be printed on the screen, with one row showing
+    exogenized or endogenized data points grouped by the name and dates.
+
+
+### Returns ###
+
+Returns no value; the table is printed on the screen.
+
+................................................................................
+        """
+        print(self.get_pretty(*args, **kwargs, ), )
+
     def pretty_print(self, *args, **kwargs, ) -> None:
         """
         """
-        print(self.get_pretty_table(*args, **kwargs, ), )
+        print(self.get_pretty(*args, **kwargs, ), )
 
     def get_pretty_string(self, *args, **kwargs, ) -> str:
         """
         """
-        return self.get_pretty_table(*args, **kwargs, ).get_string()
+        return self.get_pretty(*args, **kwargs, ).get_string()
 
 
 def _add_register_to_table(
@@ -63,13 +93,32 @@ def _add_register_to_table(
     """
     """
     #[
-    for k, v in register.items():
-        for status, date in zip(v, base_span):
-            if not status:
-                continue
-            symbol = status.symbol if hasattr(status, "symbol") else _PRETTY_SYMBOL.get(status, "")
-            table.add_row((k, str(date), action, symbol, ))
+    def create_row(name, date, action, status, ):
+        return (
+            name,
+            str(date),
+            action,
+            status.symbol if hasattr(status, "symbol") else _PRETTY_SYMBOL.get(status, ""),
+        )
+    def create_representative(rows, ):
+        if len(rows) == 1:
+            return rows[0]
+        else:
+            return (rows[0][0], rows[0][1] + ">>" + rows[-1][1], rows[0][2], rows[0][3], )
+    #
+    all_rows = (
+        create_row(k, date, action, status, )
+        for k, v in register.items()
+        for status, date in zip(v, base_span)
+        if status is not None and status is not False
+    )
+    all_rows = sorted(all_rows, key=lambda row: (row[0], row[1], ), )
+    row_groups = _it.groupby(all_rows, key=lambda row: (row[0], row[2], row[3], ), )
+    for _, g in row_groups:
+        representative = create_representative(tuple(g), )
+        table.add_row(representative, )
     #]
+
 
 
 _PRETTY_SYMBOL = {
@@ -77,4 +126,5 @@ _PRETTY_SYMBOL = {
     True: "*",
     False: "",
 }
+
 

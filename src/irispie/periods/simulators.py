@@ -30,11 +30,11 @@ _DEFAULT_FALLBACK_VALUE = 1/9
 def simulate(
     simulatable_v: _simultaneous.Simultaneous,
     dataslate_v: _dataslate.Dataslate,
+    plan: _plans.SimulationPlan | None,
     vid: int,
     logger: _wl.Logger,
     /,
     *,
-    plan: _plans.PlanSimulate | None,
     start_iter_from: Literal["data", "first_order", "previous_period"] = "previous_period",
     root_settings: dict[str, Any] | None = None,
     iter_printer_settings: dict[str, Any] | None = None,
@@ -141,8 +141,8 @@ def _set_up_current_period(
     if plan is None:
         return wrt_qids, base_evaluator
     #
-    names_exogenized = plan.get_names_exogenized_unanticipated_in_period(current_period, )
-    names_endogenized = plan.get_names_endogenized_unanticipated_in_period(current_period, )
+    names_exogenized = plan.get_exogenized_unanticipated_in_period(current_period, )
+    names_endogenized = plan.get_endogenized_unanticipated_in_period(current_period, )
     if not names_exogenized and not names_endogenized:
         return wrt_qids, base_evaluator
     #

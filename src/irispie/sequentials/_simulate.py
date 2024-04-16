@@ -177,8 +177,7 @@ simulating the model.
         simulate_method = _SIMULATE_METHODS[method]
         for vid, model_v, dataslate_v in zipped:
             info_v = simulate_method(
-                model_v, dataslate_v, vid, logger,
-                plan=plan,
+                model_v, dataslate_v, plan, vid, logger,
                 when_nonfinite=when_nonfinite,
                 execution_order=execution_order,
             )
@@ -213,11 +212,11 @@ simulating the model.
 def _simulate_v(
     self,
     ds: Dataslate,
+    plan: _plans.SimulationPlan | None,
     vid: int,
     logger: _wl.Logger,
     /,
     *,
-    plan,
     when_nonfinite,
     execution_order,
 ) -> dict[str, Any]:
@@ -231,7 +230,7 @@ def _simulate_v(
     base_columns = ds.base_columns
     first_base_column = base_columns[0] if base_columns else None
     working_data = ds.get_data_variant(0, )
-    columns_dates = ( (c, ds.dates[c]) for c in base_columns )
+    columns_dates = ( (c, ds.periods[c]) for c in base_columns )
     iterator_creator = _CREATE_EXECUTION_ITERATOR[execution_order]
     #
     columns_dates_equations = iterator_creator(

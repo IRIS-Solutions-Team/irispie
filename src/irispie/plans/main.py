@@ -66,9 +66,11 @@ class SteadyPlannableProtocol(Protocol, ):
     path=("structural_models", "simulation_plans.md", ),
     categories={
         "constructor": "Creating new simulation plans",
-        "property": None,
-        "definition": "Defining exogenized and endogenized data points",
+        "definition_simultaneous": "Defining exogenized and endogenized data points in [`Simultaneous` simulations](simultaneous.md#simulate)",
+        "definition_sequential": "Defining exogenized and endogenized data points in [`Sequential` simulations](sequential.md#simulate)",
         "information": "Getting information about simulation plans",
+        "information_simultaneous": "Getting information about simulation plans for [`Simultaneous` models](simultaneous.md)",
+        "information_sequential": "Getting information about simulation plans for [`Sequential` models](sequential.md)",
     },
 )
 class SimulationPlan(
@@ -111,27 +113,6 @@ exogenized variables. The actual data points are included in the input databox.
         *tuple(f"default_{r}" for r in _registers),
         "base_span",
     )
-
-    def _properties():
-        """
-················································································
-
-
-Directly accessible properties of `SimulationPlan` objects
-=========================================================
-
-Property | Description
----|---
-`start_date` | Start date of the simulation span
-`end_date` | End date of the simulation span
-`num_periods` | Number of periods in the simulation span
-`base_span` | Simulation span
-`can_be_exogenized` | Names of quantities that can be exogenized
-`can_be_endogenized` | Names of quantities that can be endogenized
-`pretty` | Tabular view of the simulation plan
-
-················································································
-        """
 
     @_pages.reference(category="constructor", call_name="SimulationPlan", )
     def __init__(
@@ -224,7 +205,7 @@ Create a new simulation plan object for a
         """==Date frequency of the simulation span=="""
         return self.start_date.frequency
 
-    @_pages.reference(category="definition", )
+    @_pages.reference(category="definition_sequential", )
     def exogenize(
         self,
         dates: Iterable[Period] | EllipsisType,
@@ -235,54 +216,81 @@ Create a new simulation plan object for a
         # when_data: bool | None = None,
         **kwargs,
     ) -> None:
-        """
-················································································
+        r"""
+................................................................................
 
-==Exogenize certain quantities at certain dates==
+==Exogenize certain LHS quantities at certain dates==
 
-```
-self.exogenize(
-    dates, names,
-    /,
-    transform=None,
-    when_data=False,
-)
-```
+Exogenize certain LHS quantities at specified dates, setting them as
+predetermined values within the simulation of
+a [`Sequential` model](sequential.md). This method is used to control how
+the model behaves during simulations by fixing certain variables to known
+values.
+
+    self.exogenize(
+        dates,
+        names,
+        *,
+        transform=None,
+        when_data=False,
+    )
 
 ### Input arguments ###
 
+???+ input "self"
+    The simulation plan in which data points will be exogenized.
 
 ???+ input "dates"
-
-    Dates at which the `names` will be exogenized; use `...` for all simulation dates.
+    A list of dates or `...` to apply to all dates at which the quantities 
+    will be exogenized.
 
 ???+ input "names"
-
-    Names of quantities to exogenize at the `dates`; use `...` for all exogenizable quantities.
-
-
-### Input arguments available only for `Sequential` models ###
+    A list of names or a single name, or `...` to apply to all names that 
+    specifies which quantities to set as predetermined at the specified dates.
 
 ???+ input "transform"
+    Specifies the transformation to apply to the exogenized quantities. If not
+    specified, no transformation is applied. Available transformations include:
 
-    Transformation (specified as a string) to be applied to the exogenized
-    quantities; if `None`, no tranformation is applied.
+    * `None`: Exogenize the LHS variables as they are with no
+    transformation.
+
+    * `"log"`: Exogenize the natural logarithm of the LHS variables. Input
+    time series needs to be prefixed with `log_`.
+
+    * `"diff"`: Exogenize the first difference of the LHS variables. Input
+    time series needs to be prefixed with `diff_`.
+
+    * `"diff_log"`: Exogenize the first difference of the natural logarithm
+    of the LHS variables. Input time series needs to be prefixed with
+    `diff_log_`.
+
+    * `"roc"`: The gross rate of change of the LHS variables from one
+    period to the next. Input time series needs to be prefixed with `roc_`.
+
+    * `"pct"`: The percentage change of the LHS variables from one period
+    to the next. Input time series needs to be prefixed with `pct_`.
 
 ???+ input "when_data"
+    Specifies whether the exogenization should only occur if a valid 
+    value exists in the input data.
 
-    If `True`, the data point will be exogenized only if a proper value
-    exists in the input data.
+### Returns ###
 
-················································································
+This method modifies the object in place and does not return a value.
+
+................................................................................
         """
         transform = _transforms.resolve_transform(transform, **kwargs, )
         self._register(self._exogenized_register, dates, names, transform, )
 
-    @_pages.reference(category="definition", )
+    @_pages.reference(category="definition_simultaneous", )
     def exogenize_anticipated(
         self,
         dates: Iterable[Period] | EllipsisType,
         names: Iterable[str] | str | EllipsisType,
+        *,
+        status: bool | int = True,
     ) -> None:
         """
 ················································································
@@ -309,18 +317,25 @@ self.exogenize_anticipated(
 
 ················································································
         """
-        self._register(self._exogenized_anticipated_register, dates, names, True, )
+        self._register(
+            self._exogenized_anticipated_register,
+            dates,
+            names,
+            status,
+        )
 
-    @_pages.reference(category="definition", )
+    @_pages.reference(category="definition_simultaneous", )
     def exogenize_unanticipated(
         self,
         dates: Iterable[Period] | EllipsisType,
         names: Iterable[str] | str | EllipsisType,
+        *,
+        status: bool | int = True,
     ) -> None:
-        """
+        r"""
 ················································································
 
-==Exogenize certain quantities at certain dates==
+==Exogenize certain quantities at certain dates as unanticipated==
 
 ```
 self.exogenize_unanticipated(
@@ -357,14 +372,33 @@ self.exogenize_unanticipated(
 
 ················································································
         """
-        self._register(self._exogenized_unanticipated_register, dates, names, True, )
+        self._register(
+            self._exogenized_unanticipated_register,
+            dates,
+            names,
+            status,
+        )
 
-    @_pages.reference(category="information", )
-    def get_names_exogenized_unanticipated_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
+    @_pages.reference(category="information_sequential", )
+    def get_exogenized_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
         """
 ················································································
 
-==Get names exogenized at a certain date==
+==Get names exogenized in a certain period==
+
+················································································
+        """
+        return self._get_names_registered_in_period(
+            self._exogenized_register,
+            *args, **kwargs,
+        )
+
+    @_pages.reference(category="information_simultaneous", )
+    def get_exogenized_unanticipated_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
+        """
+················································································
+
+==Get names exogenized as unanticipated in a certain period==
 
 ················································································
         """
@@ -373,28 +407,38 @@ self.exogenize_unanticipated(
             *args, **kwargs,
         )
 
-    @_pages.reference(category="definition", )
+    @_pages.reference(category="information_simultaneous", )
+    def get_exogenized_anticipated_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
+        """
+················································································
+
+==Get names exogenized as anticipated in a certain period==
+
+················································································
+        """
+        return self._get_names_registered_in_period(
+            self._exogenized_anticipated_register,
+            *args, **kwargs,
+        )
+
+    # @_pages.reference(category="definition_sequential", )
     def endogenize(
         self,
         dates: Iterable[Period] | EllipsisType,
         names: Iterable[str] | str | EllipsisType,
         /,
     ) -> None:
-        """
-················································································
-
-==Endogenize certain quantities at certain dates==
-
-················································································
+        r"""
         """
         self._register(self._endogenized_register, dates, names, True, )
 
-    @_pages.reference(category="definition", )
+    @_pages.reference(category="definition_simultaneous", )
     def endogenize_anticipated(
         self,
         dates: Iterable[Period] | EllipsisType,
         names: Iterable[str] | str | EllipsisType,
-        /,
+        *,
+        status: bool | int = True,
     ) -> None:
         """
 ················································································
@@ -403,14 +447,20 @@ self.exogenize_unanticipated(
 
 ················································································
         """
-        self._register(self._endogenized_anticipated_register, dates, names, True, )
+        self._register(
+            self._endogenized_anticipated_register,
+            dates,
+            names,
+            status,
+        )
 
-    @_pages.reference(category="definition", )
+    @_pages.reference(category="definition_simultaneous", )
     def endogenize_unanticipated(
         self,
         dates: Iterable[Period] | EllipsisType,
         names: Iterable[str] | str | EllipsisType,
-        /,
+        *,
+        status: bool | int = True,
     ) -> None:
         """
 ················································································
@@ -419,14 +469,19 @@ self.exogenize_unanticipated(
 
 ················································································
         """
-        self._register(self._endogenized_unanticipated_register, dates, names, True, )
+        self._register(
+            self._endogenized_unanticipated_register,
+            dates,
+            names,
+            status,
+        )
 
-    @_pages.reference(category="information", )
-    def get_names_endogenized_unanticipated_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
+    @_pages.reference(category="information_simultaneous", )
+    def get_endogenized_unanticipated_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
         """
 ················································································
 
-==Get names endogenized at a certain date==
+==Get names endogenized as unanticipated in a certain period==
 
 ················································································
         """
@@ -434,6 +489,35 @@ self.exogenize_unanticipated(
             self._endogenized_unanticipated_register,
             *args,
             **kwargs,
+        )
+
+    @_pages.reference(category="information_simultaneous", )
+    def get_endogenized_anticipated_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
+        """
+················································································
+
+==Get names endogenized as anticipated in a certain period==
+
+················································································
+        """
+        return self._get_names_registered_in_period(
+            self._endogenized_unanticipated_register,
+            *args,
+            **kwargs,
+        )
+
+    @property
+    def needs_split(self, /, ) -> bool:
+        """
+        """
+        def _is_active_statue(value: Any, /, ) -> bool:
+            return (value is not None) and (value is not False)
+        return any(
+            any(
+                any(_is_active_statue(i) for i in v)
+                for v in getattr(self, "_" + a + "_register").values()
+            )
+            for a in ("exogenized_unanticipated", "endogenized_unanticipated", )
         )
 
     def swap(
@@ -598,18 +682,20 @@ self.exogenize_unanticipated(
     categories={
         "constructor": "Creating new steady plans",
         "property": None,
-        "definition": "Defining exogenized, endogenized and fixed quantities",
+        "definition": "Defining Exogenized, endogenized and fixed quantities",
     },
 )
 class SteadyPlan:
     """
 ················································································
 
-Steady-state calculation plans
-===============================
+Steady-state plans
+===================
 
-`SteadyPlan` objects are used to define assumptions about the steady state
-values of certain model variables.
+`SteadyPlan` objects define assumptions about the steady state values of
+certain model quantities (variables and parameters), either for reverse
+engineered calculations or for narrowing down the underdetermined
+steady-state systems.
 
 ················································································
     """

@@ -20,21 +20,55 @@ from . import wrongdoings as _wrongdoings
 #]
 
 
-__all__ = [
-    "Frequency", "Freq",
+__all__ = (
+    "Frequency",
     "yy", "hh", "qq", "mm", "dd", "ii",
     "Span", "EmptySpan", "start", "end",
-    "Period", "daters_from_sdmx_strings", "daters_from_iso_strings", "daters_from_to",
-    "Dater", "Ranger", "EmptyRanger",
+    "Period", "periods_from_sdmx_strings", "periods_from_iso_strings", "periods_from_to",
     "YEARLY", "HALFYEARLY", "QUARTERLY", "MONTHLY", "WEEKLY", "DAILY",
-    "DATER_CLASS_FROM_FREQUENCY_RESOLUTION",
+    "PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION",
     "convert_to_new_freq",
-]
+
+    "daters_from_sdmx_strings", "daters_from_iso_strings", "daters_from_to",
+    "Dater", "Ranger", "EmptyRanger",
+    "DATER_CLASS_FROM_FREQUENCY_RESOLUTION",
+)
 
 
+@_pages.reference(
+    path=("data_management", "frequencies.md", ),
+    categories=None,
+)
 class Frequency(_en.IntEnum):
-    """
-    Enumeration of date frequencies
+    r"""
+................................................................................
+
+Time frequencies
+=================
+
+Time frequencies are simple integer values that represent the number of
+time periods within a year. For convenience, the `Frequency` enum provides
+a set of predefined names for all the time frequencies available. The
+`Frequencies` are furthermore classified into regular and irregular
+frequencies. Regular frequencies are those that are evenly spaced within a
+year.
+
+| Integer value | `Frequency` enum       | Regular           | Description
+|--------------:|------------------------|:-----------------:|-------------
+| 1             | `irispie.YEARLY`       | :material-check:  | Yearly period
+| 2             | `irispie.HALFYEARLY`   | :material-check:  | Half-yearly period
+| 4             | `irispie.QUARTERLY`    | :material-check:  | Quarterly period
+| 12            | `irispie.MONTHLY`      | :material-check:  | Monthly period
+| 52            | `irispie.WEEKLY`       |                   | Weekly period
+| 365           | `irispie.DAILY`        |                   | Daily period
+| 0             | `irispie.INTEGER`      |                   | Integer period (numbered observations)
+
+The time `Frequencies` are most often used in frequency
+conversion methods, such as `convert_to_new_freq` for time
+[`Periods`](periods.md), or `aggregate` and `disaggregate` for time
+[`Series`](series.md).
+
+................................................................................
     """
     #[
 
@@ -49,23 +83,41 @@ class Frequency(_en.IntEnum):
     UNKNOWN = -1
 
     @classmethod
+    @_pages.reference(
+        category="constructor",
+        call_name="Frequency.from_letter",
+    )
     def from_letter(
         klass,
         string: str,
         /,
     ) -> Self:
-        """
+        r"""
+................................................................................
+
+==Determine frequency from a letter==
+
+................................................................................
         """
         letter = string.replace("_", "").upper()[0]
         return next( x for x in klass if x.name.startswith(letter) )
 
     @classmethod
+    @_pages.reference(
+        category="constructor",
+        call_name="Frequency.from_sdmx_string",
+    )
     def from_sdmx_string(
         klass,
         sdmx_string: str,
         /,
     ) -> Self:
-        """
+        r"""
+................................................................................
+
+==Determine frequency of an SDMX string==
+
+................................................................................
         """
         try:
             sdmx_string = sdmx_string.strip()
@@ -80,7 +132,9 @@ class Frequency(_en.IntEnum):
             )
 
     @property
+    @_pages.reference(category="property", )
     def letter(self, /, ) -> str:
+        r"""==Single letter representation of time frequency=="""
         return self.name[0] if self is not self.UNKNOWN else "?"
 
     @property
@@ -88,7 +142,9 @@ class Frequency(_en.IntEnum):
         return PLOTLY_FORMATS[self]
 
     @property
+    @_pages.reference(category="property", )
     def is_regular(self, /, ) -> bool:
+        r"""==True for regular time frequency=="""
         return self in (self.YEARLY, self.HALFYEARLY, self.QUARTERLY, self.MONTHLY, )
 
     def __str__(self, /, ) -> str:
@@ -97,7 +153,82 @@ class Frequency(_en.IntEnum):
     #]
 
 
-Freq = Frequency
+Frequency.YEARLY.__doc__ = r"""
+................................................................................
+
+==Create a yearly frequency representation==
+
+See documentation for the time [`Frequency`](frequencies.md).
+
+................................................................................
+"""
+
+
+Frequency.HALFYEARLY.__doc__ = r"""
+................................................................................
+
+==Create a half-yearly frequency representation==
+
+See documentation for the time [`Frequency`](frequencies.md).
+
+................................................................................
+"""
+
+
+Frequency.QUARTERLY.__doc__ = r"""
+................................................................................
+
+==Create a quarterly frequency representation==
+
+See documentation for the time [`Frequency`](frequencies.md).
+
+................................................................................
+"""
+
+
+Frequency.MONTHLY.__doc__ = r"""
+................................................................................
+
+==Create a monthly frequency representation==
+
+See documentation for the time [`Frequency`](frequencies.md).
+
+................................................................................
+"""
+
+
+Frequency.WEEKLY.__doc__ = r"""
+................................................................................
+
+==Create a weekly frequency representation==
+
+See documentation for the time [`Frequency`](frequencies.md).
+
+................................................................................
+"""
+
+
+Frequency.DAILY.__doc__ = r"""
+................................................................................
+
+==Create a daily frequency representation==
+
+See documentation for the time [`Frequency`](frequencies.md).
+
+................................................................................
+"""
+
+
+Frequency.INTEGER.__doc__ = r"""
+................................................................................
+
+==Create an integer frequency representation==
+
+See documentation for the time [`Frequency`](frequencies.md).
+
+................................................................................
+"""
+
 
 
 YEARLY = Frequency.YEARLY
@@ -170,30 +301,17 @@ class ResolvableProtocol(Protocol, ):
     def resolve(self, context: ResolutionContextProtocol) -> Any: ...
 
 
-def _check_daters(first, second, ) -> None:
+def _check_periods(first, second, ) -> None:
     if str(type(first)) == str(type(second)):
         return
     message = "Cannot handle dates of different types in this context"
     raise _wrongdoings.IrisPieError(message, )
 
 
-def _check_daters_decorate(func: Callable, ) -> Callable:
+def _check_periods_decorator(func: Callable, ) -> Callable:
     def wrapper(*args, **kwargs):
-        _check_daters(args[0], args[1], )
+        _check_periods(args[0], args[1], )
         return func(*args, **kwargs, )
-    return wrapper
-
-
-def _check_offset(offset, ) -> None:
-    if not isinstance(offset, int, ):
-        message = "Date offset must be an integer"
-        raise Exception(message, )
-
-
-def _check_offset_decorator(func: Callable) -> Callable:
-    def wrapper(*args, **kwargs):
-        _check_offset(args[1])
-        return func(*args, **kwargs)
     return wrapper
 
 
@@ -260,7 +378,9 @@ def _dater_with_ellipsis(
     path=("data_management", "periods.md", ),
     categories={
         "constructor": "Creating new time periods",
-        "property": None,
+        "arithmetics_comparison": "Adding, subtracting, and comparing time periods",
+        "conversion": "Converting time periods to different frequencies",
+        "print": "Converting time periods to strings",
     },
 )
 class Period(
@@ -273,13 +393,12 @@ class Period(
 Time periods
 =============
 
-Time periods represent one single calendar period of time of a given
-frequency (yearly, half-yearly, quarterly, monthly, daily, or a special
-integer frequency). The time `Periods` are used to time stamp individual
-observations in [`Series`](series.md) objects.
+A time `Period` represents one single calendar period of time of a certain
+frequency (and hence also a certain duration); the time period
+[`Frequencies`](frequencies.md) are identified by an integer value.
 
-Time spans represent a range of time periods, from a start period to an end
-period.
+Time `Periods` are used to timestamp data observations in time [`Series`](series.md)
+objects, for basic date and time arithmetics, and for creating time [`Spans`](spans.md).
 
 ......................................................................
     """
@@ -288,27 +407,26 @@ period.
     frequency = None
     needs_resolve = False
 
-    @staticmethod
     @_pages.reference(
         category=None,
         call_name="Time period constructors",
         call_name_is_code=False,
         priority=20,
     )
-    def constructors() -> NoReturn:
+    def __init__(self, serial: int = 0, ) -> None:
         r"""
 ......................................................................
 
 Overview of time period constructors:
 
-| Constructor | Description
-|-------------|-------------
-| `yy`        | Yearly period
-| `hh`        | Half-yearly period
-| `qq`        | Quarterly period
-| `mm`        | Monthly period
-| `dd`        | Daily period
-| `ii`        | Integer period (numbered observations)
+| Constructor         | Description
+|---------------------|-------------
+| `irispie.yy`        | Yearly period
+| `irispie.hh`        | Half-yearly period
+| `irispie.qq`        | Quarterly period
+| `irispie.mm`        | Monthly period
+| `irispie.dd`        | Daily period
+| `irispie.ii`        | Integer period (numbered observations)
 
 
 ### Syntax for creating new time periods ###
@@ -355,27 +473,170 @@ Overview of time period constructors:
 
 ......................................................................
         """
+        self.serial = int(serial)
+
+    @_pages.reference(
+        category=None,
+        call_name="Time period arithmetics",
+        call_name_is_code=False,
+        priority=30,
+    )
+    def time_period_arithmetics():
+        r"""
+................................................................................
+
+Time period arithmetics involve operations that can be performed either
+between two time periods or between a time period and an integer.
+The arithmetic operations include
+
+* **Adding an integer**: Move a time period forward or backward by the
+specified number of periods. The integer specifies how many periods of the
+respective time frequency to move forward or backward.
+
+* **Subtracting a time period**: Calculate the number of periods between
+two time periods. Both periods must be of the same frequency.
+
+* **Subtracting an integer**: Move a time period backward or forward by the
+specified number of periods. The integer specifies how many periods of the
+respective frequency to move backward or forward.
+
+When performing arithmetic operations involving two time periods, it is necessary 
+that both are of the same time frequency. Additionally, some operations involve a 
+time period and an integer, such as adding or subtracting a certain number of 
+periods represented by an integer.
+
+These operations enable effective management of time period spans and
+time-based calculations necessary for scheduling, forecasting, and
+historical data analysis in various applications.
+
+................................................................................
+        """
+
+    @_pages.reference(
+        category=None,
+        call_name="Time period comparison",
+        call_name_is_code=False,
+        priority=20,
+    )
+    def time_period_comparison():
+        r"""
+................................................................................
+
+Time period comparison involves comparing two time periods to determine
+their relative position in time. The comparison operations include the
+following:
+
+| Operation             | Description
+|-----------------------|-------------
+| `==`                  | Determine whether two time periods are equal.
+| `!=`                  | Determine whether two time periods are not equal.
+| `<`                   | Determine whether one time period is earlier than another.
+| `<=`                  | Determine whether one time period is earlier than or equal to another.
+| `>`                   | Determine whether one time period is later than another.
+| `>=`                  | Determine whether one time period is later than or equal to another.
+
+The comparison operations require that both time periods are of the same
+time [Frequency](frequencies.md).
+
+................................................................................
+        """
         raise NotImplementedError
 
     @staticmethod
-    def from_iso_string(freq: Frequency, iso_string: str, ) -> Self:
+    def from_iso_string(
+        iso_string: str,
+        *,
+        frequency: Frequency | None = None,
+    ) -> Self:
+        r"""
+................................................................................
+
+==Create time period from ISO-8601 string==
+
+Create a time period from an ISO-8601 string representation. The ISO-8601
+string format is `yyyy-mm-dd` where `yyyy` is the calendar year, `mm` is
+the month of the year, and `dd` is the day of the month, all represented as
+integers.
+
+    period = Period.from_iso_string(
+        iso_string,
+        *,
+        frequency=Frequency.DAILY,
+    )
+
+
+### Input arguments ###
+
+
+???+ input "iso_string"
+    ISO-8601 string representation of the time period.
+
+???+ input "frequency"
+    Time frequency of the time period.
+
+
+### Returns ###
+
+
+???+ returns "period"
+    Time period object created from the ISO-8601 string.
+
+................................................................................
         """
-        """
+        frequency = Frequency.DAILY if frequency is None else frequency
         year, month, day = iso_string.split("-", )
-        return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_ymd(int(year), int(month), int(day), )
+        return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[frequency].from_ymd(int(year), int(month), int(day), )
 
     @staticmethod
-    def from_sdmx_string(freq: Frequency, sdmx_string: str, ) -> Self:
+    def from_sdmx_string(
+        sdmx_string: str,
+        *,
+        frequency: Frequency | None = None,
+    ) -> Self:
+        r"""
+................................................................................
+
+==Create time period from SDMX string==
+
+Create a time period from an SDMX string representation. The SDMX string
+format is frequency specific and represents the time period as a string
+literal.
+
+    period = Period.from_sdmx_string(
+        sdmx_string,
+        *,
+        frequency=None,
+    )
+
+
+### Input arguments ###
+
+
+???+ input "sdmx_string"
+    SDMX string representation of the time period.
+
+???+ input "frequency"
+    Time frequency of the time period. If `None`, the frequency is determined
+    from the SDMX string itself. Supplying the frequency is useful the frequency
+    is known in advance.
+
+
+### Returns ###
+
+
+???+ returns "period"
+    Time period object created from the SDMX string.
+
+................................................................................
         """
-        """
-        freq = Frequency.from_sdmx_string(sdmx_string, ) if freq is None else freq
-        return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_sdmx_string(sdmx_string, )
+        frequency = Frequency.from_sdmx_string(sdmx_string, ) if frequency is None else frequency
+        return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[frequency].from_sdmx_string(sdmx_string, )
 
     @staticmethod
     def from_ymd(freq: Frequency, *args, ) -> Self:
         """
         """
-        return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_ymd(*args, )
+        return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_ymd(*args, )
 
     dater_from_ymd = from_ymd
 
@@ -384,36 +645,217 @@ Overview of time period constructors:
         """
         """
         t = _dt.date.today()
-        return DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_ymd(t.year, t.month, t.day, )
+        return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_ymd(t.year, t.month, t.day, )
 
     @property
-    def start_date(self, /, ) -> Self:
+    def start(self, /, ) -> Self:
         """
         """
         return self
 
+    start_date = start
+
     @property
-    def end_date(self, /, ) -> Self:
+    def end(self, /, ) -> Self:
         """
         """
         return self
 
-    def convert_to_new_freq(self, new_freq: Frequency, *args ,**kwargs, ) -> Self:
-        """
+    end_date = end
+
+    @property
+    @_pages.reference(category="property", )
+    def year(self, /, ) -> int:
+        r"""==Calendar year of the time period=="""
+        raise NotImplementedError
+
+    @property
+    @_pages.reference(category="property", )
+    def period(self, /, ) -> int:
+        r"""==Period number within the calendar year=="""
+        raise NotImplementedError
+
+    @_pages.reference(category="conversion", )
+    def convert_to_new_frequency(self, new_freq: Frequency, *args ,**kwargs, ) -> Self:
+        r"""
+................................................................................
+
+==Convert time period to a new frequency==
+
+Convert a time period to a new time frequency by specifying the new
+frequency and, optionally, the position of the new time period within the
+original time period. The conversion is frequency specific and may require
+additional arguments.
+
+    new_period = self.convert_to_new_frequency(
+        new_freq,
+        *,
+        position="start",
+    )
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    Time period to convert to a new time frequency.
+
+???+ input "new_freq"
+    New time frequency to which the time period is converted.
+
+???+ input "position"
+    Position of the new time period within the original time period. This
+    option is effective when the conversion is ambiguous, i.e. from a lower
+    frequency period to a higher frequency period. See the position options in [`to_ymd`](#to_ymd).
+
+
+### Returns ###
+
+
+???+ returns "new_period"
+    New time period resulting from the conversion to the new time frequency.
+
+................................................................................
         """
         year, month, day = self.to_ymd(*args, **kwargs, )
-        new_class = DATER_CLASS_FROM_FREQUENCY_RESOLUTION[new_freq]
+        new_class = PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[new_freq]
         return new_class.from_ymd(year, month, day, )
 
-    convert = convert_to_new_freq
+    convert_to_new_freq = convert_to_new_frequency
+    convert = convert_to_new_frequency
 
-    def to_iso_string(
-        self,
-        /,
-        position: Literal["start", "middle", "end", ] = "start",
-    ) -> str:
-        year, month, day = self.to_ymd(position=position, )
+    @_pages.reference(category="conversion", )
+    def to_ymd(self, **kwargs, ) -> tuple[int, int, int]:
+        r"""
+................................................................................
+
+==Get year, month, and day of time period==
+
+Get the calendar year, month, and day of the time period as a tuple of
+integers.
+
+    year, month, day = self.to_ymd(*, position="start", )
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    Time period to extract the year, month, and day from.
+
+???+ input "position"
+    Position that determins the day of the month and the month of the year
+    of time periods with time frequency lower than daily. The position can
+    be one of the following:
+
+    * `"start"`: Start of the time period (placed on the 1st day of the
+    first month within the original period).
+
+    * `"middle"`: Middle of the time period (placed on the 15th day of the
+    middle month within the original period).
+
+    * `"end"`: End of the time period (placed on the last day of the last
+    month within the original period).
+
+
+### Returns ###
+
+
+???+ returns "year"
+    Calendar year of the time period.
+
+???+ returns "month"
+    Month of the year of the time period.
+
+???+ returns "day"
+    Day of the month of the time period.
+
+................................................................................
+        """
+        raise NotImplementedError
+
+    @_pages.reference(category="print", )
+    def to_iso_string(self, **kwargs, ) -> str:
+        r"""
+................................................................................
+
+==ISO-8601 representation of time period==
+
+Get the ISO-8601 string representation of the time period. The ISO-8601
+string format is `yyyy-mm-dd` where `yyyy` is the calendar year, `mm` is
+the month of the year, and `dd` is the day of the month, all represented as
+integers.
+
+    iso_string = self.to_iso_string(*, position="start", )
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    Time period to convert to an ISO string.
+
+???+ input "position"
+    Position that determines the day of the month and the month of the year
+    of time periods with time frequency lower than daily. See the position
+    options in [`to_ymd`](#to_ymd).
+
+
+### Returns ###
+
+
+???+ returns "iso_string"
+    ISO-8601 string representation of the time period.
+
+................................................................................
+        """
+        year, month, day = self.to_ymd(**kwargs, )
         return f"{year:04g}-{month:02g}-{day:02g}"
+
+    @_pages.reference(category="print", )
+    def to_sdmx_string(self, /, ) -> str:
+        r"""
+................................................................................
+
+==SDMX representation of time period==
+
+The SDMX string representation of the time periods is a standardized format
+used in statistical data exchange. The SDMX string format is frequency
+specific:
+
+Time frequency | SDMX format   | Example
+---------------|---------------|--------
+Yearly         | `yyyy`        | `2030`
+Half-yearly    | `yyyy-Hh`     | `2030-H1`
+Quarterly      | `yyyy-Qq`     | `2030-Q1`
+Monthly        | `yyyy-mm`     | `2030-01`
+Weekly         | `yyyy-Www`    | `2030-W01`
+Daily          | `yyyy-mm-dd`  | `2030-01-01`
+Integer        | `(n)`         | `(1)`
+
+where lowercase letters represent the respective time period components
+(integer values) and uppercase letters are literals.
+
+
+    sdmx_string = self.to_sdmx_string()
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    Time period to convert to an SDMX string.
+
+
+### Returns ###
+
+
+???+ returns "sdmx_string"
+    SDMX string representation of the time period.
+
+................................................................................
+        """
+        raise NotImplementedError
 
     def to_python_date(
         self,
@@ -423,9 +865,6 @@ Overview of time period constructors:
         return _dt.date(*self.to_ymd(position=position, ))
 
     to_plotly_date = _ft.partialmethod(to_iso_string, position="middle", )
-
-    def __init__(self, serial=0, ) -> None:
-        self.serial = int(serial)
 
     def get_distance_from_origin(self) -> int:
         return self.serial - self.origin
@@ -457,53 +896,256 @@ Overview of time period constructors:
     def __hash__(self, /, ) -> int:
         return hash((int(self.serial), hash(self.frequency), ))
 
-    @_check_offset_decorator
-    def __add__(self, other: int) -> Self:
+    @_pages.reference(
+        category="arithmetics_comparison",
+        call_name="+",
+    )
+    def __add__(self, other: int, ) -> Self:
+        r"""
+................................................................................
+
+==Add integer to time period==
+
+Add an integer value to a time period, moving it forward by the number of
+periods (if positive) or backward (if negative).
+
+    new_period = period + k
+    new_period = k + period
+
+
+### Input arguments ###
+
+
+???+ input "period"
+    Time period to which the integer is added.
+
+???+ input "k"
+    Integer value to add to the time period. Positive values move the
+    period forward, while negative values move it backward. The addition is
+    frequency specific.
+
+
+### Returns ###
+
+
+???+ returns "new_period"
+    New time period resulting from the addition of the integer value.
+
+
+### See also ###
+
+* [Time period arithmetics](#time-period-arithmetics)
+
+................................................................................
+        """
         return type(self)(self.serial + int(other))
 
     __radd__ = __add__
 
+    @_pages.reference(
+        category="arithmetics_comparison",
+        call_name="-",
+    )
     def __sub__(self, other: Self | int) -> Self | int:
-        if _is_dater(other, ):
+        r"""
+................................................................................
+
+==Subtract time period or integer from time period==
+
+Subtraction operations can be performed between two time periods or between a 
+time period and an integer. These operations are crucial for calculating the 
+distance between periods or adjusting a period's position in time.
+
+* **Subtracting a time period**: Calculate the number of periods between
+two time periods. Both periods must be of the same frequency.
+
+* **Subtracting an integer**: Move a time period backward or forward by the
+specified number of periods. The integer specifies how many periods of the
+respective frequency to move backward or forward.
+
+
+    result = self - other
+    new_period = self - k
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    The reference time period from which `other` or `k` is subtracted.
+
+???+ input "other"
+    The time period to subtract from `self`. The `result` is the number of
+    periods between `self` and `other`. The subtraction is frequency specific.
+
+???+ input "k"
+    Integer value to subtract from `self`. Positive values move the period
+    backward, while negative values move it forward. The subtraction is
+    frequency specific.
+
+
+### Returns ###
+
+
+???+ returns "result"
+    The number of periods between two time periods if `other` is a `Period`.
+
+???+ returns "new_period"
+    A new `Period` object representing the time period shifted backward by the 
+    specified number of periods if `other` is an integer.
+
+................................................................................
+    """
+        if _is_period(other, ):
             return self._sub_dater(other)
         else:
             return self.__add__(-int(other))
 
-    @_check_daters_decorate
+    @_check_periods_decorator
     def _sub_dater(self, other: Self) -> int:
         return self.serial - other.serial
 
     def __index__(self):
         return self.serial
 
-    @_check_daters_decorate
-    def __eq__(self, other) -> bool:
+    @_pages.reference(
+        category="arithmetics_comparison",
+        call_name="==",
+    )
+    def __eq__(self, other: Self, /, ) -> bool:
+        r"""
+................................................................................
+
+==True if time period is equal to another time period==
+
+See documentation for [time period comparison](#time-period-comparison).
+
+................................................................................
+        """
+        _check_periods(self, other, )
         return self.serial == other.serial
 
-    @_check_daters_decorate
-    def __ne__(self, other) -> bool:
+    @_pages.reference(
+        category="arithmetics_comparison",
+        call_name="!=",
+    )
+    def __ne__(self, other: Self, /, ) -> bool:
+        r"""
+................................................................................
+
+==True if time period is not equal to another time period==
+
+See documentation for [time period comparison](#time-period-comparison).
+
+................................................................................
+        """
+        _check_periods(self, other, )
         return self.serial != other.serial
 
-    @_check_daters_decorate
-    def __lt__(self, other) -> bool:
+    @_pages.reference(
+        category="arithmetics_comparison",
+        call_name="<",
+    )
+    def __lt__(self, other: Self, /, ) -> bool:
+        r"""
+................................................................................
+
+==True if time period is earlier than another time period==
+
+See documentation for [time period comparison](#time-period-comparison).
+
+................................................................................
+        """
+        _check_periods(self, other, )
         return self.serial < other.serial
 
-    @_check_daters_decorate
-    def __le__(self, other) -> bool:
+    @_pages.reference(
+        category="arithmetics_comparison",
+        call_name="<=",
+    )
+    def __le__(self, other: Self, /, ) -> bool: 
+        r"""
+................................................................................
+
+==True if time period is earlier than or equal to another time period==
+
+See documentation for [time period comparison](#time-period-comparison).
+
+................................................................................
+        """
+        _check_periods(self, other, )
         return self.serial <= other.serial
 
-    @_check_daters_decorate
-    def __gt__(self, other) -> bool:
+    @_pages.reference(
+        category="arithmetics_comparison",
+        call_name=">",
+    )
+    def __gt__(self, other: Self, /, ) -> bool:
+        r"""
+................................................................................
+
+==True if time period is later than another time period==
+
+See documentation for [time period comparison](#time-period-comparison).
+
+................................................................................
+        """
+        _check_periods(self, other, )
         return self.serial > other.serial
 
-    @_check_daters_decorate
-    def __ge__(self, other) -> bool:
+    @_pages.reference(
+        category="arithmetics_comparison",
+        call_name=">=",
+    )
+    def __ge__(self, other: Self, /, ) -> bool:
+        r"""
+................................................................................
+
+==True if time period is later than or equal to another time period==
+
+See documentation for [time period comparison](#time-period-comparison).
+
+................................................................................
+        """
+        _check_periods(self, other, )
         return self.serial >= other.serial
 
+    @_pages.reference(
+        category="arithmetics_comparison",
+    )
     def shift(
         self,
         by: int | str = -1,
     ) -> None:
+        r"""
+................................................................................
+
+==Shift time period by a number of periods==
+
+Shift a time period forward or backward by the specified number of periods. 
+
+    self.shift(k)
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    Time period to shift forward or backward.
+
+???+ input "k"
+    Integer value specifying the number of periods to move the time period.
+    Positive values move the period forward, while negative values move it
+    backward. The shift is frequency specific.
+
+
+### Returns ###
+
+
+Returns no value; the time period is modified in place.
+
+................................................................................
+        """
         match by:
             case "yoy":
                 return self - self.frequency.value
@@ -534,11 +1176,11 @@ class IntegerPeriod(Period, ):
     }
 
     @classmethod
-    def from_sdmx_string(klass, sdmx_string: str) -> IntegerPeriod:
+    def from_sdmx_string(klass, sdmx_string: str, ) -> IntegerPeriod:
         sdmx_string = sdmx_string.strip().removeprefix("(").removesuffix(")")
-        return klass(int(sdmx_string))
+        return klass(int(sdmx_string), )
 
-    def to_sdmx_string(self) -> str:
+    def to_sdmx_string(self, /, ) -> str:
         return f"({self.serial})"
 
     def __repr__(self) -> str:
@@ -575,7 +1217,7 @@ class DailyPeriod(Period, ):
         return klass(serial)
 
     @classmethod
-    def from_sdmx_string(klass, sdmx_string: str) -> Self:
+    def from_sdmx_string(klass, sdmx_string: str, ) -> Self:
         year, month, day, *_ = sdmx_string.split("-")
         return klass.from_ymd(int(year), int(month), int(day))
 
@@ -757,10 +1399,10 @@ class YearlyPeriod(RegularPeriodMixin, Period, ):
     }
 
     @classmethod
-    def from_sdmx_string(klass, sdmx_string: str) -> YearlyPeriod:
+    def from_sdmx_string(klass, sdmx_string: str, ) -> YearlyPeriod:
         return klass(int(sdmx_string.strip()))
 
-    def to_sdmx_string(self) -> str:
+    def to_sdmx_string(self, /, ) -> str:
         return f"{self.get_year():04g}"
 
     @_remove_blanks
@@ -785,11 +1427,11 @@ class HalfyearlyPeriod(RegularPeriodMixin, Period, ):
     }
 
     @classmethod
-    def from_sdmx_string(klass, sdmx_string: str) -> HalfyearlyPeriod:
+    def from_sdmx_string(klass, sdmx_string: str, ) -> HalfyearlyPeriod:
         year, halfyear = sdmx_string.strip().split("-H")
         return klass.from_year_period(int(year), int(halfyear))
 
-    def to_sdmx_string(self) -> str:
+    def to_sdmx_string(self, /, ) -> str:
         year, per = self.to_year_period()
         return f"{year:04g}-{self.frequency.letter}{per:1g}"
 
@@ -836,11 +1478,11 @@ class QuarterlyPeriod(RegularPeriodMixin, Period, ):
     }
 
     @classmethod
-    def from_sdmx_string(klass, sdmx_string: str) -> QuarterlyPeriod:
+    def from_sdmx_string(klass, sdmx_string: str, ) -> QuarterlyPeriod:
         year, quarter = sdmx_string.strip().split("-Q")
         return klass.from_year_period(int(year), int(quarter))
 
-    def to_sdmx_string(self) -> str:
+    def to_sdmx_string(self, /, ) -> str:
         year, per = self.to_year_period()
         return f"{year:04g}-{self.frequency.letter}{per:1g}"
 
@@ -866,11 +1508,11 @@ class MonthlyPeriod(RegularPeriodMixin, Period, ):
     }
 
     @classmethod
-    def from_sdmx_string(klass, sdmx_string: str) -> MonthlyPeriod:
+    def from_sdmx_string(klass, sdmx_string: str, ) -> MonthlyPeriod:
         year, month = sdmx_string.strip().split("-")
         return klass.from_year_period(int(year), int(month))
 
-    def to_sdmx_string(self) -> str:
+    def to_sdmx_string(self, /, ) -> str:
         year, per = self.to_year_period()
         return f"{year:04g}-{per:02g}"
 
@@ -888,7 +1530,7 @@ class UnknownPeriod:
     """
     #[
 
-    def from_sdmx_string(sdmx_string: str) -> None:
+    def from_sdmx_string(sdmx_string: str, ) -> None:
         return None
 
     #]
@@ -896,90 +1538,93 @@ class UnknownPeriod:
 
 yy = _dater_with_ellipsis(YearlyPeriod.from_year_period, )
 yy.__doc__ = r"""
-················································································
+................................................................................
 
 ==Create a yearly-frequency time period or time span==
 
 See documentation for the [`Period` constructors](#time-period-constructors)
 and the [`Span` constructors](spans.md).
 
-················································································
+................................................................................
 """
-yy.__name__ = "yy"
+yy.__name__ = "irispie.yy"
 yy = _pages.reference(category="constructor", )(yy)
 
 
 hh = _dater_with_ellipsis(HalfyearlyPeriod.from_year_period, )
 hh.__doc__ = r"""
-················································································
+................................................................................
 
 ==Create a half-yearly-frequency time period or time span==
 
 See documentation for the [`Period` constructors](#time-period-constructors)
 and the [`Span` constructors](spans.md).
 
-················································································
+................................................................................
 """
-hh.__name__ = "hh"
+hh.__name__ = "irispie.hh"
 hh = _pages.reference(category="constructor", )(hh)
 
 
 qq = _dater_with_ellipsis(QuarterlyPeriod.from_year_period)
 qq.__doc__ = r"""
-················································································
+................................................................................
 
 ==Create a quarterly-frequency time period or time span==
 
 See documentation for the [`Period` constructors](#time-period-constructors)
 and the [`Span` constructors](spans.md).
 
-················································································
+................................................................................
 """
-qq.__name__ = "qq"
+qq.__name__ = "irispie.qq"
 qq = _pages.reference(category="constructor", )(qq)
 
 
 mm = _dater_with_ellipsis(MonthlyPeriod.from_year_period)
 mm.__doc__ = r"""
-················································································
+................................................................................
 
 ==Create a monthly-frequency time period or time span==
 
 See documentation for the [`Period` constructors](#time-period-constructors)
 and the [`Span` constructors](spans.md).
 
-················································································
+................................................................................
 """
-mm.__name__ = "mm"
+mm.__name__ = "irispie.mm"
 mm = _pages.reference(category="constructor", )(mm)
 
 
 ii = _dater_with_ellipsis(IntegerPeriod)
 ii.__doc__ = r"""
-················································································
+................................................................................
 
 ==Create an integer-frequency time period or time span==
 
 See documentation for the [`Period` constructors](#time-period-constructors)
 and the [`Span` constructors](spans.md).
 
-················································································
+................................................................................
 """
-ii.__name__ = "ii"
+ii.__name__ = "irispie.ii"
 ii = _pages.reference(category="constructor", )(ii)
 
 
-@_pages.reference(category="constructor", )
+@_pages.reference(
+    category="constructor",
+    call_name="irispie.dd",
+)
 def dd(year: int, month: int | None, day: int) -> DailyPeriod:
     r"""
-················································································
+................................................................................
 
 ==Create a daily-frequency time period or time span==
 
 See documentation for the [`Period` constructors](#time-period-constructors)
 and the [`Span` constructors](spans.md).
 
-················································································
+................................................................................
     """
     if month is None:
         return DailyPeriod.from_year_period(year, day)
@@ -996,13 +1641,17 @@ for n in ("yy", "hh", "qq", "mm", "dd", "ii", ):
     path=("data_management", "spans.md", ),
     categories={
         "constructor": "Creating new time spans",
-        "manipulation": "Time span manipulation",
+        "arithmetics": "Arithmetic operations on time spans",
+        "manipulation": "Manipulating time spans",
+        "print": "Converting time spans to strings",
         "property": None,
     },
 )
-class Span(_copies.CopyMixin, ):
+class Span(
+    _copies.CopyMixin,
+):
     """
-················································································
+................................................................................
 
 Time spans
 ============
@@ -1011,7 +1660,7 @@ Time spans represent a range of time periods of the same date frequency,
 from a start period to an end period (possibly with a step size other than
 1), going either forward or backward.
 
-················································································
+................................................................................
     """
     #[
 
@@ -1027,9 +1676,9 @@ from a start period to an end period (possibly with a step size other than
         step: int = 1,
     ) -> None:
         r"""
-················································································
+................................................................................
 
-==Create a time span==
+==Create a new time span==
 
 
 ### Using the `Span` constructor ###
@@ -1045,7 +1694,7 @@ from a start period to an end period (possibly with a step size other than
 1. Equivalent to `Span(start_per, end_per, step=1)`
 2. Equivalent to `Span(end_per, start_per, step=-1)`
 
-················································································
+................................................................................
         """
         from_per = resolve_dater_or_integer(from_per)
         until_per = resolve_dater_or_integer(until_per)
@@ -1055,55 +1704,68 @@ from a start period to an end period (possibly with a step size other than
         else:
             default_from_per = end
             default_until_per = start
-        self._start_date = from_per if from_per is not None else default_from_per
-        self._end_date = until_per if until_per is not None else default_until_per
+        self._start = from_per if from_per is not None else default_from_per
+        self._end = until_per if until_per is not None else default_until_per
         self._step = step
-        self.needs_resolve = self._start_date.needs_resolve or self._end_date.needs_resolve
+        self.needs_resolve = self._start.needs_resolve or self._end.needs_resolve
         if not self.needs_resolve:
-            _check_daters(from_per, until_per)
+            _check_periods(from_per, until_per)
 
     @property
-    def start_date(self):
-        return self._start_date
+    @_pages.reference(category="property", )
+    def start(self):
+        """==Start period of the time span=="""
+        return self._start
+
+    start_date = start
 
     @property
-    def end_date(self):
-        return self._end_date
+    @_pages.reference(category="property", )
+    def end(self):
+        """==End period of the time span=="""
+        return self._end
+
+    end_date = end
 
     @property
+    @_pages.reference(category="property", )
     def step(self):
+        """==Step size of the time span=="""
         return self._step
 
     @property
     def _class(self):
-        return type(self._start_date) if not self.needs_resolve else None
+        return type(self._start) if not self.needs_resolve else None
 
     @property
+    @_pages.reference(category="property", )
     def direction(self, ) -> Literal["forward", "backward", ]:
+        """==Direction of the time span=="""
         return "forward" if self._step > 0 else "backward"
 
     @property
     def _serials(self) -> range | None:
-        return range(self._start_date.serial, self._end_date.serial+_sign(self._step), self._step) if not self.needs_resolve else None
+        return range(self._start.serial, self._end.serial+_sign(self._step), self._step) if not self.needs_resolve else None
 
     # @property
     # def needs_resolve(self) -> bool:
-        # return bool(self._start_date and self._end_date)
+        # return bool(self._start and self._end)
 
     @property
+    @_pages.reference(category="property", )
     def frequency(self) -> Frequency:
+        """==Frequency of the time span=="""
         return self._class.frequency
 
     @_pages.reference(category="manipulation", )
     def reverse(self, ) -> None:
         r"""
-················································································
+................................................................................
 
 ==Reverse the time span==
 
 Reverses the direction of the time span, so that the start period becomes
 the end period and vice versa.
-
 
     self.reverse()
 
@@ -1118,10 +1780,10 @@ the end period and vice versa.
 
 The time span is reversed in place.
 
-················································································
+................................................................................
         """
         #[
-        self._start_date, self._end_date = self._end_date, self._start_date
+        self._start, self._end = self._end, self._start
         self._step = -self._step
         #]
 
@@ -1134,32 +1796,155 @@ The time span is reversed in place.
         return new
         #]
 
-    def shift_end_date(
+    @_pages.reference(category="manipulation", )
+    def shift_end(
         self,
-        k: int,
+        by: int,
         /,
     ) -> Self:
-        """
-        """
-        return type(self)(self._start_date, self._end_date+k, self._step, )
+        r"""
+................................................................................
 
-    def shift_start_date(
+==Shift the end date of the time span==
+
+Shifts the end date of the time span by a specified number of periods. This
+operation modifies the end boundary of the time span, effectively changing its
+length. Adjusting the end date allows for extension or reduction of the span
+depending on the direction and magnitude of the shift.
+
+    self.shift_end(by)
+
+### Input arguments ###
+
+???+ input "self"
+    The time span within which the end date will be shifted.
+
+???+ input "k"
+    The number of periods by which the end date will be shifted. This can be
+    positive (to extend the span by moving the end date forward) or negative
+    (to reduce the span by moving the end date backward).
+
+### Returns ###
+
+This method modifies the object in place and does not return a value.
+
+................................................................................
+        """
+        self._end += k
+
+    shift_end = shift_end
+
+    @_pages.reference(category="manipulation", )
+    def shift_start(
         self,
-        k: int,
+        by: int,
         /,
     ) -> Self:
+        r"""
+................................................................................
+
+==Shift the start period of the time span==
+
+Shifts the start period of the time span by a specified number of periods. This
+operation adjusts the start boundary of the time span, effectively changing its
+length depending on the direction and magnitude of the shift.
+
+    self.shift_start(by)
+
+### Input arguments ###
+
+???+ input "self"
+    The time span within which the start period will be shifted.
+
+???+ input "by"
+    The number of periods by which the start period will be shifted. This can be
+    positive (to move the start period forward, reducing the span length) or
+    negative (to move it backward, increasing the span length).
+
+### Returns ###
+
+This method modifies the object in place and does not return a value.
+
+................................................................................
         """
+        self._start += by
+
+    shift_start = shift_start
+
+    def to_plotly_dates(self, *args, **kwargs, ) -> tuple[str]:
+        return tuple(t.to_plotly_date(*args, **kwargs, ) for t in self)
+
+    @_pages.reference(category="print", )
+    def to_iso_strings(self, *args, **kwargs, ) -> tuple[str]:
+        r"""
+................................................................................
+
+==Convert time span periods to ISO-8601 representations==
+
+Converts each period within the time span to an ISO-8601 string format. 
+
+    iso_strings = self.to_iso_strings(*, position="start", )
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    The time span whose periods are to be converted to ISO-8601 strings.
+
+???+ input "position"
+    The position within each period to use when converting to an ISO-8601
+    date string. See the documentation for the
+    [`to_ymd`](periods.md#to_ymd) method of time [`Periods`](periods.md).
+
+
+### Returns ###
+
+
+???+ returns "iso_strings"
+    A tuple of ISO-8601 date strings representing each period in the time
+    span.
+
+................................................................................
         """
-        return type(self)(self._start_date+k, self._end_date, self._step, )
+        return tuple(t.to_iso_string(*args, **kwargs, ) for t in self)
 
-    def to_plotly_dates(self, *args, **kwargs, ) -> Iterable[str]:
-        return [t.to_plotly_date(*args, **kwargs, ) for t in self]
+    @_pages.reference(category="print", )
+    def to_sdmx_strings(self, *args, **kwargs, ) -> tuple[str]:
+        r"""
+................................................................................
 
-    def to_iso_strings(self, *args, **kwargs, ) -> Iterable[str]:
-        return [t.to_iso_string(*args, **kwargs, ) for t in self]
+==Convert time span periods to SDMX representations==
 
-    def to_python_dates(self, *args, **kwargs, ) -> Iterable[str]:
-        return [t.to_python_date(*args, **kwargs, ) for t in self]
+Converts each period within the time span to a SDMX string format. 
+
+    sdmx_strings = self.to_sdmx_strings()
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    The time span whose periods are to be converted to SDMX strings.
+
+
+### Returns ###
+
+
+???+ returns "sdmx_strings"
+    A tuple of SDMX strings representing each period in the time span.
+
+
+### See also ###
+
+* [`to_sdmx_string`](periods.md#to_sdmx_string) method of time [`Periods`](periods.md)
+
+................................................................................
+        """
+        return tuple(t.to_sdmx_string(*args, **kwargs, ) for t in self)
+
+    def to_python_dates(self, *args, **kwargs, ) -> tuple[_dt.date]:
+        return tuple(t.to_python_date(*args, **kwargs, ) for t in self)
 
     def __len__(self) -> int|None:
         return len(self._serials) if not self.needs_resolve else None
@@ -1169,24 +1954,103 @@ The time span is reversed in place.
 
     def __repr__(self) -> str:
         step_rep = f", {self._step}" if self._step!=1 else ""
-        start_date_rep = self._start_date.__repr__()
-        end_date_rep = self._end_date.__repr__()
+        start_date_rep = self._start.__repr__()
+        end_date_rep = self._end.__repr__()
         return f"Span({start_date_rep}, {end_date_rep}{step_rep})"
 
-    def __add__(self, offset: int) -> range:
-        return type(self)(self._start_date+offset, self._end_date+offset, self._step)
+    @_pages.reference(
+        category="arithmetics",
+        call_name="+",
+    )
+    def __add__(self, offset: int) -> Self:
+        r"""
+................................................................................
+
+==Add an offset to the time span==
+
+Shifts both the start and end dates of the time span by a specified number of periods.
+This method is used to adjust the entire span forward or backward in time. It can be 
+used either by adding the offset to the span (`span + offset`) or the offset to the 
+span (`offset + span`), effectively creating a new time span that begins and ends
+earlier or later than the original.
+
+    new_span = self + offset
+    new_span = offset + self
+
+### Input arguments ###
+
+???+ input "self"
+    The time span to be adjusted.
+
+???+ input "offset"
+    The number of periods by which to shift the time span. This must be an integer,
+    where positive values indicate a forward shift and negative values indicate a 
+    backward shift.
+
+### Returns ###
+
+???+ returns "new_span"
+    A new `Span` object representing the time span shifted by the specified number of
+    periods.
+
+................................................................................
+        """
+        return type(self)(self._start+offset, self._end+offset, self._step)
 
     __radd__ = __add__
 
+    @_pages.reference(
+        category="arithmetics",
+        call_name="-",
+    )
     def __sub__(self, offset: Period | int, ) -> range | Self:
-        if _is_dater(offset, ):
-            return range(self._start_date-offset, self._end_date-offset, self._step) if not self.needs_resolve else None
+        r"""
+................................................................................
+
+==Subtract an offset or a Period from the time span==
+
+Adjusts the time span by shifting it backward by a specified number of periods or 
+computes a range of integers when a `Period` is subtracted. This method can be used 
+to shift the entire span backward in time by an integer offset or to calculate the 
+distance between each period in the span and a given `Period`.
+
+    new_span = self - offset
+    range_result = self - period
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    The time span from which the offset or a `Period` is to be subtracted.
+
+???+ input "other"
+    If an integer, the number of periods by which to shift the time span backward.
+    If a `Period`, a specific date used to calculate the difference in periods 
+    between this `Period` and each period within the time span.
+
+
+### Returns ###
+
+
+???+ returns "new_span" if `other` is an integer
+    A new `Span` object representing the time span shifted backward by the specified 
+    number of periods.
+
+???+ returns "range_result" if `other` is a `Period`
+    A standard range object containing the distances in periods from each period within
+    the span to the specified `Period`.
+
+................................................................................
+        """
+        if _is_period(offset, ):
+            return range(self._start-offset, self._end-offset, self._step) if not self.needs_resolve else None
         else:
-            return type(self)(self._start_date-offset, self._end_date-offset, self._step)
+            return type(self)(self._start-offset, self._end-offset, self._step)
 
     def __rsub__(self, ather: Period, ) -> range|None:
-        if _is_dater(other, ):
-            return range(other-self._start_date, other-self._end_date, -self._step) if not self.needs_resolve else None
+        if _is_period(other, ):
+            return range(other-self._start, other-self._end, -self._step) if not self.needs_resolve else None
         else:
             return None
 
@@ -1201,13 +2065,41 @@ The time span is reversed in place.
             return tuple(t for i, t in enumerate(self) if i in indexes)
 
     def resolve(self, context: ResolutionContextProtocol, /, ) -> Self:
-        resolved_start_date = self._start_date if self._start_date else self._start_date.resolve(context, )
-        resolved_end_date = self._end_date if self._end_date else self._end_date.resolve(context, )
-        return type(self)(resolved_start_date, resolved_end_date, self._step, )
+        resolved_start = self._start if self._start else self._start.resolve(context, )
+        resolved_end = self._end if self._end else self._end.resolve(context, )
+        return type(self)(resolved_start, resolved_end, self._step, )
 
+    @_pages.reference(category="manipulation", )
     def shift(self, by: int) -> None:
-        self._start_date += by
-        self._end_date += by
+        r"""
+................................................................................
+
+==Shift the entire time span==
+
+Shifts the entire time span forward or backward by a specified number of periods.
+This method adjusts both the start and end dates of the span simultaneously, 
+keeping the length of the span unchanged but moving it entirely to a new position 
+in the timeline.
+
+    self.shift(by)
+
+### Input arguments ###
+
+???+ input "self"
+    The time span that will be shifted along the timeline.
+
+???+ input "by"
+    The number of periods to shift the time span. Positive values shift the span 
+    forward, while negative values shift it backward.
+
+### Returns ###
+
+This method modifies the object in place and does not return a value.
+
+................................................................................
+        """
+        self._start += by
+        self._end += by
 
     def __enter__(self):
         return self
@@ -1216,7 +2108,7 @@ The time span is reversed in place.
         pass
 
     def __eq__(self, other: Self) -> bool:
-        return self._start_date==other._start_date and self._end_date==other._end_date and self._step==other._step
+        return self._start==other._start and self._end==other._end and self._step==other._step
 
     def __bool__(self) -> bool:
         return not self.needs_resolve
@@ -1318,7 +2210,7 @@ def resolve_dater_or_integer(input_date: Any) -> Period:
     return input_date
 
 
-DATER_CLASS_FROM_FREQUENCY_RESOLUTION = {
+PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION = {
     Frequency.INTEGER: IntegerPeriod,
     Frequency.YEARLY: YearlyPeriod,
     Frequency.HALFYEARLY: HalfyearlyPeriod,
@@ -1329,25 +2221,33 @@ DATER_CLASS_FROM_FREQUENCY_RESOLUTION = {
 }
 
 
-def daters_from_sdmx_strings(freq: Frequency, sdmx_strings: Iterable[str], ) -> Iterable[Period]:
+def periods_from_sdmx_strings(
+    sdmx_strings: Iterable[str],
+    frequency: Frequency | None = None,
+) -> tuple[Period]:
     """
     """
     sdmx_strings = tuple(sdmx_strings)
     if not sdmx_strings:
         return ()
-    freq = (
+    frequency = (
         Frequency.from_sdmx_string(sdmx_strings[0], )
-        if freq is None else freq
+        if frequency is None else frequency
     )
-    dater_class = DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq]
-    return ( dater_class.from_sdmx_string(i) for i in sdmx_strings )
+    period_class = PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[frequency]
+    return tuple(period_class.from_sdmx_string(i) for i in sdmx_strings)
 
 
-def daters_from_iso_strings(freq: Frequency, iso_strings: Iterable[str], ) -> Iterable[Period]:
+def periods_from_iso_strings(
+    iso_strings: Iterable[str],
+    *,
+    frequency: Frequency | None = None,
+) -> tuple[Period]:
     """
     """
-    dater_class = DATER_CLASS_FROM_FREQUENCY_RESOLUTION[freq]
-    return ( dater_class.from_iso_string(x) for x in iso_strings )
+    frequency = Frequency.DAILY if frequency is None else frequency
+    period_class = PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[frequency]
+    return tuple(period_class.from_iso_string(i, ) for i in iso_strings)
 
 
 def get_encompassing_span(*args: ResolutionContextProtocol, ) -> Span:
@@ -1371,17 +2271,17 @@ def _get_date(something, attr_name, select_func, ) -> Period | None:
         return None
 
 
-def daters_from_to(
-    start_date: Period,
-    end_date: Period,
+def periods_from_to(
+    start_per: Period,
+    end_per: Period,
     /,
 ) -> tuple[Period]:
     """
     """
-    _check_daters(start_date, end_date, )
-    serials = range(start_date.serial, end_date.serial+1, )
-    dater_class = type(start_date)
-    return tuple(dater_class(x) for x in serials)
+    _check_periods(start_per, end_per, )
+    serials = range(start_per.serial, end_per.serial + 1, )
+    period_class = type(start_per)
+    return tuple(period_class(x) for x in serials)
 
 
 def ensure_date_tuple(
@@ -1417,7 +2317,7 @@ def _date_tuple_from_string(
     #]
 
 
-def _is_dater(x: Any, ) -> bool:
+def _is_period(x: Any, ) -> bool:
     return isinstance(x, Period, )
 
 
@@ -1426,12 +2326,39 @@ def convert_to_new_freq(self, new_freq: Frequency, *args ,**kwargs, ) -> Period:
     Convert date to a new frequency
     """
     year, month, day = self.to_ymd(*args, **kwargs, )
-    new_class = DATER_CLASS_FROM_FREQUENCY_RESOLUTION[new_freq]
+    new_class = PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[new_freq]
     return new_class.from_ymd(year, month, day, )
 
 
-Dater = Period
-Ranger = Span
+#
+# Legacy aliases
+#
+
+class Dater(Period, ):
+    @staticmethod
+    def from_sdmx_string(frequency, sdmx_string):
+        return Period.from_sdmx_string(sdmx_string, frequency=frequency, )
+    @staticmethod
+    def from_iso_string(frequency, iso_string):
+        return Period.from_iso_string(iso_string, frequency=frequency, )
+
+class Ranger(Span, ):
+    pass
+
+
 EmptyRanger = EmptySpan
 
+
+daters_from_to = periods_from_to
+
+
+def daters_from_iso_strings(frequency, iso_strings):
+    return periods_from_iso_strings(iso_strings, frequency=frequency, )
+
+
+def daters_from_sdmx_strings(frequency, sdmx_strings):
+    return periods_from_sdmx_strings(sdmx_strings, frequency=frequency, )
+
+
+DATER_CLASS_FROM_FREQUENCY_RESOLUTION = PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION
 

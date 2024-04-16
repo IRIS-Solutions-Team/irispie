@@ -8,17 +8,19 @@ from __future__ import annotations
 from typing import (Iterable, )
 import requests as _rq
 
-from . import main as _databoxes
 from .. import dates as _dates
-from ..series import main as _series
+from ..dates import (Frequency, )
+from ..series.main import (Series, )
+
+from . import main as _databoxes
 #]
 
 
 _FRED_FREQ_MAP = {
-    "A".casefold(): _dates.Freq.YEARLY,
-    "Q".casefold(): _dates.Freq.QUARTERLY,
-    "M".casefold(): _dates.Freq.MONTHLY,
-    "D".casefold(): _dates.Freq.DAILY,
+    "A".casefold(): Frequency.YEARLY,
+    "Q".casefold(): Frequency.QUARTERLY,
+    "M".casefold(): Frequency.MONTHLY,
+    "D".casefold(): Frequency.DAILY,
 }
 
 
@@ -76,8 +78,8 @@ def _get_series(series_id: str, /, ):
     freq = _get_freq_from_meta_response(meta_response, )
     iso_dates, str_values = _get_dates_and_values_from_data_response(data_response, )
     values = ( (float(x) if x != _MISSING_VALUE else None) for x in str_values )
-    dates = _dates.daters_from_iso_strings(freq, iso_dates, )
-    return _series.Series(dates=dates, values=list(values), )
+    dates = _dates.periods_from_iso_strings(iso_dates, frequency=freq, )
+    return Series(dates=dates, values=list(values), )
     #]
 
 

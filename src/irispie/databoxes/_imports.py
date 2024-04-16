@@ -13,13 +13,13 @@ import numpy as _np
 import dataclasses as _dc
 import pickle as _pickle
 
-from .. import dates as _dates
+from ..dates import (Period, Frequency, Span, )
+from ..series.main import (Series, )
 from .. import pages as _pages
-from ..series import main as _series
 #]
 
 
-_DEFAULT_DATE_CREATOR = _dates.Dater.from_sdmx_string
+_DEFAULT_DATE_CREATOR = Period.from_sdmx_string
 
 
 @_dc.dataclass
@@ -28,7 +28,7 @@ class _ImportBlock:
     """
     #[
     row_index: Iterable[int] | None = None,
-    dates: Iterable[_dates.Dater] | None = None,
+    periods: Iterable[Period] | None = None,
     column_start: int | None = None,
     num_columns: int | None = None,
     names: Iterable[str] | None = None,
@@ -111,7 +111,7 @@ class Inlay:
 
 ???+ input "start_date_only"
     If `True`, only the start date of each time series is parsed from the CSV;
-    subsequent dates are inferred based on frequency.
+    subsequent periods are inferred based on frequency.
 
 ???+ input "description_row"
     Indicates if the CSV contains a row for descriptions of the time series.
@@ -201,7 +201,14 @@ def _remove_nonascii_from_start(string, /, ):
     #]
 
 
-def _block_iterator(name_row, description_row, data_rows, date_creator, start_date_only, /, ):
+def _block_iterator(
+    name_row,
+    description_row,
+    data_rows,
+    date_creator,
+    start_date_only,
+    /,
+):
     """
     """
     #[
@@ -213,7 +220,7 @@ def _block_iterator(name_row, description_row, data_rows, date_creator, start_da
             return False
         try:
             letter = cell.removeprefix("__")[0]
-            _dates.Frequency.from_letter(letter)
+            Frequency.from_letter(letter)
             return True
         except:
             return False
@@ -231,31 +238,37 @@ def _block_iterator(name_row, description_row, data_rows, date_creator, start_da
             num_columns = column - current_start
             names = name_row[current_start:column]
             descriptions = description_row[current_start:column]
-            row_index, dates = _extract_dates_from_data_rows(data_rows, current_frequency, current_date_column, date_creator, start_date_only, )
-            yield _ImportBlock(row_index, dates, current_start, num_columns, names, descriptions)
+            row_index, periods = _extract_periods_from_data_rows(
+                data_rows,
+                current_frequency,
+                current_date_column,
+                date_creator,
+                start_date_only,
+            )
+            yield _ImportBlock(row_index, periods, current_start, num_columns, names, descriptions)
         if not status and _is_start(cell):
             status = True
             current_date_column = column
             current_start = column + 1
-            current_frequency = _dates.Frequency.from_letter(cell)
+            current_frequency = Frequency.from_letter(cell)
     #]
 
 
-def _extract_dates_from_data_rows(
+def _extract_periods_from_data_rows(
     data_rows,
-    frequency: _dates.Frequency,
+    frequency: Frequency | None,
     column: int,
     date_creator: Callable,
     start_date_only: bool,
     /,
-) -> tuple[tuple[int], tuple[_dates.Dater]]:
+) -> tuple[tuple[int], tuple[Period]]:
     """
     """
     #[
-    start_date = date_creator(frequency, data_rows[0][column])
+    start_date = date_creator(data_rows[0][column], frequency=frequency, )
     date_extractor = {
         True: lambda i, line: start_date + i,
-        False: lambda i, line: date_creator(frequency, line[column]),
+        False: lambda i, line: date_creator(line[column], frequency=frequency, ),
     }[start_date_only]
     row_indices_and_dates = ( 
         (i, date_extractor(i, line))
@@ -280,8 +293,8 @@ def _add_series_for_block(self, block, array, /, ):
     #[
     array = array[block.row_index, :]
     for columns, name, description in block.column_iterator():
-        series = _series.Series(num_variants=len(columns), description=description)
-        series.set_data(block.dates, array[:, columns])
+        series = Series(num_variants=len(columns), description=description)
+        series.set_data(block.periods, array[:, columns])
         self[name] = series
     #]
 

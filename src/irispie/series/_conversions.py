@@ -122,7 +122,7 @@ class Inlay:
         if target_freq > self.frequency or target_freq is _dates.Frequency.UNKNOWN or self.frequency is _dates.Frequency.UNKNOWN:
             raise ValueError(f"Cannot aggregate from {self.frequency} frequency to {target_freq} frequency")
         #
-        new_dater_class = _dates.DATER_CLASS_FROM_FREQUENCY_RESOLUTION[target_freq]
+        new_dater_class = _dates.PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[target_freq]
         #
         aggregate_within_data_func = _ft.partial(
             _aggregate_within_data,
@@ -215,7 +215,7 @@ class Inlay:
                 f"Cannot disaggregate from {self.frequency} frequency to {target_freq} frequency"
             )
         #
-        new_dater_class = _dates.DATER_CLASS_FROM_FREQUENCY_RESOLUTION[target_freq]
+        new_dater_class = _dates.PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[target_freq]
         new_start_date, new_data, *_ = method_func(self, new_dater_class, **kwargs, )
         self._replace_start_date_and_values(new_start_date, new_data, )
 

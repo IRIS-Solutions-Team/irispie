@@ -20,18 +20,12 @@ class Variant:
 
     __slots__ = (
         "data",
-        "tag_alongs",
     )
 
-    def __init__(
-        self,
-        /,
-        tag_alongs: dict[str, Any] | None = None,
-    ) -> None:
+    def __init__(self, /, ) -> None:
         """
         """
         self.data = None
-        self.tag_alongs = tag_alongs or {}
 
     @classmethod
     def from_databox_variant(
@@ -78,7 +72,20 @@ class Variant:
     def copy(self, /) -> Self:
         """
         """
-        return type(self).from_data_array(self.data.copy(), )
+        new = type(self)()
+        new.data = self.data.copy()
+        return new
+
+    def update_columns_from(
+        self,
+        other: Self,
+        columns: Iterable[int],
+        /,
+    ) -> None:
+        """
+        """
+        columns = tuple(columns, )
+        self.data[:, columns] = other.data[:, columns]
 
     def remove_periods_from_start(
         self,

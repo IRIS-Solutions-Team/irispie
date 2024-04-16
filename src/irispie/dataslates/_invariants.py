@@ -33,7 +33,7 @@ class Invariant:
     __slots__ = (
         "descriptions",
         "logly_indexes",
-        "index_base_columns",
+        "base_columns",
         "names",
         "output_qids",
         "periods",
@@ -52,14 +52,12 @@ class Invariant:
         qid_to_logly: dict[int, bool | None] | None = None,
         min_max_shift: tuple[int, int] = (0, 0),
         frequency: Frequency | None = None,
-        tag_alongs: dict[str, Any] | None = None,
     ) -> None:
         """
         """
         self.names = tuple(names)
         self.periods = tuple(periods)
-        base_columns = base_columns or ()
-        self.index_base_columns = tuple(i in base_columns for i in range(self.num_periods))
+        self.base_columns = tuple(sorted(base_columns)) if base_columns else ()
         self._populate_descriptions(descriptions, )
         self._populate_logly_index(qid_to_logly, )
         self.min_max_shift = min_max_shift
@@ -101,22 +99,27 @@ class Invariant:
         return self.periods[0], self.periods[-1]
 
     @property
-    def base_columns(self, /, ) -> tuple[int]:
-        """
-        """
-        return tuple(i for i in range(self.num_periods) if self.index_base_columns[i])
-
-    @property
     def base_periods(self, /, ) -> tuple[Period]:
         """
         """
         return tuple(self.periods[i] for i in self.base_columns)
 
+    @base_periods.setter
+    def base_periods(self, base_periods: Iterable[Period], /, ) -> None:
+        """
+        """
+        base_periods = set(base_periods)
+        self.base_columns = tuple(
+            i for i, period in enumerate(self.periods)
+            if period in base_periods
+        )
+
     @property
     def nonbase_columns(self, /, ) -> tuple[int]:
         """
         """
-        return tuple(i for i in range(self.num_periods) if not self.index_base_columns[i])
+        all_columns = set(range(self.num_periods))
+        return tuple(sorted(all_columns - set(self.base_columns)))
 
     @property
     def base_slice(self, /, ) -> slice:
@@ -167,7 +170,10 @@ class Invariant:
         """
         if remove:
             self.periods = self.periods[remove:]
-            self.index_base_columns = self.index_base_columns[remove:]
+            self.base_columns = tuple(
+                i - remove for i in self.base_columns
+                if i >= remove
+            )
 
     def remove_periods_from_end(
         self,
@@ -178,6 +184,10 @@ class Invariant:
         """
         if remove:
             self.periods = self.periods[:-remove]
-            self.index_base_columns = self.index_base_columns[:-remove]
+            num_periods = len(self.periods)
+            self.base_columns = tuple(
+                i for i in self.base_columns
+                if i < num_periods
+            )
 
 

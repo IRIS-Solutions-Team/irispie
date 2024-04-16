@@ -13,6 +13,7 @@ import wlogging as _wl
 
 from .. import quantities as _quantities
 from .. import has_variants as _has_variants
+from .. import dates as _dates
 from ..databoxes.main import (Databox, )
 from ..dataslates.main import (Dataslate, )
 from ..fords import solutions as _solutions
@@ -24,9 +25,9 @@ from . import main as _simultaneous
 #]
 
 
-_SIMULATION_MODULE = {
-    "first_order": _ford_simulator,
-    "period": _period_simulator,
+_SIMULATION_FUNC = {
+    "first_order": _ford_simulator.simulate,
+    "period": _period_simulator.simulate,
 }
 
 
@@ -88,6 +89,7 @@ class Inlay:
             extra_databox_names=extra_databox_names,
         )
         #
+        simulation_func = _SIMULATION_FUNC[method]
         zipped = zip(
             range(num_variants, ),
             self.iter_variants(),
@@ -97,15 +99,13 @@ class Inlay:
         #=======================================================================
         # Main loop over variants
         info = []
-        simulation_module = _SIMULATION_MODULE[method]
         for vid, model_v, dataslate_v in zipped:
-            #
-            # Simulate and write to dataslate
-            info_v = simulation_module.simulate(
-                model_v, dataslate_v, vid, logger,
-                plan=plan,
+
+            info_v = simulation_func(
+                model_v, dataslate_v, plan, vid, logger,
                 **kwargs,
             )
+
             info.append(info_v, )
 
         #=======================================================================
@@ -126,8 +126,9 @@ class Inlay:
         if target_databox is not None:
             output_db = target_databox | output_db
         #
+        is_singleton = num_variants == 1
         info = _has_variants.unpack_singleton(
-            info, self.is_singleton,
+            info, is_singleton,
             unpack_singleton=unpack_singleton,
         )
         return output_db, info

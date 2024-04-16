@@ -473,6 +473,26 @@ steady_changes = self.get_steady_changes(
     ):
         return [ v.solution.eigenvalues_stability for v in self._variants ]
 
+
+    def generate_minus_control_quantities(self, /, ) -> tuple[int]:
+        """
+        """
+
+    def map_name_to_minus_control_func(self, /, ) -> tuple[str]:
+        """
+        """
+        minus_control_func = {
+            True: lambda x, y: x / y,
+            False: lambda x, y: x - y,
+            None: lambda x, y: x - y,
+        }
+        kind = _quantities.ANY_VARIABLE | _quantities.ANY_SHOCK
+        return {
+            q.human: minus_control_func[q.logly]
+            for q in self._invariant.quantities
+            if q.kind in kind
+        }
+
     #]
 
 

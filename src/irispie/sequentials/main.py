@@ -63,6 +63,11 @@ class Sequential(
 `Sequential` models
 ====================
 
+`Sequential` models are models where the equations are simulated sequentially,
+one data point at a time. The order of execution in simulations is either
+period-by-period and equation-by-equation, or vice versa, equation-by-equation
+and period-by-period.
+
 ......................................................................
     """
     #[
@@ -78,7 +83,7 @@ class Sequential(
     ) -> None:
         """
         """
-        self._invariant = None
+        self._invariant = _invariants.Invariant()
         self._variants = []
 
     @_pages.reference(category="manipulation", )
@@ -153,7 +158,7 @@ model object.
     specified, they will all combined together in the given order.
 
 ???+ input "context"
-    Dictionary supplying the values used in preparsing commands, and the
+    Dictionary supplying the values used in [preparsing](preparser.md) commands, and the
     definition of non-standard functions used in the equations.
 
 ???+ input "description"
@@ -354,7 +359,7 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
         return min(
             x.min_shift
             for x in self._invariant.explanatories
-        )
+        ) if self._invariant.explanatories else 0
 
     @property
     def min_shift(self, /, ) -> int:
@@ -367,7 +372,7 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
         return max(
             x.max_shift
             for x in self._invariant.explanatories
-        )
+        ) if self._invariant.explanatories else 0
 
     @property
     def max_shift(self, /, ) -> int:
@@ -380,7 +385,10 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
         /,
     ) -> bool:
         """==`True` if the model equations are ordered sequentially=="""
-        return _blazer.is_sequential(self.incidence_matrix, )
+        return (
+            _blazer.is_sequential(self.incidence_matrix, )
+            if self._invariant.explanatories else True
+        )
 
     @property
     def equations(self, /, ) -> tuple[_equations.Equation]:
@@ -557,7 +565,7 @@ self.set_description(description, )
             f"|--Num of [nonidentities, identities]: [{len(self.nonidentity_index)}, {len(self.identity_index)}]",
             f"|--Num of parameters: {len(self.parameter_names)}",
             f"|--Num of rhs-only variables: {len(self.rhs_only_names)}",
-            f"|--Time shifts [min, max]: [{self.min_shift:+g}, {self.max_shift:+g}]",
+            f"|--Time shifts [min, max]: [-{abs(self.min_shift):g}, +{abs(self.max_shift):g}]",
             f" ",
         ))
 

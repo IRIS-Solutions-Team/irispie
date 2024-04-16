@@ -6,14 +6,13 @@ Temporal change functions
 #[
 from __future__ import annotations
 
-from typing import (Callable, )
+from typing import (Self, Callable, )
 from numbers import (Real, )
 import numpy as _np
 
-from .. import dates as _dates
-from .. import pages as _pages
-from . import main as _series
+from ..dates import (Span, )
 from . import _functionalize
+from .. import pages as _pages
 #]
 
 
@@ -382,8 +381,8 @@ See documentation for [temporal cumulation calculations](#temporal-cumulation-ca
         self,
         func_name: str,
         shift: int | str = -1,
-        initial: Real | _series.Series | None = None,
-        span: _dates.Ranger | None = None,
+        initial: Real | Self | None = None,
+        span: Span | None = None,
     ) -> None:
         r"""
 ················································································
@@ -465,7 +464,7 @@ self.cum_roc(/, shift=-1, initial=None, span=None)
 ················································································
         """
         _catch_invalid_shift(shift, )
-        span = _dates.Ranger(None, None, ) if span is None else span
+        span = Span(None, None, ) if span is None else span
         span = span.resolve(self, )
         direction = span.direction
         factory = _CUMULATIVE_FACTORY[func_name]
@@ -480,7 +479,7 @@ self.cum_roc(/, shift=-1, initial=None, span=None)
         """
         """
         shifted_range = tuple(t.shift(shift, ) for t in span)
-        initial_range = _dates.Ranger(min(shifted_range), span.end_date, )
+        initial_range = Span(min(shifted_range), span.end_date, )
         orig = self.copy()
         self.empty()
         self.set_data(initial_range, initial)
@@ -491,12 +490,12 @@ self.cum_roc(/, shift=-1, initial=None, span=None)
     def _cumulate_backward(self, shift, cum_func, initial, shifted_backward_range, /, ) -> None:
         """
         """
-        orig_range_shifted = _dates.Ranger(self.start_date, self.end_date, -1, )
+        orig_range_shifted = Span(self.start_date, self.end_date, -1, )
         orig_range_shifted.shift(shift, )
         shifted_backward_range = shifted_backward_range.resolve(orig_range_shifted, )
         backward_range = shifted_backward_range.copy()
         backward_range.shift(-shift, )
-        initial_range = _dates.Ranger(min(shifted_backward_range), backward_range.start_date, )
+        initial_range = Span(min(shifted_backward_range), backward_range.start_date, )
         orig = self.copy()
         self.empty()
         self.set_data(initial_range, initial, )

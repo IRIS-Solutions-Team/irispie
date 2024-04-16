@@ -270,7 +270,7 @@ class _OutputStore:
             self.update_std = _std_constructor()
             self.predict_err = _MedLogDataslate.from_names_dates(
                 measurement_names,
-                input_ds.dates,
+                input_ds.periods,
                 num_variants,
                 name_to_log_name,
             )

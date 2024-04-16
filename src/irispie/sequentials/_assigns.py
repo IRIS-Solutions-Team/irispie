@@ -31,6 +31,12 @@ class Inlay:
 
 ==Assign model parameters==
 
+Assigns parameters to a `Sequential` model. The method can assign parameters
+from individual arguments, from a `Databox`, or from a `dict`.
+
+
+### Assigning individual parameters ###
+
 ```
 self.assign(
     name_one=value_one,
@@ -39,36 +45,38 @@ self.assign(
 )
 ```
 
+
+### Assigning parameters from a `Databox` or a `dict` ###
+
 ```
 self.assign(databox, )
 ```
-
-...
 
 
 ### Input arguments ###
 
 
 ???+ input "self"
-
     `Sequential` model whose parameters will be assigned.
 
 
-???+ input "name_one"
+???+ input "name_one, name_two, ..."
+    Names of the parameters to assign.
 
-    Name of a parameter to assign.
 
+???+ input "value_one, value_two, ..."
+    Values to assign to `name_one`, `name_two`, etc.
 
-???+ input "value_one"
-
-    Value to assign to `name_one`.
-
-etc...
 
 ???+ input "databox"
-
     `Databox` or `dict` from which the parameters will be extracted and
-    assigned.
+    assigned. Any names in the `Databox` or `dict` that are not model
+    parameters will be ignored.
+
+
+### Returns ###
+
+Returns no value; the method modifies the model in place.
 
 ················································································
         """

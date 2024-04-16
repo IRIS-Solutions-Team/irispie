@@ -321,7 +321,7 @@ def _create_dates_from_start_date(
     """
     #[
     num_dates = len(date_str_vector)
-    start_date = _dates.Dater.from_sdmx_string(freq, date_str_vector[0], )
+    start_date = _dates.Dater.from_sdmx_string(date_str_vector[0], frequency=freq, )
     return tuple(_dates.Ranger(start_date, num_dates, ))
     #]
 
@@ -335,7 +335,7 @@ def _create_dates_from_date_column(
     """
     #[
     return tuple(
-        _dates.Dater.from_sdmx_string(freq, s, ) if s else None
+        _dates.Dater.from_sdmx_string(s, frequency=freq, ) if s else None
         for s in date_str_vector
     )
     #]

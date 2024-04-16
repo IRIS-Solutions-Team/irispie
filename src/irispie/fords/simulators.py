@@ -11,6 +11,8 @@ import numpy as _np
 import functools as _ft
 import wlogging as _wl
 
+from .. import frames as _frames
+from .. import dates as _dates
 from ..dataslates import main as _dataslates
 from ..plans import main as _plans
 from ..fords import solutions as _solutions
@@ -32,41 +34,51 @@ class _FordSimulatableProtocol:
     #]
 
 
-def iter_frames(
-    simulatable_v: _FordSimulatableProtocol,
-    dataslate_v: _dataslates.Dataslate,
-    vid: int,
-    logger: _wl.Logger,
-    /,
-    *,
-    plan: _plans.PlanSimulate | None = None,
-) -> None:
-    """
-    """
-    pass
-
-
 def simulate(
-    simulatable_v: _FordSimulatableProtocol,
+    model_v: _FordSimulatableProtocol,
     dataslate_v: _dataslates.Dataslate,
+    plan: _plans.SimulationPlan | None,
     vid: int,
     logger: _wl.Logger,
     /,
     *,
-    plan: _plans.PlanSimulate | None = None,
     deviation: bool = False,
 ) -> dict[str, Any]:
     """
     """
-    return simulate_flat(
-        simulatable_v, dataslate_v, vid,
-        plan=plan,
-        deviation=deviation,
+    #[
+    orig_base_periods = dataslate_v.base_periods
+    needs_split = plan is not None and plan.needs_split
+    create_frames = (
+        _frames.split_into_frames if needs_split
+        else _frames.setup_single_frame
     )
+    frames = create_frames(
+        model_v, dataslate_v, plan,
+        get_simulation_end=lambda start, end: end,
+    )
+    #
+    for frame in frames:
+        dataslate_v.base_periods \
+            = _dates.periods_from_to(frame.start, frame.simulation_end, )
+        simulate_flat(
+            model_v, dataslate_v, vid,
+            plan=plan,
+            deviation=deviation,
+        )
+        dataslate_v.base_periods = orig_base_periods
+    #
+    info = {
+        "method": "first_order",
+        "frames": frames,
+    }
+    #
+    return info
+    #]
 
 
 def simulate_flat(
-    simulatable_v: _FordSimulatableProtocol,
+    model_v: _FordSimulatableProtocol,
     dataslate_v: _dataslates.Dataslate,
     vid: int,
     /,
@@ -77,11 +89,11 @@ def simulate_flat(
     """
     """
     #[
-    if simulatable_v.num_variants != 1:
+    if model_v.num_variants != 1:
         raise ValueError("Simulator requires a singleton simulatable object")
     #
-    solution = simulatable_v.get_solution()
-    solution_vectors = simulatable_v.solution_vectors
+    solution = model_v.get_solution()
+    solution_vectors = model_v.solution_vectors
     columns_to_run = dataslate_v.base_columns
     logly_indexes = dataslate_v.logly_indexes
     working_data = dataslate_v.get_data_variant(0, )
@@ -131,7 +143,7 @@ def simulate_flat(
     w = _extract_shock_values(working_data, vec.measurement_shocks, )
     #
     v_impact \
-        = simulate_square_anticipated_shocks(simulatable_v, dataslate_v, )
+        = simulate_square_anticipated_shocks(model_v, dataslate_v, )
     #
     for t in column_range:
         curr_state = T @ curr_state + P @ u[:, t] + K
@@ -166,18 +178,18 @@ def _extract_shock_values(working_data, shock_vector, ) -> _np.ndarray:
 
 
 def _simulate_anticipated_shocks(
-    simulatable_v: _FordSimulatableProtocol,
+    model_v: _FordSimulatableProtocol,
     dataslate_v: _dataslates.Dataslate,
     expand_solution: Callable,
 ) -> list[_np.ndarray | None]:
     """
     """
     #[
-    if simulatable_v.num_variants != 1:
+    if model_v.num_variants != 1:
         raise ValueError("Simulator requires a singleton simulatable object")
     #
-    solution = simulatable_v.get_solution()
-    solution_vectors = simulatable_v.solution_vectors
+    solution = model_v.get_solution()
+    solution_vectors = model_v.solution_vectors
     base_columns = dataslate_v.base_columns
     first_column = base_columns[0]
     last_column = base_columns[-1]
@@ -219,4 +231,14 @@ simulate_triangular_anticipated_shocks = _ft.partial(
     _simulate_anticipated_shocks,
     expand_solution=_solutions.Solution.expand_triangular_solution,
 )
+
+
+def _get_frames(
+    model_v: _FordSimulatableProtocol,
+    dataslate_v: _dataslates.Dataslate,
+    plan: _plans.PlanSimulate | None = None,
+) -> None:
+    """
+    """
+
 

@@ -35,7 +35,7 @@ class _ExportBlock:
 
     databox: _databoxes.Databox | None = None
     frequency: _dates.Frequency | None = None
-    dates: tuple[_dates.Dater] | None = None
+    periods: tuple[_dates.Dater] | None = None
     names: tuple[str] | None = None
     #
     # Options
@@ -58,7 +58,7 @@ class _ExportBlock:
         #
         descriptions = _get_descriptions_for_names(self.databox, self.names, )
         num_data_columns = _get_num_data_columns_for_names(self.databox, self.names, )
-        data_array = _get_data_array_for_names(self.databox, self.names, self.dates, )
+        data_array = _get_data_array_for_names(self.databox, self.names, self.periods, )
         #
         # Empty row
         empty_row = ("", ) + ("", )*sum(num_data_columns) + ("", )
@@ -80,14 +80,14 @@ class _ExportBlock:
         #
         # Dates and data, row by row
         date_formatter = self.date_formatter or _DEFAULT_DATE_FORMATTER
-        for date, data_row in zip(self.dates, data_array, ):
+        for date, data_row in zip(self.periods, data_array, ):
             yield \
                 (date_formatter(date, ), ) \
                 + tuple(x if not _np.isnan(x) else self.nan_str for x in _round(data_row).tolist()) \
                 + ("", )
         #
         # Empty rows afterwards
-        for _ in range(self.total_num_data_rows - len(self.dates), ):
+        for _ in range(self.total_num_data_rows - len(self.periods), ):
             yield empty_row
 
     #]
@@ -216,7 +216,7 @@ class Inlay:
         export_blocks = (
             export_block_constructor(
                 frequency=f,
-                dates=frequency_span[f],
+                periods=frequency_span[f],
                 names=frequency_names[f],
             )
             for f in frequency_span.keys()
@@ -353,13 +353,13 @@ def _get_num_data_columns_for_names(
 def _get_data_array_for_names(
     self,
     names: Iterable[str],
-    dates: Iterable[_dates.Dater],
+    periods: Iterable[_dates.Dater],
     /,
 ) -> _np.ndarray:
     """
     """
-    empty_lead = _np.empty((len(dates), 0, ), dtype=_np.float64, )
-    return _np.hstack([empty_lead] + [self[n].get_data(dates, ) for n in names], )
+    empty_lead = _np.empty((len(periods), 0, ), dtype=_np.float64, )
+    return _np.hstack([empty_lead] + [self[n].get_data(periods, ) for n in names], )
 
 
 def _catch_empty(

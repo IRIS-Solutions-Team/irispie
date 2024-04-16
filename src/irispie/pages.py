@@ -27,7 +27,7 @@ def reference(**kwargs, ) -> Callable:
         if not hasattr(callable_obj, "_pages_priority", ):
             callable_obj._pages_priority = _PRIORITY.get(callable_obj._pages_category, _PRIORITY[None], )
         if not hasattr(callable_obj, "_pages_add_heading", ):
-            callable_obj._pages_add_heading = type(callable_obj, ) is not type
+            callable_obj._pages_add_heading = not isinstance(callable_obj, type)
         if not hasattr(callable_obj, "_pages_call_name_is_code", ):
             callable_obj._pages_call_name_is_code = True
         if callable_obj._pages_add_heading:

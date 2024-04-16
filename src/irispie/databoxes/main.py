@@ -95,18 +95,22 @@ class Databox(
     _descriptions.DescriptionMixin,
     dict,
 ):
-    """
-......................................................................
+    r"""
+................................................................................
 
 Databoxes
 ==========
 
-The `Databox` objects can be used to store and manipulate unstructured data
-organized as key-value pairs, in a dictionary style; the `Databox` objects
-are, indeed, subclassed from the standard `dict`. The values stored within
-a databox can be of any type.
+`Databoxes` extend the standard `dict` class (technically, they are a
+subclass), serving as a universal tool for storing and manipulating
+unstructured data organized as key-value pairs. The values stored within
+`Databoxes` can be of any type.
 
-......................................................................
+`Databoxes` can use any methods implemented for the standard `dict`
+objects, and have additional functionalities for data item manipulation,
+batch processing, importing and exporting data, and more.
+
+................................................................................
     """
     #[
 
@@ -166,28 +170,28 @@ No input arguments are required for this method.
         """
 ················································································
 
-==Create a Databox from a Dictionary==
+==Create a new `Databox` from a `dict`==
 
 Create a new Databox instance populated with data from a provided dictionary. 
 This class method can be used to convert a standard Python dictionary into a 
 Databox, incorporating all its functionalities.
 
-    Databox.from_dict(_dict)
+    self = Databox.from_dict(_dict)
 
 
 ### Input arguments ###
 
 
 ???+ input "_dict"
-    A dictionary containing the data to populate the new Databox. Each key-value 
-    pair in the dictionary will be an item in the Databox.
+    A dictionary containing the data to populate the new Databox. Each
+    key-value pair in the dictionary will be an item in the Databox.
 
 
 ### Returns ###
 
 
-???+ returns "Databox"
-    Returns a new Databox instance populated with the contents of the provided 
+???+ returns "self"
+    Returns a new Databox populated with the contents of the provided
     dictionary.
 
 ················································································
@@ -198,7 +202,7 @@ Databox, incorporating all its functionalities.
         return self
 
     @classmethod
-    @_pages.reference(category="constructor", call_name="Databox.from_dict", )
+    @_pages.reference(category="constructor", call_name="Databox.from_array", )
     def from_array(
         klass,
         array: _np.ndarray,
@@ -213,14 +217,16 @@ Databox, incorporating all its functionalities.
         """
 ················································································
 
-==Create a Databox from a numpy array==
+==Create a new `Databox` from a numpy array==
 
-Convert a multidimensional array data into a Databox, with the individual
-time series created from the rows or columns of the numeric array.
+Convert a two-dimensional [numpy](https://numpy.org) array data into a
+Databox, with the individual time series created from the rows or columns
+of the numeric array.
 
-    Databox.from_array(
+    self = Databox.from_array(
         array,
         names,
+        *,
         descriptions=None,
         periods=None,
         start=None,
@@ -254,15 +260,17 @@ time series created from the rows or columns of the numeric array.
 
 ???+ input "orientation"
     The orientation of the array, indicating how time series are arranged: 
-    'horizontal' means each row is a time series, 'vertical' means each column 
-    is a time series.
+
+    * `"horizontal"` means each row is a time series;
+
+    * `"vertical"` means each column is a time series.
 
 
 ### Returns ###
 
 
-???+ returns "Databox"
-    Returns a Databox instance populated with the data from the numpy array.
+???+ returns "self"
+    Returns a new Databox populated with the data from the numpy array.
 
 ················································································
         """
@@ -1033,18 +1041,9 @@ Get the encompassing date span for all time series with a specified frequency.
     ) -> None:
         """
         """
-        MINUS_FACTORY = {
-            True: lambda x, y: x / y,
-            False: lambda x, y: x - y,
-            None: lambda x, y: x - y,
-        }
-        kind = _quantities.QuantityKind.ANY_VARIABLE | _quantities.QuantityKind.ANY_SHOCK
-        quantities = model.get_quantities(kind=kind, )
-        qid_to_name = _quantities.create_qid_to_name(quantities, )
-        qid_to_logly = _quantities.create_qid_to_logly(quantities, )
-        for qid, name in qid_to_name.items():
-            minus_func = MINUS_FACTORY[qid_to_logly[qid]]
-            self[name] = minus_func(self[name], control[name], )
+        name_to_minus_control_func = model.map_name_to_minus_control_func()
+        for name, func in name_to_minus_control_func.items():
+            self[name] = func(self[name], control[name], )
 
     def __or__(self, other) -> Self:
         new = _co.deepcopy(self)

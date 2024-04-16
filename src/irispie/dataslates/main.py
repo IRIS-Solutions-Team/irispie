@@ -213,10 +213,16 @@ class Dataslate(
         return self._invariant.logly_indexes
 
     @property
-    def periods(self, /, ) -> tuple[str]:
+    def periods(self, /, ) -> tuple[Period]:
         """
         """
         return self._invariant.periods
+
+    @property
+    def first_period(self, /, ) -> Period:
+        """
+        """
+        return self._invariant.periods[0]
 
     @property
     def base_periods(self, /, ) -> tuple[Period]:
@@ -224,7 +230,11 @@ class Dataslate(
         """
         return self._invariant.base_periods
 
-    dates = periods
+    @base_periods.setter
+    def base_periods(self, base_periods: Iterable[Period], /, ) -> None:
+        """
+        """
+        self._invariant.base_periods = base_periods
 
     @property
     def names(self, /, ) -> tuple[str]:
@@ -285,6 +295,17 @@ class Dataslate(
         """
         """
         return self.nan_from_template(self, num_variants=self.num_variants, )
+
+    def update_columns_from(
+        self,
+        other: Self,
+        columns: Iterable[int],
+        /,
+    ) -> None:
+        """
+        """
+        for self_v, other_v in zip(self._variants, other._variants, ):
+            self_v.update_columns_from(other_v, columns, )
 
     def remove_initial_data(self, /, ) -> None:
         """

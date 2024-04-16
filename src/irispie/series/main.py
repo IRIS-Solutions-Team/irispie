@@ -148,9 +148,9 @@ class Series(
 Time series
 ============
 
-The `Series` objects represent numerical time series, organized as rows of
-observations stored in NumPy arrays and [date](dates.md)
-stamped. A `Series` object can hold multiple
+Time `Series` objects represent numerical time series, organized as rows of
+observations stored in [`numpy`](https://numpy.org) arrays and time stamped
+using [time `Periods`](periods.md). A `Series` object can hold multiple
 variants of the data, stored as mutliple columns.
 
 ················································································
@@ -306,9 +306,11 @@ self = Series(
 
     @property
     @_pages.reference(category="property", )
-    def dates(self, /, ) -> tuple[Period, ...]:
-        """==N-tuple with the dates from the start date to the end date of the time series=="""
+    def periods(self, /, ) -> tuple[Period, ...]:
+        """==N-tuple with the periods from the start period to the end period of the time series=="""
         return tuple(self.range, )
+
+    dates = periods
 
     @property
     @_pages.reference(category="property", call_name="start_date", )
@@ -318,9 +320,20 @@ self = Series(
 
     @property
     @_pages.reference(category="property", )
-    def end_date(self):
-        """==End date of the time series=="""
-        return self.start_date + self.data.shape[0] - 1 if self.start_date else None
+    def start(self, /, ):
+        """==Start period of the time series=="""
+        return self.start_date
+
+    @property
+    @_pages.reference(category="property", )
+    def end(self):
+        """==End period of the time series=="""
+        return (
+            self.start_date + self.data.shape[0] - 1
+            if self.start_date else None
+        )
+
+    end_date = end
 
     @property
     @_pages.reference(category="property", )
