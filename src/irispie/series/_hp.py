@@ -345,13 +345,13 @@ class Inlay:
         """
         """
         start_date, trend_data, _ = _data_hpf(self, *args, **kwargs, )
-        self._replace_start_date_and_values(start_date, trend_data, )
+        self._replace_start_and_values(start_date, trend_data, )
 
     def hpf_gap(self, /, *args, **kwargs):
         """
         """
         start_date, _, gap_data = _data_hpf(self, *args, **kwargs, )
-        self._replace_start_date_and_values(start_date, gap_data, )
+        self._replace_start_and_values(start_date, gap_data, )
 
     #]
 

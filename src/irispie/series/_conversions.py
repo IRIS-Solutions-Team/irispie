@@ -137,7 +137,7 @@ class Inlay:
             aggregate_func = _aggregate_daily_to_regular
         #
         new_start_date, new_data = aggregate_func(self, new_dater_class, aggregate_within_data_func, )
-        self._replace_start_date_and_values(new_start_date, new_data, )
+        self._replace_start_and_values(new_start_date, new_data, )
 
     @_pages.reference(category="conversion", )
     def disaggregate(
@@ -217,7 +217,7 @@ class Inlay:
         #
         new_dater_class = _dates.PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[target_freq]
         new_start_date, new_data, *_ = method_func(self, new_dater_class, **kwargs, )
-        self._replace_start_date_and_values(new_start_date, new_data, )
+        self._replace_start_and_values(new_start_date, new_data, )
 
     #]
 

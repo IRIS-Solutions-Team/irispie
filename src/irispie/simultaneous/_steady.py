@@ -96,7 +96,7 @@ class Inlay:
         return output_info
 
     def _steady_linear(
-        self, 
+        self,
         variant: _variants.Variant,
         model_flags: _flags.Flags,
         vid: int,

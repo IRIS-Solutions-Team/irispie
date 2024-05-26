@@ -22,12 +22,13 @@ class Inlay(_views.ViewMixin, ):
     """
     """
     #[
+
     def _get_first_line_view(self, /, ):
         """
         """
         return f"{self.__class__.__name__} with {self.num_items:g} item(s)"
 
-    def _get_content_view_(self, /, ):
+    def _get_content_view(self, /, ):
         """
         """
         names = self.get_names()
@@ -48,6 +49,7 @@ class Inlay(_views.ViewMixin, ):
         """
         max_len = self._get_max_name_length_()
         return _REPR_INDENT + _views._VERTICAL_ELLIPSIS.rjust(max_len) + " "*len(_REPR_SEPARATOR) + _VERTICAL_ELLIPSIS
+
     #]
 
 
@@ -56,6 +58,7 @@ def _databox_repr(x, /, ) -> str:
     String representing one item in a databox
     """
     #[
+
     if hasattr(x, "_databox_repr"):
         s = f"<{x._databox_repr()}>"
     elif x is None:
@@ -73,5 +76,6 @@ def _databox_repr(x, /, ) -> str:
     else:
         s = repr(type(x))
     return s if len(s)<_REPR_MAX_LEN else s[0:_REPR_MAX_LEN] + _REPR_CONT
+
     #]
 

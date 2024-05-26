@@ -471,6 +471,16 @@ during the duplication process.
             for s, t in zip(source_names, target_names, )
         )
 
+    def print_content(
+        self,
+        source_names: SourceNames = None,
+    ) -> None:
+        """
+        """
+        shallow = self.shallow(source_names=source_names, )
+        content_view = shallow._get_content_view()
+        print("\n", "\n".join(content_view, ), "\n", )
+
     @_pages.reference(category="validation", )
     def validate(
         self: Self,

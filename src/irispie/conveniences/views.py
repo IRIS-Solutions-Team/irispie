@@ -32,11 +32,11 @@ class ViewMixin:
     def _get_footer_view_(self, /, ):
         return ("", )
 
-    def _get_view_(self, /, ):
+    def _get_view(self, /, ):
         """
         """
         header_view = self._get_header_view_()
-        content_view = self._get_content_view_()
+        content_view = self._get_content_view()
         footer_view = self._get_footer_view_()
         return header_view + content_view + footer_view
 
@@ -45,7 +45,7 @@ class ViewMixin:
         ~self for short view
         """
         header_view = self._get_header_view_()
-        content_view = self._get_content_view_()
+        content_view = self._get_content_view()
         if len(content_view) > 2*self._short_rows_:
             content_view = (
                 content_view[:self._short_rows_]
@@ -57,7 +57,7 @@ class ViewMixin:
     def __repr__(self, /, ):
         """
         """
-        return "\n".join(self._get_view_())
+        return "\n".join(self._get_view())
 
     def __str__(self, /, ):
         """

@@ -94,7 +94,7 @@ __all__ = (
 
 import dill as _di
 
-def save(obj, filename, ):
+def save(filename, obj, ):
     with open(filename, "wb+", ) as fid:
         _di.dump(obj, fid, )
 

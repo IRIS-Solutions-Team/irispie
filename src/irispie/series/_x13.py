@@ -140,7 +140,7 @@ info = self.x13(
                 "X13 failed to produce a result for at least one variant.",
             )
         new_data = _np.hstack(new_data, )
-        self._replace_start_date_and_values(base_start_date, new_data, )
+        self._replace_start_and_values(base_start_date, new_data, )
         return info
     #]
 

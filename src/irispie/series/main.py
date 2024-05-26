@@ -47,6 +47,9 @@ from ._filling import *
 from ._hp import __all__ as _hp__all__
 from ._hp import *
 
+from ._x13 import __all__ as _x13__all__
+from ._x13 import *
+
 from ._moving import __all__ as _moving__all__
 from ._moving import *
 
@@ -89,6 +92,7 @@ __all__ = (
     + _fillings__all__
     + _hp__all__
     + _moving__all__
+    + _x13__all__
     + FUNCTION_ADAPTATIONS
 )
 

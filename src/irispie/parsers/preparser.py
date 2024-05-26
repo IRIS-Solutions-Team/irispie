@@ -36,7 +36,8 @@ def from_string(
         "preparser_needed": None,
     }
 
-    info["context"] = context or {}
+    context = dict(context) if context else {}
+    info["context"] = context
 
     # Remove NON-NESTED block comments #{ ... #} or %{ ... %}
     source = _remove_block_comments(source, )
@@ -127,7 +128,7 @@ class _Visitor(_pa.nodes.NodeVisitor):
     def __init__(self, context=None):
         super().__init__()
         self.content = []
-        self.context = context or {}
+        self.context = dict(context) if context else {}
 
     def _add(self, new):
         self.content.append(new)
@@ -264,6 +265,7 @@ class _If:
     ) -> None:
         """
         """
+        context = dict(context) if context else {}
         try:
             self._condition_result = bool(eval(self._condition_text, {}, context, ))
         except Exception as exc:

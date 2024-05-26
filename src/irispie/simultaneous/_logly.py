@@ -54,10 +54,11 @@ def _apply(
 ) -> None:
     """
     """
+    #[
     logly_indexes = self.get_logly_indexes()
-    print(logly_indexes)
     if not logly_indexes:
         return
     for array in arrays:
         array[logly_indexes, ...] = func(array[logly_indexes, ...])
+    #]
 
