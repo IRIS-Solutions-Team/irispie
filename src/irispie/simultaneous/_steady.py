@@ -18,6 +18,7 @@ import dataclasses as _dc
 
 from .. import equations as _eq
 from .. import quantities as _quantities
+from .. import has_variants as _has_variants
 from .. import wrongdoings as _wrongdoings
 from ..fords import steadiers as _fs
 from ..evaluators import steady as _evaluators
@@ -76,18 +77,23 @@ class Inlay:
     def steady(
         self,
         /,
+        unpack_singleton: bool = True,
         **kwargs,
-    ) -> list[dict]:
+    ) -> dict | list[dict]:
         """
         Calculate steady state for each Variant within this model
         """
         model_flags = _flags.Flags.update_from_kwargs(self.get_flags(), **kwargs)
         solver = self._choose_steady_solver(model_flags.is_linear, model_flags.is_flat, )
-        info = [
+        output_info = [
             solver(v, model_flags, vid, **kwargs, )
             for vid, v in enumerate(self._variants, )
         ]
-        return info
+        output_info = _has_variants.unpack_singleton(
+            output_info, self.is_singleton,
+            unpack_singleton=unpack_singleton,
+        )
+        return output_info
 
     def _steady_linear(
         self, 
