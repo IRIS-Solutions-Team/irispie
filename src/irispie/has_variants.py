@@ -86,6 +86,14 @@ class HasVariantsMixin:
         for i in range(self.num_variants, new_num):
             self._variants.append(self._variants[-1].copy(), )
 
+    def resolve_num_variants_in_context(self, custom_num_variants: int | None, /, ) -> int:
+        """
+        """
+        return \
+            custom_num_variants \
+            if custom_num_variants is not None \
+            else self.num_variants
+
     def broadcast_variants(self, other: Self, /, ) -> None:
         """
         """

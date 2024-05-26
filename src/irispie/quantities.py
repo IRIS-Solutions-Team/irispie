@@ -85,6 +85,7 @@ __all__ = (
     "filter_quantities_by_name",
     "TRANSITION_VARIABLE",
     "ANTICIPATED_SHOCK",
+    "ANTICIPATED_STD",
     "UNANTICIPATED_SHOCK",
     "UNANTICIPATED_STD",
     "MEASUREMENT_VARIABLE",
@@ -175,7 +176,6 @@ def create_qid_to_kind(quantities: Iterable[Quantity]) -> dict[int, QuantityKind
 def generate_quantities_of_kind(
     quantities: Iterable[Quantity],
     kind: QuantityKind | None,
-    /,
 ) -> Iterable[Quantity]:
     """
     """

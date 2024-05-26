@@ -16,13 +16,14 @@ from .. import pages as _pages
 from .. import wrongdoings as _wrongdoings
 from .. import has_variants as _has_variants
 from ..databoxes.main import (Databox, )
-from ..plans import main as _plans
+from ..plans.simulation_plans import (SimulationPlan, )
+from ..plans.transforms import (PlanTransform, )
 from ..explanatories import main as _explanatories
 from ..dataslates.main import (Dataslate, )
 #]
 
 
-_LOGGER_NAME = "Sequential.simulate"
+_LOGGER = _wl.get_colored_two_liner(__name__, level=_wl.INFO, )
 
 
 class Inlay:
@@ -36,7 +37,7 @@ class Inlay:
         input_db: Databox,
         span: Iterable[Dater],
         *,
-        plan: _plans.Plan | None = None,
+        plan: SimulationPlan | None = None,
         prepend_input: bool = True,
         target_databox: Databox | None = None,
         when_nonfinite: Literal["error", "warning", "silent", ] = "warning",
@@ -147,16 +148,20 @@ simulating the model.
 
 ················································································
         """
-        logger = _wl.get_colored_logger(_LOGGER_NAME, level=logging_level, )
-        num_variants = self.num_variants if num_variants is None else num_variants
+        _LOGGER.set_level(logging_level, )
+
+        num_variants \
+            = self.resolve_num_variants_in_context(num_variants, )
+        _LOGGER.debug(f"Running {num_variants} variants")
+
         base_dates = tuple(span, )
-        #
+
         extra_databox_names = None
         if plan is not None:
             plan.check_consistency(self, base_dates, )
             extra_databox_names = plan.get_databox_names()
         #
-        slatable = self.get_slatable(
+        slatable = self.get_slatable_for_simulation(
             shocks_from_data=shocks_from_data,
         )
         dataslate = Dataslate.from_databox_for_slatable(
@@ -177,7 +182,8 @@ simulating the model.
         simulate_method = _SIMULATE_METHODS[method]
         for vid, model_v, dataslate_v in zipped:
             info_v = simulate_method(
-                model_v, dataslate_v, plan, vid, logger,
+                model_v, dataslate_v, plan, vid,
+                logger=_LOGGER,
                 when_nonfinite=when_nonfinite,
                 execution_order=execution_order,
             )
@@ -212,11 +218,10 @@ simulating the model.
 def _simulate_v(
     self,
     ds: Dataslate,
-    plan: _plans.SimulationPlan | None,
+    plan: SimulationPlan | None,
     vid: int,
-    logger: _wl.Logger,
-    /,
     *,
+    logger: _wl.Logger,
     when_nonfinite,
     execution_order,
 ) -> dict[str, Any]:
@@ -285,10 +290,10 @@ def _simulate_v(
 
 
 def _get_transform(
-    plan: _plans.Plan | None,
+    plan: SimulationPlan | None,
     equation: _explanatories.Explanatory,
     date: _dates.Dater,
-) -> _plans.Transform | None:
+) -> PlanTransform | None:
     """
     """
     return (
@@ -300,7 +305,7 @@ def _get_transform(
 
 def _detect_exogenized(
     lhs_name: str,
-    transform: _plans.Transform | None,
+    transform: PlanTransform | None,
     data_column: int,
     *,
     data: _np.ndarray,

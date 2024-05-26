@@ -54,7 +54,7 @@ class Inlay:
     """
     #[
 
-    def get_slatable(self, **kwargs, ) -> _Slatable:
+    def get_slatable_for_simulation(self, **kwargs, ) -> _Slatable:
         """
         """
         return _Slatable(self, **kwargs, )

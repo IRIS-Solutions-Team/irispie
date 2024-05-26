@@ -10,14 +10,6 @@ from .. import quantities as _quantities
 #]
 
 
-_SIMULATE_CAN_BE_EXOGENIZED = _quantities.QuantityKind.ENDOGENOUS_VARIABLE
-_SIMULATE_CAN_BE_ENDOGENIZED = _quantities.QuantityKind.EXOGENOUS_VARIABLE | _quantities.QuantityKind.ANY_SHOCK
-_SIMULATE_CAN_BE_EXOGENIZED_ANTICIPATED = _quantities.QuantityKind.ENDOGENOUS_VARIABLE
-_SIMULATE_CAN_BE_ENDOGENIZED_ANTICIPATED = _quantities.QuantityKind.ANTICIPATED_SHOCK
-_SIMULATE_CAN_BE_EXOGENIZED_UNANTICIPATED = _quantities.QuantityKind.ENDOGENOUS_VARIABLE
-_SIMULATE_CAN_BE_ENDOGENIZED_UNANTICIPATED = _quantities.QuantityKind.UNANTICIPATED_SHOCK
-
-
 class _SimulationPlannable:
     """
     """
@@ -30,25 +22,24 @@ class _SimulationPlannable:
     ) -> None:
         """
         """
-        self.can_be_exogenized_anticipated \
-            = tuple(_quantities.generate_quantity_names_by_kind(
-                simultaneous._invariant.quantities,
-                _SIMULATE_CAN_BE_EXOGENIZED_ANTICIPATED,
-            ))
-        self.can_be_exogenized_unanticipated \
-            = tuple(_quantities.generate_quantity_names_by_kind(
-                simultaneous._invariant.quantities,
-                _SIMULATE_CAN_BE_EXOGENIZED_UNANTICIPATED,
-            ))
+        quantities = simultaneous.quantities
+        solution_vectors = simultaneous.solution_vectors
+        #
+        curr_xi_qids, *_ = solution_vectors.get_curr_transition_indexes()
+        qid_to_name = simultaneous.create_qid_to_name()
+        can_be_exogenized = tuple( qid_to_name[qid] for qid in curr_xi_qids )
+        #
+        self.can_be_exogenized_anticipated = can_be_exogenized
+        self.can_be_exogenized_unanticipated = can_be_exogenized
+        #
         self.can_be_endogenized_anticipated \
             = tuple(_quantities.generate_quantity_names_by_kind(
-                simultaneous._invariant.quantities,
-                _SIMULATE_CAN_BE_ENDOGENIZED_ANTICIPATED,
+                quantities, _quantities.ANTICIPATED_SHOCK,
             ))
+        #
         self.can_be_endogenized_unanticipated \
             = tuple(_quantities.generate_quantity_names_by_kind(
-                simultaneous._invariant.quantities,
-                _SIMULATE_CAN_BE_ENDOGENIZED_UNANTICIPATED,
+                quantities, _quantities.UNANTICIPATED_SHOCK,
             ))
 
 

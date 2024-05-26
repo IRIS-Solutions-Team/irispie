@@ -19,31 +19,22 @@ from ..dataslates.main import (Dataslate, )
 from ..fords import solutions as _solutions
 from ..fords import simulators as _ford_simulator
 from ..periods import simulators as _period_simulator
-from ..plans import main as _plans
+from ..plans.simulation_plans import (SimulationPlan, )
 
 from . import main as _simultaneous
 #]
 
 
-_SIMULATION_FUNC = {
+_SIMULATION_CALL = {
     "first_order": _ford_simulator.simulate,
     "period": _period_simulator.simulate,
 }
 
 
+_LOGGER = _wl.get_colored_two_liner(__name__, level=_wl.INFO, )
+
+
 InfoOutput = dict[str, Any] | list[dict[str, Any]]
-
-
-class _SimulationModuleProtocol(Protocol, ):
-    """
-    """
-    #[
-
-    def simulate(self, *args, **kwargs, ) -> dict[str, Any]: ...
-
-    def iter_frames(self, *args, **kwargs, ) -> Iterable[Any]: ...
-
-    #]
 
 
 class Inlay:
@@ -57,7 +48,7 @@ class Inlay:
         span: Iterable[Dater],
         /,
         *,
-        plan: _plans.PlanSimulate | None = None,
+        plan: SimulationPlan | None = None,
         method: Literal["first_order", "period", "stacked"] = "first_order",
         prepend_input: bool = True,
         target_databox: Databox | None = None,
@@ -65,48 +56,59 @@ class Inlay:
         remove_initial: bool = True,
         remove_terminal: bool = True,
         shocks_from_data: bool = True,
+        stds_from_data: bool = True,
         logging_level: int = _wl.INFO,
         unpack_singleton: bool = True,
         **kwargs,
     ) -> tuple[Databox, InfoOutput]:
         """
         """
-        logger = _wl.get_colored_logger(__name__, level=logging_level, )
-        num_variants = self.num_variants if num_variants is None else num_variants
+        _LOGGER.set_level(logging_level, )
+
+        num_variants \
+            = self.resolve_num_variants_in_context(num_variants, )
+        _LOGGER.debug(f"Running {num_variants} variants")
+
         base_dates = tuple(span, )
-        #
-        extra_databox_names = None
-        if plan is not None:
+
+        if plan is not None and not plan.is_empty:
             plan.check_consistency(self, base_dates, )
             extra_databox_names = plan.get_databox_names()
-        #
-        slatable = self.get_slatable(
+        else:
+            plan = None
+            extra_databox_names = None
+
+        slatable = self.get_slatable_for_simulate(
             shocks_from_data=shocks_from_data,
+            stds_from_data=stds_from_data,
         )
+
         dataslate = Dataslate.from_databox_for_slatable(
             slatable, input_db, base_dates,
             num_variants=num_variants,
             extra_databox_names=extra_databox_names,
         )
-        #
-        simulation_func = _SIMULATION_FUNC[method]
+
         zipped = zip(
             range(num_variants, ),
             self.iter_variants(),
             dataslate.iter_variants(),
         )
-        #
+
+        simulation_func = _SIMULATION_CALL[method]
+
         #=======================================================================
         # Main loop over variants
-        info = []
+        output_info = []
         for vid, model_v, dataslate_v in zipped:
 
             info_v = simulation_func(
-                model_v, dataslate_v, plan, vid, logger,
+                model_v, dataslate_v, plan, vid,
+                logger=_LOGGER,
                 **kwargs,
             )
 
-            info.append(info_v, )
+            output_info.append(info_v, )
 
         #=======================================================================
         #
@@ -127,11 +129,11 @@ class Inlay:
             output_db = target_databox | output_db
         #
         is_singleton = num_variants == 1
-        info = _has_variants.unpack_singleton(
-            info, is_singleton,
+        output_info = _has_variants.unpack_singleton(
+            output_info, is_singleton,
             unpack_singleton=unpack_singleton,
         )
-        return output_db, info
+        return output_db, output_info
 
     #]
 

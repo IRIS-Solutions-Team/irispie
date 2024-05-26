@@ -15,12 +15,11 @@ import wlogging as _wl
 
 from ..evaluators.base import (DEFAULT_INIT_GUESS, )
 from ..simultaneous import main as _simultaneous
-from ..plans import main as _plans
-from ..dataslates import main as _dataslates
-from .. import quantities as _quantities
+from ..plans.simulation_plans import (SimulationPlan, )
+from ..dataslates.main import (Dataslate, )
 from .. import equations as _equations
 from .. import wrongdoings as _wrongdoings
-from . import evaluators as _evaluators
+from .evaluators import (PeriodEvaluator, )
 #]
 
 
@@ -29,12 +28,11 @@ _DEFAULT_FALLBACK_VALUE = 1/9
 
 def simulate(
     simulatable_v: _simultaneous.Simultaneous,
-    dataslate_v: _dataslate.Dataslate,
-    plan: _plans.SimulationPlan | None,
+    dataslate_v: Dataslate,
+    plan: SimulationPlan | None,
     vid: int,
-    logger: _wl.Logger,
-    /,
     *,
+    logger: _wl.Logger,
     start_iter_from: Literal["data", "first_order", "previous_period"] = "previous_period",
     root_settings: dict[str, Any] | None = None,
     iter_printer_settings: dict[str, Any] | None = None,
@@ -70,7 +68,7 @@ def simulate(
         return
 
     evaluator_factory = _ft.partial(
-        _evaluators.PeriodEvaluator,
+        PeriodEvaluator,
         wrt_equations=wrt_equations,
         all_quantities=all_quantities,
         context=simulatable_v.get_context(),
@@ -128,14 +126,14 @@ def simulate(
 
 # REFACTOR
 def _set_up_current_period(
-    plan: _plans.PlanSimulate | None,
-    evaluator_factory: Callable[..., _evaluators.PeriodEvaluator],
+    plan: SimulationPlan | None,
+    evaluator_factory: Callable[..., PeriodEvaluator],
     wrt_qids: tuple[int, ...],
     current_period: _dates.Dater,
-    base_evaluator: _evaluators.PeriodEvaluator,
+    base_evaluator: PeriodEvaluator,
     name_to_qid: dict[str, int],
     /,
-) -> tuple[tuple[int, ...], _evaluators.PeriodEvaluator]:
+) -> tuple[tuple[int, ...], PeriodEvaluator]:
     """
     """
     if plan is None:
@@ -195,7 +193,7 @@ def _catch_missing(
     data: _np.ndarray,
     t: int,
     /,
-    dataslate_v: _dataslate.Dataslate,
+    dataslate_v: Dataslate,
     qid_to_name: dict[int, str],
     fallback_value: Real,
     when_missing_stream: _wrongdoings.Stream,

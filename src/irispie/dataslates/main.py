@@ -10,7 +10,6 @@ from typing import (Self, Protocol, )
 from numbers import (Number, )
 from collections.abc import (Iterable, Iterator, )
 import numpy as _np
-import dataclasses as _dc
 import numpy as _np
 import functools as _ft
 import itertools as _it
@@ -46,7 +45,6 @@ class SlatableProtocol(Protocol, ):
     qid_to_logly: dict[int, bool | None]
 
 
-@_dc.dataclass
 class Dataslate(
     _has_variants.HasVariantsMixin,
 ):
@@ -54,8 +52,14 @@ class Dataslate(
     """
     #[
 
-    _invariant: _invariants.Invariant | None = None
-    _variants: list[_variants.Variant] | None = None
+    __slots__ = (
+        "_invariant",
+        "_variants",
+    )
+
+    def __init__(self, /, ) -> None:
+        self._invariant = None
+        self._variants = []
 
     @classmethod
     def skeleton(
@@ -81,7 +85,7 @@ class Dataslate(
         """
         """
         names = tuple(names or databox.keys())
-        periods = _dates.ensure_date_tuple(periods, )
+        periods = _dates.ensure_period_tuple(periods, )
         num_names = len(names)
         num_periods = len(periods)
         self = klass()
@@ -125,7 +129,7 @@ class Dataslate(
         """
         """
         names = tuple(names or databox.keys())
-        periods = _dates.ensure_date_tuple(periods, )
+        periods = _dates.ensure_period_tuple(periods, )
         #
         if validators:
             Databox.validate(databox, validators, )
@@ -219,10 +223,20 @@ class Dataslate(
         return self._invariant.periods
 
     @property
-    def first_period(self, /, ) -> Period:
+    def start(self, /, ) -> Period:
         """
         """
         return self._invariant.periods[0]
+
+    first_period = start
+
+    @property
+    def end(self, /, ) -> Period:
+        """
+        """
+        return self._invariant.periods[-1]
+
+    last_period = end
 
     @property
     def base_periods(self, /, ) -> tuple[Period]:
@@ -269,7 +283,8 @@ class Dataslate(
     def copy(self, /, ) -> Self:
         """
         """
-        new = self.skeleton(self, )
+        new = type(self)()
+        new._invariant = self._invariant.copy()
         new._variants = [i.copy() for i in self._variants]
         return new
 
@@ -343,7 +358,7 @@ class Dataslate(
         #]
 
     for n in ["num_periods", "from_to", "num_row", "base_slice", "base_columns", "nonbase_columns", ]:
-        exec(f"@property\ndef {n}(self, /, ): return self._invariant.{n}", )
+        exec(f"{n} = property(lambda self: self._invariant.{n})", )
 
     def get_data_variant(
         self,
@@ -399,6 +414,23 @@ class Dataslate(
         for v in self._variants:
             v.remove_periods_from_end(remove, )
 
+    def logarithmize(self, /, ) -> None:
+        """
+        """
+        logly_indexes = tuple(self.logly_indexes)
+        if not logly_indexes:
+            return
+        for v in self._variants:
+            v.logarithmize(logly_indexes, )
+
+    def delogarithmize(self, /, ) -> None:
+        """
+        """
+        logly_indexes = tuple(self.logly_indexes)
+        if not logly_indexes:
+            return
+        for v in self._variants:
+            v.delogarithmize(logly_indexes, )
     #]
 
 
@@ -444,12 +476,12 @@ def _slate_value_variant_iterator(
 def retrieve_vector_from_data_array(
     data: _np.ndarray,
     tokens: tuple[str, ...],
-    index_zero: int,
+    column_zero: int,
     /,
 ) -> _np.ndarray:
     """
     """
-    rows, columns = _incidences.rows_and_columns_from_tokens(tokens, index_zero, )
+    rows, columns = _incidences.rows_and_columns_from_tokens(tokens, column_zero, )
     return data[rows, columns]
 
 
@@ -457,10 +489,10 @@ def store_vector_in_data_array(
     vector: _np.ndarray,
     data: _np.ndarray,
     tokens: Iterable[_incidences.Incidence],
-    index_zero: int,
+    column_zero: int,
 ) -> None:
     """
     """
-    rows, columns = _incidences.rows_and_columns_from_tokens(tokens, index_zero, )
+    rows, columns = _incidences.rows_and_columns_from_tokens(tokens, column_zero, )
     data[rows, columns] = vector
 

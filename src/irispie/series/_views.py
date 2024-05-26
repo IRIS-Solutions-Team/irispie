@@ -18,7 +18,7 @@ class ViewMixin(_views.ViewMixin, ):
         """
         """
         shape = self.data.shape
-        range_str = f"{self.start_date}»{self.end_date}" if self.start_date is not None else "None"
+        range_str = f"{self.start_date}…{self.end_date}" if self.start_date is not None else "None"
         return f"Series {range_str} {shape[0]}×{shape[1]}"
 
     def _get_content_view_(self, /, ):

@@ -19,7 +19,7 @@ class _Slatable:
     def __init__(
         self,
         simultaneous,
-        *,
+        output_names: Iterable[str],
         shocks_from_data: bool = False,
         stds_from_data: bool = False,
         **kwargs,
@@ -68,12 +68,8 @@ class _Slatable:
         else:
             self.overwrites.update(shock_stds, )
         #
-        # Qid to logly
         self.qid_to_logly = simultaneous.create_qid_to_logly()
-        #
-        # Output names
-        kind = _quantities.ANY_VARIABLE | _quantities.ANY_SHOCK
-        self.output_names = simultaneous.get_names(kind=kind, )
+        self.output_names = output_names
 
 
 class Inlay:
@@ -81,9 +77,24 @@ class Inlay:
     """
     #[
 
-    def get_slatable(self, **kwargs, ) -> _Slatable:
+    def get_slatable_for_simulate(self, **kwargs, ) -> _Slatable:
         """
         """
-        return _Slatable(self, **kwargs, )
+        kind = _quantities.ANY_VARIABLE | _quantities.ANY_SHOCK
+        output_names = self.get_names(kind=kind, )
+        return _Slatable(self, output_names, **kwargs, )
 
+    def get_slatable_for_kalman_filter(self, **kwargs, ) -> _Slatable:
+        """
+        """
+        kind = (
+            _quantities.ANY_VARIABLE
+            | _quantities.ANY_SHOCK
+            | _quantities.UNANTICIPATED_STD
+            | _quantities.MEASUREMENT_STD
+        )
+        output_names = self.get_names(kind=kind, )
+        return _Slatable(self, output_names, **kwargs, )
+
+    #]
 

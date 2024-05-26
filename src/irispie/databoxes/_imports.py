@@ -64,9 +64,9 @@ class Inlay:
     @classmethod
     @_pages.reference(
         category="import_export",
-        call_name="Databox.from_sheet",
+        call_name="Databox.from_csv",
     )
-    def from_sheet(
+    def from_csv(
         klass,
         file_name: str,
         *,
@@ -86,7 +86,7 @@ class Inlay:
 ==Create a new Databox by reading time series from a CSV file==
 
 
-    self = Databox.from_sheet(
+    self = Databox.from_csv(
         file_name,
         *,
         date_creator=None,
@@ -142,19 +142,19 @@ class Inlay:
 ················································································
         """
         self = klass(**databox_settings, )
-
+        #
         num_header_rows = 1 + int(description_row)
         csv_rows = _read_csv(file_name, num_header_rows, **csv_reader_settings, )
         if not csv_rows:
             return self
-
+        #
         header_rows = csv_rows[0:num_header_rows]
         data_rows = csv_rows[num_header_rows:]
         name_row = header_rows[0]
-
+        #
         if name_row_transform:
             name_row = _apply_name_row_transform(name_row, name_row_transform, )
-
+        #
         description_row = header_rows[1] if description_row else [""] * len(name_row)
         date_creator = date_creator or _DEFAULT_DATE_CREATOR
         #
@@ -163,6 +163,12 @@ class Inlay:
             _add_series_for_block(self, b, array, )
         #
         return self
+
+    @classmethod
+    def from_sheet(klass, *args, **kwargs, ):
+        """
+        """
+        return klass.from_csv(*args, **kwargs, )
 
     @classmethod
     def from_pickle(

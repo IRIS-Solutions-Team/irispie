@@ -84,6 +84,7 @@ class Inlay:
         figure_title: str | None = None,
         subplot_title: str | None = None,
         legend: Iterable[str] | None = None,
+        update_layout: dict[str, Any] | None = None,
         show_figure: bool = True,
         show_legend: bool | None = None,
         subplot: tuple[int, int] | int | None = None,
@@ -145,9 +146,11 @@ class Inlay:
 
         figure.update_xaxes(xaxis, row=row, col=column, )
         figure.update_yaxes(yaxis, row=row, col=column, )
-        if figure_title is not None:
-            figure.update_layout(title={"text": figure_title}, )
         figure.update_layout(layout or {}, )
+        if figure_title is not None:
+            figure.update_layout(title=figure_title, )
+        if update_layout is not None:
+            figure.update_layout(update_layout, )
 
         if subplot_title:
             _update_subplot_title(figure, subplot_title, index, )
@@ -177,6 +180,7 @@ def _update_subplot_title(
     """
     """
     annotation = next(figure.select_annotations(index, ), None, )
+    print(annotation)
     if annotation:
         annotation.text = subplot_title
 

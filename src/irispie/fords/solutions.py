@@ -44,33 +44,30 @@ import dataclasses as _dc
 import enum as _en
 import numpy as _np
 import scipy as _sp
+import copy as _co
 
 from ..fords import systems as _systems
 from ..fords import descriptors as _descriptors
 #]
 
 
-Eigenvalues = tuple[Number, ...]
-
-
-class EigenValueKind(_en.Flag):
+class EigenValueKind(_en.Flag, ):
     STABLE = _en.auto()
     UNIT = _en.auto()
     UNSTABLE = _en.auto()
 
 
-class SystemStabilityKind(_en.Flag):
+class SystemStabilityKind(_en.Flag, ):
     STABLE = _en.auto()
     MULTIPLE_STABLE = _en.auto()
     NO_STABLE = _en.auto()
 
 
-class VariableStability(_en.Flag):
+class VariableStability(_en.Flag, ):
     STABLE = _en.auto()
     UNIT_ROOT = _en.auto()
 
 
-@_dc.dataclass(slots=True, )
 class Solution:
     """
     ## Square solution:
@@ -102,37 +99,24 @@ class Solution:
     Xa: Impact matrix in triangular system
     """
     #[
-    T: _np.ndarray | None = None
-    P: _np.ndarray | None = None
-    R: _np.ndarray | None = None
-    K: _np.ndarray | None = None
-    Z: _np.ndarray | None = None
-    H: _np.ndarray | None = None
-    D: _np.ndarray | None = None
 
-    Ta: _np.ndarray | None = None
-    Pa: _np.ndarray | None = None
-    Ra: _np.ndarray | None = None
-    Ka: _np.ndarray | None = None
-    Za: _np.ndarray | None = None
-    Ua: _np.ndarray | None = None
-
-    J: _np.ndarray | None = None
-    Ru: _np.ndarray | None = None
-    X: _np.ndarray | None = None
-    Xa: _np.ndarray | None = None
-
-    eigenvalues: Eigenvalues | None = None
-    eigenvalues_stability: tuple[EigenValueKind, ...] | None = None
-    system_stability: SystemStabilityKind | None = None
-    transition_vector_stability: VariableStability | None = None
-    measurement_vector_stability: VariableStability | None = None
+    __slots__ = (
+        "T", "P", "R", "K", "Z", "H", "D",
+        "Ta", "Pa", "Ra", "Ka", "Za", "Ua",
+        "J", "Ru", "X", "Xa",
+        "eigenvalues",
+        "eigenvalues_stability",
+        "system_stability",
+        "transition_vector_stability",
+        "measurement_vector_stability",
+        "square_expansion",
+        "triangular_expansion",
+    )
 
     def __init__(
         self, 
         descriptor: _descriptors.Descriptor,
         system: _systems.System,
-        /,
         *,
         tolerance: float = 1e-12,
         clip_small: bool = False,
@@ -181,101 +165,83 @@ class Solution:
         self._classify_system_stability(descriptor.get_num_forwards(), )
         self._classify_transition_vector_stability(tolerance=tolerance, )
         self._classify_measurement_vector_stability(tolerance=tolerance, )
+        #
+        self.square_expansion = []
+        self.triangular_expansion = []
 
     @property
-    def num_alpha(self, /, ) -> int:
-        """
-        Number of alpha vector elements
-        """
+    def num_xi(self, /, ) -> int:
+        """==Number of xi vector elements=="""
         return self.T.shape[0]
 
     @property
+    def num_alpha(self, /, ) -> int:
+        """==Number of alpha vector elements=="""
+        return self.Ta.shape[0]
+
+    @property
     def num_y(self, /, ) -> int:
-        """
-        Number of y vector elements
-        """
+        """==Number of y vector elements=="""
         return self.Z.shape[0]
 
     @property
     def num_u(self, /, ) -> int:
-        """
-        Number of v vector elements
-        """
+        """==Number of v vector elements=="""
         return self.P.shape[1]
 
     @property
     def num_v(self, /, ) -> int:
-        """
-        Number of v vector elements
-        """
+        """==Number of v vector elements=="""
         return self.R.shape[1]
 
     @property
     def num_w(self, /, ) -> int:
-        """
-        Number of w vector elements
-        """
+        """==Number of w vector elements=="""
         return self.H.shape[1]
 
     @property
     def num_unit_roots(self, /, ) -> int:
-        """
-        Number of unit roots
-        """
+        """==Number of unit roots=="""
         return self.eigenvalues_stability.count(EigenValueKind.UNIT)
 
     @property
     def num_stable(self, /, ) -> int:
-        """
-        Number of stable elements in alpha vector
-        """
+        """==Number of stable elements in alpha vector=="""
         return self.num_alpha - self.num_unit_roots
 
     @property
     def Ta_stable(self, /, ) -> _np.ndarray:
-        """
-        Stable part of transition matrix
-        """
+        """==Stable part of transition matrix=="""
         num_unit_roots = self.num_unit_roots
         return self.Ta[num_unit_roots:, num_unit_roots:]
 
     @property
     def Pa_stable(self, /, ) -> _np.ndarray:
-        """
-        Stable part of impact matrix of transition shocks
-        """
+        """==Stable part of impact matrix of unanticipated shocks=="""
         num_unit_roots = self.num_unit_roots
         return self.Pa[num_unit_roots:, :]
 
     @property
     def Ra_stable(self, /, ) -> _np.ndarray:
-        """
-        Stable part of impact matrix of transition shocks
-        """
+        """==Stable part of impact matrix of transition shocks=="""
         num_unit_roots = self.num_unit_roots
         return self.Ra[num_unit_roots:, :]
 
     @property
     def Ka_stable(self, /, ) -> _np.ndarray:
-        """
-        Stable part of intercept in transition equation
-        """
+        """==Stable part of intercept in transition equation=="""
         num_unit_roots = self.num_unit_roots
         return self.Ka[num_unit_roots:]
 
     @property
     def Za_stable(self, /, ) -> _np.ndarray:
-        """
-        Stable part of measurement matrix
-        """
+        """==Stable part of measurement matrix=="""
         num_unit_roots = self.num_unit_roots
         return self.Za[:, num_unit_roots:]
 
     @property
     def boolex_stable_transition_vector(self, /, ) -> tuple[int, ...]:
-        """
-        Index of stable transition vector elements
-        """
+        """==Index of stable transition vector elements=="""
         return _np.array(tuple(
             i == VariableStability.STABLE
             for i in self.transition_vector_stability
@@ -283,25 +249,31 @@ class Solution:
 
     @property
     def boolex_stable_measurement_vector(self, /, ) -> tuple[int, ...]:
-        """
-        Index of stable measurement vector elements
-        """
+        """==Index of stable measurement vector elements=="""
         return _np.array(tuple(
             i == VariableStability.STABLE
             for i in self.measurement_vector_stability
         ), dtype=bool, )
 
-    def expand_square_solution(self, forward, /, ) -> tuple[_np.ndarray]:
+    def expand_square_solution(self, forward: int, /, ) -> list[_np.ndarray]:
         """
         Expand R matrices of square solution for t+1...t+forward
         """
-        return _expand_solution(self.R, self.X, self.J, self.Ru, forward, )
+        return _get_solution_expansion(
+            self.square_expansion,
+            self.R, self.X, self.J, self.Ru,
+            forward,
+        )
 
-    def expand_triangular_solution(self, forward, /, ) -> tuple[_np.ndarray]:
+    def expand_triangular_solution(self, forward: int, /, ) -> list[_np.ndarray]:
         """
         Expand Ra matrices of square solution for t+1...t+forward
         """
-        return _expand_solution(self.Ra, self.Xa, self.J, self.Ru, forward, )
+        return _get_solution_expansion(
+            self.triangular_expansion,
+            self.Ra, self.Xa, self.J, self.Ru,
+            forward,
+        )
 
     def _classify_eigenvalues_stability(
         self,
@@ -561,7 +533,12 @@ def _classify_solution_vector_stability(
     #]
 
 
-def _expand_solution(R, X, J, Ru, forward, /, ) -> tuple[_np.ndarray]:
+def _get_solution_expansion(
+    existing_expansion: list[_np.ndarray],
+    R, X, J, Ru,
+    forward: int,
+    /,
+) -> list[_np.ndarray]:
     """
     Expand R matrices of square solution for t+1...t+forward
     """
@@ -574,8 +551,27 @@ def _expand_solution(R, X, J, Ru, forward, /, ) -> tuple[_np.ndarray]:
     # R(t+k) = -X J**(k-1) Ru e(t+k)
     # k = 1, ..., forward or k-1 = 0, ..., forward-1
     #
-    return (R, ) + tuple(
-        -X @ _np.linalg.matrix_power(J, k_minus_1) @ Ru
-        for k_minus_1 in range(0, forward)
-    )
+    existing_forward = len(existing_expansion)
+    for k_minus_1 in range(existing_forward, forward):
+        Rk = -X @ _np.linalg.matrix_power(J, k_minus_1, ) @ Ru
+        existing_expansion.append(Rk, )
+    return [R, ] + existing_expansion[:forward]
+    #
+    # return [R, ] + [
+    #     -X @ _np.linalg.matrix_power(J, k_minus_1) @ Ru
+    #     for k_minus_1 in range(0, forward)
+    # ]
+
+
+def create_deviation_solution(solution: Solution, /, ) -> Solution:
+    """
+    Create a shallow copy of the solution, and replace constant vectors with
+    zeros """
+    #[
+    deviation_solution = _co.copy(solution, )
+    deviation_solution.K = _np.zeros_like(solution.K, )
+    deviation_solution.Ka = _np.zeros_like(solution.Ka, )
+    deviation_solution.D = _np.zeros_like(solution.D, )
+    return deviation_solution
+    #]
 

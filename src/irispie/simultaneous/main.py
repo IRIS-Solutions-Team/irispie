@@ -325,6 +325,16 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         return self._invariant.dynamic_descriptor.solution_vectors
 
+    @property
+    def quantities(self, /, ) -> tuple[_quantities.Quantity]:
+        """==Tuple of model quantities=="""
+        return self._invariant.quantities
+
+    @property
+    def shock_qid_to_std_qid(self, /, ) -> dict[int, int]:
+        """==Dictionary mapping shock quantity id to standard deviation quantity id=="""
+        return self._invariant.shock_qid_to_std_qid
+
     def create_name_to_qid(self, /, ) -> dict[str, int]:
         return _quantities.create_name_to_qid(self._invariant.quantities)
 
@@ -469,6 +479,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         system = self._systemize(variant, self._invariant.dynamic_descriptor, model_flags, )
         variant.solution = _solutions.Solution(self._invariant.dynamic_descriptor, system, clip_small=clip_small, )
+        variant.deviation_solution = _solutions.create_deviation_solution(variant.solution, )
 
     def _choose_plain_equator(
         self,
@@ -487,8 +498,14 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         Initialize standard deviations of shocks to default values
         """
-        std_names = _quantities.generate_quantity_names_by_kind(self._invariant.quantities, _quantities.QuantityKind.ANY_STD, )
-        dict_to_assign = { k: self._invariant._default_std for k in std_names }
+        std_names = _quantities.generate_quantity_names_by_kind(
+            self._invariant.quantities,
+            _quantities.QuantityKind.ANY_STD,
+        )
+        dict_to_assign = {
+            k: self._invariant._default_std
+            for k in std_names
+        }
         self.assign(**dict_to_assign, )
 
     @classmethod

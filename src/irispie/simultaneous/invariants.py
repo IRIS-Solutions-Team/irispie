@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import (Self, Callable, NoReturn, )
 from numbers import (Number, )
 import copy as _cp
+import functools as _ft
 
 from ..conveniences import descriptions as _descriptions
 from ..fords import descriptors as _descriptors
@@ -84,17 +85,26 @@ class Invariant(_descriptions.DescriptionMixin, ):
         #
         # Create std_ parameters for unanticipated and measurement shocks
         if self._flags.is_stochastic:
-            unanticipated_shocks = _quantities.generate_quantities_of_kind(self.quantities, _quantities.QuantityKind.UNANTICIPATED_SHOCK, )
-            measurement_shocks = _quantities.generate_quantities_of_kind(self.quantities, _quantities.QuantityKind.MEASUREMENT_SHOCK, )
+            get_shocks = _ft.partial(_quantities.generate_quantities_of_kind, self.quantities, )
+            unanticipated_shocks = get_shocks(kind=_quantities.UNANTICIPATED_SHOCK, )
+            anticipated_shocks = get_shocks(kind=_quantities.ANTICIPATED_SHOCK, )
+            measurement_shocks = get_shocks(kind=_quantities.MEASUREMENT_SHOCK, )
             #
-            self.quantities += tuple(_generate_stds(
+            self.quantities += tuple(_generate_stds_for_shocks(
                 unanticipated_shocks,
                 _quantities.QuantityKind.UNANTICIPATED_STD,
                 std_name_format,
                 std_description_format,
                 entry=len(self.quantities),
             ))
-            self.quantities += tuple(_generate_stds(
+            self.quantities += tuple(_generate_stds_for_shocks(
+                anticipated_shocks,
+                _quantities.QuantityKind.ANTICIPATED_STD,
+                std_name_format,
+                std_description_format,
+                entry=len(self.quantities),
+            ))
+            self.quantities += tuple(_generate_stds_for_shocks(
                 measurement_shocks,
                 _quantities.QuantityKind.MEASUREMENT_STD,
                 std_name_format,
@@ -142,12 +152,13 @@ class Invariant(_descriptions.DescriptionMixin, ):
         _equations.stamp_id(self.dynamic_equations, )
         _equations.stamp_id(self.steady_equations, )
         #
+        # For stochastic models, create a mapping from shock qid to std qid
         self.shock_qid_to_std_qid = (
             _create_shock_qid_to_std_qid(self.quantities, std_name_format, )
-            if self._flags.is_stochastic
-            else {}
+            if not self._flags.is_deterministic else {}
         )
         #
+        # Finalize equations by replacing names with qid pointers
         name_to_qid = _quantities.create_name_to_qid(self.quantities, )
         _equations.finalize_dynamic_equations(self.dynamic_equations, name_to_qid, )
         _equations.finalize_steady_equations(self.steady_equations, name_to_qid, )
@@ -253,7 +264,7 @@ def _create_shock_qid_to_std_qid(
     #[
     name_to_qid = _quantities.create_name_to_qid(quantities, )
     qid_to_name = _quantities.create_qid_to_name(quantities, )
-    kind = _quantities.QuantityKind.STOCHASTIC_SHOCK
+    kind = _quantities.QuantityKind.ANY_SHOCK
     all_shock_qids = tuple(_quantities.generate_qids_by_kind(quantities, kind))
     return {
         shock_qid: name_to_qid[std_name_format.format(qid_to_name[shock_qid], )]
@@ -262,8 +273,8 @@ def _create_shock_qid_to_std_qid(
     #]
 
 
-def _generate_stds(
-    shocks: tuple[_quantities.Quantity, ...],
+def _generate_stds_for_shocks(
+    shocks: Iterable[_quantities.Quantity, ...],
     std_kind: _quantities.QuantityKind,
     std_name_format: str,
     std_description_format: str,
@@ -282,8 +293,7 @@ def _generate_stds(
             logly=None,
             description=std_description_format.format(shock.description or shock.human, ),
             entry=entry,
-        )
-        for shock in shocks
+        ) for shock in shocks
     )
     #]
 

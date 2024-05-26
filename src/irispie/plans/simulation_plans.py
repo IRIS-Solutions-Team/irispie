@@ -1,5 +1,5 @@
 """
-Plans for dynamic simulations and steady state calculations
+Meta plans for dynamic simulations
 """
 
 
@@ -29,7 +29,6 @@ CHOOSE_TRANSFORM_CLASS = _transforms.CHOOSE_TRANSFORM_CLASS
 
 __all__ = (
     "SimulationPlan", "PlanSimulate", "Plan",
-    "PlanSteady", "SteadyPlan",
     "CHOOSE_TRANSFORM_CLASS",
 )
 
@@ -45,19 +44,6 @@ class SimulationPlannableProtocol(Protocol, ):
     simulate_can_be_exogenized_anticipated: Iterable[str] | None
     simulate_can_be_endogenized_unanticipated: Iterable[str] | None
     simulate_can_be_endogenized_unanticipated: Iterable[str] | None
-
-    #]
-
-
-class SteadyPlannableProtocol(Protocol, ):
-    """
-    """
-    #[
-
-    steady_can_be_exogenized: Iterable[str] | None
-    steady_can_be_endogenized: Iterable[str] | None
-    steady_can_be_fixed_level: Iterable[str] | None
-    steady_can_be_fixed_change: Iterable[str] | None
 
     #]
 
@@ -81,18 +67,21 @@ class SimulationPlan(
     """
 ················································································
 
-Simulation plans
-=================
+Simulation meta plans
+======================
 
-`SimulationPlan` objects are used to set up conditioning assumptions
-for simulating [`Simultaneous`](simultaneous_modelsd) or
-[`Sequential`](sequential_models) models. The simulation plans specify
+`SimulationPlan` objects are used to set up meta information about
+conditioning assumptions for simulations of
+[`Simultaneous`](simultaneous_modelsd) or [`Sequential`](sequential_models)
+models. The simulation plans specify
 
 * what variables to exogenize in what periods
 * what shocks to endogenized in what periods (`Simultaneous` models only)
+* what anticipation status to assign (`Simultaneous` models only)
 
 The plans only contain meta information, not the actual data points for the
-exogenized variables. The actual data points are included in the input databox.
+exogenized variables. The actual data points are expected to be included in
+the input databox when the simulation is run.
 
 ················································································
     """
@@ -108,13 +97,16 @@ exogenized variables. The actual data points are included in the input databox.
     )
 
     __slots__ = (
-        *tuple(f"can_be_{r}" for r in _registers),
-        *tuple(f"_{r}_register" for r in _registers),
-        *tuple(f"default_{r}" for r in _registers),
-        "base_span",
+        ("base_span", )
+        + tuple(f"_can_be_{r}" for r in _registers)
+        + tuple(f"_{r}_register" for r in _registers)
+        + tuple(f"default_{r}" for r in _registers)
     )
 
-    @_pages.reference(category="constructor", call_name="SimulationPlan", )
+    @_pages.reference(
+        category="constructor",
+        call_name="SimulationPlan",
+    )
     def __init__(
         self,
         model,
@@ -157,14 +149,14 @@ Create a new simulation plan object for a
         self._default_exogenized = None
         self._default_endogenized = None
         plannable = model.get_simulation_plannable()
-        for r in self._registers:
-            can_be_name = f"can_be_{r}"
+        for n in self._registers:
+            can_be_name = f"can_be_{n}"
             register = {
                 n: [None] * self.num_periods
                 for n in getattr(plannable, can_be_name, )
             } if hasattr(plannable, can_be_name, ) else {}
             setattr(self, can_be_name, tuple(register.keys()))
-            setattr(self, f"_{r}_register", register)
+            setattr(self, f"_{n}_register", register)
 
     def check_consistency(
         self,
@@ -183,13 +175,13 @@ Create a new simulation plan object for a
 
     @property
     @_pages.reference(category="property", )
-    def start_date(self, /, ) -> Period:
+    def start(self, /, ) -> Period:
         """==Start date of the simulation span=="""
         return self.base_span[0]
 
     @property
     @_pages.reference(category="property", )
-    def end_date(self, /, ) -> Period:
+    def end(self, /, ) -> Period:
         """==End date of the simulation span=="""
         return self.base_span[-1]
 
@@ -203,7 +195,7 @@ Create a new simulation plan object for a
     @_pages.reference(category="property", )
     def frequency(self, /, ) -> str:
         """==Date frequency of the simulation span=="""
-        return self.start_date.frequency
+        return self.start.frequency
 
     @_pages.reference(category="definition_sequential", )
     def exogenize(
@@ -282,7 +274,7 @@ This method modifies the object in place and does not return a value.
 ................................................................................
         """
         transform = _transforms.resolve_transform(transform, **kwargs, )
-        self._register(self._exogenized_register, dates, names, transform, )
+        self._write_to_register("exogenized", dates, names, transform, )
 
     @_pages.reference(category="definition_simultaneous", )
     def exogenize_anticipated(
@@ -317,8 +309,8 @@ self.exogenize_anticipated(
 
 ················································································
         """
-        self._register(
-            self._exogenized_anticipated_register,
+        self._write_to_register(
+            "exogenized_anticipated",
             dates,
             names,
             status,
@@ -372,8 +364,8 @@ self.exogenize_unanticipated(
 
 ················································································
         """
-        self._register(
-            self._exogenized_unanticipated_register,
+        self._write_to_register(
+            "exogenized_unanticipated",
             dates,
             names,
             status,
@@ -430,7 +422,7 @@ self.exogenize_unanticipated(
     ) -> None:
         r"""
         """
-        self._register(self._endogenized_register, dates, names, True, )
+        self._write_to_register("endogenized", dates, names, True, )
 
     @_pages.reference(category="definition_simultaneous", )
     def endogenize_anticipated(
@@ -447,8 +439,8 @@ self.exogenize_unanticipated(
 
 ················································································
         """
-        self._register(
-            self._endogenized_anticipated_register,
+        self._write_to_register(
+            "endogenized_anticipated",
             dates,
             names,
             status,
@@ -469,8 +461,8 @@ self.exogenize_unanticipated(
 
 ················································································
         """
-        self._register(
-            self._endogenized_unanticipated_register,
+        self._write_to_register(
+            "endogenized_unanticipated",
             dates,
             names,
             status,
@@ -507,35 +499,56 @@ self.exogenize_unanticipated(
         )
 
     @property
-    def needs_split(self, /, ) -> bool:
+    def any_endogenized_unanticipated_except_start(self, /, ) -> bool:
+        r"""
+        True if there is any endogenized unanticipated point in the plan after the first period
         """
+        return self._any_in_register_except_start("endogenized_unanticipated", )
+
+    @property
+    def any_endogenized_anticipated_except_start(self, /, ) -> bool:
+        r"""
+        True if there is any endogenized anticipated point in the plan after the first period
         """
-        def _is_active_statue(value: Any, /, ) -> bool:
-            return (value is not None) and (value is not False)
+        return self._any_in_register_except_start("endogenized_anticipated", )
+
+    def _any_in_register_except_start(self, register_name, ) -> bool:
+        r"""
+        True if there is any unanticipated point in the plan in the second
+        or later simulation period
+        """
         return any(
-            any(
-                any(_is_active_statue(i) for i in v)
-                for v in getattr(self, "_" + a + "_register").values()
-            )
-            for a in ("exogenized_unanticipated", "endogenized_unanticipated", )
+            any(_is_active_status(i) for i in v[1:])
+            for v in getattr(self, f"_{register_name}_register", ).values()
         )
 
-    def swap(
-        self,
-        dates: Iterable[Period] | EllipsisType,
-        pairs: Iterable[tuple[str, str]] | tuple[str, str],
-        *args, **kwargs,
-    ) -> None:
+    @property
+    def is_empty(self, /, ) -> bool:
         """
+        True if there are no exogenized or endogenized points in the plan
         """
-        pairs = tuple(pairs)
-        if not pairs:
-            return
-        if len(pairs) == 2 and isinstance(pairs[0], str) and isinstance(pairs[1], str):
-            pairs = (pairs, )
-        for pair in pairs:
-            self.exogenize(dates, pair[0], *args, **kwargs, )
-            self.endogenize(dates, pair[1], *args, **kwargs, )
+        has_any_points = any(
+            _has_points_in_register(self._get_register_by_name(n, ), )
+            for n in self._registers
+        )
+        return not has_any_points
+
+    # def swap(
+    #     self,
+    #     dates: Iterable[Period] | EllipsisType,
+    #     pairs: Iterable[tuple[str, str]] | tuple[str, str],
+    #     *args, **kwargs,
+    # ) -> None:
+    #     """
+    #     """
+    #     pairs = tuple(pairs)
+    #     if not pairs:
+    #         return
+    #     if len(pairs) == 2 and isinstance(pairs[0], str) and isinstance(pairs[1], str):
+    #         pairs = (pairs, )
+    #     for pair in pairs:
+    #         self.exogenize(dates, pair[0], *args, **kwargs, )
+    #         self.endogenize(dates, pair[1], *args, **kwargs, )
 
     def swap_anticipated(
         self,
@@ -543,7 +556,41 @@ self.exogenize_unanticipated(
         pairs: Iterable[tuple[str, str]] | tuple[str, str],
         *args, **kwargs,
     ) -> None:
-        """
+        r"""
+................................................................................
+
+==Swap quantities as anticipated at certain dates==
+
+Swap (exogenize and endogenize) quantities at certain dates. This method
+exogenizes the first quantity in the pair and endogenizes the second
+quantity in the pair at the specified dates. It is equivalent to calling
+`exogenize_anticipated` and `endogenize_anticipated` separately.
+
+    self.swap_anticipated(
+        dates,
+        pairs,
+    )
+
+
+### Input arguments ###
+
+???+ input "self"
+    The simulation plan in which data points will be exogenized and
+    endogenized.
+
+???+ input "dates"
+    Dates at which the quantities will be exogenized and endogenized.
+
+???+ input "pairs"
+    A list of pairs of names to exogenize and endogenize at the specified
+    dates.
+
+
+### Returns ###
+
+Returns no value; the method modifies the `SimulationPlan` object in place.
+
+................................................................................
         """
         pairs = tuple(pairs)
         if not pairs:
@@ -561,6 +608,40 @@ self.exogenize_unanticipated(
         *args, **kwargs,
     ) -> None:
         """
+................................................................................
+
+==Swap quantities as unanticipated at certain dates==
+
+Swap (exogenize and endogenize) quantities at certain dates. This method
+exogenizes the first quantity in the pair and endogenizes the second
+quantity in the pair at the specified dates. It is equivalent to calling
+`exogenize_unanticipated` and `endogenize_unanticipated` separately.
+
+    self.swap_unanticipated(
+        dates,
+        pairs,
+    )
+
+
+### Input arguments ###
+
+???+ input "self"
+    The simulation plan in which data points will be exogenized and
+    endogenized.
+
+???+ input "dates"
+    Dates at which the quantities will be exogenized and endogenized.
+
+???+ input "pairs"
+    A list of pairs of names to exogenize and endogenize at the specified
+    dates.
+
+
+### Returns ###
+
+Returns no value; the method modifies the `SimulationPlan` object in place.
+
+................................................................................
         """
         pairs = tuple(pairs)
         if not pairs:
@@ -571,23 +652,55 @@ self.exogenize_unanticipated(
             self.exogenize_unanticipated(dates, pair[0], *args, **kwargs, )
             self.endogenize_unanticipated(dates, pair[1], *args, **kwargs, )
 
-    def tabulate_registered_points(
+    def get_register_as_bool_array(
         self: Self,
         register_name: str,
-        names: str | Iterable[str] | EllipsisType,
+        names: str | Iterable[str] | EllipsisType = ...,
+        periods: Iterable[Period] | EllipsisType = ...,
+    ) -> _np.ndarray:
+        """
+        """
+        register = self._get_register_by_name(register_name, )
+        per_indexes = self._get_per_indexes(periods, )
+        names = _resolve_validate_register_names(register, names, register_name, )
+        num_names, num_pers = len(names), len(per_indexes)
+        #
+        if names and per_indexes:
+            def get_points_for_name(name: str, ) -> tuple[bool, ...]:
+                return tuple(
+                    register[name][t] if t is not None else False
+                    for t in per_indexes
+                )
+            array = _np.array(tuple(
+                get_points_for_name(n, ) for n in names
+            ), dtype=bool, )
+        else:
+            array = _np.zeros((num_names, num_pers, ), dtype=bool, )
+        #
+        return array
+
+    def _get_per_indexes(
+        self,
         periods: Iterable[Period] | EllipsisType,
-    ) -> _np.ndarray | None:
+        /,
+    ) -> tuple[int | None, ...]:
         """
         """
-        per_indexes = self._get_period_indexes(periods, )
-        register = getattr(self, f"_{register_name}_register", )
-        names = _resolve_and_check_names(register, names, )
-        num_pers = len(per_indexes)
-        num_names = len(names)
-        return _np.array(tuple(
-            tuple( bool(register[n][t]) for t in per_indexes )
-            for n in names
-        )) if names and per_indexes else None
+        if periods is ...:
+            return tuple(range(self.num_periods, ), )
+        else:
+            return tuple(
+                t - self.start if self._is_per_in_span(t, ) else None
+                for t in periods
+            )
+
+    def _is_per_in_span(self, per: Period, ) -> bool:
+        return per >= self.start and per <= self.end
+
+    def _get_register_by_name(self, name: str, /, ) -> dict[str, Any]:
+        """
+        """
+        return getattr(self, f"_{name}_register", )
 
     def get_exogenized_point(
         self,
@@ -646,181 +759,44 @@ self.exogenize_unanticipated(
         """
         return self.get_pretty_string()
 
-    def _register(
+    def _write_to_register(
         self,
-        register: dict,
+        register_name: str,
         periods: Iterable[Period] | EllipsisType,
         names: Iterable[str] | str | EllipsisType,
         new_status: Any,
     ) -> None:
         """
         """
-        names = _resolve_and_check_names(register, names, )
-        per_indices = self._get_period_indexes(periods, )
+        register = self._get_register_by_name(register_name, )
+        names = _resolve_validate_register_names(register, names, register_name, )
+        per_indexes, *_ = self._get_period_indexes(periods, )
         for n in names:
-            for t in per_indices:
+            for t in per_indexes:
                 register[n][t] = new_status
 
     def _get_period_indexes(
         self,
-        dates: Iterable[Period] | EllipsisType,
+        periods: Iterable[Period] | EllipsisType,
         /,
-    ) -> tuple[int, ...]:
+    ) -> tuple[tuple[int, ...], tuple[Period, ...]]:
         """
         """
-        if dates is Ellipsis:
-            return tuple(range(len(self.base_span)))
-        dates = dates.resolve(self, ) if hasattr(dates, "resolve") else dates
-        catch_invalid_dates(dates, self.base_span, )
-        return tuple(d - self.start_date for d in dates)
+        if periods is Ellipsis:
+            periods = tuple(self.base_span)
+        if hasattr(periods, "resolve"):
+            periods = periods.resolve(self, )
+        catch_invalid_periods(periods, self.base_span, )
+        period_indexes = tuple(d - self.start for d in periods)
+        return period_indexes, periods
 
     #]
 
 
-@_pages.reference(
-    path=("structural_models", "steady_plans.md", ),
-    categories={
-        "constructor": "Creating new steady plans",
-        "property": None,
-        "definition": "Defining Exogenized, endogenized and fixed quantities",
-    },
-)
-class SteadyPlan:
-    """
-················································································
-
-Steady-state plans
-===================
-
-`SteadyPlan` objects define assumptions about the steady state values of
-certain model quantities (variables and parameters), either for reverse
-engineered calculations or for narrowing down the underdetermined
-steady-state systems.
-
-················································································
-    """
-    #[
-
-    __slots__ = (
-        "can_be_exogenized",
-        "can_be_endogenized",
-        "can_be_fixed_level",
-        "can_be_fixed_change",
-        "_exogenized_register",
-        "_endogenized_register",
-        "_fixed_level_register",
-        "_fixed_change_register",
-    )
-
-    @_pages.reference(category="constructor", call_name="SteadyPlan", )
-    def __init__(
-        self,
-        model,
-        /,
-    ) -> None:
-        """
-················································································
-
-==Create new steady plan object==
-
-················································································
-        """
-        plannable = model.get_steady_plannable()
-        for r in ("exogenized", "endogenized", "fixed_level", "fixed_change", ):
-            can_be_name = f"can_be_{r}"
-            register = {
-                n: False
-                for n in getattr(plannable, can_be_name, )
-            } if hasattr(plannable, can_be_name, ) else {}
-            setattr(self, can_be_name, tuple(register.keys()))
-            setattr(self, f"_{r}_register", register)
-
-    #]
-
-#         self.exogenized = {
-#             n: [None] * self.num_periods
-#             for n in plannable.can_be_exogenized
-#         } if plannable.can_be_exogenized else {}
-#         #
-#         self.endogenized = {
-#             n: [None] * self.num_periods
-#             for n in plannable.can_be_endogenized
-#         } if plannable.can_be_endogenized else {}
-#         #
-#         self.fixed_level = {
-#             n: [None] * self.num_periods
-#             for n in plannable.can_be_fixed_level
-#         } if plannable.can_be_fixed_level else {}
-#         #
-#         self.fixed_change = {
-#             n: [None] * self.num_periods
-#             for n in plannable.can_be_fixed_change
-#         } if plannable.can_be_fixed_change else {}
-
-    @_pages.reference(category="definition", )
-    def exogenize(
-        self,
-        names: Iterable[str] | str,
-        /,
-    ) -> None:
-        """
-················································································
-
-==Exogenize steady levels of variables==
-
-················································································
-        """
-        pass
-
-    @_pages.reference(category="definition", )
-    def endogenize(
-        self,
-        names: Iterable[str] | str,
-        /,
-    ) -> None:
-        """
-················································································
-
-==Endogenize parameters==
-
-················································································
-        """
-        pass
-
-    @_pages.reference(category="definition", )
-    def fix_level(
-        self,
-        names: Iterable[str] | str,
-        /,
-    ) -> None:
-        """
-················································································
-
-==Fix steady levels of variables==
-
-················································································
-        """
-        pass
-
-    @_pages.reference(category="definition", )
-    def fix_change(
-        self,
-        names: Iterable[str] | str,
-        /,
-    ) -> None:
-        """
-················································································
-
-==Fix steady changes of variables==
-
-················································································
-        """
-        pass
-
-
-def _resolve_and_check_names(
+def _resolve_validate_register_names(
     register: dict | None,
     names: Iterable[str] | str | EllipsisType,
+    register_name: str,
     /,
 ) -> tuple[str]:
     """
@@ -828,18 +804,15 @@ def _resolve_and_check_names(
     keys = tuple(register.keys()) if register else ()
     if names is Ellipsis:
         return keys
-    if isinstance(names, str):
-        names = (names, )
-    names = tuple(names)
-    invalid = [n for n in names if n not in keys]
+    names = tuple(names) if not isinstance(names, str) else (names, )
+    invalid = tuple(n for n in names if n not in keys)
     if invalid:
-        raise _wrongdoings.IrisPieError(
-            [f"Invalid names:"] + invalid
-        )
+        message = (f"These names cannot be {register_name}:", ) + invalid
+        raise _wrongdoings.IrisPieCritical(message, )
     return names
 
 
-def catch_invalid_dates(
+def catch_invalid_periods(
     dates: Iterable[Period],
     base_span: tuple[Period],
     /,
@@ -853,7 +826,17 @@ def catch_invalid_dates(
         )
 
 
-PlanSteady = SteadyPlan
+def _is_active_status(value: Any, /, ) -> bool:
+    return (value is not None) and (value is not False)
+
+
+def _has_points_in_register(register: dict, /, ) -> bool:
+    return any(
+        any(_is_active_status(i) for i in v)
+        for v in register.values()
+    )
+
+
 Plan = SimulationPlan
 PlanSimulate = SimulationPlan
 

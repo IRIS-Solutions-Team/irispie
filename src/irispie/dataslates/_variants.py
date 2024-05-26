@@ -170,3 +170,17 @@ class Variant:
                 values[:] = _np.float64(overwrites[name])
                 self.store_record(values, record_id, )
 
+    def logarithmize(self, logly_indexes: tuple[int], /, ) -> None:
+        """
+        """
+        if logly_indexes:
+            self.data[logly_indexes, :] = _np.log(self.data[logly_indexes, :])
+
+    def delogarithmize(self, logly_indexes: tuple[int], /, ) -> None:
+        """
+        """
+        if logly_indexes:
+            self.data[logly_indexes, :] = _np.exp(self.data[logly_indexes, :])
+
+    #]
+

@@ -6,23 +6,65 @@ Time frames for dynamic simulations
 #[
 from __future__ import annotations
 
-from typing import (NamedTuple, Callable, Iterable, )
+from typing import (Callable, Iterable, )
 import numpy as _np
 
 from .dates import (Period, )
 from .dataslates.main import (Dataslate, )
-from .plans.main import (SimulationPlan, )
+from .plans.simulation_plans import (SimulationPlan, )
 #]
 
 
-class Frame(NamedTuple, ):
+class Frame:
     """
     """
     #[
 
-    start: Period
-    end: Period
-    simulation_end: Period | None = None,
+    __slots__ = (
+        # Periods
+        "start",
+        "end",
+        "simulation_end",
+        # Columns
+        "first",
+        "last",
+        "simulation_last",
+        "slice",
+        "simulation_slice",
+        "num_simulation_columns",
+    )
+
+    def __init__(
+        self,
+        start: Period,
+        end: Period,
+        simulation_end: Period | None = None,
+    ) -> None:
+        """
+        """
+        self.start = start
+        self.end = end
+        self.simulation_end = simulation_end
+        self.first = None
+        self.last = None
+        self.simulation_last = None
+
+    def resolve_columns(
+        self,
+        first_column_period: Period,
+    ) -> None:
+        """
+        Given the time period of the first column of data array, determine the
+        first and last columns of the frame
+        """
+        #[
+        self.first = self.start - first_column_period
+        self.last = self.end - first_column_period
+        self.simulation_last = self.simulation_end - first_column_period
+        self.slice = slice(self.first, self.last+1, )
+        self.simulation_slice = slice(self.first, self.simulation_last+1, )
+        self.num_simulation_columns = self.simulation_last - self.first + 1
+        #]
 
     def remove_unanticipated_outside_frame(self, dataslate, model, /, ):
         """
@@ -107,14 +149,15 @@ def _get_break_points_in_base_columns(
         break_points = _update_break_points(break_points, cutout, )
     #
     if plan is not None:
-        cutout = plan.tabulate_registered_points(
+        cutout, *_ = plan.get_register_as_bool_array(
             "endogenized_unanticipated", can_be_endogenized, periods,
         )
         break_points = _update_break_points(break_points, cutout, )
-        cutout = plan.tabulate_registered_points(
-            "exogenized_unanticipated", can_be_exogenized, periods,
-        )
-        break_points = _update_break_points(break_points, cutout, )
+        # cutout, *_ = plan.get_register_as_bool_array(
+        #     "exogenized_unanticipated", can_be_exogenized, periods,
+        # )
+        # break_points = _update_break_points(break_points, cutout, )
+        #
     return break_points
 
 

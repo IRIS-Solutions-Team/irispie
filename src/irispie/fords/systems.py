@@ -24,26 +24,19 @@ from ..simultaneous import _flags as _flags
 #]
 
 
-@_dc.dataclass
 class System:
     """
     Unsolved system matrices
     """
-    #
-    # Transition equations
-    #
-    A: _np.ndarray | None = None
-    B: _np.ndarray | None = None
-    C: _np.ndarray | None = None
-    D: _np.ndarray | None = None
-    E: _np.ndarray | None = None
-    #
-    # Measurement equations
-    #
-    F: _np.ndarray | None = None
-    G: _np.ndarray | None = None
-    H: _np.ndarray | None = None
-    J: _np.ndarray | None = None
+    #[
+
+    __slots__ = (
+        # Transition equations
+        "A", "B", "C", "D", "E",
+
+        # Measurement equations
+        "F", "G", "H", "J",
+    )
 
     def __init__(
         self,

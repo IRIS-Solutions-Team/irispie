@@ -6,20 +6,22 @@ Exporting data to CSV sheets
 #[
 from __future__ import annotations
 
+from typing import (TYPE_CHECKING, )
 import pickle as _pk
-
-from collections.abc import (Iterable, )
-from typing import (Any, Callable, )
 import csv as _cs
 import numpy as _np
 import itertools as _it
 import dataclasses as _dc
 import functools as _ft
 
-from .. import pages as _pages
-from .. import dates as _dates
+from ..dates import (Frequency, Period, EmptySpan, )
 from .. import wrongdoings as _wrongdoings
-from ..databoxes import main as _databoxes
+from .. import pages as _pages
+
+if TYPE_CHECKING:
+    from collections.abc import (Iterable, )
+    from typing import (Any, Callable, )
+    from ..databoxes.main import (Databox, )
 #]
 
 
@@ -33,9 +35,9 @@ class _ExportBlock:
     """
     #[
 
-    databox: _databoxes.Databox | None = None
-    frequency: _dates.Frequency | None = None
-    periods: tuple[_dates.Dater] | None = None
+    databox: Databox | None = None
+    frequency: Frequency | None = None
+    periods: tuple[Period] | None = None
     names: tuple[str] | None = None
     #
     # Options
@@ -101,14 +103,15 @@ class Inlay:
     @_pages.reference(
         category="import_export",
     )
-    def to_sheet(
+    def to_csv(
         self,
         file_name: str,
         *,
+        span: Iterable[Period] | None = None,
         frequency_span: dict | None = None,
         names: Iterable[str] | None = None,
         description_row: bool = False,
-        frequency: _dates.Frequency | None = None,
+        frequency: Frequency | None = None,
         numeric_format: str = "g",
         nan_str: str = "",
         delimiter: str = ",",
@@ -123,7 +126,7 @@ class Inlay:
 ==Write Databox time series to a CSV file==
 
 
-    self.to_sheet(
+    self.to_csv(
         file_name,
         *,
         frequency_span=None,
@@ -196,8 +199,7 @@ class Inlay:
 ················································································
         """
         databox = self.shallow(source_names=names, )
-        frequency_span = frequency_span if frequency_span is not None else _DEFAULT_FREQUENCY_SPAN
-        frequency_span = _resolve_frequency_span(databox, frequency_span, )
+        frequency_span = _resolve_frequency_span(databox, frequency_span, span, )
         frequency_names = _resolve_frequency_names(databox, frequency_span, )
         _catch_empty(frequency_span, frequency_names, when_empty, file_name, )
         #
@@ -235,6 +237,9 @@ class Inlay:
         #
         return info
 
+    def to_sheet(self, *args, **kwargs, ):
+        return self.to_csv(*args, **kwargs, )
+
     def to_pickle(
         self,
         file_name: str,
@@ -263,27 +268,39 @@ def _get_names_to_export(databox, frequency, names, ):
 
 
 _DEFAULT_FREQUENCY_SPAN = {
-    _dates.Frequency.YEARLY: ...,
-    _dates.Frequency.HALFYEARLY: ...,
-    _dates.Frequency.QUARTERLY: ...,
-    _dates.Frequency.MONTHLY: ...,
-    _dates.Frequency.DAILY: ...,
-    _dates.Frequency.INTEGER: ...,
-    _dates.Frequency.UNKNOWN: ...,
+    Frequency.YEARLY: ...,
+    Frequency.HALFYEARLY: ...,
+    Frequency.QUARTERLY: ...,
+    Frequency.MONTHLY: ...,
+    Frequency.DAILY: ...,
+    Frequency.INTEGER: ...,
+    Frequency.UNKNOWN: ...,
 }
 
 
 def _resolve_frequency_span(
-    databox: _databoxes.Databox,
-    frequency_span: dict[_dates.Frequency | int: Iterable[_dates.Dater]],
+    databox: Databox,
+    frequency_span: dict[Frequency | int: Iterable[Period]],
+    span: Iterable[Period] | None = None,
     /,
-) -> tuple[dict[_dates.Frequency: tuple[_dates.Dater]], int]:
+) -> tuple[dict[Frequency: tuple[Period]], int]:
     """
     """
     #[
+    # Argument span overrides frequency_span
+    if span is None:
+        frequency_span = (
+            frequency_span
+            if frequency_span is not None
+            else _DEFAULT_FREQUENCY_SPAN
+        )
+    else:
+        span = tuple(span)
+        frequency = span[0].frequency
+        frequency_span = {frequency: span}
     # Remove Nones, ensure Frequency objects
     frequency_span = {
-        _dates.Frequency(k): v
+        Frequency(k): v
         for k, v in frequency_span.items()
         if v is not None
     }
@@ -298,7 +315,7 @@ def _resolve_frequency_span(
     frequency_span = {
         k: tuple(i for i in v)
         for k, v in frequency_span.items()
-        if v is not _dates.EmptyRanger() or k is _dates.Frequency.UNKNOWN
+        if v is not EmptySpan() or k is Frequency.UNKNOWN
     }
     #
     return frequency_span
@@ -306,10 +323,10 @@ def _resolve_frequency_span(
 
 
 def _resolve_frequency_names(
-    databox: _databoxes.Databox,
-    frequency_span: _dates.Frequency | None,
+    databox: Databox,
+    frequency_span: Frequency | None,
     /,
-) -> dict[_dates.Frequency: tuple[str, ...]]:
+) -> dict[Frequency: tuple[str, ...]]:
     """
     """
     #[
@@ -320,7 +337,7 @@ def _resolve_frequency_names(
 
 
 def _get_total_num_data_rows(
-    frequency_span: dict[_dates.Frequency: tuple[_dates.Dater]],
+    frequency_span: dict[Frequency: tuple[Period]],
     /,
 ) -> int:
     """
@@ -353,7 +370,7 @@ def _get_num_data_columns_for_names(
 def _get_data_array_for_names(
     self,
     names: Iterable[str],
-    periods: Iterable[_dates.Dater],
+    periods: Iterable[Period],
     /,
 ) -> _np.ndarray:
     """
@@ -363,8 +380,8 @@ def _get_data_array_for_names(
 
 
 def _catch_empty(
-    frequency_span: dict[_dates.Frequency: tuple[_dates.Dater]],
-    frequency_names: dict[_dates.Frequency: tuple[str, ...]],
+    frequency_span: dict[Frequency: tuple[Period]],
+    frequency_names: dict[Frequency: tuple[str, ...]],
     when_empty: Literal["error", "warning", "silent"],
     file_name: str,
     /,

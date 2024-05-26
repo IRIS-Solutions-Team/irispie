@@ -40,8 +40,8 @@ from .sequentials import __all__ as sequentials_all
 from .explanatories import *
 from .explanatories import __all__ as explanatories_all
 
-from .plans.main import *
-from .plans.main import __all__ as plans_all
+from .plans.simulation_plans import *
+from .plans.simulation_plans import __all__ as simulation_plans_all
 
 from .namings import *
 from .namings import __all__ as namings_all
@@ -86,7 +86,7 @@ __all__ = (
     *equations_all,
     *sequentials_all,
     *explanatories_all,
-    *plans_all,
+    *simulation_plans_all,
     *namings_all,
     "min_irispie_version_required",
     "__version__",

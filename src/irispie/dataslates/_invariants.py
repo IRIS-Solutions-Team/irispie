@@ -19,24 +19,18 @@ from .. import has_variants as _has_variants
 #]
 
 
-#
-# REFACTOR:
-# * rename `index_base_columns` to `are_base_columns` or use int indexes
-#
-
-
 class Invariant:
     """
     """
     #[
 
     __slots__ = (
+        "names",
+        "periods",
         "descriptions",
         "logly_indexes",
         "base_columns",
-        "names",
         "output_qids",
-        "periods",
         "min_max_shift",
     )
 
@@ -127,6 +121,11 @@ class Invariant:
         """
         base_columns = self.base_columns
         return slice(base_columns[0], base_columns[-1]+1)
+
+    def copy(self, /, ) -> Invariant:
+        """
+        """
+        return _cp.deepcopy(self, )
 
     def create_name_to_row(
         self,

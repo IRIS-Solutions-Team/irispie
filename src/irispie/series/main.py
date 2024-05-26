@@ -109,14 +109,6 @@ def _get_date_positions(dates, base, num_periods, /, ):
     return pos_adjusted, add_before, add_after
 
 
-def _trim_decorate(func):
-    def wrapper(self, *args, **kwargs):
-        func(self, *args, **kwargs)
-        self.trim()
-        return self
-    return wrapper
-
-
 @_pages.reference(
     path=("data_management", "time_series.md", ),
     categories={
@@ -158,7 +150,7 @@ variants of the data, stored as mutliple columns.
     #[
 
     __slots__ = (
-        "start_date",
+        "start",
         "data",
         "data_type",
         "metadata",
@@ -205,24 +197,33 @@ self = Series(
 
 ```
 self = Series(
-    dates=dates,
+    periods=periods,
     values=values,
 )
 ```
+
 
 ### Input arguments ###
 
 
 ???+ input "start"
 
-    The time period of the first value in the `values`.
+    The time [`Period`](periods.md) of the first value in the `values`.
+
+???+ input "periods"
+
+    An iterable of time [`Periods`](periods.md) that will be used to time stamp
+    the `values`. The iterable can be e.g. a tuple, a list, a time
+    [`Span`](spans.md), or a single time [`Period`](periods.md).
 
 ???+ input "values"
 
-    Time series observations, supplied either as a tuple of values, or a
-    NumPy array.
+    Time series values, supplied either as a single values, a tuple of values,
+    or a NumPy array.
+
 
 ### Returns ###
+
 
 ???+ returns "self"
 
@@ -230,7 +231,7 @@ self = Series(
 
 ················································································
         """
-        self.start_date = None
+        self.start = None
         self.data_type = data_type
         self.data = _np.full((0, num_variants), self._missing, dtype=self.data_type)
         self.metadata = {}
@@ -294,7 +295,7 @@ self = Series(
     @_pages.reference(category="property", )
     def span(self, ):
         """==Time span of the time series=="""
-        return Span(self.start_date, self.end_date, ) if self.start_date else ()
+        return Span(self.start, self.end_date, ) if self.start else ()
 
     range = span
 
@@ -302,7 +303,7 @@ self = Series(
     @_pages.reference(category="property", )
     def from_to(self, ):
         """==Two-tuple with the start date and end date of the time series=="""
-        return self.start_date, self.end_date
+        return self.start, self.end_date
 
     @property
     @_pages.reference(category="property", )
@@ -313,24 +314,22 @@ self = Series(
     dates = periods
 
     @property
-    @_pages.reference(category="property", call_name="start_date", )
-    def _start_date(self):
+    @_pages.reference(category="property", call_name="start", )
+    def _start(self):
         """==Start date of the time series=="""
         raise NotImplementedError
 
     @property
-    @_pages.reference(category="property", )
-    def start(self, /, ):
-        """==Start period of the time series=="""
-        return self.start_date
+    def start_date(self, /, ):
+        return self.start
 
     @property
     @_pages.reference(category="property", )
     def end(self):
         """==End period of the time series=="""
         return (
-            self.start_date + self.data.shape[0] - 1
-            if self.start_date else None
+            self.start + self.data.shape[0] - 1
+            if self.start else None
         )
 
     end_date = end
@@ -340,12 +339,11 @@ self = Series(
     def frequency(self):
         """==Date frequency of the time series=="""
         return (
-            self.start_date.frequency
-            if self.start_date is not None
+            self.start.frequency
+            if self.start is not None
             else Frequency.UNKNOWN
         )
 
-    @_trim_decorate
     def set_data(
         self,
         dates: Dates,
@@ -353,31 +351,35 @@ self = Series(
         variants: VariantsRequestType = None,
         /,
     ) -> None:
+        """
+        """
         dates = self._resolve_dates(dates, )
+        is_data_ndarray = isinstance(data, _np.ndarray)
         is_empty_data = (
             data is None
-            or (isinstance(data, Series) and data.size == 0)
+            or (is_data_ndarray and data.size == 0)
         )
         if not dates and is_empty_data:
             return
         data = (
             _reshape_numpy_array(data, )
-            if isinstance(data, _np.ndarray) else data
+            if is_data_ndarray else data
         )
         vids = self._resolve_variants(variants, )
-        if not self.start_date:
-            self.start_date = next(iter(dates), None, )
+        if not self.start:
+            self.start = next(iter(dates), None, )
             self.data = self._create_periods_of_missing_values(num_rows=1, )
-        pos, add_before, add_after = _get_date_positions(dates, self.start_date, self.shape[0], )
+        pos, add_before, add_after = _get_date_positions(dates, self.start, self.shape[0], )
         self.data = self._create_expanded_data(add_before, add_after)
         if add_before:
-            self.start_date -= add_before
+            self.start -= add_before
         if hasattr(data, "get_data"):
             data = data.get_data(dates)
         #
         data_variants = _has_variants.iter_variants(data, )
         for c, d in zip(vids, data_variants, ):
             self.data[pos, c] = d
+        self.trim()
 
     def _get_data_and_recreate(
         self,
@@ -408,7 +410,7 @@ self = Series(
             data = self._create_periods_of_missing_values(num_rows=0, )[:, variants]
             return dates, pos, variants, data
         #
-        base_date = self.start_date or _builtin_min(dates, )
+        base_date = self.start or _builtin_min(dates, )
         pos, add_before, add_after = _get_date_positions(dates, base_date, self.shape[0], )
         data = self._create_expanded_data(add_before, add_after, )
         if not isinstance(pos, Iterable):
@@ -458,9 +460,8 @@ self = Series(
         dates = ...,
         *args,
     ) -> _np.ndarray:
-        dates, pos, variants, expanded_data = self._resolve_dates_and_positions(dates, *args, )
-        data = expanded_data[_np.ix_(pos, variants)]
-        return data
+        dates, pos, variants, expanded_values = self._resolve_dates_and_positions(dates, *args, )
+        return expanded_values[_np.ix_(pos, variants)]
 
     def get_data_variant(
         self,
@@ -507,12 +508,12 @@ self = Series(
             variants = tuple(c for c in variants)
         self.data = self.data[:, variants]
 
-    def set_start_date(
+    def set_start(
         self,
-        new_start_date: Period,
+        new_start: Period,
         /,
     ) -> Self:
-        self.start_date = new_start_date
+        self.start = new_start
         return self
 
     def _resolve_dates(self, dates, ):
@@ -523,9 +524,9 @@ self = Series(
             dates = ...
         if isinstance(dates, slice) and dates == slice(None, ):
             dates = ...
-        if dates is ... and self.start_date is not None:
+        if dates is ... and self.start is not None:
             dates = Span(None, None, )
-        if dates is ... and self.start_date is None:
+        if dates is ... and self.start is None:
             dates = EmptyRanger()
         if hasattr(dates, "needs_resolve") and dates.needs_resolve:
             dates = dates.resolve(self, )
@@ -571,9 +572,9 @@ self = Series(
         """
         Shift (lag, lead) start date by a number of periods
         """
-        self.start_date = (
-            self.start_date - by
-            if self.start_date else self.start_date
+        self.start = (
+            self.start - by
+            if self.start else self.start
         )
 
     def _shift_to_soy(self, ) -> None:
@@ -621,17 +622,17 @@ self = Series(
     def clip(
         self,
         /,
-        new_start_date: Period | None,
+        new_start: Period | None,
         new_end_date: Period | None,
     ) -> None:
-        if new_start_date is None or new_start_date < self.start_date:
-            new_start_date = self.start_date
+        if new_start is None or new_start < self.start:
+            new_start = self.start
         if new_end_date is None or new_end_date > self.end_date:
             new_end_date = self.end_date
-        if new_start_date == self.start_date and new_end_date == self.end_date:
+        if new_start == self.start and new_end_date == self.end_date:
             return
-        self.data = self.get_data_from_to((new_start_date, new_end_date, ), )
-        self.start_date = new_start_date
+        self.data = self.get_data_from_to((new_start, new_end_date, ), )
+        self.start = new_start
 
     def is_empty(self, ) -> bool:
         return not self.data.size
@@ -693,9 +694,9 @@ self = Series(
     ) -> None:
         """
         """
-        self.start_date = new_date \
+        self.start = new_date \
             if old_date is None \
-            else new_date - (old_date - self.start_date)
+            else new_date - (old_date - self.start)
 
     def _shallow_copy_data(
         self,
@@ -704,14 +705,16 @@ self = Series(
     ) -> None:
         """
         """
-        for n in ("start_date", "data", "data_type", ):
+        for n in ("start", "data", "data_type", ):
             setattr(self, n, getattr(other, n, ))
 
-    def __or__(self, other):
+    def __and__(self, other):
         """
-        Implement the | operator
+        Implement the & operator as hstack
         """
-        return self.hstack(other)
+        return self.hstack(other, )
+
+    __or__ = __and__
 
     def trim(self):
         if self.data.size == 0:
@@ -728,7 +731,7 @@ self = Series(
         slice_to = -num_trailing if num_trailing else None
         self.data = self.data[slice(slice_from, slice_to), ...]
         if slice_from:
-            self.start_date += int(slice_from)
+            self.start += int(slice_from)
         return self
 
     def _create_expanded_data(self, add_before, add_after):
@@ -760,7 +763,7 @@ self = Series(
         """
         return self.copy()
 
-    def __add__(self, other) -> Self|_np.ndarray:
+    def __add__(self, other, ) -> Self | _np.ndarray | Real:
         """
         self + other
         """
@@ -884,7 +887,7 @@ self = Series(
         other_data = other.get_data_from_to(from_to, )
         new_data = func(self_data, other_data)
         new = Series(num_variants=new_data.shape[1], ) if new is None else new
-        new._replace_start_date_and_values(from_to[0], new_data, )
+        new._replace_start_and_values(from_to[0], new_data, )
         return new
 
     def _broadcast_variants(self, num_variants, /, ) -> None:
@@ -907,15 +910,15 @@ self = Series(
         self.data = new_values
         self.trim()
 
-    def _replace_start_date_and_values(
+    def _replace_start_and_values(
         self,
-        new_start_date,
+        new_start,
         new_values,
         /,
     ) -> None:
         """
         """
-        self.start_date = new_start_date
+        self.start = new_start
         self._replace_data(new_values, )
 
     def iter_dates_values(self, /, unpack_singleton=True, ):
@@ -1033,7 +1036,7 @@ def _from_periods_and_values(
     """
     """
     #[
-    # dates = _dates.ensure_date_tuple(dates, frequency=frequency, )
+    # dates = _dates.ensure_period_tuple(dates, frequency=frequency, )
     self.set_data(periods, values, )
     #]
 
@@ -1049,7 +1052,7 @@ def _from_periods_and_func(
     Create a new time series from dates and a function
     """
     #[
-    # dates = _dates.ensure_date_tuple(dates, frequency=frequency, )
+    # dates = _dates.ensure_period_tuple(dates, frequency=frequency, )
     data = [
         [func() for j in range(self.num_variants)]
         for i in range(len(periods))
@@ -1069,8 +1072,8 @@ def _from_start_and_values(
     """
     """
     #[
-    # start_date = _dates.ensure_date_tuple(start_date, frequency=frequency, )[0]
-    self.start_date = start
+    # start = _dates.ensure_period_tuple(start, frequency=frequency, )[0]
+    self.start = start
     if isinstance(values, _np.ndarray):
         values = _reshape_numpy_array(values, )
     else:

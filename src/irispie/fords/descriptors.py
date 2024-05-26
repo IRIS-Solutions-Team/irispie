@@ -1,7 +1,9 @@
 """
-# Descriptor for first-order systems and solutions
+Descriptor for first-order systems and solutions
+=================================================
 
-## Unsolved system
+Unsolved system
+----------------
 
 $$
 A E[x_{t}] + B E[x_{t-1}] + C + D u_{t} + E v_{t} = 0 \\
@@ -14,13 +16,37 @@ $$
 x_{t} = T x_{t-1} + K + R v_{t} \\
 y_{t} = Z x_{t} + D + H w_{t}
 $$
+
+
+Table of contents
+------------------
+
+# List classes and standalone functions in order of appearance
+
+* `Descriptor`
+* `SystemVectors`
+* `SolutionVectors`
+* `HumanSolutionVectors`
+* `_TRANSITION_SYSTEM_QUANTITY`
+* `_MEASUREMENT_SYSTEM_QUANTITY`
+* `_SYSTEM_QUANTITY`
+* `_create_system_transition_vector`
+* `_solution_vector_from_system_vector`
+* `_get_num_forwards`
+* `_get_num_backwards`
+* `SystemMap`
+* `_create_dynid_matrices`
+* `_adjust_for_measurement_equations`
+* `_custom_order_equations_by_eids`
+* `Squid`
+
 """
 
 
 #[
 from __future__ import annotations
 
-from typing import (Self, Any, )
+from typing import (Self, Any, Protocol, )
 from collections.abc import (Iterable, )
 import itertools as _it
 import functools as _ft
@@ -43,11 +69,17 @@ class Descriptor:
     #[
 
     __slots__ = (
+        # Unsolved system vectors
         "system_vectors",
+
+        # Solution vectors
         "solution_vectors",
+
+        # Mapping from aldi results to unsolved matrices
         "system_map",
+
+        # Aldi context for creating unsolved system matrices
         "aldi_context",
-        "_column_to_eval",
     )
 
     def __init__(
@@ -57,6 +89,8 @@ class Descriptor:
         context: dict[str, Any] | None,
         /,
     ) -> None:
+        """
+        """
         self.system_vectors = SystemVectors(equations, quantities)
         self.solution_vectors = SolutionVectors(self.system_vectors)
         self.system_map = SystemMap(self.system_vectors)
@@ -288,11 +322,25 @@ class SolutionVectors:
     def get_initials(
         self,
         /,
-    ) -> Iterable[_incidence.Token]:
+    ) -> list[_incidence.Token]:
         """
         Get tokens representing required initial conditions
         """
         return list(_it.compress(self.transition_variables, self.are_initial_conditions))
+
+    def get_curr_transition_indexes(
+        self,
+        /,
+    ) -> tuple[tuple[int, ...], tuple[int, ...]]:
+        """
+        """
+        lhs_rhs_tuples = [
+            (t.qid, i)
+            for i, t in enumerate(self.transition_variables, )
+            if not t.shift
+        ]
+        return tuple(zip(*lhs_rhs_tuples))
+
     #]
 
 
@@ -373,27 +421,27 @@ def _get_num_backwards(system_transition_vector: Iterable[_incidence.Token]):
     return len(system_transition_vector) - _get_num_forwards(system_transition_vector)
 
 
-@_dc.dataclass(slots=True, )
 class SystemMap:
     """
     """
     #[
-    A: _maps.ArrayMap | None = None
-    B: _maps.ArrayMap | None = None
-    C: None = None
-    D: _maps.ArrayMap | None = None
-    E: _maps.ArrayMap | None = None
-    #
-    dynid_A: _np.ndarray | None = None
-    dynid_B: _np.ndarray | None = None
-    dynid_C: _np.ndarray | None = None
-    dynid_D: _np.ndarray | None = None
-    dynid_E: _np.ndarray | None = None
-    #
-    F: _maps.ArrayMap | None = None
-    G: _maps.ArrayMap | None = None
-    H: None = None
-    J: _maps.ArrayMap | None = None
+
+    __slots__ = (
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "dynid_A",
+        "dynid_B",
+        "dynid_C",
+        "dynid_D",
+        "dynid_E",
+        "F",
+        "G",
+        "H",
+        "J",
+    )
 
     def __init__(
         self,
@@ -418,7 +466,11 @@ class SystemMap:
             lhs_column_offset=0,
         )
         #
-        lagged_transition_variables = [ t.shifted(-1) for t in system_vectors.transition_variables ]
+        lagged_transition_variables = [
+            t.shifted(-1)
+            for t in system_vectors.transition_variables
+        ]
+        #
         lagged_transition_variables = [
             t if t not in system_vectors.transition_variables else None
             for t in lagged_transition_variables
@@ -553,4 +605,95 @@ def _custom_order_equations_by_eids(
     eid_to_equation = { eqn.id: eqn for eqn in equations }
     return tuple( eid_to_equation[eid] for eid in eids )
     #]
+
+
+class SquidableProtocol(Protocol, ):
+    """
+    """
+    #[
+
+    solution_vectors: SolutionVectors
+    shock_qid_to_std_qid: dict[int, int]
+
+    #]
+
+
+class Squid:
+    """
+    """
+    #[
+
+    __slots__ = (
+        "curr_xi_qids",
+        "curr_xi_indexes",
+        "y_qids",
+        "u_qids",
+        "v_qids",
+        "w_qids",
+        "std_u_qids",
+        "std_v_qids",
+        "std_w_qids",
+        "num_xi",
+    )
+
+    def __init__(
+        self,
+        model: SquidableProtocol,
+        /,
+    ) -> None:
+        """
+        """
+        vec = model.solution_vectors
+        shock_qid_to_std_qid = model.shock_qid_to_std_qid
+        #
+        self.num_xi = len(vec.transition_variables)
+        self.curr_xi_qids, self.curr_xi_indexes = vec.get_curr_transition_indexes()
+        self.curr_xi_qids = tuple(self.curr_xi_qids)
+        self.curr_xi_indexes = tuple(self.curr_xi_indexes)
+        #
+        self.y_qids = tuple(t.qid for t in vec.measurement_variables)
+        self.u_qids = tuple(t.qid for t in vec.unanticipated_shocks)
+        self.v_qids = tuple(t.qid for t in vec.anticipated_shocks)
+        self.w_qids = tuple(t.qid for t in vec.measurement_shocks)
+        #
+        self.std_u_qids = None
+        self.std_v_qids = None
+        self.std_w_qids = None
+        #
+        if not model.is_deterministic:
+            self.std_u_qids = tuple(
+                shock_qid_to_std_qid[t.qid]
+                for t in vec.unanticipated_shocks
+            )
+            self.std_v_qids = tuple(
+                shock_qid_to_std_qid[t.qid]
+                for t in vec.anticipated_shocks
+            )
+            self.std_w_qids = tuple(
+                shock_qid_to_std_qid[t.qid]
+                for t in vec.measurement_shocks
+            )
+
+    @property
+    def num_curr_xi(self) -> int:
+        """==Number of current-dated transition variables in transition vector=="""
+        return len(self.curr_xi_qids)
+
+    @property
+    def num_u(self) -> int:
+        """==Number of unanticipated shocks in system=="""
+        return len(self.u_qids)
+
+    @property
+    def num_v(self) -> int:
+        """==Number of anticipated shocks in system=="""
+        return len(self.v_qids)
+
+    @property
+    def num_w(self) -> int:
+        """==Number of measurement shocks in system=="""
+        return len(self.w_qids)
+
+    #]
+
 

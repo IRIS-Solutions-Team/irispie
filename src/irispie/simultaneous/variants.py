@@ -22,7 +22,13 @@ class Variant:
     """
     #[
 
-    __slots__ = ("levels", "changes", "solution", "_max_qid", )
+    __slots__ = (
+        "levels",
+        "changes",
+        "solution",
+        "deviation_solution",
+        "_max_qid",
+    )
 
     _missing = _np.nan
 
@@ -38,6 +44,7 @@ class Variant:
         max_qid = _quantities.get_max_qid(quantities, )
         self._max_qid = max_qid
         self.solution = None
+        self.deviation_solution = None
         self._initilize_values()
         if is_flat:
             qid_to_logly = _quantities.create_qid_to_logly(quantities, )

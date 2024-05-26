@@ -18,8 +18,6 @@ from ..equators import plain as _equators
 from .. import equations as _equations
 from . import finite_differentiators as af_
 from . import adaptations as _adaptations
-from . import _rules as _rules
-
 #]
 
 
@@ -128,19 +126,51 @@ class Atom(ValueMixin, ):
         new_diff = -self.diff
         return type(self).no_context(new_value, new_diff, False)
 
-    __add__ = _rules.add_diff
+    def __add__(self, other):
+        if hasattr(other, "_is_atom"):
+            """
+            Differentiate self(x)+other(x)
+            """
+            new_value = self.value + other.value
+            new_diff = self.diff + other.diff
+        else:
+            """
+            Differentiate self(x)+other
+            """
+            new_value = self.value + other
+            new_diff = self.diff
+        return type(self).no_context(new_value, new_diff, False)
 
-    __sub__ = _rules.sub_diff
+    def __sub__(self, other):
+        if hasattr(other, "_is_atom"):
+            """
+            Differentiate self(x)-other(x)
+            """
+            new_value = self.value - other.value
+            new_diff = self.diff - other.diff
+        else:
+            """
+            Differentiate self(x)-other
+            """
+            new_value = self.value - other
+            new_diff = self.diff
+        return type(self).no_context(new_value, new_diff, False)
 
     def __mul__(self, other):
         self_value = self.value
         self_diff = self.diff
         if hasattr(other, "_is_atom"):
+            """
+            Differentiate self(x)*other(x)
+            """
             other_value = other.value
             other_diff = other.diff
             new_value = self_value * other_value
             new_diff = self_diff * other_value + self_value * other_diff
         else:
+            """
+            Differentiate self(x)*other
+            """
             new_value = self_value * other
             new_diff = self_diff * other
         return type(self).no_context(new_value, new_diff, False)
@@ -183,7 +213,7 @@ class Atom(ValueMixin, ):
 
     def _exponential(self, other_value):
         """
-        Differenatiate exponential function other_value**self(x)
+        Differenatiate exponential function other**self(x)
         """
         new_value = other_value**self.value
         new_diff = (
@@ -194,7 +224,7 @@ class Atom(ValueMixin, ):
 
     def _power(self, other_value):
         """
-        Differenatiate power function self(x)**other_value
+        Differenatiate power function self(x)**other
         """
         self_value = self.value
         self_diff = self.diff

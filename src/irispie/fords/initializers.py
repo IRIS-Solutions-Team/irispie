@@ -1,5 +1,5 @@
 """
-Initialize mean and MSE matrix for alpha vector
+Initialize median and MSE matrix for alpha vector
 """
 
 
@@ -9,37 +9,88 @@ from __future__ import annotations
 import numpy as _np
 from numbers import (Real, )
 
-from . import solutions as _solutions
+from .solutions import (Solution, left_div, )
 from . import covariances as _covariances
 #]
 
 
-_DEFAULT_DIFFUSE_SCALE = 1e7
+_DEFAULT_DIFFUSE_SCALE = 1e8
+
+
+def _approx_diffuse(
+        solution: Solution,
+        custom_diffuse_scale: Real | None = None,
+        /,
+) -> tuple[Real, _np.ndarray | None]:
+    """
+    """
+    #[
+    diffuse_scale = custom_diffuse_scale or _DEFAULT_DIFFUSE_SCALE
+    unknown_init_impact = None
+    return diffuse_scale, unknown_init_impact
+    #]
+
+
+def _fixed_unknown(
+        solution: Solution,
+        custom_diffuse_scale: Real | None = None,
+        /,
+) -> tuple[Real, _np.ndarray | None]:
+    """
+    """
+    #[
+    diffuse_scale = 0
+    unknown_init_impact = (
+        _np.eye(solution.num_xi, solution.num_unit_roots, )
+        if solution.num_unit_roots else None
+    )
+    return diffuse_scale, unknown_init_impact
+    #]
+
+
+def _fixed_zero(
+        solution: Solution,
+        custom_diffuse_scale: Real | None = None,
+        /,
+) -> tuple[Real, _np.ndarray | None]:
+    """
+    """
+    #[
+    diffuse_scale = 0
+    unknown_init_impact = None
+    return diffuse_scale, unknown_init_impact
+    #]
+
+
+_RESOLVE_DIFFUSE = {
+    "approx_diffuse": _approx_diffuse,
+    "fixed_unknown": _fixed_unknown,
+    "fixed_zero": _fixed_zero,
+}
 
 
 def initialize(
-    solution: _solutions.Solution,
+    solution: Solution,
     cov_u: _np.ndarray,
-    mse_method: Literal["fixed", "approx_diffuse", ] = "approx_diffuse",
+    *,
+    diffuse_method: Literal["approx_diffuse", "fixed_unknown", "fixed_zero", ] = "fixed_unknown",
     diffuse_scale: Real | None = None,
-) -> tuple[np_.ndarray, np_.ndarray]:
+) -> tuple[np_.ndarray, np_.ndarray, int, Real ]:
     """
     """
-    diffuse_scale = (
-        diffuse_scale if diffuse_scale is not None
-        else _DEFAULT_DIFFUSE_SCALE
-    )
-    if mse_method == "fixed":
-        diffuse_scale = 0.0
+    #[
+    diffuse_scale, unknown_init_impact \
+        = _RESOLVE_DIFFUSE[diffuse_method](solution, diffuse_scale, )
     return (
-        _initialize_mean(solution, ),
+        _initialize_med(solution, ),
         _initialize_mse(solution, cov_u, diffuse_scale, ),
-        diffuse_scale,
+        unknown_init_impact,
     )
+    #]
 
 
-def _initialize_mean(
-    solution: _solutions.Solution,
+def _initialize_med(
+    solution: Solution,
     /,
 ) -> _np.ndarray:
     """
@@ -52,16 +103,16 @@ def _initialize_mean(
     num_stable = solution.num_stable
     Ta_stable = solution.Ta_stable
     Ka_stable = solution.Ka_stable
-    init_mean = _np.zeros((num_alpha, ), dtype=float, )
+    init_med = _np.zeros((num_alpha, ), dtype=float, )
     #
     T = _np.eye(num_stable, dtype=float, ) - Ta_stable
-    init_mean[num_unit_roots:] = _solutions.left_div(T, Ka_stable, )
-    return init_mean
+    init_med[num_unit_roots:] = left_div(T, Ka_stable, )
+    return init_med
     #]
 
 
 def _initialize_mse(
-    solution: _solutions.Solution,
+    solution: Solution,
     cov_u: _np.ndarray,
     diffuse_scale: Real | None = None,
     /,
@@ -79,7 +130,7 @@ def _initialize_mse(
 
 
 def _initialize_mse_unstable_approx_diffuse(
-    solution: _solutions.Solution,
+    solution: Solution,
     cov_u: _np.ndarray,
     init_mse: _np.ndarray,
     diffuse_scale: Real | None = None,

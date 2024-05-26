@@ -95,7 +95,7 @@ class Inlay:
         cov_by_order = _covariances.get_autocov_square(variant.solution, cov_u, cov_w, up_to_order, )
         return tuple(select(cov, ) for cov in cov_by_order)
 
-    def get_std_unanticipated_shocks(self, /, ):
+    def get_stdvec_unanticipated_shocks(self, /, ):
         """
         """
         std_u = [
@@ -104,7 +104,7 @@ class Inlay:
         ]
         return self.unpack_singleton(std_u, )
 
-    def get_std_measurement_shocks(self, /, ):
+    def get_stdvec_measurement_shocks(self, /, ):
         """
         """
         std_w = [

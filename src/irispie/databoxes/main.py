@@ -748,6 +748,26 @@ the results.
                 when_fails_stream.add(f"{s}: {repr(e)}", )
         when_fails_stream._raise()
 
+    def max_abs(
+        self,
+        other: Self,
+    ) -> Self:
+        """
+        """
+        def _max_abs(x, ):
+            return _np.nanmax(abs(_np.array(x)))
+        output = type(self)()
+        for n in self.keys():
+            if n not in other:
+                continue
+            numeric_classes = (Number, _np.ndarray, )
+            if isinstance(self[n], Series, ) and isinstance(other[n], Series, ):
+                diff_array = (self[n] - other[n]).get_data()
+                output[n] = _max_abs(diff_array) if diff_array.size else None
+            elif isinstance(self[n], numeric_classes, ) and isinstance(other[n], numeric_classes, ):
+                output[n] = _max_abs(self[n] - other[n], )
+        return output
+
     @_pages.reference(category="information", )
     def filter(
         self,
@@ -930,8 +950,11 @@ Get the encompassing date span for all time series with a specified frequency.
         if not strict_names:
             names = tuple(set(names) & set(self.keys()) & set(other.keys()))
         for n in names:
-            if self[n].frequency == other[n].frequency:
-                func(self[n], other[n], **kwargs, )
+            if self[n].frequency == Frequency.UNKNOWN:
+                continue
+            if self[n].frequency != other[n].frequency:
+                continue
+            func(self[n], other[n], **kwargs, )
 
     def clip(
         self,

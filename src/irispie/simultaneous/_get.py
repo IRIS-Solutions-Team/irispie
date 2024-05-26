@@ -336,11 +336,23 @@ steady_changes = self.get_steady_changes(
         self,
         /,
         unpack_singleton: bool = True,
-    ):
+    ) -> _solutions.Solution | list[_solutions.Solution]:
         """
         """
         solution_matrices = [ v.solution for v in self._variants ]
         return self.unpack_singleton(solution_matrices, unpack_singleton=unpack_singleton, )
+
+    def get_singleton_solution(
+        self,
+        deviation: bool = False,
+        vid: int = 0,
+    ) -> _solutions.Solution:
+        """
+        """
+        return (
+            self._variants[vid].solution if not deviation
+            else self._variants[vid].deviation_solution
+        )
 
     def get_dynamic_equations(
         self,
