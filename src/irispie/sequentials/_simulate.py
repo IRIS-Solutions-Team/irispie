@@ -26,17 +26,6 @@ from ..dataslates.main import (Dataslate, )
 _LOGGER = _wl.get_colored_two_liner(__name__, level=_wl.INFO, )
 
 
-_SIMULATION_METHOD_DISPATCH = {
-    "sequential": _simulate_v,
-}
-
-
-_CREATE_EXECUTION_ITERATOR = {
-    "dates_equations": _iter_dates_equations,
-    "equations_dates": _iter_equations_dates,
-}
-
-
 class Inlay:
     """
     """
@@ -371,4 +360,15 @@ def _iter_equations_dates(columns_dates, equations, ) -> Iterator[tuple[int, _da
 
 def _swap_product(iterator: Iterable[tuple[Any, Any]], ) -> Iterable[tuple[Any, Any]]:
     return ((b, a) for a, b in iterator)
+
+
+_SIMULATION_METHOD_DISPATCH = {
+    "sequential": _simulate_v,
+}
+
+
+_CREATE_EXECUTION_ITERATOR = {
+    "dates_equations": _iter_dates_equations,
+    "equations_dates": _iter_equations_dates,
+}
 
