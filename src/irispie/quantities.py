@@ -195,7 +195,6 @@ def count_quantities_of_kind(
 def generate_qids_by_kind(
     quantities: Iterable[Quantity],
     kind: QuantityKind | None,
-    /,
 ) -> Iterable[int | None]:
     """
     """

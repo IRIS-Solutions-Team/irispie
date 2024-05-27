@@ -1,5 +1,5 @@
 """
-First-order system simulators
+Simultaneous model simulation inlay
 """
 
 
@@ -25,13 +25,13 @@ from . import main as _simultaneous
 #]
 
 
-_SIMULATION_CALL = {
+_LOGGER = _wl.get_colored_two_liner(__name__, level=_wl.INFO, )
+
+
+_SIMULATION_METHOD_DISPATCH = {
     "first_order": _ford_simulator.simulate,
     "period": _period_simulator.simulate,
 }
-
-
-_LOGGER = _wl.get_colored_two_liner(__name__, level=_wl.INFO, )
 
 
 InfoOutput = dict[str, Any] | list[dict[str, Any]]
@@ -95,7 +95,7 @@ class Inlay:
             dataslate.iter_variants(),
         )
 
-        simulation_func = _SIMULATION_CALL[method]
+        simulation_func = _SIMULATION_METHOD_DISPATCH[method]
 
         #=======================================================================
         # Main loop over variants

@@ -356,7 +356,7 @@ _X13_DATE_FORMAT_RESOLUTION = {
 
 
 _X13_EXECUTABLE_FILE = {
-    "Windows": "x13as.exe",
+    "Windows": "x13aswin.exe",
     "Linux": "x13asunix",
     "Darwin": "x13asmac",
 }[_pf.system()]

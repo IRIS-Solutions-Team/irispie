@@ -6,6 +6,8 @@ Implement SlatableProtocol
 #[
 from __future__ import annotations
 
+from numbers import (Number, )
+
 from .. import quantities as _quantities
 from ..series.main import (Series, )
 #]
@@ -16,18 +18,56 @@ class _Slatable:
     """
     #[
 
+    __slots__ = (
+        # Configuration
+        "shocks_from_data",
+        "stds_from_data",
+        # Min and max shifts
+        "max_lag",
+        "max_lead",
+        # Databox names
+        "databox_names",
+        # Databox validation
+        "databox_validators",
+        # Fallbacks and overwrites
+        "fallbacks",
+        "overwrites",
+        # QID to logly
+        "qid_to_logly",
+        # Output names
+        "output_names",
+    )
+
     def __init__(
         self,
-        simultaneous,
-        output_names: Iterable[str],
         shocks_from_data: bool = False,
         stds_from_data: bool = False,
+    ) -> None:
+        """
+        """
+        self.shocks_from_data = shocks_from_data
+        self.stds_from_data = stds_from_data
+        #
+        self.max_lag = None
+        self.max_lead = None
+        self.databox_names = None
+        self.databox_validators = None
+        self.fallbacks = None
+        self.overwrites = None
+        self.qid_to_logly = None
+        self.output_names = None
+
+    @classmethod
+    def for_simulate_and_kalman_filter(
+        klass,
+        simultaneous,
+        output_kind: _quantities.Quantity,
         **kwargs,
     ) -> None:
         """
         """
         #
-        # Min and max shifts
+        self = klass()
         self.max_lag = simultaneous.max_lag
         self.max_lead = simultaneous.max_lead
         #
@@ -42,7 +82,7 @@ class _Slatable:
         variable_names = simultaneous.get_names(kind=_quantities.ANY_VARIABLE, )
         validator = (
             lambda x: isinstance(x, Series),
-            "Data for this variable is not a time series",
+            "Input data for this variable is not a time series",
         )
         self.databox_validators = {
             name: validator
@@ -53,24 +93,58 @@ class _Slatable:
         self.fallbacks = {}
         self.overwrites = simultaneous.get_parameters(unpack_singleton=False, )
         #
-        num_variants = simultaneous.num_variants
         shock_names = simultaneous.get_names(kind=_quantities.ANY_SHOCK, )
-        shock_meds = { name: [float(0), ]*num_variants for name in shock_names }
-        shock_stds = simultaneous.get_stds(unpack_singleton=False, )
-        #
-        if shocks_from_data:
+        shock_meds = {
+            name: [float(0), ]*simultaneous.num_variants
+            for name in shock_names
+        }
+        if self.shocks_from_data:
             self.fallbacks.update(shock_meds, )
         else:
             self.overwrites.update(shock_meds, )
         #
-        if stds_from_data:
+        shock_stds = simultaneous.get_stds(unpack_singleton=False, )
+        if self.stds_from_data:
             self.fallbacks.update(shock_stds, )
         else:
             self.overwrites.update(shock_stds, )
         #
         self.qid_to_logly = simultaneous.create_qid_to_logly()
-        self.output_names = output_names
+        self.output_names = simultaneous.get_names(kind=output_kind, )
 
+    @classmethod
+    def for_multiply_stds(
+        klass,
+        simultaneous,
+        fallbacks: dict[str, list[Number]] | None,
+        **kwargs,
+    ) -> None:
+        """
+        """
+        #
+        self = klass()
+        self.max_lag = 0
+        self.max_lead = 0
+        #
+        # Databox names
+        kind = _quantities.UNANTICIPATED_STD | _quantities.MEASUREMENT_STD
+        std_qids = simultaneous.get_qids(kind=kind, )
+        qid_to_name = simultaneous.create_qid_to_name()
+        self.databox_names = tuple(
+            qid_to_name[qid]
+            for qid in sorted(std_qids)
+        )
+        #
+        # Databox validation - all variables must be time series
+        self.databox_validators = None
+        #
+        # Fallbacks and overwrites
+        self.fallbacks = fallbacks
+        self.overwrites = None
+        #
+        #
+        self.qid_to_logly = None
+        self.output_names = self.databox_names
 
 class Inlay:
     """
@@ -80,21 +154,42 @@ class Inlay:
     def get_slatable_for_simulate(self, **kwargs, ) -> _Slatable:
         """
         """
-        kind = _quantities.ANY_VARIABLE | _quantities.ANY_SHOCK
-        output_names = self.get_names(kind=kind, )
-        return _Slatable(self, output_names, **kwargs, )
+        output_kind = (
+            _quantities.ANY_VARIABLE
+            | _quantities.ANY_SHOCK
+        )
+        slatable = _Slatable.for_simulate_and_kalman_filter(
+            self,
+            output_kind=output_kind,
+            **kwargs,
+        )
+        return slatable
 
     def get_slatable_for_kalman_filter(self, **kwargs, ) -> _Slatable:
         """
         """
-        kind = (
+        slatable = _Slatable.for_simulate_and_kalman_filter(self, **kwargs, )
+        output_kind = (
             _quantities.ANY_VARIABLE
             | _quantities.ANY_SHOCK
             | _quantities.UNANTICIPATED_STD
             | _quantities.MEASUREMENT_STD
         )
-        output_names = self.get_names(kind=kind, )
-        return _Slatable(self, output_names, **kwargs, )
+        slatable = _Slatable.for_simulate_and_kalman_filter(
+            self,
+            output_kind=output_kind,
+            **kwargs,
+        )
+        return slatable
+
+    def get_slatables_for_multiply_shocks(self, **kwargs, ) -> _Slatable:
+        """
+        """
+        shock_stds = simultaneous.get_stds(unpack_singleton=False, )
+
+        output_kind = _quantities.UNANTICIPATED_STD | _quantities.MEASUREMENT_STD
+        slatable = _Slatable.for_multiply_stds(self, output_kind=output_kind, **kwargs, )
+        return slatable
 
     #]
 

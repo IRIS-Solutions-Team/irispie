@@ -226,7 +226,8 @@ steady_changes = self.get_steady_changes(
     ) -> dict[str, Real]:
         """
         """
-        qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _quantities.QuantityKind.ANY_STD, )
+        kind = _quantities.QuantityKind.ANY_STD
+        qids = _quantities.generate_qids_by_kind(self._invariant.quantities, kind, )
         return self._get_values("levels", qids, **kwargs, )
 
     @_cast_as_output_type

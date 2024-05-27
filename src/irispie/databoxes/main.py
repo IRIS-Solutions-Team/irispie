@@ -479,7 +479,9 @@ during the duplication process.
         """
         shallow = self.shallow(source_names=source_names, )
         content_view = shallow._get_content_view()
-        print("\n", "\n".join(content_view, ), "\n", )
+        print()
+        print("\n".join(content_view, ))
+        print()
 
     @_pages.reference(category="validation", )
     def validate(
