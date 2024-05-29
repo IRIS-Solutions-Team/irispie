@@ -6,13 +6,14 @@ Time periods and time spans
 #[
 from __future__ import annotations
 
-import re as _re
-import datetime as _dt
-import enum as _en
-import functools as _ft
 from typing import (Union, Self, Any, Protocol, TypeAlias, runtime_checkable, )
 from collections.abc import (Iterable, Callable, Iterator, )
 from numbers import (Real, )
+import re as _re
+import enum as _en
+import functools as _ft
+import datetime as _dt
+import calendar as _ca
 
 from . import pages as _pages
 from .conveniences import copies as _copies
@@ -28,6 +29,7 @@ __all__ = (
     "YEARLY", "HALFYEARLY", "QUARTERLY", "MONTHLY", "WEEKLY", "DAILY",
     "PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION",
     "refrequent", "convert_to_new_freq",
+    "daily_serial_from_ymd",
 
     "daters_from_sdmx_strings", "daters_from_iso_strings", "daters_from_to",
     "Dater", "Ranger", "EmptyRanger",
@@ -1229,7 +1231,7 @@ class DailyPeriod(Period, ):
 
     @classmethod
     def from_ymd(klass: type, year: int, month: int=1, day: int=1) -> Self:
-        serial = _dt.date(year, month, day).toordinal()
+        serial = daily_serial_from_ymd(year, month, day, )
         return klass(serial)
 
     @classmethod
@@ -1370,7 +1372,10 @@ class RegularPeriodMixin:
         position: Literal["start", "middle", "end", ] = "middle",
     ) -> tuple[int, int, int]:
         year, per = self.to_year_period()
-        return year, *self.month_day_resolution[position][per]
+        month, day = self._MONTH_DAY_RESOLUTION[position][per]
+        if day is None:
+            _, day = _ca.monthrange(year, month)
+        return year, month, day
 
     def __str__(self, /, ) -> str:
         return self.to_sdmx_string()
@@ -1414,7 +1419,7 @@ class YearlyPeriod(RegularPeriodMixin, Period, ):
     frequency: Frequency = Frequency.YEARLY
     needs_resolve: bool = False
     origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.YEARLY)
-    month_day_resolution = {
+    _MONTH_DAY_RESOLUTION = {
         "start": {1: (1, 1)},
         "middle": {1: (6, 30)},
         "end": {1: (12, 31)},
@@ -1442,7 +1447,7 @@ class HalfyearlyPeriod(RegularPeriodMixin, Period, ):
     frequency: Frequency = Frequency.HALFYEARLY
     needs_resolve: bool = False
     origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.HALFYEARLY)
-    month_day_resolution = {
+    _MONTH_DAY_RESOLUTION = {
         "start": {1: (1, 1), 2: (7, 1)},
         "middle": {1: (3, 15), 2: (9, 15)},
         "end": {1: (6, 30), 2: (12, 31)}
@@ -1493,7 +1498,7 @@ class QuarterlyPeriod(RegularPeriodMixin, Period, ):
     frequency: Frequency = Frequency.QUARTERLY
     needs_resolve: bool = False
     origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.QUARTERLY)
-    month_day_resolution = {
+    _MONTH_DAY_RESOLUTION = {
         "start": {1: (1, 1), 2: (4, 1), 3: (7, 1), 4: (10, 1)},
         "middle": {1: (2, 15), 2: (5, 15), 3: (8, 15), 4: (11, 15)},
         "end": {1: (3, 31), 2: (6, 30), 3: (9, 30), 4: (12, 31)},
@@ -1523,10 +1528,10 @@ class MonthlyPeriod(RegularPeriodMixin, Period, ):
     frequency: Frequency = Frequency.MONTHLY
     needs_resolve: bool = False
     origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.MONTHLY)
-    month_day_resolution = {
-        "start": {1: (1, 1), 2: (2, 1), 3: (2, 1), 4: (4, 1), 5: (5, 1), 6: (6, 1), 7: (7, 1), 8: (8, 1), 9: (9, 1), 10: (10, 1), 11: (11, 1), 12: (12, 1)},
-        "middle": {1: (1, 15), 2: (2, 15), 3: (2, 15), 4: (4, 15), 5: (5, 15), 6: (6, 15), 7: (7, 15), 8: (8, 15), 9: (9, 15), 10: (10, 15), 11: (11, 15), 12: (12, 15)},
-        "end": {1: (1, 31), 2: (2, 28), 3: (3, 31), 4: (4, 30), 5: (5, 31), 6: (6, 30), 7: (7, 31), 8: (8, 31), 9: (9, 30), 10: (10, 31), 11: (11, 30), 12: (12, 31)},
+    _MONTH_DAY_RESOLUTION = {
+        "start": { m: (m, 1) for m in range(1, 13) },
+        "middle": { m: (m, 15) for m in range(1, 13) },
+        "end": { m: ((m, _ca.monthrange(1970, m)[1]) if m != 2 else (m, None)) for m in range(1, 13) },
     }
 
     @classmethod
@@ -1657,6 +1662,9 @@ and the [`Span` constructors](spans.md).
 for n in ("yy", "hh", "qq", "mm", "dd", "ii", ):
     setattr(Period, n, locals()[n], )
 
+
+def daily_serial_from_ymd(year: int, month: int, day: int, ) -> int:
+    return _dt.date(year, month, day).toordinal()
 
 
 @_pages.reference(
