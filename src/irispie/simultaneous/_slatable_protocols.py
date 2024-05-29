@@ -6,10 +6,14 @@ Implement SlatableProtocol
 #[
 from __future__ import annotations
 
-from numbers import (Real, )
+from typing import (TYPE_CHECKING, )
 
 from .. import quantities as _quantities
 from ..series.main import (Series, )
+
+if TYPE_CHECKING:
+    from typing import (Self, )
+    from numbers import (Real, )
 #]
 
 
@@ -63,7 +67,7 @@ class _Slatable:
         simultaneous,
         output_kind: _quantities.Quantity,
         **kwargs,
-    ) -> None:
+    ) -> Self:
         """
         """
         #
@@ -111,6 +115,8 @@ class _Slatable:
         #
         self.qid_to_logly = simultaneous.create_qid_to_logly()
         self.output_names = simultaneous.get_names(kind=output_kind, )
+        #
+        return self
 
     @classmethod
     def for_multiply_stds(
@@ -144,7 +150,8 @@ class _Slatable:
         #
         self.qid_to_logly = None
         self.output_names = self.databox_names
-
+        #
+        return self
 
 class Inlay:
     """

@@ -56,7 +56,9 @@ class Inlay:
         shocks_from_data: bool = True,
         stds_from_data: bool = True,
         logging_level: int = _wl.INFO,
+        #
         unpack_singleton: bool = True,
+        return_info: bool = False,
         **kwargs,
     ) -> tuple[Databox, _Info]:
         """
@@ -127,12 +129,14 @@ class Inlay:
         if target_databox is not None:
             output_db = target_databox | output_db
         #
-        is_singleton = num_variants == 1
-        output_info = _has_variants.unpack_singleton(
-            output_info, is_singleton,
-            unpack_singleton=unpack_singleton,
-        )
-        return output_db, output_info
-
+        if return_info:
+            is_singleton = num_variants == 1
+            output_info = _has_variants.unpack_singleton(
+                output_info, is_singleton,
+                unpack_singleton=unpack_singleton,
+            )
+            return output_db, output_info
+        else:
+            return output_db
     #]
 
