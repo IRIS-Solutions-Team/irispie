@@ -158,7 +158,6 @@ class Inlay:
             _quantities.ANY_VARIABLE
             | _quantities.ANY_SHOCK
         )
-        #
         slatable = _Slatable.for_simulate_and_kalman_filter(
             self,
             output_kind=output_kind,
@@ -170,14 +169,12 @@ class Inlay:
     def get_slatable_for_kalman_filter(self, **kwargs, ) -> _Slatable:
         """
         """
-        slatable = _Slatable.for_simulate_and_kalman_filter(self, **kwargs, )
         output_kind = (
             _quantities.ANY_VARIABLE
             | _quantities.ANY_SHOCK
             | _quantities.UNANTICIPATED_STD
             | _quantities.MEASUREMENT_STD
         )
-        #
         slatable = _Slatable.for_simulate_and_kalman_filter(
             self,
             output_kind=output_kind,
