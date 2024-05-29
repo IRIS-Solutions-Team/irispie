@@ -119,6 +119,7 @@ class Inlay:
         date_formatter: Callable | None = None,
         csv_writer_settings: dict | None = {},
         when_empty: Literal["error", "warning", "silent"] = "warning",
+        return_info: bool = False,
     ) -> dict[str, Any]:
         r"""
 ················································································
@@ -235,7 +236,10 @@ class Inlay:
             "names_exported": tuple(_it.chain.from_iterable(frequency_names.values())),
         }
         #
-        return info
+        if return_info:
+            return info
+        else:
+            return
 
     def to_sheet(self, *args, **kwargs, ):
         return self.to_csv(*args, **kwargs, )

@@ -48,6 +48,7 @@ class Inlay:
         shocks_from_data: bool = True,
         logging_level: int = _wl.INFO,
         unpack_singleton: bool = True,
+        return_info: bool = False,
         method: Literal["sequential", ] = "sequential",
     ) -> tuple[Databox, dict[str, Any]]:
         """
@@ -56,7 +57,7 @@ class Inlay:
 ==Simulate sequential model==
 
 ```
-output_db, info = self.simulate(
+out_db, info = self.simulate(
     input_db,
     simulation_span,
     *,
@@ -137,7 +138,7 @@ simulating the model.
 ### Returns ###
 
 
-???+ returns "output_db"
+???+ returns "out_db"
 
     Output databox with the simulated time series for the LHS variables.
 
@@ -178,7 +179,7 @@ simulating the model.
         #
         #=======================================================================
         # Main loop over variants
-        info = []
+        out_info = []
         simulate_method = _SIMULATION_METHOD_DISPATCH[method]
         for vid, model_v, dataslate_v in zipped:
             info_v = simulate_method(
@@ -187,7 +188,7 @@ simulating the model.
                 when_nonfinite=when_nonfinite,
                 execution_order=execution_order,
             )
-            info.append(info_v, )
+            out_info.append(info_v, )
         #=======================================================================
         #
         # Remove initial and terminal condition data (all lags and leads
@@ -198,19 +199,22 @@ simulating the model.
             dataslate.remove_initial()
         #
         # Convert all variants of the dataslate to a databox
-        output_db = dataslate.to_databox()
+        out_db = dataslate.to_databox()
         if prepend_input:
-            output_db.prepend(input_db, base_dates[0]-1, )
+            out_db.prepend(input_db, base_dates[0]-1, )
         #
         # Add to custom databox
         if target_databox is not None:
-            output_db = target_databox | output_db
+            out_db = target_databox | out_db
         #
-        info = _has_variants.unpack_singleton(
-            info, self.is_singleton,
-            unpack_singleton=unpack_singleton,
-        )
-        return output_db, info
+        if return_info:
+            out_info = _has_variants.unpack_singleton(
+                out_info, self.is_singleton,
+                unpack_singleton=unpack_singleton,
+            )
+            return out_db, out_info
+        else:
+            return out_db
 
     #]
 

@@ -362,11 +362,11 @@ class Dataslate(
 
     def get_data_variant(
         self,
-        vid: int | None = None,
+        vid: int = 0,
     ) -> _np.ndarray:
         """
         """
-        return self._variants[vid or 0].data
+        return self._variants[vid].data
 
     get_data_array_variant = get_data_variant
 

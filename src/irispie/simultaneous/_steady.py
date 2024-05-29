@@ -78,6 +78,7 @@ class Inlay:
         self,
         /,
         unpack_singleton: bool = True,
+        return_info: bool = False,
         **kwargs,
     ) -> dict | list[dict]:
         """
@@ -89,11 +90,15 @@ class Inlay:
             solver(v, model_flags, vid, **kwargs, )
             for vid, v in enumerate(self._variants, )
         ]
-        output_info = _has_variants.unpack_singleton(
-            output_info, self.is_singleton,
-            unpack_singleton=unpack_singleton,
-        )
-        return output_info
+        #
+        if return_info:
+            output_info = _has_variants.unpack_singleton(
+                output_info, self.is_singleton,
+                unpack_singleton=unpack_singleton,
+            )
+            return output_info
+        else:
+            return
 
     def _steady_linear(
         self,

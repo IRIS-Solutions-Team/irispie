@@ -13,15 +13,13 @@ import wlogging as _wl
 
 from .. import quantities as _quantities
 from .. import has_variants as _has_variants
-from .. import dates as _dates
+from ..dates import (Period, )
 from ..databoxes.main import (Databox, )
 from ..dataslates.main import (Dataslate, )
 from ..fords import solutions as _solutions
 from ..fords import simulators as _ford_simulator
 from ..periods import simulators as _period_simulator
 from ..plans.simulation_plans import (SimulationPlan, )
-
-from . import main as _simultaneous
 #]
 
 
@@ -34,7 +32,7 @@ _SIMULATION_METHOD_DISPATCH = {
 }
 
 
-InfoOutput = dict[str, Any] | list[dict[str, Any]]
+_Info = dict[str, Any] | list[dict[str, Any]]
 
 
 class Inlay:
@@ -45,7 +43,7 @@ class Inlay:
     def simulate(
         self,
         input_db: Databox,
-        span: Iterable[Dater],
+        span: Iterable[Period],
         /,
         *,
         plan: SimulationPlan | None = None,
@@ -60,7 +58,7 @@ class Inlay:
         logging_level: int = _wl.INFO,
         unpack_singleton: bool = True,
         **kwargs,
-    ) -> tuple[Databox, InfoOutput]:
+    ) -> tuple[Databox, _Info]:
         """
         """
         _LOGGER.set_level(logging_level, )
@@ -99,17 +97,18 @@ class Inlay:
 
         #=======================================================================
         # Main loop over variants
+        #
         output_info = []
         for vid, model_v, dataslate_v in zipped:
-
+            #
             info_v = simulation_func(
                 model_v, dataslate_v, plan, vid,
                 logger=_LOGGER,
                 **kwargs,
             )
-
+            #
             output_info.append(info_v, )
-
+            #
         #=======================================================================
         #
         # Remove initial and terminal condition data (all lags and leads

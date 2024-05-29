@@ -26,11 +26,13 @@ from .. import pages as _pages
 from ..conveniences import iterators as _iterators
 from ..parsers import common as _pc
 from ..databoxes import main as _databoxes
+
 from ..fords import solutions as _solutions
 from ..fords import steadiers as _fs
 from ..fords import descriptors as _descriptors
 from ..fords import systems as _systems
 from ..fords import kalmans as _kalmans
+from ..fords import std_simulators as _std_simulators
 
 from . import invariants as _invariants
 from . import variants as _variants
@@ -65,6 +67,7 @@ class Simultaneous(
     _has_invariant.HasInvariantMixin,
     _has_variants.HasVariantsMixin,
     _kalmans.Mixin,
+    _std_simulators.Mixin,
 
     _simulate.Inlay,
     _steady.Inlay,
@@ -456,16 +459,26 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         self,
         /,
         clip_small: bool = False,
+        return_info: bool = False,
+        unpack_singleton: bool = True,
         **kwargs,
     ) -> dict[str, Any]:
         """
         Calculate first-order solution for each variant within this model
         """
         model_flags = self._invariant._flags.update_from_kwargs(**kwargs, )
-        for variant in self._variants:
-            self._solve(variant, model_flags, clip_small=clip_small, )
-        info = {}
-        return info
+        out_info = [
+            self._solve(self_v, model_flags, clip_small=clip_small, )
+            for self_v in self._variants
+        ]
+        if return_info:
+            out_info = _has_variants.unpack_singleton(
+                out_info, self.is_singleton,
+                unpack_singleton=unpack_singleton,
+            )
+            return out_info
+        else:
+            return
 
     def _solve(
         self,
@@ -480,6 +493,9 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         system = self._systemize(variant, self._invariant.dynamic_descriptor, model_flags, )
         variant.solution = _solutions.Solution(self._invariant.dynamic_descriptor, system, clip_small=clip_small, )
         variant.deviation_solution = _solutions.create_deviation_solution(variant.solution, )
+        info = {}
+        #
+        return info
 
     def _choose_plain_equator(
         self,

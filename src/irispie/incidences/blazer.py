@@ -61,7 +61,8 @@ def blaze(
     #
     if im_inner.size:
         eids_inner, qids_inner, im_inner, *_ \
-            = triangularize_inner_block(im_inner, eids=eids_inner, qids=qids_inner, )
+            = triangularize_inner_block \
+            (im_inner, eids=eids_inner, qids=qids_inner, )
     #
     # Combine the results
     #

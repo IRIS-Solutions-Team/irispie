@@ -37,7 +37,7 @@ class Inlay:
         /,
     ) -> None:
         r"""
-················································································
+................................................................................
 
 
 Overview of temporal change functions:
@@ -117,7 +117,7 @@ self.aroc()
     Time series with data replaced by a temporal change function of the
     original data.
 
-················································································
+................................................................................
         """
         _catch_invalid_shift(shift, )
         other = self.copy()
@@ -131,14 +131,14 @@ self.aroc()
         /,
     ) -> None:
         r"""
-················································································
+................................................................................
 
 ==First difference==
 
 See documentation for [temporal change calculations](#temporal-change-calculations) or
 `help(irispie.Series.temporal_change)`.
 
-················································································
+................................................................................
         """
         self.temporal_change(shift, lambda x, y: x - y, )
 
@@ -148,14 +148,14 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         /,
     ) -> None:
         r"""
-················································································
+................................................................................
 
 ==Annualized first difference==
 
 See documentation for [temporal change calculations](#temporal-change-calculations) or
 `help(irispie.Series.temporal_change)`.
 
-················································································
+................................................................................
         """
         shift = -1
         factor = self.frequency.value or 1
@@ -168,14 +168,14 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         /,
     ) -> None:
         r"""
-················································································
+................................................................................
 
 ==First difference of logs==
 
 See documentation for [temporal change calculations](#temporal-change-calculations) or
 `help(irispie.Series.temporal_change)`.
 
-················································································
+................................................................................
         """
         self.temporal_change(shift, lambda x, y: _np.log(x) - _np.log(y), )
 
@@ -185,14 +185,14 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         /,
     ) -> None:
         r"""
-················································································
+................................................................................
 
 ==Annualized first difference of logs==
 
 See documentation for [temporal change calculations](#temporal-change-calculations) or
 `help(irispie.Series.temporal_change)`.
 
-················································································
+................................................................................
         """
         shift = -1
         factor = self.frequency.value or 1
@@ -205,14 +205,14 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         /,
     ) -> None:
         r"""
-················································································
+................................................................................
 
 ==Gross rate of change==
 
 See documentation for [temporal change calculations](#temporal-change-calculations) or
 `help(irispie.Series.temporal_change)`.
 
-················································································
+................................................................................
         """
         self.temporal_change(shift, lambda x, y: x/y, )
 
@@ -222,14 +222,14 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         /,
     ) -> None:
         r"""
-················································································
+................................................................................
 
 ==Annualized gross rate of change==
 
 See documentation for [temporal change calculations](#temporal-change-calculations) or
 `help(irispie.Series.temporal_change)`.
 
-················································································
+................................................................................
         """
         shift = -1
         factor = self.frequency.value or 1
@@ -242,14 +242,14 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         /,
     ) -> None:
         r"""
-················································································
+................................................................................
 
 ==Percent change==
 
 See documentation for [temporal change calculations](#temporal-change-calculations) or
 `help(irispie.Series.temporal_change)`.
 
-················································································
+................................................................................
         """
         self.temporal_change(shift, lambda x, y: 100*(x/y - 1), )
 
@@ -259,14 +259,14 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         /,
     ) -> None:
         r"""
-················································································
+................................................................................
 
 ==Annualized percent change==
 
 See documentation for [temporal change calculations](#temporal-change-calculations) or
 `help(irispie.Series.temporal_change)`.
 
-················································································
+................................................................................
         """
         shift = -1
         factor = self.frequency.value or 1
@@ -318,56 +318,56 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
     @_pages.reference(category="temporal_cumulation", )
     def cum_diff(self, *args, **kwargs, ) -> None:
         r"""
-················································································
+................................................................................
 
 ==Cumulation of first differences==
 
 See documentation for [temporal cumulation calculations](#temporal-cumulation-calculations) or
 `help(irispie.Series.temporal_cumulation)`.
 
-················································································
+................................................................................
         """
         self.temporal_cumulation("diff", *args, **kwargs, )
 
     @_pages.reference(category="temporal_cumulation", )
     def cum_diff_log(self, *args, **kwargs, ) -> None:
         r"""
-················································································
+................................................................................
 
 ==Cumulation of first differences of logs==
 
 See documentation for [temporal cumulation calculations](#temporal-cumulation-calculations) or
 `help(irispie.Series.temporal_cumulation)`.
 
-················································································
+................................................................................
         """
         self.temporal_cumulation("diff_log", *args, **kwargs, )
 
     @_pages.reference(category="temporal_cumulation", )
     def cum_pct(self, *args, **kwargs, ) -> None:
         r"""
-················································································
+................................................................................
 
 ==Cumulation of percent changes==
 
 See documentation for [temporal cumulation calculations](#temporal-cumulation-calculations) or
 `help(irispie.Series.temporal_cumulation)`.
 
-················································································
+................................................................................
         """
         self.temporal_cumulation("pct", *args, **kwargs, )
 
     @_pages.reference(category="temporal_cumulation", )
     def cum_roc(self, *args, **kwargs, ) -> None:
         r"""
-················································································
+................................................................................
 
 ==Cumulation of gross rates of change==
 
 See documentation for [temporal cumulation calculations](#temporal-cumulation-calculations) or
 `help(irispie.Series.temporal_cumulation)`.
 
-················································································
+................................................................................
         """
         self.temporal_cumulation("roc", *args, **kwargs, )
 
@@ -385,7 +385,7 @@ See documentation for [temporal cumulation calculations](#temporal-cumulation-ca
         span: Span | None = None,
     ) -> None:
         r"""
-················································································
+................................................................................
 
 Overview of temporal cumulation calculations:
 
@@ -461,7 +461,7 @@ self.cum_roc(/, shift=-1, initial=None, span=None)
     data.
 
 
-················································································
+................................................................................
         """
         _catch_invalid_shift(shift, )
         span = Span(None, None, ) if span is None else span

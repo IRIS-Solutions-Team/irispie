@@ -6,7 +6,7 @@ Implement SlatableProtocol
 #[
 from __future__ import annotations
 
-from numbers import (Number, )
+from numbers import (Real, )
 
 from .. import quantities as _quantities
 from ..series.main import (Series, )
@@ -116,7 +116,7 @@ class _Slatable:
     def for_multiply_stds(
         klass,
         simultaneous,
-        fallbacks: dict[str, list[Number]] | None,
+        fallbacks: dict[str, list[Real]] | None,
         **kwargs,
     ) -> None:
         """
@@ -142,9 +142,9 @@ class _Slatable:
         self.fallbacks = fallbacks
         self.overwrites = None
         #
-        #
         self.qid_to_logly = None
         self.output_names = self.databox_names
+
 
 class Inlay:
     """
@@ -158,11 +158,13 @@ class Inlay:
             _quantities.ANY_VARIABLE
             | _quantities.ANY_SHOCK
         )
+        #
         slatable = _Slatable.for_simulate_and_kalman_filter(
             self,
             output_kind=output_kind,
             **kwargs,
         )
+        #
         return slatable
 
     def get_slatable_for_kalman_filter(self, **kwargs, ) -> _Slatable:
@@ -175,21 +177,25 @@ class Inlay:
             | _quantities.UNANTICIPATED_STD
             | _quantities.MEASUREMENT_STD
         )
+        #
         slatable = _Slatable.for_simulate_and_kalman_filter(
             self,
             output_kind=output_kind,
             **kwargs,
         )
+        #
         return slatable
 
-    def get_slatables_for_multiply_shocks(self, **kwargs, ) -> _Slatable:
+    def get_slatables_for_multiply_shocks(self, **kwargs, ) -> tuple[_Slatable, _Slatable]:
         """
         """
-        shock_stds = simultaneous.get_stds(unpack_singleton=False, )
-
-        output_kind = _quantities.UNANTICIPATED_STD | _quantities.MEASUREMENT_STD
-        slatable = _Slatable.for_multiply_stds(self, output_kind=output_kind, **kwargs, )
-        return slatable
+        std_fallbacks = simultaneous.get_stds(unpack_singleton=False, )
+        std_slatable = _Slatable.for_multiply_stds(self, fallbacks=std_fallbacks, **kwargs, )
+        #
+        multiplier_fallbacks = { name: 1 for name in std_fallbacks }
+        multiplier_slatable = _Slatable.for_multiply_stds(self, fallbacks=multiplier_fallbacks, **kwargs, )
+        #
+        return std_slatable, multiplier_slatable
 
     #]
 
