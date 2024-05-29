@@ -31,6 +31,9 @@ _builtin_max = max
 _builtin_sum = sum
 
 
+_DEFAULT_METHOD = "mean"
+
+
 class Inlay:
     """
     """
@@ -41,7 +44,7 @@ class Inlay:
         self,
         target_freq: _dates.Frequency,
         /,
-        method: Literal["mean", "sum", "first", "last", "min", "max"] = "mean",
+        method: Literal["mean", "sum", "first", "last", "min", "max"] | Callable | None = None,
         remove_missing: bool = False,
         select: list[int] | None = None,
     ) -> None:
@@ -112,6 +115,7 @@ class Inlay:
 
 ················································································
         """
+        method = method or _DEFAULT_METHOD
         method_func = (
             _AGGREGATION_METHOD_RESOLUTION[method]
             if isinstance(method, str) else method
@@ -243,12 +247,12 @@ def _aggregate_daily_to_regular(
     new_start_date = new_dater_class.from_year_period(start_year, 1)
     new_end_date = new_dater_class.from_year_period(end_year, "end")
     get_slice_func = lambda t: slice(
-        t.to_daily(position="start") - start_date,
-        t.to_daily(position="end") - start_date + 1,
+        t.to_daily(position="start", ) - start_date,
+        t.to_daily(position="end", ) - start_date + 1,
     )
     new_data = tuple(
         tuple(
-            aggregate_within_data_func(variant[get_slice_func(t)])
+            aggregate_within_data_func(data_variant[get_slice_func(t)])
             for data_variant in self.iter_own_data_variants_from_to(from_to, )
         )
         for t in _dates.Ranger(new_start_date, new_end_date)
