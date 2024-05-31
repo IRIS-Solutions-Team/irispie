@@ -13,6 +13,7 @@ import json as _js
 import copy as _cp
 import plotly.graph_objects as _pg
 import itertools as _it
+import warnings as _wa
 
 from .. import dates as _dates
 from .. import plotly_wrap as _plotly_wrap
@@ -40,9 +41,18 @@ def _bar_plot(color: str, **settings) -> _pg.Bar:
     return _pg.Bar(marker_color=color, **settings, )
 
 
-_PLOTLY_TRACES_FACTORY = {
+_PLOTLY_TRACES_FUNC = {
     "line": _line_plot,
     "bar": _bar_plot,
+    "bar_relative": _bar_plot,
+    "bar_group": _bar_plot,
+}
+
+
+_BARMODE = {
+    "bar": "group",
+    "bar_relative": "relative",
+    "bar_group": "group",
 }
 
 
@@ -89,7 +99,8 @@ class Inlay:
         show_legend: bool | None = None,
         subplot: tuple[int, int] | int | None = None,
         xline = None,
-        type: Literal["line", "bar"] = "line",
+        type = None,
+        chart_type: Literal["line", "bar_stack", "bar_group"] = "line",
         traces: tuple(dict[str, Any], ) | None = None,
         freeze_span: bool = False,
         reverse_plot_order: bool = False,
@@ -97,6 +108,9 @@ class Inlay:
     ) -> _pg.Figure:
         """
         """
+        if type is not None:
+            _wa.warn("Use 'chart_type' instead of the deprecated 'type'", DeprecationWarning, )
+            chart_type = type
         span = self._resolve_dates(span, )
         span = [ t for t in span ]
         frequency = span[0].frequency
@@ -128,7 +142,7 @@ class Inlay:
                 "xhoverformat": date_format,
             }
             traces_settings |= ts or {}
-            traces_object = _PLOTLY_TRACES_FACTORY[type](color, **traces_settings, )
+            traces_object = _PLOTLY_TRACES_FUNC[chart_type](color, **traces_settings, )
             figure.add_trace(traces_object, row=row, col=column, )
 
         # REFACTOR
@@ -137,6 +151,8 @@ class Inlay:
         layout = _cp.deepcopy(_PLOTLY_STYLES["layouts"]["plain"])
         del layout["xaxis"]
         del layout["yaxis"]
+
+        layout["barmode"] = _BARMODE.get(chart_type, None)
 
         xaxis["tickformat"] = date_format
         xaxis["ticklabelmode"] = "period"
@@ -180,7 +196,6 @@ def _update_subplot_title(
     """
     """
     annotation = next(figure.select_annotations(index, ), None, )
-    print(annotation)
     if annotation:
         annotation.text = subplot_title
 

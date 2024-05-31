@@ -12,7 +12,6 @@ import functools as _ft
 import re as _re
 import math as _ma
 import plotly.graph_objects as _pg
-import dataclasses as _dc
 
 from ..conveniences import descriptions as _descriptions
 from ..conveniences import copies as _copies
@@ -28,7 +27,29 @@ __all__ =  (
 )
 
 
-@_dc.dataclass
+_FIGURE_SETTINGS = {
+    "legend": None,
+    "highlight": None,
+    "tiles": None,
+    "shared_xaxes": False,
+}
+_FIGURE_SETTINGS_KEYS = tuple(_FIGURE_SETTINGS.keys(), )
+
+
+_CHART_SETTINGS = {
+    "transforms": {},
+    "reverse_plot_order": False,
+    "span": ...,
+    "chart_type": "line",
+}
+_CHART_SETTINGS_KEYS = tuple(_CHART_SETTINGS.keys(), )
+
+
+_CHART_INPUT_STRING_PATTERN = _re.compile(
+    r"^(?:(?P<title>.*?):)?(?P<expression>.*?)(?:\[(?P<transform>.*?)\])?$"
+)
+
+
 @_pages.reference(
     path=("visualization_reporting", "chartpacks.md", ),
     categories={
@@ -52,16 +73,36 @@ Chartpacks
     """
     #[
 
-    title: str = ""
-    span: Iterable[_dates.Dater] | EllipsisType = ...
-    tiles: tuple[int, int] | None = None
-    transforms: dict[str, Callable] | None = None
-    highlight: Iterable[_dates.Dater] | None = None
-    legend: Iterable[str] | None = None
-    reverse_plot_order: bool = False
-    shared_xaxes: bool = False
-    _figures = None
-    _description = None
+    __slots__ = (
+        "title",
+        "_figures",
+        "_description",
+        "_figure_settings",
+        "_chart_settings",
+    )
+
+    def __init__(
+        self,
+        title: str = "",
+        **kwargs,
+    ) -> None:
+        """
+        """
+        self.title = title
+        self._figures = None
+        self._description = None
+        #
+        self._figure_settings = {
+            n: kwargs[n]
+            for n in _FIGURE_SETTINGS_KEYS
+            if n in kwargs
+        }
+        #
+        self._chart_settings = {
+            n: kwargs[n]
+            for n in _CHART_SETTINGS_KEYS
+            if n in kwargs
+        }
 
     @classmethod
     @_pages.reference(category="constructor", call_name="Chartpack", )
@@ -85,39 +126,35 @@ self = Chartpack(
 
 ### Input arguments ###
 
-???+ input "title"
 
+???+ input "title"
     The title of the chartpack, used as a basis for creating a caption
     shown at the top of each figure.
 
 ???+ input "span"
-
     The date span on which the time series will be plotted.
 
 ???+ input "tiles"
-
     The number of rows and columns of the figure grid. If input "None", the number of
     rows and columns will be determined automatically.
 
 ???+ input "transforms"
-
     A dictionary of functions that will be applied to the input data before
     plotting.
 
 ???+ input "highlight"
-
     A date span that will be highlighted in the charts.
 
 ???+ input "legend"
-
-    A list of strings that will be used as the legend of the charts.
+    A list of strings that will be used as the legend for the charts.
 
 ???+ input "reverse_plot_order"
-
     If `True`, the order of plotting the individual time series within each
     chart will be reversed.
 
+
 ### Returns
+
 
 ???+ returns "self"
 
@@ -131,9 +168,8 @@ self = Chartpack(
     def plot(
         self,
         input_db: _databoxes.Databox,
-        /,
-        transforms: dict[str, Callable] | None = None,
         show_figures: bool = True,
+        **kwargs,
     ) -> tuple[_pg.Figure, ...]:
         """
 ················································································
@@ -142,14 +178,13 @@ self = Chartpack(
 
 ················································································
         """
-        transforms = transforms if transforms is not None else self.transforms
         figures = tuple(
             figure.plot(input_db, **self.__dict__, )
             for figure in self
         )
         if show_figures:
             for f in figures: f.show()
-        return figures
+        # return figures
 
     def format_figure_titles(
         self,
@@ -182,7 +217,12 @@ self = Chartpack(
 
 ················································································
         """
-        new_figure = _Figure.from_string(figure_string, **kwargs, )
+        new_figure = _Figure.from_string(
+            figure_string,
+            kwargs=kwargs,
+            figure_settings_cascaded=self._figure_settings,
+            chart_settings_cascaded=self._chart_settings,
+        )
         self._add_figure(new_figure, )
         return new_figure
 
@@ -227,63 +267,90 @@ self = Chartpack(
     #]
 
 
-@_dc.dataclass(slots=True, )
 class _Figure:
     """
     """
     #[
 
-    _charts: list[_Chart] | None = None
-    title: str | None = None
+    __slots__ = (
+        "title",
+        "_charts",
+        "_chart_settings",
+    ) + _FIGURE_SETTINGS_KEYS
+
+    def __init__(
+        self,
+        title: str | None = None,
+    ) -> None:
+        """
+        """
+        for n in self.__slots__:
+            setattr(self, n, None, )
+        self.title = title
+        self._charts = []
+        self._chart_settings = {}
 
     @classmethod
     def from_string(
         klass,
         input_string: str,
         /,
+        kwargs: dict[str, Any],
+        figure_settings_cascaded: dict[str, Any],
+        chart_settings_cascaded: dict[str, Any],
     ) -> Self:
         """
         """
-        return klass(title=input_string, )
+        self = klass(title=input_string, )
+        #
+        for key in _FIGURE_SETTINGS_KEYS:
+            if key in kwargs:
+                setattr(self, key, kwargs[key], )
+                continue
+            if key in figure_settings_cascaded:
+                setattr(self, key, figure_settings_cascaded[key], )
+                continue
+            else:
+                setattr(self, key, _FIGURE_SETTINGS[key], )
+                continue
+        #
+        for key in _CHART_SETTINGS_KEYS:
+            if key in kwargs:
+                self._chart_settings[key] = kwargs[key]
+                continue
+            if key in chart_settings_cascaded:
+                self._chart_settings[key] = chart_settings_cascaded[key]
+                continue
+        #
+        return self
 
     @property
     def num_charts(self, ) -> int:
-        return len(self._charts, ) if self._charts else 0
+        return len(self._charts, )
 
     def plot(
         self,
         input_db: _databoxes.Databox,
         /,
-        span: Iterable[_dates.Dater] | EllipsisType = ...,
-        tiles: Sequence[int] | int | None = None,
-        transforms: dict[str, Callable] | None = None,
-        highlight: tuple[_dates.Dater, ...] | None = None,
-        legend: Iterable[str, ...] | None = None,
-        reverse_plot_order: bool = False,
         shared_xaxes: bool = False,
         **kwargs,
     ) -> None:
         """
         """
-        tiles = _resolve_tiles(tiles, self.num_charts, )
+        tiles = _resolve_tiles(self.tiles, self.num_charts, )
         figure = _plotly_wrap.make_subplots(
             rows=tiles[0],
             columns=tiles[1],
-            subplot_titles=tuple(c.caption for c in self),
-            shared_xaxes=shared_xaxes,
+            subplot_titles=tuple(chart.caption for chart in self),
+            shared_xaxes=self.shared_xaxes,
         )
         for i, chart in enumerate(self, ):
             chart.plot(
-                input_db,
-                figure,
-                i,
-                span=span,
-                transforms=transforms,
-                legend=legend if i == 0 else None,
-                reverse_plot_order=reverse_plot_order,
+                input_db, figure, i,
+                legend=self.legend if i == 0 else None,
             )
-            if highlight is not None:
-                _plotly_wrap.highlight(figure, highlight, subplot=i, )
+            if self.highlight is not None:
+                _plotly_wrap.highlight(figure, self.highlight, subplot=i, )
         figure.update_layout(title={"text": self.title, }, )
         return figure
 
@@ -311,8 +378,6 @@ class _Figure:
     def _add_chart(self, chart: _Chart, ) -> None:
         """
         """
-        if not self._charts:
-            self._charts = []
         self._charts.append(chart, )
 
     def add_charts(self, chart_strings: Iterable[str], **kwargs, ) -> None:
@@ -321,10 +386,15 @@ class _Figure:
         for chart_string in chart_strings:
             self.add_chart(chart_string, **kwargs, )
 
-    def add_chart(self, chart_string: str, ) -> None:
+    def add_chart(self, chart_string: str, **kwargs, ) -> None:
         """
         """
-        self._add_chart(_Chart.from_string(chart_string, ), )
+        chart = _Chart.from_string(
+            chart_string,
+            kwargs=kwargs,
+            chart_settings_cascaded=self._chart_settings,
+        )
+        self._add_chart(chart, )
 
     def __iter__(self, /, ) -> Iterator[_Chart]:
         """
@@ -345,13 +415,11 @@ class _Chart:
     """
     #[
 
-    _INPUT_STRING_PATTERN = _re.compile(r"^(?:(?P<title>.*?):)?(?P<expression>.*?)(?:\[(?P<transform>.*?)\])?$")
-
     __slots__ = (
         "title",
-        "_expression",
-        "_transform"
-    )
+        "expression",
+        "transform"
+    ) + _CHART_SETTINGS_KEYS
 
     def __init__(
         self,
@@ -361,62 +429,74 @@ class _Chart:
     ) -> None:
         """
         """
-        self._expression = (expression or "").strip()
-        self.title = (title or "").strip() or self._expression
-        self._transform = (transform or "").strip()
+        for n in self.__slots__:
+            setattr(self, n, None, )
+        self.expression = (expression or "").strip()
+        self.title = (title or "").strip() or self.expression
+        self.transform = (transform or "").strip()
 
     @classmethod
     def from_string(
-        klass: type(Self),
+        klass,
         input_string: str,
-        /,
+        kwargs: dict[str, Any],
+        chart_settings_cascaded: dict[str, Any],
     ) -> Self:
         """
         """
-        match = klass._INPUT_STRING_PATTERN.match(input_string, )
+        match = _CHART_INPUT_STRING_PATTERN.match(input_string, )
         if not match:
             raise ValueError(f"Invalid input string: {input_string!r}")
-        return klass(**match.groupdict(), )
+        self = klass(**match.groupdict(), )
+        #
+        for key in _CHART_SETTINGS_KEYS:
+            if key in kwargs:
+                setattr(self, key, kwargs[key], )
+                continue
+            elif key in chart_settings_cascaded:
+                setattr(self, key, chart_settings_cascaded[key], )
+                continue
+            else:
+                setattr(self, key, _CHART_SETTINGS[key], )
+                continue
+        #
+        return self
 
     @property
     def caption(self, ) -> str:
-        """Caption shown at the top of the figure"""
-        return self.title or (self._expression + f" [{self._transform}]" if self._transform else "")
+        """Caption shown at the top of the chart"""
+        return self.title or (self.expression + f" [{self.transform}]" if self.transform else "")
 
     def plot(
         self,
         input_db: _databoxes.Databox,
         figure: _pg.Figure,
         index: int,
-        /,
-        span: Iterable[_dates.Dater] | EllipsisType = ...,
-        transforms: dict[str, Callable] | None = None,
         legend: Iterable[str, ...] | None = None,
-        reverse_plot_order: bool = False,
     ) -> None:
         """
         """
-        series_to_plot = input_db.evaluate_expression(self._expression, )
-        series_to_plot = self._apply_transform(series_to_plot, transforms, )
+        series_to_plot = input_db.evaluate_expression(self.expression, )
+        series_to_plot = self._apply_transform(series_to_plot, )
         series_to_plot.plot(
             figure=figure,
             subplot=index,
-            span=span,
+            span=self.span,
             show_figure=False,
             freeze_span=True,
             legend=legend,
-            reverse_plot_order=reverse_plot_order,
+            reverse_plot_order=self.reverse_plot_order,
+            chart_type=self.chart_type,
         )
 
-    def _apply_transform(self, x, transforms, ):
+    def _apply_transform(self, x, ):
         """
         """
-        if self._transform:
-            func = transforms[self._transform]
+        if self.transform:
+            func = self.transforms[self.transform]
         else:
             func = None
         return func(x) if func else x
-
 
     def __str__(self, /, ) -> str:
         """
@@ -429,7 +509,7 @@ class _Chart:
         return _tree_repr(self, )
 
     def _one_liner(self, /, ) -> str:
-        return f"Chart({self.title!r}, {self._expression!r}, {self._transform!r}, )"
+        return f"Chart({self.title!r}, {self.expression!r}, {self.transform!r}, )"
 
     def __iter__(self, ) -> NoReturn:
         yield from ()

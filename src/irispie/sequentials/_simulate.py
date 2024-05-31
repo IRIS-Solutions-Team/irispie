@@ -39,8 +39,9 @@ class Inlay:
         *,
         plan: SimulationPlan | None = None,
         prepend_input: bool = True,
-        target_databox: Databox | None = None,
-        when_nonfinite: Literal["error", "warning", "silent", ] = "warning",
+        target_db: Databox | None = None,
+        when_nonfinite = None,
+        when_simulates_nan: Literal["error", "warning", "silent", ] = "warning",
         execution_order: Literal["dates_equations", "equations_dates", ] = "dates_equations",
         num_variants: int | None = None,
         remove_initial: bool = True,
@@ -64,8 +65,8 @@ out_db, info = self.simulate(
     plan=None,
     execution_order="dates_equations",
     prepend_input=True,
-    target_databox=None,
-    when_nonfinite="warning",
+    target_db=None,
+    when_simulates_nan="warning",
     num_variants=None,
     remove_initial=True,
     remove_terminal=True,
@@ -105,11 +106,11 @@ simulating the model.
 ???+ input "prepend_input"
     If `True`, the input time series observations are prepended to the results.
 
-???+ input "target_databox"
+???+ input "target_db"
     Custom databox to which the simulated time series will be added. If
     `None`, a new databox is created.
 
-???+ input "when_nonfinite"
+???+ input "when_simulates_nan"
     Action to take when a simulated data point is non-finite (`nan` or `inf` or `-inf`). The options are
 
     * `"error"`: raise an error,
@@ -151,6 +152,10 @@ simulating the model.
         """
         _LOGGER.set_level(logging_level, )
 
+        # Legacy
+        if when_nonfinite is not None:
+            when_simulates_nan = when_nonfinite
+
         num_variants \
             = self.resolve_num_variants_in_context(num_variants, )
         _LOGGER.debug(f"Running {num_variants} variants")
@@ -185,7 +190,7 @@ simulating the model.
             info_v = simulate_method(
                 model_v, dataslate_v, plan, vid,
                 logger=_LOGGER,
-                when_nonfinite=when_nonfinite,
+                when_simulates_nan=when_simulates_nan,
                 execution_order=execution_order,
             )
             out_info.append(info_v, )
@@ -204,8 +209,8 @@ simulating the model.
             out_db.prepend(input_db, base_dates[0]-1, )
         #
         # Add to custom databox
-        if target_databox is not None:
-            out_db = target_databox | out_db
+        if target_db is not None:
+            out_db = target_db | out_db
         #
         if return_info:
             out_info = _has_variants.unpack_singleton(
@@ -226,13 +231,13 @@ def _simulate_v(
     vid: int,
     *,
     logger: _wl.Logger,
-    when_nonfinite,
+    when_simulates_nan,
     execution_order,
 ) -> dict[str, Any]:
     """
     """
     when_nonfinite_stream = \
-        _wrongdoings.STREAM_FACTORY[when_nonfinite] \
+        _wrongdoings.STREAM_FACTORY[when_simulates_nan] \
         ("These simulated data point(s) are nan or inf:", )
     #
     name_to_row = ds.create_name_to_row()

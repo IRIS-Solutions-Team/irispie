@@ -559,14 +559,14 @@ self.set_description(description, )
             f"",
             f"{self.__class__.__name__} model",
             f"Description: \"{self.get_description()}\"",
-            f"|",
-            f"|--Num of variants: {self.num_variants}",
-            f"|--Num of equations: {self.num_equations}",
-            f"|--Num of [nonidentities, identities]: [{len(self.nonidentity_index)}, {len(self.identity_index)}]",
-            f"|--Num of parameters: {len(self.parameter_names)}",
-            f"|--Num of rhs-only variables: {len(self.rhs_only_names)}",
-            f"|--Time shifts [min, max]: [-{abs(self.min_shift):g}, +{abs(self.max_shift):g}]",
-            f" ",
+            f"⏐",
+            f"⏐ Num variants: {self.num_variants}",
+            f"⏐ Num equations: {self.num_equations}",
+            f"⏐ Num [nonidentities, identities]: [{len(self.nonidentity_index)}, {len(self.identity_index)}]",
+            f"⏐ Num parameters: {len(self.parameter_names)}",
+            f"⏐ Num rhs-only variables: {len(self.rhs_only_names)}",
+            f"⏐ Max [lag, lead]: [-{abs(self.min_shift):g}, +{abs(self.max_shift):g}]",
+            f"⏐",
         ))
 
     def __str__(self, /, ) -> str:

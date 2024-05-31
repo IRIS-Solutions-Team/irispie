@@ -12,7 +12,7 @@ _REPEAT_SHORT_ROW = 2
 _VERTICAL_ELLIPSIS = "⋮"
 
 
-class ViewMixin:
+class Mixin:
     """
     """
     #[
@@ -26,7 +26,7 @@ class ViewMixin:
             "", 
             self._get_first_line_view(),
             f"Description: \"{self.get_description()}\"",
-            "", 
+            self._get_header_separator(),
         )
 
     def _get_footer_view_(self, /, ):

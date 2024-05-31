@@ -70,7 +70,7 @@ class KalmanOutputData:
     #[
 
     __slots__ = (
-        "predict_mse_measurement",
+        "predict_mse_obs",
         "predict_med",
         "predict_std",
         "predict_err",
@@ -112,9 +112,8 @@ class Needs:
         "return_predict",
         "return_update",
         "return_smooth",
-        "return_stds",
         "return_predict_err",
-        "return_predict_mse_measurement",
+        "predict_mse_obs",
         "rescale_variance",
     )
 
@@ -124,9 +123,8 @@ class Needs:
         return_predict: bool = True,
         return_update: bool = True,
         return_smooth: bool = True,
-        return_stds: bool = True,
         return_predict_err: bool = True,
-        return_predict_mse_measurement: bool = True,
+        predict_mse_obs: bool = True,
         rescale_variance: bool = False,
     ) -> None:
         """
@@ -135,9 +133,8 @@ class Needs:
         self.return_predict = return_predict and "predict" in return_
         self.return_update = return_update and "update" in return_
         self.return_smooth = return_smooth and "smooth" in return_
-        self.return_stds = return_stds and "stds" in return_
         self.return_predict_err = return_predict_err and "predict_err" in return_
-        self.return_predict_mse_measurement = return_predict_mse_measurement and "predict_mse_measurement" in return_
+        self.predict_mse_obs = predict_mse_obs and "predict_mse_obs" in return_
         self.rescale_variance = rescale_variance
 
     #]
@@ -292,7 +289,7 @@ class _OutputStore:
     __slots_to_create__ = (
         "predict_med",
         "predict_std",
-        "predict_mse_measurement",
+        "predict_mse_obs",
 
         "update_med",
         "update_std",
@@ -303,6 +300,17 @@ class _OutputStore:
     )
 
     __slots__ = __slots_to_input__ + __slots_to_create__
+
+    _OUT_NAMES = (
+        "predict_mse_obs",
+        "predict_med",
+        "predict_std",
+        "predict_err",
+        "update_med",
+        "update_std",
+        "smooth_med",
+        "smooth_std",
+    )
 
     def __init__(
         self,
@@ -336,15 +344,15 @@ class _OutputStore:
         # Prediction step
         #
         self.predict_med = _med_constructor() if needs.return_predict else None
-        self.predict_std = _std_constructor() if needs.return_predict and needs.return_stds else None
-        self.predict_mse_measurement = [
+        self.predict_std = _std_constructor() if needs.return_predict else None
+        self.predict_mse_obs = [
             [None]*input_ds.num_periods for _ in range(num_variants, )
         ] if needs.return_predict else None
         #
         # Updating step
         #
         self.update_med = _med_constructor() if needs.return_update else None
-        self.update_std = _std_constructor() if needs.return_update and needs.return_stds else None
+        self.update_std = _std_constructor() if needs.return_update else None
         self.predict_err = _MedLogDataslate.from_names_dates(
             measurement_names,
             input_ds.periods,
@@ -355,7 +363,7 @@ class _OutputStore:
         # Smoothing step
         #
         self.smooth_med = _med_constructor() if needs.return_smooth else None
-        self.smooth_std = _std_constructor() if needs.return_smooth and needs.return_stds else None
+        self.smooth_std = _std_constructor() if needs.return_smooth else None
 
     def extend(self, other: Self, /, ) -> None:
         """
@@ -369,17 +377,27 @@ class _OutputStore:
         """
         if var_scale == 1 or var_scale is None:
             return
-        std_scale = _sqrt_positive(self.var_scale)
+        std_scale = _sqrt_positive(var_scale)
         for attr_name in ("predict_std", "update_std", "smooth_std", ):
             attr = getattr(self, attr_name, )
             if attr is None:
                 continue
-            attr._variants = [ v.data * std_scale for v in attr._variants ]
+            for v in attr._dataslate._variants:
+                v.rescale_data(std_scale)
 
-    def create_output_data(self: Self, /, ) -> KalmanOutputData:
+    def create_out_data(self: Self, /, ) -> Databox:
         """
         """
-        return KalmanOutputData(self, )
+        out_data = Databox()
+        for name in self._OUT_NAMES:
+            attr = getattr(self, name, )
+            if attr is None:
+                continue
+            if hasattr(attr, "to_output_arg", ):
+                out_data[name] = attr.to_output_arg()
+            else:
+                out_data[name] = attr
+        return out_data
 
     def store_predict(
         self: Self,
@@ -415,14 +433,14 @@ class _OutputStore:
         if self.predict_std is not None:
             curr_xi_qids = self.squid.curr_xi_qids
             curr_xi_indexes = self.squid.curr_xi_indexes
-            std_u_qids = self.squid.std_u_qids
-            std_w_qids = self.squid.std_w_qids
+            u_qids = self.squid.u_qids
+            w_qids = self.squid.w_qids
             self.predict_std.store_from_mse(Q0, (curr_xi_qids, t), rhs_indexes=curr_xi_indexes, transform=self.transform, )
-            self.predict_std.store_from_mse(cov_u0, (std_u_qids, t), )
-            self.predict_std.store_from_mse(cov_w0, (std_w_qids, t), )
+            self.predict_std.store_from_mse(cov_u0, (u_qids, t), )
+            self.predict_std.store_from_mse(cov_w0, (w_qids, t), )
             #
-        if self.predict_mse_measurement is not None and F is not None:
-            self.predict_mse_measurement[0][t] = F
+        if self.predict_mse_obs is not None and F is not None:
+            self.predict_mse_obs[0][t] = F
 
     def store_update(
         self: Self,
@@ -530,13 +548,12 @@ class Mixin:
         diffuse_scale: Real | None = None,
         diffuse_method: Literal["approx_diffuse", "fixed_unknown", "fixed_zero", ] = "fixed_unknown",
         #
-        return_: Iterable[str, ...] = ("predict", "update", "smooth", "stds", "predict_err", "predict_mse_measurement", ),
+        return_: Iterable[str, ...] = ("predict", "update", "smooth", "predict_err", "predict_mse_obs", ),
         return_predict: bool = True,
         return_update: bool = True,
         return_smooth: bool = True,
-        return_stds: bool = True,
         return_predict_err: bool = True,
-        return_predict_mse_measurement: bool = True,
+        predict_mse_obs: bool = True,
         rescale_variance: bool = False,
         #
         shocks_from_data: bool = False,
@@ -549,8 +566,9 @@ class Mixin:
         num_variants: int | None = None,
         #
         unpack_singleton: bool = True,
+        return_info: bool = False,
         logging_level: int = _wl.INFO,
-    ) -> Databox:
+    ) -> Databox | tuple[Databox, _Info]:
         r"""
 ················································································
 
@@ -561,17 +579,16 @@ using time series observations from the input Databox. This method enables state
 estimation and uncertainty quantification in line with the model's dynamics and
 the time series data.
 
-    kalman_output, output_info = self.kalman_filter(
+    kalman_output = self.kalman_filter(
         input_db,
         span,
         diffuse_scale=None,
-        return_=("predict", "update", "smooth", "stds", "predict_err", "predict_mse_measurement", ),
+        return_=("predict", "update", "smooth", "predict_err", "predict_mse_obs", ),
         return_predict=True,
         return_update=True,
         return_smooth=True,
-        return_stds=True,
         return_predict_err=True,
-        return_predict_mse_measurement=True,
+        predict_mse_obs=True,
         rescale_variance=False,
         shocks_from_data=False,
         stds_from_data=False,
@@ -579,7 +596,13 @@ the time series data.
         append_terminal=False,
         deviation=False,
         check_singularity=False,
-        unpack_singleton=True
+        unpack_singleton=True,
+        return_info=False,
+    )
+
+    kalman_output, info = self.kalman_filter(
+        ...
+        return_info=True,
     )
 
 
@@ -651,35 +674,36 @@ the time series data.
     is singular.
 
 ???+ input "unpack_singleton"
-    If `True`, unpack `output_info` into a plain dictionary for models with a
+    If `True`, unpack `out_info` into a plain dictionary for models with a
     single variant.
+
+???+ input "return_info"
+    If `True`, return additional information about the Kalman filtering process.
 
 
 ### Returns ###
 
 
 ???+ returns "kalman_output"
-    An object containing the following attributes, each being a Databox:
+    A Databox containing some of the following items (depending on the user requests):
 
-    | Attribute                  | Description
-    |----------------------------|---------------------------------------------------
-    | `predict_med`              | Medians from the prediction step.
-    | `predict_std`              | Standard deviations from the prediction step.
-    | `predict_mse_measurement`  | Mean squared error matrices from the prediction step.
-    | `update_med`               | Medians from the update step.
-    | `update_std`               | Standard deviations from the update step.
-    | `predict_err`              | Prediction errors.
-    | `smooth_med`               | Medians from the smoothing step.
-    | `smooth_std`               | Standard deviations from the smoothing step.
+    | Attribute         | Type       | Description
+    |-------------------|---------------------------------------------------
+    | `predict_med`     | `Databox`  | Medians from the prediction step
+    | `predict_std`     | `Databox`  | Standard deviations from the prediction step
+    | `predict_mse_obs` | `list`     | Mean squared error matrices for the prediction step of the available observations of measurement variables
+    | `update_med`      | `Databox`  | Medians from the update step
+    | `update_std`      | `Databox`  | Standard deviations from the update step
+    | `predict_err`     | `Databox`  | Prediction errors
+    | `smooth_med`      | `Databox`  | Medians from the smoothing step
+    | `smooth_std`      | `Databox`  | Standard deviations from the smoothing step
 
-    Some of these attributes may be `None` if the corresponding step was not
-    requested in `return_`.
 
-???+ returns "output_info"
+???+ returns "out_info"
     A dictionary containing additional information about the filtering process,
     such as log likelihood and variance scale. For models with multiple
-    variants, `output_info` is a list of such dictionaries. If
-    `unpack_singleton=False`, also `output_info` is a one-element list
+    variants, `out_info` is a list of such dictionaries. If
+    `unpack_singleton=False`, also `out_info` is a one-element list
     containing the dictionary for singleton models, too.
 
 ················································································
@@ -722,9 +746,8 @@ the time series data.
             return_predict=return_predict,
             return_update=return_update,
             return_smooth=return_smooth,
-            return_stds=return_stds,
             return_predict_err=return_predict_err,
-            return_predict_mse_measurement=return_predict_mse_measurement,
+            predict_mse_obs=predict_mse_obs,
             rescale_variance=rescale_variance,
         )
 
@@ -764,7 +787,7 @@ the time series data.
             input_ds.iter_variants(),
         )
 
-        output_info = []
+        out_info = []
 
         for vid, self_v, input_ds_v in zipped:
 
@@ -857,17 +880,21 @@ the time series data.
 
             cache.calculate_likelihood(rescale_variance=needs.rescale_variance, )
             output_store_v.rescale_stds(cache.var_scale, )
-            output_info_v = cache.create_output_info()
+            out_info_v = cache.create_out_info()
 
             output_store.extend(output_store_v, )
-            output_info.append(output_info_v, )
+            out_info.append(out_info_v, )
 
-        output_info = _has_variants.unpack_singleton(
-            output_info, self.is_singleton,
-            unpack_singleton=True,
-        )
-
-        return output_store.create_output_data(), output_info
+        out_data = output_store.create_out_data()
+        #
+        if return_info:
+            out_info = _has_variants.unpack_singleton(
+                out_info, self.is_singleton,
+                unpack_singleton=True,
+            )
+            return out_data, out_info
+        else:
+            return out_data
 
     #]
 
@@ -975,7 +1002,7 @@ class Cache:
         self.sum_log_det_F += self.sum_num_obs * _np.log(self.var_scale)
         self.sum_pe_Fi_pe = self.sum_pe_Fi_pe / self.var_scale
 
-    def create_output_info(self: Self, /, ) -> dict[str, Any]:
+    def create_out_info(self: Self, /, ) -> dict[str, Any]:
         """
         """
         return {

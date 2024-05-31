@@ -5,20 +5,81 @@
 #[
 from __future__ import annotations
 
+from typing import (TYPE_CHECKING, )
 import numpy as _np
 import scipy as _sp
 import itertools as _it
 
+from .. import pages as _pages
 from ..incidences import main as _incidences
 from ..fords import covariances as _covariances
 from .. import quantities as _quantities
 from .. import namings as _namings
+
+if TYPE_CHECKING:
+    from numbers import (Real, )
 #]
 
 
 class Inlay:
     """
     """
+
+    @_pages.reference(category="parameters", )
+    def rescale_stds(
+        self,
+        factor: Real,
+        *,
+        kind: _quantities.QuantityKind | None = None,
+    ) -> None:
+        """
+················································································
+
+==Rescale the standard deviations of model shocks==
+
+Adjust the standard deviations of the model shocks by a specified factor. 
+This method allows scaling the standard deviations for the shocks in the 
+model based on the provided factor.
+
+    self.rescale_stds(
+        factor,
+        kind=None,
+    )
+
+
+### Input arguments ###
+
+
+???+ input "factor"
+    A real non-negative number by which to scale the standard deviations of the
+    model shocks. This value is used to multiply the existing standard
+    deviations.
+
+???+ input "kind"
+    An optional parameter to narrow down the types of shocks to rescale. It 
+    can be one or a combination of the following:
+    
+    * `ir.UNANTICIPATED_STD`
+    * `ir.ANTICIPATED_STD`
+    * `ir.MEASUREMENT_STD`
+    
+    If `None`, the standard deviations of all shocks will be rescaled.
+
+
+### Returns ###
+
+
+???+ returns "None"
+    This method does not return any value but modifies the standard deviations 
+    of model shocks in-place, rescaling them.
+
+················································································
+        """
+        if not isinstance(factor, Real) or factor <= 0:
+            raise ValueError("The scaling factor must be a real non-negative number")
+        std_qids = self._get_std_qids(kind=kind, )
+        for v in self._variants:
+            v.rescale_values("levels", factor, std_qids, )
 
     def get_acov(
         self,

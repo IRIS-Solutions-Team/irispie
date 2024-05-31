@@ -86,17 +86,17 @@ class Inlay:
         """
         model_flags = _flags.Flags.update_from_kwargs(self.get_flags(), **kwargs)
         solver = self._choose_steady_solver(model_flags.is_linear, model_flags.is_flat, )
-        output_info = [
-            solver(v, model_flags, vid, **kwargs, )
-            for vid, v in enumerate(self._variants, )
-        ]
+        out_info = []
+        for vid, v in enumerate(self._variants, ):
+            out_info_v = solver(v, model_flags, vid, **kwargs, )
+            out_info.append(out_info_v, )
         #
         if return_info:
-            output_info = _has_variants.unpack_singleton(
-                output_info, self.is_singleton,
+            out_info = _has_variants.unpack_singleton(
+                out_info, self.is_singleton,
                 unpack_singleton=unpack_singleton,
             )
-            return output_info
+            return out_info
         else:
             return
 
@@ -270,6 +270,7 @@ class Inlay:
         equation_switch: Literal["steady", "dynamic"] = "dynamic",
         when_fails: _wrongdoings.HOW = "error",
         tolerance: float = 1e-12,
+        return_info: bool = False,
     ) -> tuple[bool, tuple[dict, ...]]:
         """
         Verify currently assigned steady state in dynamic or steady equations for each variant within this model
@@ -303,11 +304,15 @@ class Inlay:
         if not all_status:
             message = "Invalid steady state"
             _wrongdoings.raise_as(when_fails, message)
-        details = [
-            {"discrepancies": d, "max_abs_discrepancy": m, "is_valid": s}
-            for d, m, s in zip(dis, max_abs_dis, status)
-        ]
-        return all_status, details
+        #
+        if not return_info:
+            return all_status
+        else:
+            info = [
+                {"discrepancies": d, "max_abs_discrepancy": m, "is_valid": s}
+                for d, m, s in zip(dis, max_abs_dis, status)
+            ]
+            return all_status, info
 
     #
     # ===== Implement PlannableProtocol =====

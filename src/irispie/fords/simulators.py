@@ -71,6 +71,7 @@ def simulate(
     deviation: bool = False,
     check_singularity: bool = False,
     force_split_frames: bool = False,
+    return_info: bool = False,
 ) -> dict[str, Any]:
     """
     """
@@ -80,19 +81,11 @@ def simulate(
     data_array = dataslate_v.get_data_variant(0, )
     squid = Squid(model_v, )
     #
-    #
-    is_plan_empty = plan is None or plan.is_empty
-    if is_plan_empty:
-        plan_registers = None
-        curr_xi_qids = None
-    else:
-        plan_registers = _get_plan_registers_as_bool_arrays(plan, periods, )
-        curr_xi_qids, *_ = model_v.solution_vectors.get_curr_transition_indexes()
-    #
     # In first-order simulation, splitting into frames is necessary only if
     # there are some endogenized anticipated shocks and, at the same time, some
     # nonzero unanticipated shocks (not counting the first period in either case)
     #
+    is_plan_empty = plan is None or plan.is_empty
     needs_splitting = _check_needs_splitting(
         plan=plan,
         dataslate=dataslate_v,
@@ -110,6 +103,7 @@ def simulate(
     if is_plan_empty:
         simulate_frame = simulate_flat
     else:
+        plan_registers = _get_plan_registers_as_bool_arrays(plan, periods, )
         simulate_frame = _ft.partial(
             simulate_conditional,
             check_singularity=check_singularity,
@@ -132,29 +126,49 @@ def simulate(
     logger.debug(f"Splitting simulation into {len(frames)} frame(s)")
     #
     # Resolve columns within each frame based on the start date of the dataslate
-    #
     for frame in frames:
         frame.resolve_columns(periods[0], )
     #
     #
+    #===========================================================================
     xi_array = _np.full((squid.num_xi, num_periods, ), _np.nan, )
+    frame_db = ()
     for frame in frames:
+        #
+        if needs_splitting:
+            frame_ds = dataslate_v.copy(invariant=False, )
+            frame.reset_unanticipated(frame_ds, model_v, )
+        else:
+            frame_ds = dataslate_v
+        #
         xi_array_in_frame = simulate_frame(
-            model_v, dataslate_v, frame, vid,
+            model_v, frame_ds, frame, vid,
             logger=logger,
             deviation=deviation,
         )
         xi_array[:, frame.slice] = xi_array_in_frame[:, frame.slice]
-
-    simulate_measurement(
-        model_v, dataslate_v, frame, xi_array, vid,
-        logger=logger,
-        deviation=deviation,
-    )
+        #
+        simulate_measurement(
+            model_v, dataslate_v, frame, xi_array, vid,
+            logger=logger,
+            deviation=deviation,
+        )
+        #
+        # Copy frame data back to the main dataslate if there are more than one
+        # frame; otherwise the main dataslate is the same as the frame dataslate
+        if needs_splitting:
+            frame.copy_frame_data(dataslate_v, frame_ds, )
+        #
+        # Create a frame databox only if output info is requested
+        if return_info:
+            frame_db = frame_db + (frame_ds.to_databox(), )
+    #===========================================================================
+    #
     #
     info = {
         "method": "first_order",
         "frames": frames,
+        "frame_db": frame_db,
     }
     #
     return info
@@ -194,9 +208,9 @@ def simulate_flat(
     curr_xi_qids, curr_xi_indexes = vec.get_curr_transition_indexes()
     #
     # Prepare array of all xi values (needed for measurement simulation)
-    #
     num_xi = len(vec.transition_variables)
     xi_array = _np.full((num_xi, num_periods, ), _np.nan, )
+    #
     u_array = _extract_shock_values(data_array, vec.unanticipated_shocks, )
     all_v_impact = _simulate_anticipated_shocks(model_v, dataslate_v, frame, )
     #
@@ -212,6 +226,7 @@ def simulate_flat(
         data_array[curr_xi_qids, t] = xi[curr_xi_indexes, ...]
     #
     dataslate_v.delogarithmize()
+    #
     return xi_array
     #]
 
@@ -382,7 +397,7 @@ def simulate_measurement(
 
 def _generate_period_system(
     t: int,
-
+    #
     initials: list[_np.ndarray, _np.ndarray, int, ],
     solution: Solution,
     Z_xi: _np.ndarray | None,
@@ -525,7 +540,7 @@ def _store_smooth(
     xi_array: _np.ndarray,
     incidence_v: _np.ndarray | None,
     squid: Squid,
-
+    #
     t: int,
     xi: _np.ndarray | None = None,
     u: _np.ndarray | None = None,
@@ -578,11 +593,6 @@ def _get_init_xi(
     #]
 
 
-def _get_xi_indexes(solution_vectors, ):
-    """
-    """
-
-
 def _get_plan_registers_as_bool_arrays(
     plan: SimulationPlan,
     periods: tuple[Period, ...],
@@ -624,11 +634,15 @@ def _insert_exogenized_unanticipated(
 ) -> None:
     """
     """
+    #[
     plan_registers, input_data_array, squid, frame_slice, logger = packed
+    #
     ___ = plan_registers["exogenized_unanticipated"][:, frame_slice]
     curr_xi_exogenized[:, frame_slice][___] \
         = input_data_array[squid.curr_xi_qids, frame_slice][___]
+    #
     logger.debug(f"Exogenized unanticipated: {___.sum()}")
+    #]
 
 
 def _insert_exogenized_anticipated(
@@ -637,11 +651,15 @@ def _insert_exogenized_anticipated(
 ) -> None:
     """
     """
+    #[
     plan_registers, input_data_array, squid, frame_slice, logger = packed
+    #
     ___ = plan_registers["exogenized_anticipated"][:, frame_slice]
     curr_xi_exogenized[:, frame_slice][___] \
         = input_data_array[squid.curr_xi_qids, frame_slice][___]
+    #
     logger.debug(f"Exogenized anticipated: {___.sum()}")
+    #]
 
 
 def _insert_endogenized_unanticipated(
@@ -650,11 +668,16 @@ def _insert_endogenized_unanticipated(
 ) -> None:
     """
     """
+    #[
     plan_registers, input_data_array, squid, frame_slice, logger = packed
+    #
     ___ = plan_registers["endogenized_unanticipated"][:, frame_slice]
     std_u_endogenized[:, frame_slice][___] \
         = input_data_array[squid.std_u_qids, frame_slice][___]
+    #
     logger.debug(f"Endogenized unanticipated: {___.sum()}")
+    #]
+
 
 
 def _block_diag(A, B):

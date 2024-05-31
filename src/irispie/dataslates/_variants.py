@@ -5,11 +5,15 @@
 #[
 from __future__ import annotations
 
-from typing import (Any, Self, Iterable, )
+from typing import (TYPE_CHECKING, )
 import numpy as _np
 
-from ..databoxes.main import (Databox, )
 from . import _invariants as _invariants
+
+if TYPE_CHECKING:
+    from typing import (Any, Self, Iterable, )
+    from numbers import (Real, )
+    from ..databoxes.main import (Databox, )
 #]
 
 
@@ -33,8 +37,8 @@ class Variant:
         databox_v: Databox | dict,
         invariant: _invariants.Invariant,
         /,
-        fallbacks: dict[str, Number] | None = None,
-        overwrites: dict[str, Number] | None = None,
+        fallbacks: dict[str, Real] | None = None,
+        overwrites: dict[str, Real] | None = None,
         clip_data_to_base_span: bool = False,
     ) -> None:
         """
@@ -139,7 +143,7 @@ class Variant:
 
     def _apply_fallbacks(
         self,
-        fallbacks: dict[str, Number] | None,
+        fallbacks: dict[str, Real] | None,
         invariant: _invariants.Invariant,
         /,
     ) -> None:
@@ -156,7 +160,7 @@ class Variant:
 
     def _apply_overwrites(
         self,
-        overwrites: dict[str, Number] | None,
+        overwrites: dict[str, Real] | None,
         invariant: _invariants.Invariant,
         /,
     ) -> None:
@@ -181,6 +185,12 @@ class Variant:
         """
         if logly_indexes:
             self.data[logly_indexes, :] = _np.exp(self.data[logly_indexes, :])
+
+    def rescale_data(self, factor: Real, /, ) -> None:
+        """
+        Rescale data by a factor
+        """
+        self.data *= factor
 
     #]
 

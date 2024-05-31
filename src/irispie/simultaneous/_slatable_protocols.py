@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from typing import (TYPE_CHECKING, )
 
-from .. import quantities as _quantities
+from ..slatables import (Slatable, )
 from ..series.main import (Series, )
+from .. import quantities as _quantities
 
 if TYPE_CHECKING:
     from typing import (Self, )
@@ -17,73 +18,34 @@ if TYPE_CHECKING:
 #]
 
 
-class _Slatable:
+class _Slatable(Slatable):
     """
     """
     #[
 
-    __slots__ = (
-        # Configuration
-        "shocks_from_data",
-        "stds_from_data",
-        # Min and max shifts
-        "max_lag",
-        "max_lead",
-        # Databox names
-        "databox_names",
-        # Databox validation
-        "databox_validators",
-        # Fallbacks and overwrites
-        "fallbacks",
-        "overwrites",
-        # QID to logly
-        "qid_to_logly",
-        # Output names
-        "output_names",
-    )
-
-    def __init__(
-        self,
-        shocks_from_data: bool = False,
-        stds_from_data: bool = False,
-    ) -> None:
-        """
-        """
-        self.shocks_from_data = shocks_from_data
-        self.stds_from_data = stds_from_data
-        #
-        self.max_lag = None
-        self.max_lead = None
-        self.databox_names = None
-        self.databox_validators = None
-        self.fallbacks = None
-        self.overwrites = None
-        self.qid_to_logly = None
-        self.output_names = None
-
     @classmethod
     def for_simulate_and_kalman_filter(
         klass,
-        simultaneous,
+        model,
         output_kind: _quantities.Quantity,
         **kwargs,
     ) -> Self:
         """
         """
         #
-        self = klass()
-        self.max_lag = simultaneous.max_lag
-        self.max_lead = simultaneous.max_lead
+        self = klass(**kwargs, )
+        self.max_lag = model.max_lag
+        self.max_lead = model.max_lead
         #
         # Databox names
-        qid_to_name = simultaneous.create_qid_to_name()
+        qid_to_name = model.create_qid_to_name()
         self.databox_names = tuple(
             qid_to_name[qid]
             for qid in sorted(qid_to_name)
         )
         #
         # Databox validation - all variables must be time series
-        variable_names = simultaneous.get_names(kind=_quantities.ANY_VARIABLE, )
+        variable_names = model.get_names(kind=_quantities.ANY_VARIABLE, )
         validator = (
             lambda x: isinstance(x, Series),
             "Input data for this variable is not a time series",
@@ -95,11 +57,11 @@ class _Slatable:
         #
         # Fallbacks and overwrites
         self.fallbacks = {}
-        self.overwrites = simultaneous.get_parameters(unpack_singleton=False, )
+        self.overwrites = model.get_parameters(unpack_singleton=False, )
         #
-        shock_names = simultaneous.get_names(kind=_quantities.ANY_SHOCK, )
+        shock_names = model.get_names(kind=_quantities.ANY_SHOCK, )
         shock_meds = {
-            name: [float(0), ]*simultaneous.num_variants
+            name: [float(0), ]*model.num_variants
             for name in shock_names
         }
         if self.shocks_from_data:
@@ -107,35 +69,37 @@ class _Slatable:
         else:
             self.overwrites.update(shock_meds, )
         #
-        shock_stds = simultaneous.get_stds(unpack_singleton=False, )
+        shock_stds = model.get_stds(unpack_singleton=False, )
         if self.stds_from_data:
             self.fallbacks.update(shock_stds, )
         else:
             self.overwrites.update(shock_stds, )
         #
-        self.qid_to_logly = simultaneous.create_qid_to_logly()
-        self.output_names = simultaneous.get_names(kind=output_kind, )
+        self.qid_to_logly = model.create_qid_to_logly()
+        self.output_names = model.get_names(kind=output_kind, )
         #
         return self
 
     @classmethod
     def for_multiply_stds(
         klass,
-        simultaneous,
+        model,
         fallbacks: dict[str, list[Real]] | None,
         **kwargs,
     ) -> None:
         """
         """
         #
-        self = klass()
+        self = klass(**kwargs, )
         self.max_lag = 0
         self.max_lead = 0
         #
         # Databox names
-        kind = _quantities.UNANTICIPATED_STD | _quantities.MEASUREMENT_STD
-        std_qids = simultaneous.get_qids(kind=kind, )
-        qid_to_name = simultaneous.create_qid_to_name()
+        std_qids = _quantities.generate_qids_by_kind(
+            model._invariant.quantities,
+            kind=_quantities.ANY_STD,
+        )
+        qid_to_name = model.create_qid_to_name()
         self.databox_names = tuple(
             qid_to_name[qid]
             for qid in sorted(std_qids)
@@ -152,6 +116,9 @@ class _Slatable:
         self.output_names = self.databox_names
         #
         return self
+
+    #]
+
 
 class Inlay:
     """
@@ -190,10 +157,10 @@ class Inlay:
         #
         return slatable
 
-    def get_slatables_for_multiply_shocks(self, **kwargs, ) -> tuple[_Slatable, _Slatable]:
+    def get_slatables_for_multiply_stds(self, **kwargs, ) -> tuple[_Slatable, _Slatable]:
         """
         """
-        std_fallbacks = simultaneous.get_stds(unpack_singleton=False, )
+        std_fallbacks = self.get_stds(unpack_singleton=False, )
         std_slatable = _Slatable.for_multiply_stds(self, fallbacks=std_fallbacks, **kwargs, )
         #
         multiplier_fallbacks = { name: 1 for name in std_fallbacks }

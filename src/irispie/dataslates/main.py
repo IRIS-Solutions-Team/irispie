@@ -280,12 +280,24 @@ class Dataslate(
         """
         return tuple(self.names[i] for i in self._invariant.output_qids)
 
-    def copy(self, /, ) -> Self:
+    def copy(
+        self, 
+        invariant=True,
+        variants=True,
+    ) -> Self:
         """
         """
         new = type(self)()
-        new._invariant = self._invariant.copy()
-        new._variants = [i.copy() for i in self._variants]
+        if invariant:
+            new._invariant = self._invariant.copy()
+        else:
+            new._invariant = self._invariant
+        #
+        if variants:
+            new._variants = [i.copy() for i in self._variants]
+        else:
+            new._variants = [i for i in self._variants]
+        #
         return new
 
     def rename(self, old_name_to_new_name: dict[str, str], /, ) -> None:
@@ -331,30 +343,29 @@ class Dataslate(
     def to_databox(
         self,
         /,
-        target_databox: Databox | None = None,
+        target_db: Databox | None = None,
     ) -> Databox:
         """
         Add data from a dataslate to a new or existing databox
         """
         #[
-        if target_databox is None:
-            target_databox = Databox()
+        if target_db is None:
+            target_db = Databox()
         num_names = self.num_names
         num_variants = self.num_variants
-        start_date = self._invariant.periods[0]
+        start = self._invariant.periods[0]
         for qid in self._invariant.output_qids:
             name = self._invariant.names[qid]
             description = self._invariant.descriptions[qid]
-            values = _np.vstack(tuple(
+            values = _np.vstack([
                 v.data[qid, :] for v in self._variants
-            )).T
-            target_databox[name] = Series(
-                num_variants=num_variants,
-                start_date=start_date,
+            ]).T
+            target_db[name] = Series._guaranteed(
+                start=start,
                 values=values,
                 description=description,
             )
-        return target_databox
+        return target_db
         #]
 
     for n in ["num_periods", "from_to", "num_row", "base_slice", "base_columns", "nonbase_columns", ]:
@@ -400,6 +411,13 @@ class Dataslate(
         self._invariant.remove_periods_from_start(remove, )
         for v in self._variants:
             v.remove_periods_from_start(remove, )
+
+    def rescale_data(self, *args, **kwargs, ) -> None:
+        """
+        Rescale data in all variants by a common factor
+        """
+        for v in self._variants:
+            v.rescale_data(*args, **kwargs, )
 
     def remove_periods_from_end(
         self,

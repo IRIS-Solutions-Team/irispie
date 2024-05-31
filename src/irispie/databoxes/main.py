@@ -1,4 +1,5 @@
 """
+Data management tools for storing and manipulating unstructured data
 """
 
 
@@ -211,7 +212,7 @@ Databox, incorporating all its functionalities.
         descriptions: Iterable[str] | None = None,
         periods: Iterable[Period] | None = None,
         start: Period | None = None,
-        target_databox: Self | None = None,
+        target_db: Self | None = None,
         orientation: Literal["vertical", "horizontal", ] = "vertical",
     ) -> Self:
         """
@@ -230,7 +231,7 @@ of the numeric array.
         descriptions=None,
         periods=None,
         start=None,
-        target_databox=None,
+        target_db=None,
         orientation="vertical",
     )
 
@@ -254,7 +255,7 @@ of the numeric array.
 ???+ input "start"
     The start period for the time series data. Used if 'periods' is not provided.
 
-???+ input "target_databox"
+???+ input "target_db"
     An existing Databox to which the array data will be added. If `None`, a new 
     Databox is created.
 
@@ -281,7 +282,7 @@ of the numeric array.
             names,
             series_constructor,
             descriptions=descriptions,
-            target_databox=target_databox,
+            target_db=target_db,
         )
 
     @classmethod
@@ -292,11 +293,11 @@ of the numeric array.
         series_constructor: Callable,
         *,
         descriptions: Sequence[str] | None = None,
-        target_databox: Self | None = None,
+        target_db: Self | None = None,
     ) -> Self:
         """
         """
-        self = target_databox or klass()
+        self = target_db or klass()
         descriptions = (
             descriptions if descriptions is not None
             else _it.repeat("", )
@@ -471,7 +472,7 @@ during the duplication process.
             for s, t in zip(source_names, target_names, )
         )
 
-    def print_content(
+    def print_contents(
         self,
         source_names: SourceNames = None,
     ) -> None:

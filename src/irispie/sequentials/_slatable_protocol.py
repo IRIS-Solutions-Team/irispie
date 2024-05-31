@@ -5,23 +5,30 @@ Implement SlatableProtocol
 
 #[
 from __future__ import annotations
+
+from typing import (TYPE_CHECKING, )
+
+from ..slatables import (Slatable, )
+
+if TYPE_CHECKING:
+    from typing import (Self, )
 #]
 
 
-class _Slatable:
+class _Slatable(Slatable):
     """
     """
     #[
 
-    def __init__(
-        self,
+    @classmethod
+    def for_simulate(
+        klass,
         sequential,
-        *,
-        shocks_from_data: bool = False,
         **kwargs,
-    ) -> None:
+    ) -> Self:
         """
         """
+        self = klass(**kwargs, )
         #
         self.max_lag = sequential.max_lag
         self.max_lead = sequential.max_lead
@@ -35,7 +42,7 @@ class _Slatable:
         self.fallbacks = {}
         self.overwrites = sequential.get_parameters(unpack_singleton=False, )
         #
-        if shocks_from_data:
+        if self.shocks_from_data:
             self.fallbacks.update(residuals, )
         else:
             self.overwrites.update(residuals, )
@@ -47,6 +54,8 @@ class _Slatable:
             + sequential.rhs_only_names
             + sequential.residual_names
         )
+        #
+        return self
 
 
 class Inlay:
@@ -57,6 +66,6 @@ class Inlay:
     def get_slatable_for_simulation(self, **kwargs, ) -> _Slatable:
         """
         """
-        return _Slatable(self, **kwargs, )
+        return _Slatable.for_simulate(self, **kwargs, )
 
 

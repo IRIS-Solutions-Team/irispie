@@ -20,24 +20,31 @@ class Inlay:
 
     def merge(
         self: Self,
-        they: Iterable[Self] | Self,
-        action: Literal["hstack", "replace", "discard", "silent", "warning", "error", "critical", ] = "hstack",
+        other: Iterable[Self] | Self,
+        merge_strategy: Literal["hstack", "replace", "discard", "silent", "warning", "error", "critical", ] = "hstack",
+        #
+        action = None,
         **kwargs,
     ) -> None:
         """
         """
-        action_func = _MERGE_ACTIONS[action]
+        # Legacy name
+        if action is not None:
+            _wa.warn("The 'action' parameter is deprecated. Use 'merge_strategy' instead", DeprecationWarning, )
+            merge_strategy = action
+        #
+        merge_strategy_func = _MERGE_STRATEGY[merge_strategy]
         stream = _wrongdoings.create_stream(
-            action,
+            merge_strategy,
             "Duplicate keys when merging databoxes",
             when_no_stream="silent",
         )
-        if hasattr(they, "items", ):
-            they = (they, )
-        for t in they:
+        if hasattr(other, "items", ):
+            other = (other, )
+        for t in other:
             for key, value in t.items():
                 if key in self:
-                    action_func(self, key, value, stream, **kwargs, )
+                    merge_strategy_func(self, key, value, stream, **kwargs, )
                 else:
                     self[key] = value
         stream._raise()
@@ -109,7 +116,7 @@ def _merge_report(
     #]
 
 
-_MERGE_ACTIONS = {
+_MERGE_STRATEGY = {
     "hstack": _merge_hstack,
     "replace": _merge_replace,
     "discard": _merge_discard,

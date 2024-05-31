@@ -59,16 +59,18 @@ __all__ = [
     categories={
         "constructor": "Creating new simultaneous models",
         "filtering": "Applying structural filters on models",
+        "information": "Getting information about models",
+        "parameters": "Manipulating model parameters",
         "property": None,
     },
 )
 class Simultaneous(
-    _assigns.AssignMixin,
     _has_invariant.HasInvariantMixin,
     _has_variants.HasVariantsMixin,
     _kalmans.Mixin,
     _std_simulators.Mixin,
 
+    _assigns.Inlay,
     _simulate.Inlay,
     _steady.Inlay,
     _logly.Inlay,
@@ -239,11 +241,11 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
             f"",
             f"{self.__class__.__name__} model",
             f"Description: \"{self.get_description()}\"",
-            f"|",
-            f"| Num of variants: {self.num_variants}",
-            f"| Num of equations [transition, measurement]: [{self.num_transition_equations}, {self.num_measurement_equations}]",
-            f"| [Max lag, max lead]: [{self.max_lag:+g}, {self.max_lead:+g}]",
-            f"|",
+            f"⏐",
+            f"⏐ Num variants: {self.num_variants}",
+            f"⏐ Num equations [transition, measurement]: [{self.num_transition_equations}, {self.num_measurement_equations}]",
+            f"⏐ Max [lag, lead]: [{self.max_lag:+g}, {self.max_lead:+g}]",
+            f"⏐",
         ))
 
     def get_value(
@@ -491,8 +493,8 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         Calculate first-order solution for one variant of this model
         """
         system = self._systemize(variant, self._invariant.dynamic_descriptor, model_flags, )
-        variant.solution = _solutions.Solution(self._invariant.dynamic_descriptor, system, clip_small=clip_small, )
-        variant.deviation_solution = _solutions.create_deviation_solution(variant.solution, )
+        variant.solution = _solutions.Solution.from_system(self._invariant.dynamic_descriptor, system, clip_small=clip_small, )
+        variant.deviation_solution = _solutions.Solution.deviation_solution(variant.solution, )
         info = {}
         #
         return info

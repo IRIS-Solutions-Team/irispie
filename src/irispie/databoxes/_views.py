@@ -12,13 +12,13 @@ from ..conveniences import views as _views
 #]
 
 
-_REPR_INDENT = "    "
+_REPR_INDENT = "⏐ "
 _REPR_SEPARATOR = ": "
-_REPR_MAX_LEN = 70
-_REPR_CONT = "..."
+_REPR_MAX_LEN = 50
+_REPR_CONT = "…"
 
 
-class Inlay(_views.ViewMixin, ):
+class Inlay(_views.Mixin, ):
     """
     """
     #[
@@ -27,6 +27,11 @@ class Inlay(_views.ViewMixin, ):
         """
         """
         return f"{self.__class__.__name__} with {self.num_items:g} item(s)"
+
+    def _get_header_separator(self, /, ):
+        """"
+        """
+        return _REPR_INDENT.rstrip()
 
     def _get_content_view(self, /, ):
         """
@@ -50,6 +55,8 @@ class Inlay(_views.ViewMixin, ):
         max_len = self._get_max_name_length_()
         return _REPR_INDENT + _views._VERTICAL_ELLIPSIS.rjust(max_len) + " "*len(_REPR_SEPARATOR) + _VERTICAL_ELLIPSIS
 
+    def _get_footer_view_(self, /, ):
+        return (_REPR_INDENT.rstrip(), )
     #]
 
 

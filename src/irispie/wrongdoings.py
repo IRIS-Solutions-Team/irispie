@@ -17,9 +17,8 @@ HOW: TypeAlias = Literal["error", "warning", "silent"]
 
 
 _PLAIN_PREFIX = ""
-
-_BLANK_LINE = "|"
-_LIST_PREFIX = "| * "
+_BLANK_LINE = "⏐"
+_LIST_PREFIX = "⏐ * "
 
 
 class IrisPieError(Exception, ):

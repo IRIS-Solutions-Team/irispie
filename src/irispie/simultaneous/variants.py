@@ -3,16 +3,21 @@
 
 
 #[
-import warnings
-from numbers import Number
-from typing import (Self, Literal, Callable, )
+from __future__ import annotations
+
+from typing import (TYPE_CHECKING, )
+import warnings as _wa
 import copy as _co
 import numpy as _np
 import operator as _op
-from collections.abc import (Iterable, )
 
 from ..conveniences import copies as _copies
 from .. import quantities as _quantities
+
+if TYPE_CHECKING:
+    from numbers import (Real, )
+    from typing import (Self, Literal, Callable, )
+    from collections.abc import (Iterable, )
 #]
 
 
@@ -87,10 +92,21 @@ class Variant:
         qids: Iterable[int] | None = None,
         /,
     ) -> _np.ndarray:
-        # values = _np.copy(getattr(self, attr)).reshape(-1, 1)
         values = _np.copy(getattr(self, attr, ), )
-        qids = list(qids, )
-        return values[qids] if qids is not None else values
+        return values[qids, ...]
+
+    def rescale_values(
+        self,
+        attr: Literal["levels", "changes"],
+        factor: Real,
+        qids: Iterable[int],
+    ) -> None:
+        """
+        Rescale values by a common factor
+        """
+        attr = getattr(self, attr, )
+        qids = list(qids) if qids is not None else None
+        attr[qids, ...] *= factor
 
     def retrieve_maybelog_values_for_qids(
         self,
@@ -146,19 +162,19 @@ class Variant:
         #
         shift_vec = _np.array(range(shift_in_first_column, shift_in_first_column+num_columns))
         #
-        warnings.filterwarnings(action="ignore", category=RuntimeWarning)
+        _wa.filterwarnings(action="ignore", category=RuntimeWarning)
         levels[where_logly] = _np.log(levels[where_logly])
         changes[where_logly] = _np.log(changes[where_logly])
-        warnings.filterwarnings(action="default", category=RuntimeWarning)
+        _wa.filterwarnings(action="default", category=RuntimeWarning)
         #
         levels[_np.isnan(levels) | _np.isinf(levels)] = _np.nan
         changes[_np.isnan(changes) | _np.isinf(changes)] = 0
         #
         steady_array = levels + changes * shift_vec
         #
-        warnings.filterwarnings(action="ignore", category=RuntimeWarning)
+        _wa.filterwarnings(action="ignore", category=RuntimeWarning)
         steady_array[where_logly, :] = _np.exp(steady_array[where_logly, :])
-        warnings.filterwarnings(action="default", category=RuntimeWarning)
+        _wa.filterwarnings(action="default", category=RuntimeWarning)
         #
         return steady_array
 
@@ -199,7 +215,7 @@ def _update_from_array(
 
 def _update_from_dict(
     what_to_update: _np.ndarray,
-    update: dict[int, Number|tuple],
+    update: dict[int, Real | tuple[Real]],
     when_tuple: Callable,
     when_not_tuple: Callable,
     /,

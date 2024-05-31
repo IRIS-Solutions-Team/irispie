@@ -37,17 +37,19 @@ $$
 #[
 from __future__ import annotations
 
-from typing import (Self, Callable, )
-from numbers import (Real, Number, )
-import dataclasses as _dc
+from typing import (TYPE_CHECKING, )
 
+import warnings as _wa
 import enum as _en
 import numpy as _np
 import scipy as _sp
 import copy as _co
 
-from ..fords import systems as _systems
-from ..fords import descriptors as _descriptors
+if TYPE_CHECKING:
+    from typing import (Self, Callable, )
+    from numbers import (Real, Number, )
+    from ..fords import descriptors as _descriptors
+    from ..fords import systems as _systems
 #]
 
 
@@ -113,8 +115,15 @@ class Solution:
         "triangular_expansion",
     )
 
-    def __init__(
-        self, 
+    def __init__(self, ) -> None:
+        """
+        """
+        for name in self.__slots__:
+            setattr(self, name, None, )
+
+    @classmethod
+    def from_system(
+        klass,
         descriptor: _descriptors.Descriptor,
         system: _systems.System,
         *,
@@ -123,6 +132,8 @@ class Solution:
     ) -> Self:
         """
         """
+        self = klass()
+        #
         def is_alpha_beta_stable_or_unit_root(alpha: Real, beta: Real, /, ) -> bool:
             return abs(beta) < (1 + tolerance)*abs(alpha)
         def is_stable_root(root: Real, /, ) -> bool:
@@ -131,15 +142,16 @@ class Solution:
             return abs(root) >= (1 - tolerance) and abs(root) < (1 + tolerance)
         def clip_func(x: _np.ndarray, /, ) -> _np.ndarray:
             return _np.where(_np.abs(x) < tolerance, 0, x)
+        #
         clip = clip_func if clip_small else None
         #
         # Detach unstable from (stable + unit) roots and solve out expectations
         # The system is triangular but because stable and unit roots are
         # not detached yet, the system is called "preliminary"
-        qz, self.eigenvalues = \
+        qz_matrixes, self.eigenvalues = \
             _solve_ordqz(system, is_alpha_beta_stable_or_unit_root, is_stable_root, is_unit_root, )
         triangular_solution_prelim = \
-            _solve_transition_equations(descriptor, system, qz, )
+            _solve_transition_equations(descriptor, system, qz_matrixes, )
         #
         # Detach unit from stable roots to create the final triangular solution
         # From the final triangular solution, calculate the square solution
@@ -168,6 +180,28 @@ class Solution:
         #
         self.square_expansion = []
         self.triangular_expansion = []
+        #
+        return self
+
+    @classmethod
+    def deviation_solution(
+        klass,
+        other: Self,
+        /,
+    ) -> Solution:
+        """
+        Create a shallow copy of the solution, and replace constant vectors with
+        zeros
+        """
+        self = klass()
+        for n in self.__slots__:
+            setattr(self, n, getattr(other, n, None), )
+        #
+        self.K = _np.zeros_like(other.K, )
+        self.Ka = _np.zeros_like(other.Ka, )
+        self.D = _np.zeros_like(other.D, )
+        #
+        return self
 
     @property
     def num_xi(self, /, ) -> int:
@@ -409,7 +443,7 @@ def _solve_measurement_equations(
 def _solve_transition_equations(
     descriptor,
     system,
-    qz,
+    qz_matrixes: tuple[_np.ndarray, ...],
     /,
 ) -> tuple[_np.ndarray, ...]:
     """
@@ -418,7 +452,7 @@ def _solve_transition_equations(
     num_backwards = descriptor.get_num_backwards()
     num_forwards = descriptor.get_num_forwards()
     num_stable = num_backwards
-    S, T, Q, Z = qz
+    S, T, Q, Z = qz_matrixes
     #
     S11 = S[:num_stable, :num_stable]
     S12 = S[:num_stable, num_stable:]
@@ -471,28 +505,29 @@ def _solve_transition_equations(
     J = left_div(-T22, S22) # -T22 \ S22
     Xg = Xg1 + Xg0 @ J
     #
-    return Ug, Tg, Pg, Rg, Kg, Xg, J, Ru
+    return Ug, Tg, Pg, Rg, Kg, Xg, J, Ru,
     #]
 
 
 def _solve_ordqz(
-    system,
-    is_alpha_beta_stable_or_unit_root,
-    is_stable_root,
-    is_unit_root,
+    system: _systems.System,
+    is_alpha_beta_stable_or_unit_root: Callable,
+    is_stable_root: Callable,
+    is_unit_root: Callable,
     /,
-) -> tuple[tuple[_np.ndarray, ...], tuple[Real, ], ]:
+) -> tuple[tuple[_np.ndarray, ...], tuple[Real, ...], ]:
     """
     """
     #[
-    S, T, alpha, beta, Q, Z = _sp.linalg.ordqz(system.A, system.B, sort=is_alpha_beta_stable_or_unit_root, )
+    S, T, alpha, beta, Q, Z = _sp.linalg.ordqz(
+        system.A, system.B,
+        sort=is_alpha_beta_stable_or_unit_root,
+    )
     Q = Q.T
     #
-    inx_nonzero_alpha = alpha != 0
-    eigenvalues = _np.full(beta.shape, _np.inf, dtype=complex, )
-    eigenvalues[inx_nonzero_alpha] = -beta[inx_nonzero_alpha] / alpha[inx_nonzero_alpha]
-    eigenvalues = tuple(eigenvalues)
-    #
+    _wa.filterwarnings(action="ignore", category=RuntimeWarning, )
+    eigenvalues = tuple(-beta / alpha)
+    _wa.filterwarnings(action="default", category=RuntimeWarning, )
     #
     return (S, T, Q, Z), eigenvalues
     #]
@@ -562,16 +597,4 @@ def _get_solution_expansion(
     #     for k_minus_1 in range(0, forward)
     # ]
 
-
-def create_deviation_solution(solution: Solution, /, ) -> Solution:
-    """
-    Create a shallow copy of the solution, and replace constant vectors with
-    zeros """
-    #[
-    deviation_solution = _co.copy(solution, )
-    deviation_solution.K = _np.zeros_like(solution.K, )
-    deviation_solution.Ka = _np.zeros_like(solution.Ka, )
-    deviation_solution.D = _np.zeros_like(solution.D, )
-    return deviation_solution
-    #]
 

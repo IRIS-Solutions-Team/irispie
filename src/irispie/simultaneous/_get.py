@@ -227,10 +227,19 @@ steady_changes = self.get_steady_changes(
     ) -> dict[str, Real]:
         """
         """
+        std_qids = self._get_std_qids(kind=kind, )
+        return self._get_values("levels", std_qids, **kwargs, )
+
+    def _get_std_qids(
+        self,
+        /,
+        kind: _quantities.QuantityKind | None = None,
+    ) -> tuple[int, ...]:
+        """
+        """
         default_kind = _quantities.QuantityKind.ANY_STD
         kind = default_kind & kind if kind is not None else default_kind
-        qids = _quantities.generate_qids_by_kind(self._invariant.quantities, kind=kind, )
-        return self._get_values("levels", qids, **kwargs, )
+        return _quantities.generate_qids_by_kind(self._invariant.quantities, kind, )
 
     @_cast_as_output_type
     @_unpack_singleton_in_dict

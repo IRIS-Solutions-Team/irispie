@@ -39,6 +39,7 @@ def simulate(
     when_fails: Literal["critical", "error", "warning", "silent"] = "critical",
     when_missing: Literal["critical", "error", "warning", "silent"] = "critical",
     fallback_value: Real = _DEFAULT_FALLBACK_VALUE,
+    return_info: bool = False,
 ) -> dict[str, Any]:
     """
     """

@@ -42,6 +42,8 @@ class _SimulationPlannable:
                 quantities, _quantities.UNANTICIPATED_SHOCK,
             ))
 
+    #]
+
 
 class Inlay:
     """

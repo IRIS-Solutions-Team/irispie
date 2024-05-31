@@ -48,6 +48,14 @@ class Frame:
         self.first = None
         self.last = None
         self.simulation_last = None
+        self.slice = None
+        self.simulation_slice = None
+        self.num_simulation_columns = None
+
+    def __repr__(self, ) -> str:
+        """
+        """
+        return f"Frame({self.start}, {self.end}, {self.simulation_end})"
 
     def resolve_columns(
         self,
@@ -66,22 +74,36 @@ class Frame:
         self.num_simulation_columns = self.simulation_last - self.first + 1
         #]
 
-    def remove_unanticipated_outside_frame(self, dataslate, model, /, ):
+    def reset_unanticipated(
+        self,
+        ds: Dataslate,
+        model: Slatable,
+    ) -> None:
         """
         """
         #[
         if self.start == self.simulation_end:
             return
-        plannable = model_v.get_plannable()
-        name_to_qid = model_v.create_name_to_qid()
+        plannable = model.get_simulation_plannable()
+        name_to_qid = model.create_name_to_qid()
         if not hasattr(plannable, "can_be_endogenized_unanticipated"):
             return
         unanticipated_names = plannable.can_be_endogenized_unanticipated
         unanticipated_qids = tuple(name_to_qid[name] for name in unanticipated_names)
-        second_period = self.start + 1
-        data = dataslate_f.get_data_variant(0, )
-        data[unanticipated_qids, second_period:] = 0
+        data = ds.get_data_variant(0, )
+        data[unanticipated_qids, self.first+1:] = 0
 
+    def copy_frame_data(
+        self,
+        main_ds: Dataslate,
+        frame_ds: Dataslate,
+    ) -> None:
+        """
+        Copy frame columns from frame_ds to main_ds
+        """
+        main_data = main_ds.get_data_variant(0, )
+        frame_data = frame_ds.get_data_variant(0, )
+        main_data[:, self.slice] = frame_data[:, self.slice]
     #]
 
 

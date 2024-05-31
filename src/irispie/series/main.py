@@ -133,9 +133,9 @@ class Series(
     _moving.Inlay,
     _x13.Inlay,
     _plotly.Inlay,
-
+    _views.Inlay,
+    #
     _descriptions.DescriptionMixin,
-    _views.ViewMixin,
     _copies.CopyMixin,
 ):
     r"""
@@ -186,6 +186,7 @@ variants of the data, stored as mutliple columns.
         frequency: Frequency | None = None,
         values: Any | None = None,
         func: Callable | None = None,
+        populate: bool = True,
     ) -> None:
         """
 ················································································
@@ -237,23 +238,40 @@ self = Series(
         """
         self.start = None
         self.data_type = data_type
-        self.data = _np.full((0, num_variants), self._missing, dtype=self.data_type)
+        self.data = _np.full((0, num_variants), _np.nan, dtype=self.data_type, )
         self.metadata = {}
         self._description = description
         #
         start = start_date if start is None else start
         periods = dates if periods is None else periods
         #
-        test = (x is not None for x in (start, periods, values, func))
-        populator = _SERIES_POPULATOR.get(tuple(test), _invalid_constructor)
-        populator(
-            self,
-            start=start,
-            periods=periods,
-            frequency=frequency,
-            values=values,
-            func=func,
-        )
+        if populate:
+            test = (x is not None for x in (start, periods, values, func))
+            populator = _SERIES_POPULATOR.get(tuple(test), _invalid_constructor)
+            populator(
+                self,
+                start=start,
+                periods=periods,
+                frequency=frequency,
+                values=values,
+                func=func,
+            )
+
+    @classmethod
+    def _guaranteed(
+        klass,
+        start: Period,
+        values: _np.ndarray,
+        description: str = "",
+    ) -> Self:
+        """
+        """
+        self = klass()
+        self.start = start
+        self.data = values
+        self._description = description
+        self.trim()
+        return self
 
     def reset(self, /, ) -> None:
         self.__init__(
@@ -266,7 +284,7 @@ self = Series(
         """
         return _np.full(
             (num_rows, self.shape[1], ),
-            self._missing,
+            _np.nan,
             dtype=self.data_type
         )
 
@@ -724,16 +742,16 @@ self = Series(
         if self.data.size == 0:
             self.reset()
             return self
-        num_leading = _get_num_leading_missing_rows(self.data, self._test_missing_period)
-        if num_leading == self.data.shape[0]:
+        num_leading, num_trailing \
+            = _get_num_leading_trailing_missing_rows(self.data, )
+        if num_trailing == self.data.shape[0]:
             self.reset()
             return self
-        num_trailing = _get_num_leading_missing_rows(self.data[::-1], self._test_missing_period)
         if not num_leading and not num_trailing:
             return self
         slice_from = num_leading or None
         slice_to = -num_trailing if num_trailing else None
-        self.data = self.data[slice(slice_from, slice_to), ...]
+        self.data = self.data[slice_from:slice_to, ...]
         if slice_from:
             self.start += int(slice_from)
         return self
@@ -741,7 +759,7 @@ self = Series(
     def _create_expanded_data(self, add_before, add_after):
         return _np.pad(
             self.data, ((add_before, add_after), (0, 0)),
-            mode="constant", constant_values=self._missing
+            mode="constant", constant_values=_np.nan,
         )
 
     def _check_data_shape(self, data, /, ):
@@ -973,15 +991,26 @@ self = Series(
     #]
 
 
-def _get_num_leading_missing_rows(data, test_missing_period, /, ):
-    try:
-        num = next(
-            i for i, period_data in enumerate(data)
-            if not test_missing_period(period_data)
-        )
-    except StopIteration:
-        num = data.shape[0]
-    return num
+def _get_num_leading_trailing_missing_rows(data: _np.ndarray, /, ):
+    """
+    """
+    #[
+    # Boolean index of rows with at least one observation
+    boolex_observations = ~_np.any(_np.isnan(data, ), axis=1, )
+    if _np.all(boolex_observations, ):
+        # All rows have at least one observation
+        num_leading = 0
+        num_trailing = 0
+    elif not _np.any(boolex_observations, ):
+        # No row has any observation
+        num_leading = 0
+        num_trailing = data.shape[0]
+    else:
+        # Some rows have observations
+        num_leading = _np.argmax(boolex_observations)
+        num_trailing = _np.argmax(boolex_observations[::-1])
+    return num_leading, num_trailing
+    #]
 
 
 def hstack(first, *args) -> Self:

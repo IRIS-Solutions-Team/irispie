@@ -93,6 +93,16 @@ def is_qid_zero_in_tokens(tokens: Iterable[Token], qid: int) -> bool:
     return any(tok.qid == qid and tok.shift == 0 for tok in tokens)
 
 
+def generate_zero_shift_tokens_from_quantities(
+    quantities: Iterable[_quantities.Quantity],
+    *args, **kwargs,
+) -> Iterable[Token]:
+    """
+    """
+    quantities = _quantities.generate_quantities_of_kind(quantities, *args, **kwargs, )
+    return ( Token(qid=q.id, shift=0, ) for q in quantities )
+
+
 def print_tokens(
     tokens: Iterable[Token],
     /,
