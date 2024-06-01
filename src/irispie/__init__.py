@@ -40,11 +40,14 @@ from .sequentials import __all__ as sequentials_all
 from .explanatories import *
 from .explanatories import __all__ as explanatories_all
 
-from .plans.simulation_plans import *
-from .plans.simulation_plans import __all__ as simulation_plans_all
+from .plans import *
+from .plans import __all__ as plans_all
 
 from .namings import *
 from .namings import __all__ as namings_all
+
+from .file_io import *
+from .file_io import __all__ as file_io_all
 
 
 __version__ = _md.version(__name__)
@@ -86,27 +89,11 @@ __all__ = (
     *equations_all,
     *sequentials_all,
     *explanatories_all,
-    *simulation_plans_all,
+    *plans_all,
     *namings_all,
+    *file_io_all,
     "min_irispie_version_required",
     "__version__",
 )
-
-import dill as _di
-
-def save(filename, obj, ):
-    with open(filename, "wb+", ) as fid:
-        _di.dump(obj, fid, )
-
-def load(filename, ):
-    with open(filename, "rb", ) as fid:
-        return _di.load(fid, )
-
-
-def _test_docs_():
-    """
-# Testing docs
-    """
-    pass
 
 
