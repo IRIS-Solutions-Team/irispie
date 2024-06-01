@@ -11,7 +11,7 @@ import copy as _cp
 #]
 
 
-class CopyMixin:
+class Mixin:
     """
     """
     #[

@@ -395,7 +395,7 @@ def _period_constructor_with_ellipsis(
 )
 class Period(
     _SpannableMixin,
-    _copies.CopyMixin,
+    _copies.Mixin,
 ):
     """
 ......................................................................
@@ -1678,7 +1678,7 @@ def daily_serial_from_ymd(year: int, month: int, day: int, ) -> int:
     },
 )
 class Span(
-    _copies.CopyMixin,
+    _copies.Mixin,
 ):
     """
 ................................................................................

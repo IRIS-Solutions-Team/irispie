@@ -136,7 +136,7 @@ class Series(
     _views.Inlay,
     #
     _descriptions.DescriptionMixin,
-    _copies.CopyMixin,
+    _copies.Mixin,
 ):
     r"""
 ················································································

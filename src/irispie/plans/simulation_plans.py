@@ -9,15 +9,15 @@ from __future__ import annotations
 from collections.abc import (Iterable, )
 from typing import (Self, Any, Protocol, NoReturn, )
 from types import (EllipsisType, )
-import warnings as _wa
-import functools as _ft
+import itertools as _it
 import numpy as _np
-import copy as _copy
 
 from ..conveniences import copies as _copies
 from ..dates import (Period, )
+from ..series.main import (Series, )
 from .. import wrongdoings as _wrongdoings
 from .. import pages as _pages
+from . import _registers as _registers
 from . import _pretty as _pretty
 from . import _indexes as _indexes
 from . import transforms as _transforms
@@ -60,9 +60,10 @@ class SimulationPlannableProtocol(Protocol, ):
     },
 )
 class SimulationPlan(
-    _pretty.PrettyMixin,
+    _registers.Mixin,
+    _pretty.Mixin,
     _indexes.ItemMixin,
-    _copies.CopyMixin,
+    _copies.Mixin,
 ):
     """
 ················································································
@@ -86,6 +87,8 @@ the input databox when the simulation is run.
 ················································································
     """
     #[
+
+    _TABLE_FIELDS = ("NAME", "PERIOD(S)", "REGISTER", "TRANSFORM", "VALUE", )
 
     _registers = (
         "exogenized",
@@ -149,14 +152,9 @@ Create a new simulation plan object for a
         self._default_exogenized = None
         self._default_endogenized = None
         plannable = model.get_simulation_plannable()
-        for n in self._registers:
-            can_be_name = f"can_be_{n}"
-            register = {
-                n: [None] * self.num_periods
-                for n in getattr(plannable, can_be_name, )
-            } if hasattr(plannable, can_be_name, ) else {}
-            setattr(self, can_be_name, tuple(register.keys()))
-            setattr(self, f"_{n}_register", register)
+        def default_value(*args, **kwargs, ):
+            return [None] * self.num_periods
+        self._initialize_registers(plannable, default_value, )
 
     def check_consistency(
         self,
@@ -662,7 +660,7 @@ Returns no value; the method modifies the `SimulationPlan` object in place.
         """
         register = self._get_register_by_name(register_name, )
         per_indexes = self._get_per_indexes(periods, )
-        names = _resolve_validate_register_names(register, names, register_name, )
+        names = self._resolve_validate_register_names(register, names, register_name, )
         num_names, num_pers = len(names), len(per_indexes)
         #
         if names and per_indexes:
@@ -696,11 +694,6 @@ Returns no value; the method modifies the `SimulationPlan` object in place.
 
     def _is_per_in_span(self, per: Period, ) -> bool:
         return per >= self.start and per <= self.end
-
-    def _get_register_by_name(self, name: str, /, ) -> dict[str, Any]:
-        """
-        """
-        return getattr(self, f"_{name}_register", )
 
     def get_exogenized_point(
         self,
@@ -769,7 +762,7 @@ Returns no value; the method modifies the `SimulationPlan` object in place.
         """
         """
         register = self._get_register_by_name(register_name, )
-        names = _resolve_validate_register_names(register, names, register_name, )
+        names = self._resolve_validate_register_names(register, names, register_name, )
         per_indexes, *_ = self._get_period_indexes(periods, )
         for n in names:
             for t in per_indexes:
@@ -790,26 +783,43 @@ Returns no value; the method modifies the `SimulationPlan` object in place.
         period_indexes = tuple(d - self.start for d in periods)
         return period_indexes, periods
 
+    def _add_register_to_table(
+        self,
+        table,
+        register: dict,
+        action: str,
+        db: Databox | None = None,
+        **kwargs,
+    ) -> None:
+        """
+        """
+        def _get_status_symbol(status, ):
+            return status.symbol if hasattr(status, "symbol") else _PRETTY_SYMBOL.get(status, "")
+        #
+        def _get_value(db, name, date, ):
+            missing_str = Series._missing_str
+            try:
+                value = db[name][date][0, 0]
+            except:
+                return missing_str
+            if _np.isnan(value):
+                return missing_str
+            return f"{value:g}"
+        #
+        all_rows = (
+            (k, str(date), action, _get_status_symbol(status), _get_value(db, k, date, ), )
+            for k, v in register.items()
+            for status, date in zip(v, self.base_span)
+            if status is not None and status is not False
+        )
+        #
+        all_rows = sorted(all_rows, key=lambda row: (row[0], row[1], ), )
+        row_groups = _it.groupby(all_rows, key=lambda row: (row[0], row[2], row[3], ), )
+        for _, g in row_groups:
+            representative = _create_representative_for_table_rows(tuple(g), )
+            table.add_row(representative, )
+
     #]
-
-
-def _resolve_validate_register_names(
-    register: dict | None,
-    names: Iterable[str] | str | EllipsisType,
-    register_name: str,
-    /,
-) -> tuple[str]:
-    """
-    """
-    keys = tuple(register.keys()) if register else ()
-    if names is Ellipsis:
-        return keys
-    names = tuple(names) if not isinstance(names, str) else (names, )
-    invalid = tuple(n for n in names if n not in keys)
-    if invalid:
-        message = (f"These names cannot be {register_name}:", ) + invalid
-        raise _wrongdoings.IrisPieCritical(message, )
-    return names
 
 
 def catch_invalid_periods(
@@ -837,6 +847,21 @@ def _has_points_in_register(register: dict, /, ) -> bool:
     )
 
 
+def _create_representative_for_table_rows(rows, ):
+    if len(rows) == 1:
+        return rows[0]
+    else:
+        return (rows[0][0], rows[0][1] + ">>" + rows[-1][1], rows[0][2], rows[0][3], )
+
+
 Plan = SimulationPlan
 PlanSimulate = SimulationPlan
+
+
+_PRETTY_SYMBOL = {
+    None: "",
+    True: "⋅",
+    False: "",
+}
+
 

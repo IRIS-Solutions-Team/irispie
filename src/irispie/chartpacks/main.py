@@ -61,7 +61,7 @@ _CHART_INPUT_STRING_PATTERN = _re.compile(
 )
 class Chartpack(
     _descriptions.DescriptionMixin,
-    _copies.CopyMixin,
+    _copies.Mixin,
 ):
     """
 ················································································

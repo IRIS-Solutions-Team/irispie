@@ -709,13 +709,15 @@ def _collect_all_tokens(
     /,
 ) -> set[Token]:
     """
+    Combine all tokens from equations and zero-shifted tokens created from
+    variables, shocks and parameters.
     """
     #[
     # Tokens from equations
     tokens_from_equations \
         = set(_equations.generate_all_tokens_from_equations(equations, ))
     #
-    # Zero-shift tokens from quantities
+    # Zero-shift tokens from all variables, shocks and parameters
     kind = _quantities.ANY_VARIABLE | _quantities.ANY_SHOCK | _quantities.PARAMETER
     tokens_from_quantities \
         = set(_incidence.generate_zero_shift_tokens_from_quantities(quantities, kind=kind))

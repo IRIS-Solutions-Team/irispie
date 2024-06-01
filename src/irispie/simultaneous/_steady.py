@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from numbers import (Number, )
+from collections import (namedtuple, )
 from collections.abc import (Iterable, Callable, )
 from typing import (TypeAlias, Any, Literal, )
 import copy as _copy
@@ -22,10 +23,22 @@ from .. import has_variants as _has_variants
 from .. import wrongdoings as _wrongdoings
 from ..fords import steadiers as _fs
 from ..evaluators import steady as _evaluators
+from ..plans.steady_plans import (SteadyPlan, )
 
 from . import variants as _variants
 from . import _flags
 #]
+
+
+_Wrts = namedtuple("Wrt", (
+    "equations",
+    "level_names",
+    "change_names",
+    "any_names",
+    "level_qids",
+    "change_qids",
+    "any_qids",
+))
 
 
 @_dc.dataclass
@@ -84,7 +97,7 @@ class Inlay:
         """
         Calculate steady state for each Variant within this model
         """
-        model_flags = _flags.Flags.update_from_kwargs(self.get_flags(), **kwargs)
+        model_flags = self.resolve_flags(**kwargs, )
         solver = self._choose_steady_solver(model_flags.is_linear, model_flags.is_flat, )
         out_info = []
         for vid, v in enumerate(self._variants, ):
@@ -168,9 +181,7 @@ class Inlay:
         /,
         evaluator_class: type,
         *,
-        fix: Iterable[str] | None = None,
-        fix_levels: Iterable[str] | None = None,
-        fix_changes: Iterable[str] | None = None,
+        plan: SteadyPlan | None = None,
         root_settings: dict[str, Any] | None = None,
         iter_printer_settings: dict[str, Any] | None = None,
         **kwargs,
@@ -185,19 +196,14 @@ class Inlay:
         #
         # REFACTOR: Plan.steady
         #
-        wrt_equations = self.get_steady_equations()
-        fixable_quantities = \
-            self.get_quantities(kind=_quantities.QuantityKind.ENDOGENOUS_VARIABLE, )
-        wrt_qids_levels = \
-            _resolve_qids_fixed(fixable_quantities, fix, fix_levels, )
-        wrt_qids_changes = \
-            _resolve_qids_fixed(fixable_quantities, fix, fix_changes, )
+        wrts = self.resolve_steady_wrts(plan, is_flat=model_flags.is_flat, )
+
         #
         all_quantities = self.get_quantities()
         steady_evaluator = evaluator_class(
-            wrt_qids_levels,
-            wrt_qids_changes,
-            wrt_equations,
+            wrts.level_qids,
+            wrts.change_qids,
+            wrts.equations,
             all_quantities,
             variant,
             iter_printer_settings=iter_printer_settings,
@@ -224,10 +230,10 @@ class Inlay:
                 "Steady state calculations failed to converge"
             )
         #
-        levels, wrt_qids_levels = steady_evaluator.extract_levels(final_guess, )
-        variant.update_levels_from_array(levels, wrt_qids_levels, )
-        changes, wrt_qids_changes = steady_evaluator.extract_changes(final_guess, )
-        variant.update_changes_from_array(changes, wrt_qids_changes, )
+        levels, wrt_level_qids = steady_evaluator.extract_levels(final_guess, )
+        variant.update_levels_from_array(levels, wrt_level_qids, )
+        changes, wrt_change_qids = steady_evaluator.extract_changes(final_guess, )
+        variant.update_changes_from_array(changes, wrt_change_qids, )
         #
         info = {
             "success": success,
@@ -244,6 +250,48 @@ class Inlay:
         _steady_nonlinear,
         evaluator_class=_evaluators.NonflatSteadyEvaluator,
     )
+
+    def resolve_steady_wrts(
+        self,
+        plan: SteadyPlan,
+        is_flat: bool,
+    ) -> _Wrts:
+        """
+        """
+        wrt_equations = self.get_steady_equations()
+        #
+        name_to_qid = self.create_name_to_qid()
+        plannable = self.get_steady_plannable(is_flat=is_flat, )
+        wrt_names = set(plannable.can_be_exogenized)
+        if plan is None or plan.is_empty:
+            exogenized_names = ()
+            endogenized_names = ()
+            fixed_level_names = ()
+            fixed_change_names = ()
+        else:
+            exogenized_names = plan.get_exogenized_names()
+            endogenized_names = plan.get_endogenized_names()
+            fixed_level_names = plan.get_fixed_level_names()
+            fixed_change_names = plan.get_fixed_change_names()
+        #
+        wrt_names = (wrt_names - set(exogenized_names)) | set(endogenized_names)
+        wrt_level_names = (wrt_names - set(fixed_level_names))
+        wrt_change_names = (wrt_names - set(fixed_change_names)) if not is_flat else ()
+        wrt_any_names = tuple(sorted(set(wrt_level_names) | set(wrt_change_names)))
+        #
+        wrt_level_qids = tuple(sorted([name_to_qid[name] for name in wrt_level_names]))
+        wrt_change_qids = tuple(sorted([name_to_qid[name] for name in wrt_change_names]))
+        wrt_any_qids = tuple(sorted([name_to_qid[name] for name in wrt_any_names]))
+        #
+        return _Wrts(
+            equations=wrt_equations,
+            level_names=wrt_level_names,
+            change_names=wrt_change_names,
+            any_names=wrt_any_names,
+            level_qids=wrt_level_qids,
+            change_qids=wrt_change_qids,
+            any_qids=wrt_any_qids,
+        )
 
     def _choose_steady_solver(
         self,
@@ -335,38 +383,6 @@ def _apply_delog_on_vector(
     Delogarithmize the elements of numpy vector that have True log-status
     """
     #[
-    #]
-
-
-def _resolve_qids_fixed(
-    fixable_quantities,
-    fix: Iterable[str] | str | None,
-    fix_spec: Iterable[str] | str | None,
-) -> tuple[int, ...]:
-    """
-    """
-    #[
-    if fix is None:
-        fix = ()
-    elif isinstance(fix, str):
-        fix = (fix, )
-    if fix_spec is None:
-        fix_spec = ()
-    elif isinstance(fix_spec, str):
-        fix_spec = (fix_spec, )
-    fix = tuple(i for i in set(fix) | set(fix_spec) if not i.startswith("!"))
-    qids_fixed, invalid_names = \
-        _quantities.lookup_qids_by_name(fixable_quantities, fix, )
-    if invalid_names:
-        raise _wrongdoings.IrisPieError(
-            (f"Cannot fix these names:", ) + invalid_names
-        )
-    wrt_qids = tuple(
-        q.id
-        for q in fixable_quantities
-        if q.id not in qids_fixed
-    )
-    return wrt_qids
     #]
 
 

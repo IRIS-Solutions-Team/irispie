@@ -211,7 +211,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
 
     def __getitem__(
         self,
-        request,
+        request: str | int,
         /,
     ):
         """
@@ -224,14 +224,16 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
 
     def __setitem__(
         self,
-        reference,
+        reference: str,
         value: Any,
         /,
     ) -> None:
         """
         """
         if isinstance(reference, str):
-            self.assign(**{reference: value}, )
+            self._assign({reference: value}, )
+        else:
+            raise NotImplementedError("Assigning model variants not implemented yet", )
 
     def __repr__(self, /, ) -> str:
         """
@@ -255,11 +257,10 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
     ) -> Any:
         """
         """
-        names = (name, )
         quantities = self._invariant.quantities
-        qids, invalid_names = _quantities.lookup_qids_by_name(quantities, names, )
+        qids, invalid_names = _quantities.lookup_qids_by_name(quantities, (name, ), )
         if invalid_names:
-            raise _wrongdoings.IrisPieError(f"Invalid model name \"{invalid_names[0]}\"", )
+            raise _wrongdoings.IrisPieCritical(f"Invalid model name \"{invalid_names[0]}\"", )
         return _has_variants.unpack_singleton(
             self._get_values("levels", qids, )[name],
             self.is_singleton,
@@ -420,7 +421,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         Create unsolved first-order system for each variant
         """
-        model_flags = self._invariant._flags.update_from_kwargs(**kwargs, )
+        model_flags = self.resolve_flags(**kwargs, )
         return tuple(
             self._systemize(variant, self._invariant.dynamic_descriptor, model_flags, )
             for variant in self._variants
@@ -468,7 +469,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         Calculate first-order solution for each variant within this model
         """
-        model_flags = self._invariant._flags.update_from_kwargs(**kwargs, )
+        model_flags = self.resolve_flags(**kwargs, )
         out_info = [
             self._solve(self_v, model_flags, clip_small=clip_small, )
             for self_v in self._variants
@@ -551,6 +552,8 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         return self._invariant._context
 
+    def resolve_flags(self, /, **kwargs, ) -> _flags.Flags:
+        return _flags.Flags.update_from_kwargs(self.get_flags(), **kwargs)
     #]
 
 

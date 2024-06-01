@@ -204,7 +204,6 @@ def generate_qids_by_kind(
 def generate_quantity_names_by_kind(
     quantities: Iterable[Quantity],
     kind: QuantityKind | None,
-    /,
 ) -> Iterator[str | None]:
     """
     """
