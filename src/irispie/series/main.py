@@ -477,13 +477,31 @@ self = Series(
             raise ValueError("Use expand_num_variants to expand the number of variants")
         self.data = self.data[:, :-remove]
 
-    def get_data(
+    def get_values(
         self,
-        dates = ...,
+        *args,
+        unpack_singleton: bool = True,
+        **kwargs,
+    ) -> _np.ndarray:
+        """
+        """
+        data = self.get_data(*args, **kwargs, )
+        values = [ tuple(data_column.tolist()) for data_column in data.T ]
+        return _has_variants.unpack_singleton(
+            values, self.is_singleton,
+            unpack_singleton=unpack_singleton,
+        )
+
+    def get_data(self, *args, **kwargs, ) -> _np.ndarray:
+        return self.get_data_and_periods(*args, **kwargs, )[0]
+
+    def get_data_and_periods(
+        self,
+        dates: Iterable[Period] | None | EllipsisType = ...,
         *args,
     ) -> _np.ndarray:
-        dates, pos, variants, expanded_values = self._resolve_dates_and_positions(dates, *args, )
-        return expanded_values[_np.ix_(pos, variants)]
+        periods, pos, variants, expanded_values = self._resolve_dates_and_positions(dates, *args, )
+        return expanded_values[_np.ix_(pos, variants)], periods
 
     def get_data_variant(
         self,
@@ -638,7 +656,6 @@ self = Series(
         new_data = _np.hstack((new_data, *add_data))
         new = Series(num_variants=new_data.shape[1], )
         new.set_data(encompassing_span, new_data, )
-        new.trim()
         return new
 
     def clip(
@@ -996,7 +1013,7 @@ def _get_num_leading_trailing_missing_rows(data: _np.ndarray, /, ):
     """
     #[
     # Boolean index of rows with at least one observation
-    boolex_observations = ~_np.any(_np.isnan(data, ), axis=1, )
+    boolex_observations = ~_np.all(_np.isnan(data, ), axis=1, )
     if _np.all(boolex_observations, ):
         # All rows have at least one observation
         num_leading = 0
