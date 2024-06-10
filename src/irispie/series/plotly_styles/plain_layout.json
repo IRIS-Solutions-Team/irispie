@@ -17,7 +17,6 @@
         "orientation": "h"
     },
     "title": {
-        "text": null,
         "yanchor": "top",
         "yref": "container",
         "y": 0.98,

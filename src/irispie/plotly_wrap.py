@@ -17,7 +17,7 @@ from . import pages as _pages
 __all__ = (
     "make_subplots",
     "highlight",
-    "PlotlyWrapper",
+    "plotly",
 )
 
 
@@ -125,7 +125,7 @@ def resolve_subplot(
         "custom": "Customizing charts",
     },
 )
-class PlotlyWrapper:
+class plotly:
     """
 ················································································
 
@@ -134,7 +134,11 @@ Plotly wrapper
 
 ················································································
     """
+    #[
+
+    Figure = _pg.Figure
     make_subplots = staticmethod(make_subplots)
     highlight = staticmethod(highlight)
 
+    #]
 

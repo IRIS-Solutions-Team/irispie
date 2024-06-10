@@ -16,6 +16,7 @@ import itertools as _it
 import functools as _ft
 import operator as _op
 import copy as _cp
+import textwrap as _tw
 
 from ..conveniences import descriptions as _descriptions
 from ..conveniences import copies as _copies
@@ -73,20 +74,24 @@ _ELEMENTWISE_FUNCTIONS = {
     "normal_pdf": _sp.stats.norm.pdf,
 }
 
+FUNCTION_ADAPTATIONS_TIMEWISE_NUMPY = (
+    "sum",
+    "mean",
+)
+
 
 # FIXME
 FUNCTION_ADAPTATIONS_ELEMENTWISE = tuple(_ELEMENTWISE_FUNCTIONS.keys())
+
 FUNCTION_ADAPTATIONS_NUMPY_APPLY = () # ("maximum", "minimum", "mean", "median", "abs", )
 FUNCTION_ADAPTATIONS_BUILTINS = ("max", "min", )
 FUNCTION_ADAPTATIONS = tuple(set(
     FUNCTION_ADAPTATIONS_ELEMENTWISE
-    # + FUNCTION_ADAPTATIONS_NUMPY
-    # + FUNCTION_ADAPTATIONS_BUILTINS
 ))
 
 
 __all__ = (
-    ("Series", "shift", )
+    ("Series", "shift", "series", )
     + _conversions__all__
     + _diffs_cums__all__
     + _fillings__all__
@@ -1036,6 +1041,9 @@ self = Series(
     for n in FUNCTION_ADAPTATIONS_ELEMENTWISE:
         exec(f"def {n}(self, *args, **kwargs, ): self.data = _ELEMENTWISE_FUNCTIONS['{n}'](self.data, *args, **kwargs, )")
 
+    for n in FUNCTION_ADAPTATIONS_TIMEWISE_NUMPY:
+        exec(f"def {n}(self, *args, **kwargs, ): self.data = _np.{n}(self.data, axis=1, *args, **kwargs, ).reshape(-1, 1)")
+
     #]
 
 
@@ -1072,6 +1080,23 @@ def _create_data_variant_from_number(
     /,
 ) -> _np.ndarray:
     return _np.full((len(span), 1), number, dtype=data_type)
+
+
+class series:
+    """
+    """
+    #[
+
+    for n in FUNCTION_ADAPTATIONS_TIMEWISE_NUMPY:
+        exec(_tw.dedent(f"""
+            @staticmethod
+            def {n}(self: Series, *args, **kwargs, ) -> None:
+                new = self.copy()
+                new.{n}(*args, **kwargs, )
+                return new
+        """))
+
+    #]
 
 
 for n in FUNCTION_ADAPTATIONS_ELEMENTWISE:
