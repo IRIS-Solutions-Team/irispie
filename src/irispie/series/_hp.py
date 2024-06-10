@@ -294,7 +294,7 @@ class Inlay:
     `span` argument if necessary.
 
 
-???+ abstract "Math description"
+???+ abstract "Algorighm"
 
     The constrained Hodrick-Prescott filter is a method for decomposing a
     time series into a lower-frequency (trend) component and a

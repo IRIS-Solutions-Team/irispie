@@ -127,11 +127,12 @@ class SteadyPlan(
         """
         True if there are no exogenized, endogenized or fixed names in the plan
         """
-        return not any(
-            status
-            for r in self._registers
-            for status in self._get_register_by_name(r, )
-        )
+        return not any( self.any_in_register(r, ) for r in self._registers )
+
+    def any_in_register(self, register_name: str, /, ) -> bool:
+        """
+        """
+        return any(self._get_register_by_name(register_name, ).values(), )
 
     def _write_to_register(
         self,

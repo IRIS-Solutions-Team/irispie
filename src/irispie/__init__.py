@@ -28,6 +28,9 @@ from .sources import __all__ as sources_all
 from .simultaneous import *
 from .simultaneous import __all__ as simultaneous_all
 
+from .vector_autoregressions import *
+from .vector_autoregressions import __all__ as vector_autoregressions_all
+
 from .quantities import *
 from .quantities import __all__ as quantities_all
 
@@ -85,6 +88,7 @@ __all__ = (
     *databoxes_all,
     *sources_all,
     *simultaneous_all,
+    *vector_autoregressions_all,
     *quantities_all,
     *equations_all,
     *sequentials_all,

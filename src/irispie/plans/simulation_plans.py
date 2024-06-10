@@ -48,6 +48,7 @@ class SimulationPlannableProtocol(Protocol, ):
     #]
 
 
+#[
 @_pages.reference(
     path=("structural_models", "simulation_plans.md", ),
     categories={
@@ -59,6 +60,7 @@ class SimulationPlannableProtocol(Protocol, ):
         "information_sequential": "Getting information about simulation plans for [`Sequential` models](sequential.md)",
     },
 )
+#]
 class SimulationPlan(
     _registers.Mixin,
     _pretty.Mixin,
@@ -265,9 +267,13 @@ values.
     Specifies whether the exogenization should only occur if a valid 
     value exists in the input data.
 
+
 ### Returns ###
 
-This method modifies the object in place and does not return a value.
+
+???+ returns "None"
+    This method modifies `self` in-place and does not return a value.
+
 
 ................................................................................
         """
@@ -586,7 +592,10 @@ quantity in the pair at the specified dates. It is equivalent to calling
 
 ### Returns ###
 
-Returns no value; the method modifies the `SimulationPlan` object in place.
+
+???+ returns "None"
+    This method modifies `self` in-place and does not return a value.
+
 
 ................................................................................
         """
@@ -637,7 +646,10 @@ quantity in the pair at the specified dates. It is equivalent to calling
 
 ### Returns ###
 
-Returns no value; the method modifies the `SimulationPlan` object in place.
+
+???+ returns "None"
+    This method modifies `self` in-place and does not return a value.
+
 
 ................................................................................
         """

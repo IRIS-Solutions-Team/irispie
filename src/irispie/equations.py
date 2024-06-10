@@ -6,8 +6,7 @@ Model equations
 #[
 from __future__ import annotations
 
-from typing import (Self, Callable, )
-from collections.abc import (Iterable, )
+from typing import (Self, Iterable, Callable, )
 import enum as _en
 import re as _re
 import numpy as _np
@@ -16,6 +15,7 @@ import itertools as _it
 import operator as _op
 import copy as _cp
 
+from .incidences.main import (Token, )
 from .incidences import main as _incidence
 from . import quantities as _quantities
 from . import attributes as _attributes
@@ -68,7 +68,7 @@ class Equation(
     kind: EquationKind | None = None
     description: str | None = None
     xtring: str | None = None
-    incidence: _incidence.Tokens | None = None
+    incidence: Iterable[Token] | None = None
     entry: int | None = None
     attributes: set[str] = ()
 
@@ -96,7 +96,7 @@ class Equation(
     #]
 
 
-def generate_all_tokens_from_equations(equations: Iterable[Equation], /, ) -> _incidence.Tokens:
+def generate_all_tokens_from_equations(equations: Iterable[Equation], /, ) -> Iterable[Token]:
     return _it.chain.from_iterable(eqn.incidence for eqn in equations)
 
 
@@ -171,8 +171,8 @@ def create_equator_func_string(xtrings: str) -> str:
 
 def create_eid_to_wrt_tokens(
     equations: Iterable[Equation],
-    all_wrt_tokens: _incidence.Tokens,
-) -> dict[int, _incidence.Tokens]:
+    all_wrt_tokens: Iterable[Token],
+) -> dict[int, Iterable[Token], ]:
     """
     """
     #[
@@ -196,18 +196,18 @@ def create_human_to_eid(
 def xtring_from_human(
     human: str,
     name_to_id: dict[str, int],
-) -> tuple[str, set[_incidence.Token]]:
+) -> tuple[str, set[Token]]:
     """
     Convert human string to xtring and retrieve incidence tokens
     """
     #[
-    tokens_list: list[_incidence.Token] = []
+    tokens_list: list[Token] = []
 
     def _replace_human_with_x(match: _re.Match) -> str:
         name = match.group(1)
         qid = name_to_id[name]
         shift = _resolve_shift_str(match.group(2))
-        new_token = _incidence.Token(qid, shift)
+        new_token = Token(qid, shift)
         tokens_list.append(new_token)
         return new_token.print_xtring()
 
@@ -317,28 +317,33 @@ def lookup_eids_by_human_starts(
     return valid_eids, invalid_human_starts
 
 
-def create_incidence_matrix(
-    equations: Iterable[_equations.Equation],
-    quantities: Iterable[_quantities.Quantity],
+def calculate_incidence_matrix(
+    equations: Iterable[Equation],
+    num_quantities: int,
+    token_within_quantities: Callable,
     /,
-    shift_test: Callable | None = None,
     data_type: type = bool,
 ) -> _np.ndarray:
     """
     """
     #[
+    equations = tuple(equations)
     num_equations = len(equations)
-    num_quantities = len(quantities)
     incidence_matrix = _np.zeros((num_equations, num_quantities), dtype=data_type, )
-    qids = tuple(_quantities.generate_all_qids(quantities))
-    qid_to_column = { qid: column for column, qid in enumerate(qids) }
     for row_index, eqn in enumerate(equations):
+        #
+        # For each incidenc token in this equation, the
+        # `token_within_quantities` function returns either an integer meaning
+        # the incidence token is to be included in the incidence matrix in the
+        # corresponding column, or None meaning the incidence token is not to be
+        # in the incidence matrix. The Nones need to be filtered out.
         column_indices = tuple(
-            qid_to_column[tok.qid]
-            for tok in eqn.incidence
-            if tok.qid in qids and (shift_test(tok) if shift_test else True)
+            token_within_quantities(inc_tok, )
+            for inc_tok in eqn.incidence
         )
+        column_indices = tuple(i for i in column_indices if i is not None)
         incidence_matrix[row_index, column_indices] = True
+        #
     return incidence_matrix
     #]
 

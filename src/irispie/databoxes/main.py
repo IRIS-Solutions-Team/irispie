@@ -560,9 +560,8 @@ or a callable function taking a source name and returning the new target name.
 
 ### Returns ###
 
+Returns `None`; `self` is modified in place.
 
-???+ returns "None"
-    Alters the Databox in-place without returning a value.
 
 ················································································
         """
@@ -612,9 +611,8 @@ single name, a callable that returns `True` for names to be removed, or `None`.
 
 ### Returns ###
 
+Returns `None`; `self` is modified in place.
 
-???+ returns "None"
-    This method does not return any value but modifies the Databox in-place.
 
 ················································································
         """

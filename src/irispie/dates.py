@@ -1854,7 +1854,8 @@ depending on the direction and magnitude of the shift.
 
 ### Returns ###
 
-This method modifies the object in place and does not return a value.
+???+ returns "None"
+    This method modifies `self` in-place and does not return a value.
 
 ................................................................................
         """
@@ -2118,7 +2119,9 @@ position in the timeline.
 
 ### Returns ###
 
-This method modifies the object in place and does not return a value.
+???+ returns "None"
+    This method modifies `self` in-place and does not return a value.
+
 
 ................................................................................
         """

@@ -1,14 +1,14 @@
 """
 """
 
-
 #[
 from __future__ import annotations
 
 from collections.abc import (Iterable, )
 from typing import (Any, )
 
-from .. import equations as _equations
+from ..equations import (Equation, )
+from ..quantities import (Quantity, )
 from .. import quantities as _quantities
 from ..explanatories import main as _explanatories
 from ..conveniences import descriptions as _descriptions
@@ -24,7 +24,9 @@ class Invariant(
 
     __slots__ = (
         "explanatories",
-        "all_names",
+        "lhs_names",
+        "residual_names",
+        "rhs_only_names",
         "parameter_names",
         "_context",
         "_description",
@@ -34,7 +36,9 @@ class Invariant(
         """
         """
         self.explanatories = ()
-        self.all_names = ()
+        self.lhs_names = ()
+        self.residual_names = ()
+        self.rhs_only_names = ()
         self.parameter_names = ()
         self._context = {}
         self._description = ""
@@ -42,8 +46,8 @@ class Invariant(
     @classmethod
     def from_equations(
         klass,
-        equations: Iterable[_equations.Equation],
-        quantities: Iterable[_quantities.Quantity] | None,
+        equations: Iterable[Equation],
+        quantities: Iterable[Quantity] | None,
         /,
         context: dict[str, Any] | None = None,
         description: str | None = None,
@@ -58,7 +62,7 @@ class Invariant(
             _explanatories.Explanatory(e, context=self._context, **kwargs, )
             for e in equations
         )
-        self.collect_all_names()
+        self.collect_names()
         self.finalize_explanatories()
         quantity_names = _quantities.generate_all_quantity_names(quantities, )
         self.parameter_names = tuple(n for n in quantity_names if n in self.all_names)
@@ -72,24 +76,44 @@ class Invariant(
         return len(self.explanatories)
 
     @property
-    def lhs_names(self, /, ) -> tuple[str]:
+    def num_lhs_names(self, /, ) -> int:
         """
-        Tuple of names of LHS variables in order of appearance.
+        Number of unique LHS names
         """
-        return tuple( x.lhs_name for x in self.explanatories )
+        return len(self.lhs_names)
 
     @property
-    def residual_names(self, /, ) -> tuple[str]:
+    def equations(self, /, ) -> tuple[Equation]:
+        return tuple( x.equation for x in self.explanatories )
+
+    def collect_names(self, /, ) -> None:
+        """
+        """
+        self.collect_lhs_names()
+        self.collect_residual_names()
+        self.collect_rhs_only_names()
+
+    def collect_lhs_names(self, /, ) -> None:
+        """
+        Tuple of names of LHS variables in order of their first appearance in the equations
+        """
+        self.lhs_names = []
+        for x in self.explanatories:
+            if x.lhs_name not in self.lhs_names:
+                self.lhs_names.append(x.lhs_name)
+        self.lhs_names = tuple(self.lhs_names)
+
+    def collect_residual_names(self, /, ) -> tuple[str]:
         """
         Tuple of names of LHS variables in order of appearance
         """
-        return tuple(
-            x.residual_name
-            for x in self.explanatories
-            if x.residual_name is not None
-        )
+        self.residual_names = []
+        for x in self.explanatories:
+            if x.residual_name not in self.residual_names:
+                self.residual_names.append(x.residual_name)
+        self.residual_names = tuple(self.residual_names)
 
-    def collect_all_names(
+    def collect_rhs_only_names(
         self,
         /,
     ) -> None:
@@ -97,9 +121,14 @@ class Invariant(
         """
         all_names = set()
         for x in self.explanatories:
-            all_names.update(x.all_names)
-        rhs_only_names = tuple(all_names.difference(self.lhs_names + self.residual_names, ))
-        self.all_names = self.lhs_names + rhs_only_names + self.residual_names
+            all_names.update(x.all_names, )
+        self.rhs_only_names = tuple(all_names.difference(self.lhs_names + self.residual_names, ))
+
+    @property
+    def all_names(self, /, ) -> tuple[str]:
+        """
+        """
+        return self.lhs_names + self.rhs_only_names + self.residual_names
 
     def finalize_explanatories(
         self,
@@ -113,14 +142,23 @@ class Invariant(
 
     def reorder_equations(
         self,
-        order = Iterable[int],
+        new_order = Iterable[int],
         /,
     ) -> None:
+        """
+        """
+        # Check if new_order is a valid permutation
+        if sorted(new_order) != list(range(self.num_equations)):
+            raise ValueError("New equation order must be a permutation of integers from 0 to num_equations-1")
+        #
         self.explanatories = [
             self.explanatories[i]
-            for i in order
+            for i in new_order
         ]
-        self.collect_all_names()
+        # We need to recollect the names to make sure the LHS names and the
+        # residual names are in the right order consistent with the new order
+        # of the equations
+        self.collect_names()
         self.finalize_explanatories()
 
     def create_name_to_qid(self, /, ) -> dict[str, int]:

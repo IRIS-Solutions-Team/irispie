@@ -6,9 +6,7 @@ Steady state evaluator
 #[
 from __future__ import annotations
 
-from collections.abc import (Iterable, )
-from typing import (Any, )
-from numbers import (Number, )
+from typing import (TYPE_CHECKING, )
 import itertools as _it
 import numpy as _np
 
@@ -20,6 +18,11 @@ from ..jacobians import steady as _jacobians
 from ..simultaneous import variants as _variants
 
 from . import printers as _printers
+
+if TYPE_CHECKING:
+    from typing import (Any, )
+    from collections.abc import (Iterable, )
+    from numbers import (Number, )
 #]
 
 
@@ -30,14 +33,15 @@ class SteadyEvaluator:
     """
     """
     #[
+
     _equator_factory = ...
     _jacobian_factory = ...
     _iter_printer_factory = ...
 
     def __init__(
         self,
-        wrt_qids_levels: list[int],
-        wrt_qids_changes: list[int],
+        wrt_qids_levels: Iterable[int],
+        wrt_qids_changes: Iterable[int],
         wrt_equations: Iterable[_equations.Equation],
         all_quantities: Iterable[_quantities.Quantity],
         variant: _variants.Variant,
@@ -113,6 +117,8 @@ class SteadyEvaluator:
             qid_to_name,
             **(iter_printer_settings or {}),
         )
+        #
+        self.final_guess = None
 
     @property
     def _column_offset(self, /, ) -> int:
@@ -141,8 +147,8 @@ class SteadyEvaluator:
 
     def _merge_levels_and_changes(
         self,
-        wrt_qids_levels: list[str],
-        wrt_qids_changes: list[str],
+        wrt_qids_levels: Iterable[str],
+        wrt_qids_changes: Iterable[str],
         /,
     ) -> None:
         """
@@ -183,6 +189,7 @@ class SteadyEvaluator:
         changes = changes[self._bool_index_wrt_changes]
         wrt_qids_changes = tuple(_it.compress(self.wrt_qids, self._bool_index_wrt_changes, ))
         return changes, wrt_qids_changes
+
     #]
 
 

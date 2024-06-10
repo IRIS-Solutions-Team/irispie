@@ -8,19 +8,56 @@ from __future__ import annotations
 from collections.abc import (Generator, Iterable, )
 from typing import (Any, )
 import numpy as _np
-import dataclasses as _dc
 
 from .. import wrongdoings as _wrongdoings
+from ..equations import (Equation, )
+from ..quantities import (Quantity, )
 #]
 
 
-@_dc.dataclass
+class HumanBlock:
+    """
+    """
+    #[
+
+    __slots__ = (
+        "equations",
+        "quantities",
+    )
+
+    def __init__(
+        self,
+        block: _Block,
+        equations: Iterable[Equation],
+        quantities: Iterable[Quantity],
+    ) -> None:
+        """
+        """
+        self
+        self.equations = tuple(equations[eid].human for eid in sorted(block.eids))
+        self.quantities = tuple(quantities[qid].human for qid in sorted(block.qids))
+
+    #]
+
+
 class _Block:
     """
     """
     #[
-    eids: tuple[int, ...] | None = None
-    qids: tuple[int, ...] | None = None
+
+    __slots__ = (
+        "eids",
+        "qids",
+    )
+
+    def __init__(
+        self, eids: Iterable[int] | None = None,
+        qids: Iterable[int] | None = None,
+    ) -> None:
+        """
+        """
+        self.eids = tuple(sorted(eids))
+        self.qids = tuple(sorted(qids))
 
     @property
     def num_equations(self, ) -> int:
@@ -29,6 +66,15 @@ class _Block:
     @property
     def num_quantities(self, ) -> int:
         return len(self.qids)
+
+    def get_qids_after_removing_fixed(
+        self,
+        fixed_level_qids: Iterable[int] | None = None,
+        fixed_change_qids: Iterable[int] | None = None,
+    ) -> tuple[int, ...]:
+        """
+        """
+
     #]
 
 
@@ -37,6 +83,8 @@ def blaze(
     /,
     eids: Iterable[int] = None,
     qids: Iterable[int] = None,
+    #
+    return_info: bool = False,
 ) -> tuple[tuple[_Block, ...], dict[str, Any]]:
     """
     Complete sequential block analysis of incidence matrix
@@ -72,20 +120,24 @@ def blaze(
     # Step 3: Create a tuple with a Block object for each block of
     # equations and equantities
     #
-    first_blocks = tuple(_Block(eid, qid, ) for eid, qid in zip(eids_first, qids_first, ))
+    first_blocks = tuple(_Block((eid, ), (qid, ), ) for eid, qid in zip(eids_first, qids_first, ))
     inner_blocks = tuple(_generate_inner_blocks(im_inner, eids=eids_inner, qids=qids_inner, ))
-    last_blocks = tuple(_Block(eid, qid, ) for eid, qid in zip(eids_last, qids_last, ))
+    last_blocks = tuple(_Block((eid, ), (qid, ), ) for eid, qid in zip(eids_last, qids_last, ))
     #
-    info = {
-        "eids_first": eids_first,
-        "qids_first": qids_first,
-        "eids_last": eids_last,
-        "qids_last": qids_last,
-        "eids_inner": eids_inner,
-        "qids_inner": qids_inner,
-        "im_inner": im_inner,
-    }
-    return first_blocks + inner_blocks + last_blocks, info
+    out_blocks = first_blocks + inner_blocks + last_blocks
+    if return_info:
+        info = {
+            "eids_first": eids_first,
+            "qids_first": qids_first,
+            "eids_last": eids_last,
+            "qids_last": qids_last,
+            "eids_inner": eids_inner,
+            "qids_inner": qids_inner,
+            "im_inner": im_inner,
+        }
+        return out_blocks, info
+    else:
+        return out_blocks
     #]
 
 
@@ -306,4 +358,14 @@ def is_sequential(
     """
     """
     return _np.all(~_np.triu(im, order))
+
+
+def human_blocks_from_blocks(
+    blocks: Iterable[_Block],
+    equations: Iterable[Equation],
+    quantities: Iterable[Quantity],
+) -> tuple[HumanBlock, ...]:
+    """
+    """
+    return tuple(HumanBlock(block, equations, quantities) for block in blocks)
 

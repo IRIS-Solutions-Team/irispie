@@ -15,13 +15,13 @@ import numpy as _np
 import itertools as _it
 import functools as _ft
 
+from .. import has_invariant as _has_invariant
+from .. import has_variants as _has_variants
 from .. import equations as _equations
 from .. import quantities as _quantities
 from .. import sources as _sources
 from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
-from .. import has_invariant as _has_invariant
-from .. import has_variants as _has_variants
 from .. import pages as _pages
 from ..conveniences import iterators as _iterators
 from ..parsers import common as _pc
@@ -96,12 +96,13 @@ class Simultaneous(
 
     def __init__(
         self,
-        /,
+        invariant: Invariant | None = None,
+        variants: list[Variant] | None = None,
     ) -> None:
         """
         """
-        self._invariant = None
-        self._variants = []
+        self._invariant = invariant or Invariant()
+        self._variants = variants or []
 
     @classmethod
     def skeleton(

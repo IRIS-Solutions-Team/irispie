@@ -118,6 +118,7 @@ def _get_date_positions(dates, base, num_periods, /, ):
     categories={
         "constructor": "Constructing new time series",
         "conversion": "Converting time series frequency",
+        "homogenizing": "Homogenizing time series",
         "filtering": "Filtering time series",
         "moving": "Applying moving window functions",
         "temporal_change": "Calculating temporal change",
@@ -230,9 +231,9 @@ self = Series(
 ### Returns ###
 
 
-???+ returns "self"
+???+ returns "None"
+    This method modifies `self` in-place and does not return a value.
 
-    The newly created `Series` object.
 
 ················································································
         """
@@ -658,12 +659,42 @@ self = Series(
         new.set_data(encompassing_span, new_data, )
         return new
 
+    @_pages.reference(category="homogenizing", )
     def clip(
         self,
         /,
         new_start: Period | None,
         new_end_date: Period | None,
     ) -> None:
+        r"""
+················································································
+
+==Clip time series to a new start and end period==
+
+    self.clip(new_start, new_end)
+
+
+### Input arguments ###
+
+
+???+ input "new_start"
+    The new start period for the `self` time series; if `None`, the current
+    start period is kept.
+
+???+ input "new_end"
+    The new end period for the `self` time series; if `None`, the current
+    end period is kept.
+
+
+### Returns ###
+
+
+???+ returns "None"
+    This method modifies `self` in-place and does not return a value.
+
+
+················································································
+        """
         if new_start is None or new_start < self.start:
             new_start = self.start
         if new_end_date is None or new_end_date > self.end_date:

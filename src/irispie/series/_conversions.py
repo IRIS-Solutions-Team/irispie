@@ -151,7 +151,7 @@ class Inlay:
         method: str = "flat",
         **kwargs,
     ) -> Self:
-        """
+        r"""
 ················································································
 
 ==Disaggregate time series to a higher frequency==
@@ -192,17 +192,46 @@ class Inlay:
     | "flat"    | Repeat the high-frequency values
     | "first"   | Place the low-frequency value in the first high-frequency period
     | "last"    | Place the low-frequency value in the last high-frequency period
-    | "arip"    | Use an autoregressive interpolation method
+    | "arip"    | Interpolate using a smooth autoregressive process
 
 
 ### Returns ###
 
 
-???+ returns "self"
-    The original time `Series` object with the disaggregated data.
-
 ???+ returns "new"
     A new time `Series` object with the disaggregated data.
+
+
+
+### Details ###
+
+???+ details "ARIP method"
+
+    The ARIP method is a smooth interpolation method that assumes the underlying
+    high-frequency process to be an autoregression. The method can be described
+    in its state-space recursive form, although the numerical implementation is
+    stacked-time.
+
+    The `"rate"` model:
+
+    $$
+    \begin{gathered}
+    x_t = \rho \, x_{t-1} + \epsilon_t \\[10pt]
+    y_t = Z h_t \\[10pt]
+    \epsilon_t \sim N(0, \sigma_t^2)
+    \end{gathered}
+    $$
+
+    The `"diff"` model:
+
+    $$
+    \begin{gathered}
+    x_t = x_{t-1} + c + \epsilon_t \\[10pt]
+    y_t = Z h_t \\[10pt]
+    \epsilon_t \sim N(0, 1)
+    \end{gathered}
+    $$
+
 
 ················································································
         """

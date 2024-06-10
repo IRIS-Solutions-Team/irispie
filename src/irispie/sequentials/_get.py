@@ -17,5 +17,10 @@ class Inlay:
         """
         return tuple(self._invariant.parameter_names)
 
+    def get_equations(self, /, ) -> tuple[str, ...]:
+        """
+        """
+        return tuple(e.human for e in self._invariant.equations)
+
     #]
 

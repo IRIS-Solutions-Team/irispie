@@ -6,8 +6,7 @@ Sequential models
 #[
 from __future__ import annotations
 
-from collections.abc import (Iterable, Iterator, )
-from typing import (Self, Any, )
+from typing import (TYPE_CHECKING, )
 import numpy as _np
 import copy as _co
 import os as _os
@@ -16,6 +15,7 @@ from .. import equations as _equations
 from .. import quantities as _quantities
 from .. import sources as _sources
 from .. import pages as _pages
+from ..incidences.main import (Token, )
 from ..incidences import main as _incidences
 from ..incidences import blazer as _blazer
 from ..explanatories import main as _explanatories
@@ -28,6 +28,12 @@ from . import _assigns as _assigns
 from . import _get as _get
 from . import _slatable_protocol as _slatable_protocol
 from . import _plannable_protocols as _plannable_protocols
+
+if TYPE_CHECKING:
+    from typing import (Self, Any, )
+    from collections.abc import (Iterable, Iterator, )
+    from ..equations import (Equation, )
+    from ..quantities import (Quantity, )
 
 #]
 
@@ -219,9 +225,9 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
     @classmethod
     def from_equations(
         klass,
-        equations: Iterable[_equations.Equation],
+        equations: Iterable[Equation],
         /,
-        quantities: Iterable[_quantities.Quantity] | None = None,
+        quantities: Iterable[Quantity] | None = None,
         **kwargs,
     ) -> Self:
         """
@@ -261,14 +267,26 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
     @property
     @_pages.reference(category="property", )
     def lhs_names(self, /, ) -> tuple[str]:
-        """==Names of LHS variables in order of their equations=="""
-        return tuple(self._invariant.lhs_names)
+        """==Unique names of LHS variables in order of their first appearance in equations=="""
+        return self._invariant.lhs_names
+
+    @property
+    @_pages.reference(category="property", )
+    def lhs_names_in_equations(self, /, ) -> tuple[str]:
+        """==Names of LHS variables in order of their appearance in equations=="""
+        return tuple( x.lhs_name for x in self._invariant.explanatories )
 
     @property
     @_pages.reference(category="property", )
     def residual_names(self, /, ) -> tuple[str]:
-        """==Names of residuals in order of their equations=="""
-        return tuple(self._invariant.residual_names)
+        """==Unique names of residuals in order of their first appearance in  equations=="""
+        return self._invariant.residual_names
+
+    @property
+    @_pages.reference(category="property", )
+    def residual_names_in_equations(self, /, ) -> tuple[str]:
+        """==Names of residuals in order of their appearance in  equations=="""
+        return tuple( x.residual_name for x in self._invariant.explanatories )
 
     @property
     @_pages.reference(category="property", )
@@ -306,7 +324,7 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
 
     @property
     @_pages.reference(category="property", )
-    def equation_strings(self, /, ) -> tuple[_equations.Equation]:
+    def equation_strings(self, /, ) -> tuple[Equation]:
         """==Equation strings in order of appearance=="""
         return tuple(
             x.equation.human
@@ -315,15 +333,15 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
 
     @property
     @_pages.reference(category="property", )
-    def lhs_quantities(self, /, ) -> tuple[_quantities.Quantity]:
+    def lhs_quantities(self, /, ) -> tuple[Quantity]:
         """==LHS quantities in order of appearance=="""
         lhs_names = self._invariant.lhs_names
-        kind = _quantities.QuantityKind.LHS_VARIABLE
+        kind = QuantityKind.LHS_VARIABLE
         logly = False
+        name_to_qid = self.create_name_to_qid()
         return tuple(
-            _quantities.Quantity(qid, name, kind, logly, desc, )
-            for (qid, name), desc in zip(enumerate(self._invariant.all_names), self.descriptions)
-            if name in lhs_names
+            Quantity(name_to_qid[name], name, kind, logly, self.descriptions[name_to_qid[name]], )
+            for name in self.lhs_names
         )
 
     @property
@@ -331,6 +349,12 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
     def num_equations(self, /, ) -> int:
         """==Number of equations=="""
         return self._invariant.num_equations
+
+    @property
+    @_pages.reference(category="property", )
+    def num_lhs_names(self, /, ) -> int:
+        """==Number of unique LHS names=="""
+        return self._invariant.num_lhs_names
 
     @property
     def descriptions(self, /, ) -> tuple[str]:
@@ -344,12 +368,18 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
     @_pages.reference(category="property", )
     def incidence_matrix(self, /, ) -> _np.ndarray:
         """==Incidence matrix with equations in rows and LHS quantities in columns=="""
-        def _shift_test(tok: _incidences.Token) -> bool:
-            return tok.shift == 0
-        return _equations.create_incidence_matrix(
+        num_lhs_names = len(self.lhs_names)
+        def token_within_quantities(tok: Token, /, ) -> bool:
+            return (
+                tok.qid
+                if tok.qid < num_lhs_names and tok.shift == 0
+                else None
+            )
+            #
+        return _equations.calculate_incidence_matrix(
             self.equations,
-            self.lhs_quantities,
-            shift_test=_shift_test,
+            len(self.lhs_names),
+            token_within_quantities,
         )
 
     @property
@@ -391,15 +421,8 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
         )
 
     @property
-    def equations(self, /, ) -> tuple[_equations.Equation]:
-        return tuple(
-            x.equation
-            for x in self._invariant.explanatories
-        )
-
-    #
-    #  Public methods
-    #
+    def equations(self, /, ) -> tuple[Equation]:
+        return self._invariant.equations
 
     @_pages.reference(category="manipulation", )
     def reorder_equations(self, *args, **kwargs, ) -> None:

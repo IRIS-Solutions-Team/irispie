@@ -76,7 +76,10 @@ self.assign(databox, )
 
 ### Returns ###
 
-Returns no value; the method modifies the model in place.
+
+???+ returns "None"
+    This method modifies `self` in-place and does not return a value.
+
 
 ················································································
         """
