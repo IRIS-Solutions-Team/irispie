@@ -205,19 +205,19 @@ class Inlay:
 
 ### Details ###
 
-???+ details "ARIP method"
+???+ details "ARIP algorithm"
 
-    The ARIP method is a smooth interpolation method that assumes the underlying
-    high-frequency process to be an autoregression. The method can be described
-    in its state-space recursive form, although the numerical implementation is
-    stacked-time.
+    The `method="arip" setting invokes an interpolation method that assumes the
+    underlying high-frequency process to be an autoregression. The method can be
+    described in its state-space recursive form, although the numerical
+    implementation is stacked-time.
 
     The `"rate"` model:
 
     $$
     \begin{gathered}
     x_t = \rho \, x_{t-1} + \epsilon_t \\[10pt]
-    y_t = Z h_t \\[10pt]
+    y_t = Z \, x_t \\[10pt]
     \epsilon_t \sim N(0, \sigma_t^2)
     \end{gathered}
     $$
@@ -227,11 +227,33 @@ class Inlay:
     $$
     \begin{gathered}
     x_t = x_{t-1} + c + \epsilon_t \\[10pt]
-    y_t = Z h_t \\[10pt]
+    y_t = Z \, x_t \\[10pt]
     \epsilon_t \sim N(0, 1)
     \end{gathered}
     $$
 
+    where
+
+    * $x_t$ is the underlying high-frequency process;
+
+    * $y_t$ is the observed low-frequency time series;
+
+    * $Z$ is an aggregation vector depending on the `aggregation` specification,
+
+    | Aggregation | $Z$ vector
+    |-------------|-----------
+    | "sum"       | $(1, 1, \ldots, 1)$
+    | "mean"      | $\tfrac{1}{n}\,(1, 1, \ldots, 1)$
+    | "first"     | $(1, 0, \ldots, 0)$
+    | "last"      | $(0, 0, \ldots, 1)$
+
+    * $\rho$ is a gross rate of change estimated as the average rate of change
+    in the observed series, $y_t$, and converted to high frequency;
+
+    * $c$ is a constant estimated as the average difference in the observed
+    series, $y_t$, and converted to high frequency;
+
+    * $\sigma_t$ is a time-varying standard deviation of the high-frequency process, set to $\sigma_0 = 1$, and $\sigma_t = \rho \, \sigma_{t-1}$.
 
 ················································································
         """

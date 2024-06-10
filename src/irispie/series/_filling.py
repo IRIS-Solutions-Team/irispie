@@ -9,6 +9,7 @@ from typing import (TYPE_CHECKING, Literal, )
 import functools as _ft
 import numpy as _np
 
+from .. import pages as _pages
 from . import _functionalize
 
 if TYPE_CHECKING:

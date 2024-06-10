@@ -12,6 +12,7 @@ import textwrap as _tw
 
 from ..conveniences import copies as _copies
 from ..series.main import (Series, )
+from .. import pages as _pages
 from . import _registers as _registers
 from . import _pretty as _pretty
 
@@ -43,6 +44,17 @@ class SimulationPlannableProtocol(Protocol, ):
 
 
 
+#[
+@_pages.reference(
+    path=("structural_models", "steady_plans.md", ),
+    categories={
+        "constructor": "Creating new steady plans",
+        "exogenizing": "Exogenizing and endogenizing steady-state values",
+        "fixing": "Fixing steady-state values",
+        "information": "Getting information about steady plans",
+    },
+)
+#]
 class SteadyPlan(
     _registers.Mixin,
     _pretty.Mixin,
@@ -67,11 +79,22 @@ class SteadyPlan(
         + tuple(f"_{r}_register" for r in _registers)
     )
 
+    @_pages.reference(
+        category="constructor",
+        call_name="SteadyPlan",
+    )
     def __init__(
         self,
         model,
         **kwargs,
     ) -> None:
+        r"""
+················································································
+
+==Create new steady plan object==
+
+................................................................................
+        """
         plannable = model.get_steady_plannable(**kwargs, )
         def default_value(*args, **kwargs, ):
             return False
@@ -94,15 +117,27 @@ class SteadyPlan(
                 return self._get_names_from_register("{register_name}", )
         """))
 
+    @_pages.reference(category="fixing", )
     def fix(self, *args, **kwargs, ) -> None:
-        """
+        r"""
+................................................................................
+
+==Fix steady-state values==
+
+................................................................................
         """
         self.fix_level(*args, **kwargs, )
         if self._fixed_change_register:
             self.fix_change(*args, **kwargs, )
 
+    @_pages.reference(category="fixing", )
     def unfix(self, *args, **kwargs, ) -> None:
-        """
+        r"""
+................................................................................
+
+==Unfix steady-state values==
+
+................................................................................
         """
         self.unfix_level(*args, **kwargs, )
         if self._fixed_change_register:
