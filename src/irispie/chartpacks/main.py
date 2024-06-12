@@ -184,7 +184,7 @@ self = Chartpack(
         )
         if show_figures:
             for f in figures: f.show()
-        # return figures
+        return figures
 
     def format_figure_titles(
         self,

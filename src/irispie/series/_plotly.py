@@ -102,6 +102,7 @@ class Inlay:
         xline = None,
         type = None,
         chart_type: Literal["line", "bar_stack", "bar_group"] = "line",
+        highlight: Iterable[Period] | None = None,
         update_traces: tuple(dict[str, Any], ) | dict | None = None,
         freeze_span: bool = False,
         reverse_plot_order: bool = False,
@@ -125,8 +126,9 @@ class Inlay:
         #
         date_format = span[0].frequency.plotly_format
         figure = _pg.Figure() if figure is None else figure
-        tile, index = _plotly_wrap.resolve_subplot(figure, subplot, )
-        row, column = (tile[0]+1, tile[1]+1, ) if tile is not None else (None, None, )
+
+        # Subplot resolution
+        row_column, index = _plotly_wrap.resolve_subplot(figure, subplot, )
 
         if show_legend is None:
             show_legend = legend is not None
@@ -167,7 +169,7 @@ class Inlay:
             }
             traces_settings.update(update_traces_v or {}, )
             traces_object = _PLOTLY_TRACES_FUNC[chart_type](color, **traces_settings, )
-            figure.add_trace(traces_object, row=row, col=column, )
+            figure.add_trace(traces_object, **row_column, )
             out_traces += tuple(figure.select_traces({"customdata": customdata}, ))
 
         # REFACTOR
@@ -184,16 +186,15 @@ class Inlay:
             bar_mode = figure.layout["barmode"]
         layout["barmode"] = bar_mode
 
-
         xaxis["tickformat"] = date_format
         xaxis["ticklabelmode"] = "period"
-        if freeze_span:
-            xaxis["range"] = from_to_strings
-            xaxis["autorange"] = False
 
-        figure.update_xaxes(xaxis, row=row, col=column, )
-        figure.update_yaxes(yaxis, row=row, col=column, )
+        figure.update_xaxes(xaxis, **row_column, )
+        figure.update_yaxes(yaxis, **row_column, )
         figure.update_layout(layout or {}, )
+
+        if freeze_span:
+            _plotly_wrap.freeze_span(figure, span, subplot, )
 
         if figure_title is not None:
             figure.update_layout({"title.text": figure_title, }, )
@@ -211,6 +212,9 @@ class Inlay:
                 else xline
             )
             figure.add_vline(xline, )
+
+        if highlight is not None:
+            _plotly_wrap.highlight(figure, highlight, )
 
         if show_figure:
             figure.show()

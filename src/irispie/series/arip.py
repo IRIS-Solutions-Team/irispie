@@ -22,7 +22,7 @@ AggregationType = Literal["sum", "mean", "avg", "last", "first", ]
 
 def disaggregate_arip(
     self,
-    target_dater_class: _dates.Dater,
+    target_period_class: _dates.Period,
     /,
     model: tuple[FormType, AggregationType],
     target: Self | None = None,
@@ -40,7 +40,7 @@ def disaggregate_arip(
 
     low_freq = self.start_date.frequency
     num_low_periods = self.num_periods
-    high_freq = target_dater_class.frequency
+    high_freq = target_period_class.frequency
     num_within = high_freq // low_freq
     num_high_periods = num_low_periods * num_within
 

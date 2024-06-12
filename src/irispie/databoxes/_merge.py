@@ -6,10 +6,15 @@ Merge mixin
 #[
 from __future__ import annotations
 
-from typing import (Self, Iterable, Literal, )
+from typing import (TYPE_CHECKING, )
+import warnings as _wa
+
 from .. import wrongdoings as _wrongdoings
 from ..series import main as _series
 from . import main as _databoxes
+
+if TYPE_CHECKING:
+    from typing import (Self, Iterable, Literal, )
 #]
 
 
@@ -30,7 +35,7 @@ class Inlay:
         """
         # Legacy name
         if action is not None:
-            _wa.warn("The 'action' parameter is deprecated. Use 'merge_strategy' instead", DeprecationWarning, )
+            _wa.warn("The 'action' input argument is deprecated; use 'merge_strategy' instead", )
             merge_strategy = action
         #
         merge_strategy_func = _MERGE_STRATEGY[merge_strategy]

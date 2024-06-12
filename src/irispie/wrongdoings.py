@@ -12,6 +12,7 @@ import warnings as _wa
 import os as _os
 #]
 
+
 _WARN_SKIPS = (_os.path.dirname(__file__), )
 HOW: TypeAlias = Literal["error", "warning", "silent"]
 
@@ -90,6 +91,9 @@ def _raise_as_warning(
     except TypeError:
         _wa.warn(message, IrisPieWarning, )
     #]
+
+
+warn = _raise_as_warning
 
 
 def _raise_as_silent(

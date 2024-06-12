@@ -32,7 +32,9 @@ _PLAIN_EQUATOR_EQUATION = (
 )
 
 
-class Invariant(_descriptions.DescriptionMixin, ):
+class Invariant(
+    _descriptions.DescriptionMixin,
+):
     """
     Invariant part of a Simultaenous object
     """

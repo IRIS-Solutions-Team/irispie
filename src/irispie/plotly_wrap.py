@@ -9,14 +9,12 @@ from typing import (Sequence, Iterable, )
 import plotly.graph_objects as _pg
 import plotly.subplots as _ps
 
-from . import dates as _dates
+from .dates import (Period, )
 from . import pages as _pages
 #]
 
 
 __all__ = (
-    "make_subplots",
-    "highlight",
     "plotly",
 )
 
@@ -59,7 +57,7 @@ def make_subplots(
 @_pages.reference(category="custom", )
 def highlight(
     figure: _pg.Figure,
-    span: Iterable[_dates.Dater],
+    span: Iterable[Period] | None = None,
     /,
     subplot: tuple[int, int] | int | None = None,
     fill_color: str = "rgba(0, 0, 0, 0.15)",
@@ -69,17 +67,22 @@ def highlight(
 
 ==Highlight a certain date span in charts==
 
+Highlight a certain time span in a figure. The span can be specified either as a
+time `Span`, or a tuple of two `Periods`.
+
+    irispie.plotly.highlight(span)
+
 ················································································
     """
-    span = tuple(span)
+    start, end = _resolve_figure_span(figure, span, )
     _, index = resolve_subplot(figure, subplot, )
     xref = f"x{index+1}" if index else "x"
     yref = f"y{index+1} domain" if index else "y domain"
     shape = {
         "type": "rect",
         "xref": xref,
-        "x0": span[0].to_plotly_date(position="start", ),
-        "x1": span[-1].to_plotly_date(position="end", ),
+        "x0": start,
+        "x1": end,
         "yref": yref,
         "y0": 0,
         "y1": 1,
@@ -89,17 +92,53 @@ def highlight(
     figure.add_shape(shape, )
 
 
+def freeze_span(
+    figure: _pg.Figure,
+    span: Iterable[Period],
+    /,
+    subplot: tuple[int, int] | int | None = None,
+) -> None:
+    """
+    """
+    start, end = _resolve_figure_span(figure, span, )
+    xaxis_update = {
+        "range": (start, end),
+        "autorange": False,
+    }
+    row_column, *_ = resolve_subplot(figure, subplot, )
+    figure.update_xaxes(xaxis_update, **row_column, )
+
+
+def _resolve_figure_span(
+    figure: _pg.Figure,
+    span: Iterable[Period] | None = None,
+) -> tuple[str, str]:
+    """
+    """
+    #[
+    if hasattr(span, "start", ) and hasattr(span, "end", ):
+        start = span.start if span.start else None
+        end = span.end if span.end else None
+    elif span:
+        start, end = span[0], span[-1]
+    else:
+        start, end = None, None
+    figure_span = figure.layout.xaxis.range
+    start = start.to_plotly_date(position="start", ) if start is not None else figure_span[0]
+    end = end.to_plotly_date(position="end", ) if end is not None else figure_span[-1]
+    return start, end
+    #]
+
+
 def resolve_subplot(
     figure: _pg.Figure,
     subplot: tuple[int, int] | int | None,
     /,
-) -> tuple[tuple[int, int], int]:
+) -> tuple[dict[str, int], int]:
     """
     """
     if subplot is None:
-        tile = None
-        index = None
-        return tile, index,
+        return {}, None
     rows, columns = figure._get_subplot_rows_columns()
     num_rows = len(rows)
     num_columns = len(columns)
@@ -107,14 +146,14 @@ def resolve_subplot(
         row = subplot[0]
         column = subplot[1]
         index = row * num_columns + column
-        tile = row, column,
-        return tile, index,
+        row_column = {"row": row+1, "col": column+1, }
+        return row_column, index,
     if isinstance(subplot, int):
         index = subplot
         row = index // num_columns
         column = index % num_columns
-        tile = row, column,
-        return tile, index,
+        row_column = {"row": row+1, "col": column+1, }
+        return row_column, index,
     raise TypeError(f"Invalid subplot type: {type(subplot)}")
 
 
@@ -139,6 +178,7 @@ Plotly wrapper
     Figure = _pg.Figure
     make_subplots = staticmethod(make_subplots)
     highlight = staticmethod(highlight)
+    freeze_span = staticmethod(freeze_span)
 
     #]
 

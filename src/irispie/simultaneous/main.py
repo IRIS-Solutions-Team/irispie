@@ -34,8 +34,8 @@ from ..fords import systems as _systems
 from ..fords import kalmans as _kalmans
 from ..fords import std_simulators as _std_simulators
 
-from . import invariants as _invariants
-from . import variants as _variants
+from .invariants import (Invariant, )
+from .variants import (Variant, )
 from . import _covariances as _covariances
 from . import _flags as _flags
 from . import _simulate as _simulate
@@ -101,7 +101,7 @@ class Simultaneous(
     ) -> None:
         """
         """
-        self._invariant = invariant or Invariant()
+        self._invariant = invariant
         self._variants = variants or []
 
     @classmethod
@@ -360,7 +360,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
     def create_steady_array(
         self,
         /,
-        variant: _variants.Variant | None = None,
+        variant: Variant | None = None,
         **kwargs,
     ) -> _np.ndarray:
         """
@@ -373,7 +373,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
     def create_zero_array(
         self,
         /,
-        variant: _variants.Variant | None = None,
+        variant: Variant | None = None,
         **kwargs,
     ) -> _np.ndarray:
         """
@@ -430,7 +430,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
 
     def _systemize(
         self,
-        variant: _variants.Variant,
+        variant: Variant,
         descriptor: _descriptors.Descriptor,
         model_flags: flags.Flags,
         /,
@@ -486,7 +486,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
 
     def _solve(
         self,
-        variant: _variants.Variant,
+        variant: Variant,
         model_flags: flags.Flags,
         /,
         clip_small: bool,
@@ -538,8 +538,8 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         """
         self = klass()
-        self._invariant = _invariants.Invariant(source, **kwargs, )
-        initial_variant = _variants.Variant(
+        self._invariant = Invariant(source, **kwargs, )
+        initial_variant = Variant(
             self._invariant.quantities,
             self._invariant._flags.is_flat,
         )
