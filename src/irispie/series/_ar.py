@@ -39,7 +39,7 @@ class Inlay:
         intercept: Real = 0,
         log: bool = False,
     ) -> None:
-        """
+        r"""
 ......................................................................
 
 ==Extrapolate time series using autoregressive process==
@@ -109,15 +109,18 @@ The new extrapolated observations are created using this $p$-th order
 autoregressive process defined recursively as:
 
 $$
-\begin{align}
-x_t = \rho_1 \, x_{t-1} + \cdots \rho_p \, x_{t-p} + c \\[10pt]
-t = 1, \dots, T
-\end{align}
+x_t = \rho_1 \, x_{t-1} + \cdots + \rho_p \, x_{t-p} + c, \qquad t = 1, \dots, T
 $$
 
-with the initial condion $x_{0},\ x_{-1}, \, \dots,\ x_{-p+1}$ are taken from
-the existing observations in the input series `self`, and the autoregressive coefficents
-$\rho_1,\ \rho_2,\ \dots,\ \rho_$ given by the input argument `ar_coeff`.
+where
+
+* the initial condion $x_{0},\ x_{-1}, \, \dots,\ x_{-p+1}$ are taken from
+the existing observations in the input series `self`;
+
+* the autoregressive coefficents
+$\rho_1,\ \rho_2,\ \dots,\ \rho_p$ given by the input argument `ar_coeff`
+
+* $c$ is the `intercept`.
 
 ......................................................................
         """
