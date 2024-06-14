@@ -32,6 +32,7 @@ from . import _filling
 from . import _moving
 from . import _conversions
 from . import _hp
+from . import _ar
 from . import _x13
 
 from . import _indexing
@@ -47,6 +48,9 @@ from ._filling import *
 
 from ._hp import __all__ as _hp__all__
 from ._hp import *
+
+from ._ar import __all__ as _ar__all__
+from ._ar import *
 
 from ._x13 import __all__ as _x13__all__
 from ._x13 import *
@@ -96,6 +100,7 @@ __all__ = (
     + _diffs_cums__all__
     + _fillings__all__
     + _hp__all__
+    + _ar__all__
     + _moving__all__
     + _x13__all__
     + FUNCTION_ADAPTATIONS
@@ -123,7 +128,7 @@ def _get_date_positions(dates, base, num_periods, /, ):
     categories={
         "constructor": "Constructing new time series",
         "conversion": "Converting time series frequency",
-        "homogenizing": "Homogenizing time series",
+        "homogenizing": "Homogenizing and extrapolating time series",
         "filtering": "Filtering time series",
         "moving": "Applying moving window functions",
         "temporal_change": "Calculating temporal change",
@@ -136,6 +141,7 @@ class Series(
     _temporal.Inlay,
     _filling.Inlay,
     _hp.Inlay,
+    _ar.Inlay,
     _moving.Inlay,
     _x13.Inlay,
     _plotly.Inlay,
@@ -323,15 +329,15 @@ self = Series(
     @_pages.reference(category="property", )
     def span(self, ):
         """==Time span of the time series=="""
-        return Span(self.start, self.end_date, ) if self.start else ()
+        return Span(self.start, self.end, ) if self.start else ()
 
     range = span
 
     @property
     @_pages.reference(category="property", )
-    def from_to(self, ):
+    def from_until(self, ):
         """==Two-tuple with the start date and end date of the time series=="""
-        return self.start, self.end_date
+        return self.start, self.end
 
     @property
     @_pages.reference(category="property", )
@@ -348,8 +354,10 @@ self = Series(
         raise NotImplementedError
 
     @property
-    def start_date(self, /, ):
+    def start_period(self, /, ):
         return self.start
+
+    start_date = start_period
 
     @property
     @_pages.reference(category="property", )
@@ -360,6 +368,7 @@ self = Series(
             if self.start else None
         )
 
+    end_period = end
     end_date = end
 
     @property
@@ -520,28 +529,28 @@ self = Series(
         variant = variant if variant and variant<self.data.shape[1] else 0
         return self.get_data(dates, variant, )
 
-    def get_data_from_to(
+    def get_data_from_until(
         self,
-        from_to,
+        from_until,
         *args,
     ) -> _np.ndarray:
         """
         """
         _, pos, variants, expanded_data \
-            = self._resolve_dates_and_positions(from_to, *args, )
+            = self._resolve_dates_and_positions(from_until, *args, )
         from_pos, to_pos = pos[0], pos[-1]+1
         return expanded_data[from_pos:to_pos, variants]
 
-    def get_data_variant_from_to(
+    def get_data_variant_from_until(
         self,
-        from_to: Iterable[Period],
+        from_until: Iterable[Period],
         variant: int | None = None,
         /,
     ) -> _np.ndarray:
         """
         """
         variant = variant if variant and variant < self.data.shape[1] else 0
-        return self.get_data_from_to(from_to, variant, )
+        return self.get_data_from_until(from_until, variant, )
 
     def extract_variants(
         self,
@@ -562,7 +571,7 @@ self = Series(
         self.start = new_start
         return self
 
-    def _resolve_dates(self, dates, ):
+    def _resolve_dates(self, dates, ) -> tuple[Period]:
         """
         """
         if dates is None:
@@ -651,10 +660,10 @@ self = Series(
         if all(i.is_empty() for i in self_args):
             num_variants = sum(i.num_variants for i in self_args)
             return Series(num_variants=num_variants, )
-        encompassing_span, *from_to = _dates.get_encompassing_span(self, *args, )
-        new_data = self.get_data_from_to(from_to, )
+        encompassing_span, *from_until = _dates.get_encompassing_span(self, *args, )
+        new_data = self.get_data_from_until(from_until, )
         add_data = (
-            x.get_data_from_to(from_to, )
+            x.get_data_from_until(from_until, )
             if hasattr(x, "get_data")
             else _create_data_variant_from_number(x, encompassing_span, self.data_type)
             for x in args
@@ -669,7 +678,7 @@ self = Series(
         self,
         /,
         new_start: Period | None,
-        new_end_date: Period | None,
+        new_end: Period | None,
     ) -> None:
         r"""
 ················································································
@@ -702,11 +711,11 @@ self = Series(
         """
         if new_start is None or new_start < self.start:
             new_start = self.start
-        if new_end_date is None or new_end_date > self.end_date:
-            new_end_date = self.end_date
-        if new_start == self.start and new_end_date == self.end_date:
+        if new_end is None or new_end > self.end:
+            new_end = self.end
+        if new_start == self.start and new_end == self.end:
             return
-        self.data = self.get_data_from_to((new_start, new_end_date, ), )
+        self.data = self.get_data_from_until((new_start, new_end, ), )
         self.start = new_start
 
     def is_empty(self, ) -> bool:
@@ -957,12 +966,12 @@ self = Series(
         if not isinstance(other, type(self)):
             return self.apply(lambda data: func(data, other))
         # FIXME: empty encompassing range
-        _, *from_to = _dates.get_encompassing_span(self, other)
-        self_data = self.get_data_from_to(from_to, )
-        other_data = other.get_data_from_to(from_to, )
+        _, *from_until = _dates.get_encompassing_span(self, other)
+        self_data = self.get_data_from_until(from_until, )
+        other_data = other.get_data_from_until(from_until, )
         new_data = func(self_data, other_data)
         new = Series(num_variants=new_data.shape[1], ) if new is None else new
-        new._replace_start_and_values(from_to[0], new_data, )
+        new._replace_start_and_values(from_until[0], new_data, )
         return new
 
     def _broadcast_variants(self, num_variants, /, ) -> None:
@@ -1015,23 +1024,23 @@ self = Series(
     def iter_variants(self, /, ) -> Iterator[Self]:
         """
         """
-        for data in self.iter_data_variants_from_to(..., ):
+        for data in self.iter_data_variants_from_until(..., ):
             new = self.copy()
             new._replace_data(data, )
             yield new
 
-    def iter_own_data_variants_from_to(self, from_to, /, ) -> Iterator[_np.ndarray]:
+    def iter_own_data_variants_from_until(self, from_until, /, ) -> Iterator[_np.ndarray]:
         """
         Iterates over the data variants from the given start date to the given end date
         """
-        data_from_to = self.data if from_to == ... else self.get_data_from_to(from_to, )
-        return iter(data_from_to.T, )
+        data_from_until = self.data if from_until == ... else self.get_data_from_until(from_until, )
+        return iter(data_from_until.T, )
 
-    def iter_data_variants_from_to(self, from_to, /, ) -> Iterator[_np.ndarray]:
+    def iter_data_variants_from_until(self, from_until, /, ) -> Iterator[_np.ndarray]:
         """
         Iterates over the data variants from the given start date to the given end date
         """
-        return _iterators.exhaust_then_last(self.iter_own_data_variants_from_to(from_to, ), )
+        return _iterators.exhaust_then_last(self.iter_own_data_variants_from_until(from_until, ), )
 
     def logistic(self, /, ) -> Self:
         """

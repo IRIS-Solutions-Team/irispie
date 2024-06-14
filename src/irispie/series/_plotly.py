@@ -146,7 +146,7 @@ class Inlay:
             legend = _it.repeat(None, )
 
         zipped = zip(
-            self.iter_own_data_variants_from_to(from_to, ),
+            self.iter_own_data_variants_from_until(from_to, ),
             legend,
             color_cycle,
             update_traces_cycle,

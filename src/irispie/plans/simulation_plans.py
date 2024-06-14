@@ -11,6 +11,7 @@ from typing import (Self, Any, Protocol, NoReturn, )
 from types import (EllipsisType, )
 import itertools as _it
 import numpy as _np
+import textwrap as _tw
 
 from ..conveniences import copies as _copies
 from ..dates import (Period, )
@@ -179,11 +180,17 @@ Create a new simulation plan object for a
         """==Start date of the simulation span=="""
         return self.base_span[0]
 
+    start_period = start
+    start_date = start
+
     @property
     @_pages.reference(category="property", )
     def end(self, /, ) -> Period:
         """==End date of the simulation span=="""
         return self.base_span[-1]
+
+    end_period = end
+    end_date = end
 
     @property
     @_pages.reference(category="property", )
@@ -808,10 +815,15 @@ quantity in the pair at the specified dates. It is equivalent to calling
         def _get_status_symbol(status, ):
             return status.symbol if hasattr(status, "symbol") else _PRETTY_SYMBOL.get(status, "")
         #
-        def _get_value(db, name, date, ):
+        def _get_value(db, name, date, status, ):
             missing_str = Series._missing_str
+            databox_name = (
+                status.resolve_databox_name(name, )
+                if hasattr(status, "resolve_databox_name")
+                else name
+            )
             try:
-                value = db[name][date][0, 0]
+                value = db[databox_name][date][0, 0]
             except:
                 return missing_str
             if _np.isnan(value):
@@ -819,7 +831,7 @@ quantity in the pair at the specified dates. It is equivalent to calling
             return f"{value:g}"
         #
         all_rows = (
-            (k, str(date), action, _get_status_symbol(status), _get_value(db, k, date, ), )
+            (k, str(date), action, _get_status_symbol(status), _get_value(db, k, date, status, ), )
             for k, v in register.items()
             for status, date in zip(v, self.base_span)
             if status is not None and status is not False
@@ -831,7 +843,30 @@ quantity in the pair at the specified dates. It is equivalent to calling
             representative = _create_representative_for_table_rows(tuple(g), )
             table.add_row(representative, )
 
+    for n in _registers:
+        exec(_tw.dedent(f"""
+            def get_{n}(self, ) -> tuple[Period, ...]:
+                return _get_registered_periods(self._{n}_register, self.base_span, )
+        """))
+
     #]
+
+
+def _get_registered_periods(
+    register: dict[str, Any],
+    base_span: tuple[Period],
+    /,
+) -> dict[str, tuple[Period]]:
+    """
+    """
+    return {
+        k: tuple(
+            period
+            for period, status in zip(base_span, v)
+            if status is not None and status is not False
+        )
+        for k, v in register.items()
+    }
 
 
 def catch_invalid_periods(
@@ -863,7 +898,7 @@ def _create_representative_for_table_rows(rows, ):
     if len(rows) == 1:
         return rows[0]
     else:
-        return (rows[0][0], rows[0][1] + ">>" + rows[-1][1], rows[0][2], rows[0][3], )
+        return (rows[0][0], rows[0][1] + ">>" + rows[-1][1], *rows[0][2:], )
 
 
 Plan = SimulationPlan

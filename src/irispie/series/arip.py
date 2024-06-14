@@ -36,7 +36,7 @@ def disaggregate_arip(
     low_start_date = self.start_date
     low_end_date = self.end_date
     low_data_variant_iterator \
-        = self.iter_own_data_variants_from_to((low_start_date, low_end_date, ), )
+        = self.iter_own_data_variants_from_until((low_start_date, low_end_date, ), )
 
     low_freq = self.start_date.frequency
     num_low_periods = self.num_periods

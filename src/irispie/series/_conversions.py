@@ -304,7 +304,7 @@ def _aggregate_daily_to_regular(
     new_data = tuple(
         tuple(
             aggregate_within_data_func(data_variant[get_slice_func(t)])
-            for data_variant in self.iter_own_data_variants_from_to(from_to, )
+            for data_variant in self.iter_own_data_variants_from_until(from_to, )
         )
         for t in _dates.Ranger(new_start_date, new_end_date)
     )

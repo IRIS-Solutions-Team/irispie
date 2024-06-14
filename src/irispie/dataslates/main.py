@@ -482,8 +482,8 @@ def _slate_value_variant_iterator(
     """
     """
     #[
-    if hasattr(value, "iter_data_variants_from_to"):
-        return value.iter_data_variants_from_to(from_to, )
+    if hasattr(value, "iter_data_variants_from_until"):
+        return value.iter_data_variants_from_until(from_to, )
     elif isinstance(value, Iterable):
         return _iterators.exhaust_then_last(value, )
     else:

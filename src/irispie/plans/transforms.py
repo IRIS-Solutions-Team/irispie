@@ -78,14 +78,15 @@ class PlanTransform:
 
     def resolve_databox_name(
         self,
-        base_name: str, 
+        base_name: str,
         /,
     ) -> str | None:
         """
         """
         return (
             self._name_format.format(base_name, )
-            if self._name_format is not None else None
+            if self._name_format is not None
+            else None
         )
 
     def eval_exogenized(

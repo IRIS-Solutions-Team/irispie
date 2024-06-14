@@ -13,6 +13,7 @@ from typing import (Self, )
 import numpy as _np
 
 from .. import pages as _pages
+from ..dates import (Period, Frequency, )
 from .. import dates as _dates
 from . import main as _series
 from . import _functionalize
@@ -23,10 +24,10 @@ __all__ = ("hpf", )
 
 
 _AUTO_SMOOTH = {
-    _dates.Frequency.YEARLY: (10*1)**2,
-    _dates.Frequency.HALFYEARLY: (10*2)**2,
-    _dates.Frequency.QUARTERLY: (10*4)**2,
-    _dates.Frequency.MONTHLY: (10*12)**2,
+    Frequency.YEARLY: (10*1)**2,
+    Frequency.HALFYEARLY: (10*2)**2,
+    Frequency.QUARTERLY: (10*4)**2,
+    Frequency.MONTHLY: (10*12)**2,
     "default": (10*4)**2,
 }
 
@@ -174,6 +175,7 @@ class Inlay:
 
 ### Functional forms creating a new time `Series` object ###
 
+
     trend, gap = irispie.hpf(
         self,
         /,
@@ -186,6 +188,7 @@ class Inlay:
 
 
 ### Class methods changing an existing time `Series` object in-place ###
+
 
     self.hpf_trend(
         /,
@@ -359,24 +362,25 @@ class Inlay:
 def _data_hpf(
     self,
     *,
-    span: Iterable[_dates.Dater] | EllipsisType = ...,
+    span: Iterable[Period] | EllipsisType = ...,
     smooth: Real | None = None,
     log: bool = False,
     level: _series.Series | None = None,
     change: _series.Series | None = None,
-) -> tuple[_dates.Dater, _np.ndarray, _np.ndarray]:
+) -> tuple[Period, _np.ndarray, _np.ndarray]:
     """
     Hodrick-Prescott filter run on a multi-variant data matrix
     """
     #[
-    if smooth is None:
-        smooth = _get_default_smooth(self.frequency, )
     span = self._resolve_dates(span, )
     encompassing_span, *from_to = _dates.get_encompassing_span(self, level, change, span, )
     num_periods = len(encompassing_span, )
     level_data, level_where = _prepare_constraints(level, from_to, )
     change_data, change_where = _prepare_constraints(change, from_to, )
     change_data, change_where = _remove_first_date_change(change_data, change_where, )
+    #
+    if smooth is None:
+        smooth = _get_default_smooth(self.frequency, )
     #
     hp = _ConstrainedHodrickPrescottFilter(
         num_periods,
@@ -388,7 +392,7 @@ def _data_hpf(
     #
     trend_data = []
     gap_data = []
-    for data_variant in self.iter_own_data_variants_from_to(from_to, ):
+    for data_variant in self.iter_own_data_variants_from_until(from_to, ):
         trend_data_variant, gap_data_variant = hp.filter_data(
             data_variant,
             level_data=level_data,
@@ -434,7 +438,7 @@ for n in ("hpf_trend", "hpf_gap", ):
 
 def _prepare_constraints(
     constraint: Self | None,
-    from_to: tuple[_dates.Dater, _dates.Dater, ],
+    from_to: tuple[Period, Period, ],
     /,
 ) -> tuple[_np.ndarray | None, list[int] | None, ]:
     #[
