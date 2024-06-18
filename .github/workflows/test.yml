@@ -11,4 +11,4 @@ jobs:
        - run: |
            pip install irispie pytest
        - run: |
-           pytest tests/series
+           pytest irispie-package/tests/series
