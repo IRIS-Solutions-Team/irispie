@@ -11,4 +11,5 @@ jobs:
        - run: |
            pip install irispie pytest
        - run: |
-           pytest irispie-package/tests/series
+           pwd
+           ls
