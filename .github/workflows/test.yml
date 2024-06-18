@@ -10,14 +10,15 @@ jobs:
         with:
           fetch-depth: 0
           ref: master
-          path: .
+          path: ./irispie-package
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - run: |
-          pip install irispie pytest
+          pip install -e ./irispie-package
+          pip install pytest
 
       - run: |
-          pytest tests/series
+          pytest ./irispie-package/tests/series
