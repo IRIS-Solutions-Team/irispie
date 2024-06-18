@@ -29,6 +29,6 @@ jobs:
           echo Passed
 
       - name: When failed
-        if: ${{ failed() }}
+        if: ${{ failure() }}
         run: |
           echo Failed
