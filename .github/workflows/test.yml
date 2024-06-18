@@ -22,3 +22,13 @@ jobs:
 
       - run: |
           pytest ./irispie-package/tests/series
+
+      - name: When passed
+        if: ${{ success() }}
+        run: |
+          echo Passed
+
+      - name: When failed
+        if: ${{ failed() }}
+        run: |
+          echo Failed
