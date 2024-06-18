@@ -117,7 +117,7 @@ class Inlay:
         #
         span = self._resolve_dates(span, )
         span = [ t for t in span ]
-        from_to = (span[0], span[-1], )
+        from_until = (span[0], span[-1], )
         #
         frequency = span[0].frequency
         # data = self.get_data(span, )
@@ -146,7 +146,7 @@ class Inlay:
             legend = _it.repeat(None, )
 
         zipped = zip(
-            self.iter_own_data_variants_from_until(from_to, ),
+            self.iter_own_data_variants_from_until(from_until, ),
             legend,
             color_cycle,
             update_traces_cycle,

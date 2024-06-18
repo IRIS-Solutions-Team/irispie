@@ -134,9 +134,9 @@ class Dataslate(
         if validators:
             Databox.validate(databox, validators, )
         #
-        from_to = periods[0], periods[-1] if periods else ()
+        from_until = periods[0], periods[-1] if periods else ()
         item_iterator = \
-            _ft.partial(_slate_value_variant_iterator, from_to=from_to, )
+            _ft.partial(_slate_value_variant_iterator, from_until=from_until, )
         #
         databox_variant_iterator = \
             Databox.iter_variants(databox, item_iterator=item_iterator, names=names, )
@@ -368,7 +368,7 @@ class Dataslate(
         return target_db
         #]
 
-    for n in ["num_periods", "from_to", "num_row", "base_slice", "base_columns", "nonbase_columns", ]:
+    for n in ["num_periods", "from_until", "num_row", "base_slice", "base_columns", "nonbase_columns", ]:
         exec(f"{n} = property(lambda self: self._invariant.{n})", )
 
     def get_data_variant(
@@ -477,13 +477,13 @@ def _get_extended_span(
 def _slate_value_variant_iterator(
     value: Any,
     /,
-    from_to: tuple[Period, Period],
+    from_until: tuple[Period, Period],
 ) -> Iterator[Any]:
     """
     """
     #[
     if hasattr(value, "iter_data_variants_from_until"):
-        return value.iter_data_variants_from_until(from_to, )
+        return value.iter_data_variants_from_until(from_until, )
     elif isinstance(value, Iterable):
         return _iterators.exhaust_then_last(value, )
     else:

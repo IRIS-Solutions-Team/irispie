@@ -87,10 +87,12 @@ class Invariant:
         return len(self.names)
 
     @property
-    def from_to(self, /, ) -> tuple[Period, Period]:
+    def from_until(self, /, ) -> tuple[Period, Period]:
         """
         """
         return self.periods[0], self.periods[-1]
+
+    from_to = from_until
 
     @property
     def base_periods(self, /, ) -> tuple[Period]:

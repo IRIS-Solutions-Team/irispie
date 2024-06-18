@@ -4,6 +4,7 @@ import random as rn
 import numpy as np
 import irispie as ir
 
+
 rn.seed(0)
 
 
@@ -19,7 +20,7 @@ N = 10
 
 
 @pytest.mark.parametrize(
-    "x", [ random_series() for _ in range(N, ) ]
+    ["x"], [ (random_series(), ) for _ in range(N, ) ]
 )
 def test_hpf_additive(x, ):
     xt, xg = ir.hpf(x, )
@@ -27,7 +28,7 @@ def test_hpf_additive(x, ):
 
 
 @pytest.mark.parametrize(
-    "x, level_value", [(random_series(), rn.uniform(0, 1)) for _ in range(N, )]
+    ["x", "level_value"], [(random_series(), rn.uniform(0, 1)) for _ in range(N, )]
 )
 def test_hpf_level(x, level_value, ):
     x = ir.Series(periods=ir.qq(2020,1)>>ir.qq(2025,4), func=rn.gauss, )
@@ -38,7 +39,7 @@ def test_hpf_level(x, level_value, ):
 
 
 @pytest.mark.parametrize(
-    "x, change_value", [(random_series(), rn.uniform(0, 1)) for _ in range(N, )]
+    ["x", "change_value"], [(random_series(), rn.uniform(0, 1)) for _ in range(N, )]
 )
 def test_hpf_change(x, change_value, ):
     x = ir.Series(periods=ir.qq(2020,1)>>ir.qq(2025,4), func=rn.gauss, )

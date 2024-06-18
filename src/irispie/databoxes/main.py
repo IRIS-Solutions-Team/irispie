@@ -1097,14 +1097,14 @@ Get the encompassing date span for all time series with a specified frequency.
         if source_names is None:
             source_names = context_names
         if isinstance(source_names, str):
-            source_names = tuple(source_names)
+            source_names = (source_names, )
         if callable(source_names):
             func = source_names
             source_names = tuple(n for n in context_names if func(n))
         if target_names is None:
             target_names = source_names
         if isinstance(target_names, str):
-            target_names = tuple(target_names)
+            target_names = (target_names, )
         if callable(target_names):
             func = target_names
             target_names = tuple(func(n) for n in source_names)

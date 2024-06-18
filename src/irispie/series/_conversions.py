@@ -292,7 +292,7 @@ def _aggregate_daily_to_regular(
     #[
     start_date = self.start_date.create_soy()
     end_date = self.end_date.create_eoy()
-    from_to = (start_date, end_date, )
+    from_until = (start_date, end_date, )
     start_year = self.start_date.get_year()
     end_year = self.end_date.get_year()
     new_start_date = new_dater_class.from_year_period(start_year, 1)
@@ -304,7 +304,7 @@ def _aggregate_daily_to_regular(
     new_data = tuple(
         tuple(
             aggregate_within_data_func(data_variant[get_slice_func(t)])
-            for data_variant in self.iter_own_data_variants_from_until(from_to, )
+            for data_variant in self.iter_own_data_variants_from_until(from_until, )
         )
         for t in _dates.Ranger(new_start_date, new_end_date)
     )
@@ -328,7 +328,7 @@ def _aggregate_regular_to_regular(
     end_date = self.end_date.create_eoy()
     new_start_date = new_dater_class.from_year_period(start_year, 1)
     target_freq = new_dater_class.frequency
-    self_data = self.get_data_from_to((start_date, end_date))
+    self_data = self.get_data_from_until((start_date, end_date))
     factor = self.frequency.value // target_freq
     #
     # Loop over variants, create within-period data, and aggregate

@@ -659,6 +659,12 @@ literal.
         """
         return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_ymd(*args, )
 
+    @staticmethod
+    def from_year_period(freq: Frequency, *args, ) -> Self:
+        """
+        """
+        return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_year_period(*args, )
+
     period_from_ymd = from_ymd
     dater_from_ymd = from_ymd
 

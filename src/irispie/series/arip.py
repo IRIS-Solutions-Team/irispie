@@ -222,7 +222,7 @@ def _get_target_data(
     """
     """
     return (
-        target.get_data_from_to((high_start_date, high_end_date), )
+        target.get_data_from_until((high_start_date, high_end_date), )
         if target is not None else _np.full((num_high_periods, ), _np.nan, dtype=float, )
     )
 

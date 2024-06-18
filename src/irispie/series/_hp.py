@@ -373,10 +373,10 @@ def _data_hpf(
     """
     #[
     span = self._resolve_dates(span, )
-    encompassing_span, *from_to = _dates.get_encompassing_span(self, level, change, span, )
+    encompassing_span, *from_until = _dates.get_encompassing_span(self, level, change, span, )
     num_periods = len(encompassing_span, )
-    level_data, level_where = _prepare_constraints(level, from_to, )
-    change_data, change_where = _prepare_constraints(change, from_to, )
+    level_data, level_where = _prepare_constraints(level, from_until, )
+    change_data, change_where = _prepare_constraints(change, from_until, )
     change_data, change_where = _remove_first_date_change(change_data, change_where, )
     #
     if smooth is None:
@@ -392,7 +392,7 @@ def _data_hpf(
     #
     trend_data = []
     gap_data = []
-    for data_variant in self.iter_own_data_variants_from_until(from_to, ):
+    for data_variant in self.iter_own_data_variants_from_until(from_until, ):
         trend_data_variant, gap_data_variant = hp.filter_data(
             data_variant,
             level_data=level_data,
@@ -407,8 +407,8 @@ def _data_hpf(
     if span:
         new_start_date = min(span, )
         new_end_date = max(span, )
-        clip_start = new_start_date - from_to[0]
-        clip_end = new_end_date - from_to[0] + 1
+        clip_start = new_start_date - from_until[0]
+        clip_end = new_end_date - from_until[0] + 1
         trend_data = trend_data[clip_start:clip_end, ...]
         gap_data = gap_data[clip_start:clip_end, ...]
     else:
@@ -438,13 +438,13 @@ for n in ("hpf_trend", "hpf_gap", ):
 
 def _prepare_constraints(
     constraint: Self | None,
-    from_to: tuple[Period, Period, ],
+    from_until: tuple[Period, Period, ],
     /,
 ) -> tuple[_np.ndarray | None, list[int] | None, ]:
     #[
     if constraint is None:
         return None, None
-    data = constraint.get_data_from_to(from_to, 0, )
+    data = constraint.get_data_from_until(from_until, 0, )
     where = list(_np.where(~_np.isnan(data.reshape(-1, ), ), )[0])
     data = data[where, :]
     return data, where

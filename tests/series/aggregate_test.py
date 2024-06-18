@@ -10,7 +10,7 @@ rn.seed(0)
 
 daily_span = ir.dd(2020,1,1) >> ir.dd(2021,12,31)
 
-parameter_names = "method, result_func"
+parameter_names = ["method", "result_func"]
 
 parameters = [
     ("sum", lambda num_days: (1 + num_days) * num_days / 2),
