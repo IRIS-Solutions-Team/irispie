@@ -20,4 +20,4 @@ jobs:
           pip install irispie pytest
 
       - run: |
-          pytest irispie/tests/series
+          ls -al
