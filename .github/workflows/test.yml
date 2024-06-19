@@ -1,3 +1,5 @@
+name: Test and deploy
+
 on:
   workflow_dispatch:
     
@@ -19,11 +21,16 @@ jobs:
 
       - run: |
           pip install -e ./irispie-package
-          pip install pytest
+          pip install pytest toml
 
       - run: |
           cd $GITHUB_WORKSPACE/irispie-package
           pytest ./tests/series -ra > ./tests/report.txt
+
+      - run: |
+          cd $GITHUB_WORKSPACE/irispie-package
+          BUMP_TYPE=$(cat .bump_type)
+          python -m scripts.bump_version --bump_type=$BUMP_TYPE
 
       - name: When passed
         if: ${{ success() }}
