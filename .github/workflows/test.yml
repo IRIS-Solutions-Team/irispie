@@ -11,7 +11,7 @@ jobs:
           fetch-depth: 0
           ref: master
           path: ./irispie-package
-          token: ${{ secrets.IRISPIE_SERVICE_TOKEN }}
+          token: ${{ secrets.IRISPIE_CONTENTS_TOKEN }}
 
       - name: When passed
         run: |
