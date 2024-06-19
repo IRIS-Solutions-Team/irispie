@@ -22,7 +22,7 @@ jobs:
           pip install pytest
 
       - run: |
-          pytest ./irispie-package/tests/series -ra > ./test_report.txt
+          pytest ./irispie-package/tests/series -ra > ./irispie-package/tests/report.txt
 
       - name: When passed
         if: ${{ success() }}
@@ -32,17 +32,15 @@ jobs:
           echo "${{ secrets.IRISPIE_SERVICE_TOKEN }}"
           git config --local user.email "jaromir.benes@gmail.com"
           git config --local user.name "Jaromir Benes"
-          echo "XXX" > xxx
-          cat .git/config
-          git push origin --delete push_test
-          git switch -c push_test
-          git add xxx
+          git push origin --delete test
+          git switch -c test
+          git add ./irispie-package/tests/report.txt          
           git commit -m Test
-          git push origin push_test
+          git push origin test
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
         with:
           name: Test results
-          path: ./test_report.txt
+          path: ./irispie-package/tests/report.txt
 
