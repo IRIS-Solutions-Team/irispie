@@ -11,19 +11,15 @@ jobs:
           fetch-depth: 0
           ref: master
           path: ./irispie-package
-          token: ${{ secrets.IRISPIE_SERVICE_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: false
-
-      - name: Configure user name
-        run: |
-          cd $GITHUB_WORKSPACE/irispie-package
-          git config --global user.email "jaromir.benes@gmail.com"
-          git config --global user.name "Jaromir Benes"
 
       - name: When passed
         if: ${{ success() }}
         run: |
           cd $GITHUB_WORKSPACE/irispie-package
+          git config --global user.email "jaromir.benes@gmail.com"
+          git config --global user.name "Jaromir Benes"
           echo "XXX" > xxx
           cat .git/config
           git switch -c push_test
