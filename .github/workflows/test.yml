@@ -23,7 +23,7 @@ jobs:
           echo "${{ secrets.IRISPIE_SERVICE_TOKEN }}"
           git config --local user.email "jaromir.benes@gmail.com"
           git config --local user.name "Jaromir Benes"
-          git remote set-url origin https://${{ secrets.IRISPIE_SERVICE_TOKEN }}@github.com/IRIS-Solutions-Team/irispie
+          git remote set-url origin  https://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@github.com/IRIS-Solutions-Team/irispie.git
           echo "XXX" > xxx
           cat .git/config
           # git switch -c push_test
