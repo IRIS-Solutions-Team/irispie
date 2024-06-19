@@ -24,8 +24,7 @@ jobs:
         if: ${{ success() }}
         run: |
           cd $GITHUB_WORKSPACE/irispie-package
-          echo "XXX" > ./irispie-package/xxx
-          cd ./irispie-package
+          echo "XXX" > xxx
           cat .git/config
           git switch -c push_test
           git add xxx
