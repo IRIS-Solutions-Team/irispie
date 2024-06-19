@@ -13,7 +13,7 @@ jobs:
           path: ./irispie-package
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: false
-          repository: IRIS-Soutions-Team/irispie
+          repository: IRIS-Solutions-Team/irispie
 
       - name: When passed
         if: ${{ success() }}
