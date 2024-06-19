@@ -67,7 +67,6 @@ jobs:
           git remote set-url origin  https://github.com/IRIS-Solutions-Team/irispie.git
           echo "XXX" > xxx
           cat .git/config
-          git branch -D push_test
           git push origin --delete push_test
           git switch -c push_test
           git add xxx
