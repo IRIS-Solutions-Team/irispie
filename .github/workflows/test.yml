@@ -16,12 +16,14 @@ jobs:
 
       - name: Configure user name
         run: |
+          cd ${ GITHUB_WORKSPACE }/irispie-package
           git config --global user.email "jaromir.benes@gmail.com"
           git config --global user.name "Jaromir Benes"
 
       - name: When passed
         if: ${{ success() }}
         run: |
+          cd ${ GITHUB_WORKSPACE }/irispie-package
           echo "XXX" > ./irispie-package/xxx
           cd ./irispie-package
           cat .git/config
