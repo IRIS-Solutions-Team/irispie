@@ -19,9 +19,10 @@ jobs:
         if: ${{ success() }}
         run: |
           cd $GITHUB_WORKSPACE/irispie-package
+          ls -al
           echo "${{ secrets.IRISPIE_SERVICE_TOKEN }}"
-          git config --global user.email "jaromir.benes@gmail.com"
-          git config --global user.name "Jaromir Benes"
+          git config --local user.email "jaromir.benes@gmail.com"
+          git config --local user.name "Jaromir Benes"
           echo "XXX" > xxx
           cat .git/config
           git switch -c push_test
