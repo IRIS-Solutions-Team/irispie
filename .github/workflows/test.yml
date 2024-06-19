@@ -13,6 +13,11 @@ jobs:
           path: ./irispie-package
           token: ${{ secrets.IRISPIE_SERVICE_TOKEN }}
 
+      - name: Configure user name
+        run: |
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
+
       - name: When passed
         if: ${{ success() }}
         run: |
