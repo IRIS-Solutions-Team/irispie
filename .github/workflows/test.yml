@@ -64,8 +64,9 @@ jobs:
           echo "${{ secrets.IRISPIE_SERVICE_TOKEN }}"
           git config --local user.email "jaromir.benes@gmail.com"
           git config --local user.name "Jaromir Benes"
-          git remote set-url origin  https://github.com/IRIS-Solutions-Team/irispie.git
-          git push origin --delete test
+          if [[ $(git ls-remote --heads github */test) ]]; then
+            git push origin --delete test
+          fi
           git switch -c test
           git add ./irispie-package/tests/report.txt
           git commit -m Test
