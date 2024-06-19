@@ -22,7 +22,8 @@ jobs:
           pip install pytest
 
       - run: |
-          pytest ./irispie-package/tests/series -ra > ./irispie-package/tests/report.txt
+          cd $GITHUB_WORKSPACE/irispie-package
+          pytest ./tests/series -ra > ./tests/report.txt
 
       - name: When passed
         if: ${{ success() }}
@@ -36,7 +37,7 @@ jobs:
             git push origin --delete test
           fi
           git switch -c test
-          git add ./irispie-package/tests/report.txt          
+          git add ./tests/report.txt          
           git commit -m Test
           git push origin test
 
