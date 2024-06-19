@@ -11,8 +11,6 @@ jobs:
           fetch-depth: 0
           ref: master
           path: ./irispie-package
-          token: ${{ secrets.GITHUB_TOKEN }}
-          repository: IRIS-Solutions-Team/irispie
 
       - name: When passed
         run: |
