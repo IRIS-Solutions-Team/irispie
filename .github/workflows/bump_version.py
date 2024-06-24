@@ -7,7 +7,7 @@ import argparse
 import toml
 
 
-def _bump_version(version: str, bump: Literal["major", "minor", "patch"]) -> str:
+def _upgrade_version_string(version: str, bump: Literal["major", "minor", "patch"]) -> str:
     """Bump the version number"""
     major_minor_patch = version.split(".")
     index = next(i for i, e in enumerate(("major", "minor", "patch", )) if e == bump)
@@ -15,24 +15,23 @@ def _bump_version(version: str, bump: Literal["major", "minor", "patch"]) -> str
     return ".".join(major_minor_patch, )
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--bump_type", choices=["major", "minor", "patch"])
-    parser.add_argument("--source_path", )
-    parser.add_argument("--target_path", default=None, )
-    args = parser.parse_args()
-
+def main(args, ):
     with open(args.source_path, "rt", ) as f:
         file = toml.load(f, )
     current_version = file["project"]["version"]
-    bumped_version = _bump_version(current_version, args.bump_type, )
+    bumped_version = _upgrade_version_string(current_version, args.bump_type, )
     file["project"]["version"] = bumped_version
-    print(toml.dumps(file, ), )
+    print(bumped_version, )
     if args.target_path:
         with open(args.target_path, "wt", ) as f:
             f.write(toml.dumps(file, ), )
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--bump_type", choices=["major", "minor", "patch"])
+    parser.add_argument("--source_path", )
+    parser.add_argument("--target_path", default=None, )
+    args = parser.parse_args()
+    main(args, )
 
