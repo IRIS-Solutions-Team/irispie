@@ -57,10 +57,9 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/irispie-package
           NEW_VERSION=${{ env.NEW_VERSION }}
-          if [[ $(git ls-remote --heads origin */test) ]]; then
-            git push origin --delete test
-          fi
+          git branch
           git switch master
+          git pull origin master
           git merge -X theirs -m "Release irispie-package $NEW_VERSION" --squash develop
           git tag $NEW_VERSION
           git push origin master --tags
