@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  Test_and_deploy:
      runs-on: ubuntu-latest
      steps:
       - name: Checkout master
@@ -14,6 +14,11 @@ jobs:
           ref: develop
           path: ./irispie-package
           token: ${{ secrets.IRISPIE_CONTENTS_TOKEN }}
+
+      - name: Set up identity
+        run: |
+          git config --local user.email "jaromir.benes@gmail.com"
+          git config --local user.name "Jaromir Benes"
 
       - uses: actions/setup-python@v5
         with:
@@ -51,8 +56,6 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/irispie-package
           NEW_VERSION=${{ env.NEW_VERSION }}
-          git config --local user.email "jaromir.benes@gmail.com"
-          git config --local user.name "Jaromir Benes"
           if [[ $(git ls-remote --heads origin */test) ]]; then
             git push origin --delete test
           fi
