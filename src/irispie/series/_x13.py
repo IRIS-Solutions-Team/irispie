@@ -177,8 +177,9 @@ info = self.x13(
     A new `Series` object with the output data.
 
 ???+ returns "info"
-    (Only returned if `return_info=True`) A dictionary with information about
-    the X13 run. The dictionary contains the following keys:
+    (Only returned if `return_info=True` which is not the default behavior)
+    Dictionary with information about the X13 run; `info` contains the
+    following items:
 
     | Key | Description
     |-----|-------------
