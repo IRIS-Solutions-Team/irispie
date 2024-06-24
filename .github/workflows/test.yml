@@ -55,15 +55,16 @@ jobs:
             --source_path=./pyproject.toml \
             --target_path=./pyproject.toml \
           )
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
 
       - name: Commit and push test results and new version to develop
         if: ${{ success() }}
         run: |
           cd $GITHUB_WORKSPACE/irispie-package
+          NEW_VERSION=${{ env.NEW_VERSION }}
           git add ./pyproject.toml ./tests/report.txt
           git commit -m "Update test results and bump version number to $NEW_VERSION"
           git push origin develop
-          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
 
       - name: Merge to master, tag and push
         if: ${{ success() }}
