@@ -28,6 +28,8 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/irispie-package
           pytest ./tests/series -ra > ./tests/report.txt
+          git add ./tests/report.txt
+          git commit -m "Update test results"
 
       - name: Bump version
         if: ${{ success() }}
@@ -55,8 +57,7 @@ jobs:
             git push origin --delete test
           fi
           git switch master
-          git add ./tests/report.txt
-          git commit -m "Release irispie-package $NEW_VERSION"
+          git merge -m "Release irispie-package $NEW_VERSION" --squash develop
           git tag $NEW_VERSION
           git push origin master --tags
           git switch develop
