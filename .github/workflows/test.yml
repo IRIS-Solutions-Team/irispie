@@ -51,7 +51,7 @@ jobs:
 
       - name: Commit and push to develop
         if: ${{ success() }}
-        run:
+        run: |
           cd $GITHUB_WORKSPACE/irispie-package
           git add ./pyproject.toml ./tests/report.txt
           git commit -m "Update test results and bump version number to $NEW_VERSION"
