@@ -32,14 +32,15 @@ jobs:
       - name: Bump version
         if: ${{ success() }}
         run: |
-          if ! [[ -e .release_type ]]; then
+          cd $GITHUB_WORKSPACE/irispie-package
+          if ! [[ -e ./.release_type ]]; then
             echo "Cannot release without .release_type"
             exit 1
           fi
-          RELEASE_TYPE=$(< .release_type)
-          NEW_VERSION=$(python ./irispie-package/.github/workflows/bump_version.py \
+          RELEASE_TYPE=$(< ./.release_type)
+          NEW_VERSION=$(python ./.github/workflows/bump_version.py \
             --release_type=$RELEASE_TYPE \
-            --source_path=./irispie-package/pyproject.toml \
+            --source_path=./pyproject.toml \
           )
           echo $NEW_VERSION
 
