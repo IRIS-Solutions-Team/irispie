@@ -49,12 +49,29 @@ jobs:
         with:
           python-version: "3.12"
 
-      - run: |
+      - name: Install dependencies
+        run: |
           pip install -e ./irispie-package
           pip install pytest
 
-      - run: |
-          pytest ./irispie-package/tests/series -ra > ./irispie-package/tests/report.txt
+<<<<<<< HEAD
+      - name: Run tests
+        run: |
+          cd $GITHUB_WORKSPACE/irispie-package
+          pytest ./tests/series -ra > ./tests/report.txt
+
+      - name: Bump version
+        if: ${{ success() }}
+        run: |
+          if ! [[ -e .bump_type ]]; then
+            echo "Cannot release without .bump_type"
+            exit 1
+          fi
+          BUMP_TYPE=$(< .bump_type)
+          python ./irispie-package/scripts/bump_version.py \
+            --bump_type=$BUMP_TYPE \
+            --source_path=./irispie-package/pyproject.toml
+>>>>>>> 4e64e8c (Update test.yml)
 
       - name: When passed
         if: ${{ success() }}
@@ -64,7 +81,7 @@ jobs:
           echo "${{ secrets.IRISPIE_SERVICE_TOKEN }}"
           git config --local user.email "jaromir.benes@gmail.com"
           git config --local user.name "Jaromir Benes"
-          if [[ $(git ls-remote --heads github */test) ]]; then
+          if [[ $(git ls-remote --heads origin */test) ]]; then
             git push origin --delete test
           fi
           git switch -c test
