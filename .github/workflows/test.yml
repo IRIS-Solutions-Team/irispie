@@ -11,7 +11,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: master
+          ref: develop
           path: ./irispie-package
           token: ${{ secrets.IRISPIE_CONTENTS_TOKEN }}
 
@@ -42,23 +42,34 @@ jobs:
             --release_type=$RELEASE_TYPE \
             --source_path=./pyproject.toml \
           )
-          echo $NEW_VERSION
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
 
-      - name: When passed
+      - name: Merge to master
         if: ${{ success() }}
         run: |
           cd $GITHUB_WORKSPACE/irispie-package
-          ls -al
-          echo "${{ secrets.IRISPIE_SERVICE_TOKEN }}"
+          NEW_VERSION=${{ env.NEW_VERSION }}
           git config --local user.email "jaromir.benes@gmail.com"
           git config --local user.name "Jaromir Benes"
           if [[ $(git ls-remote --heads origin */test) ]]; then
             git push origin --delete test
           fi
-          git switch -c test
+          git branch
+          git switch master
           git add ./tests/report.txt
-          git commit -m Test
-          git push origin test
+          git commit -m "Release irispie-package $NEW_VERSION"
+          git tag $NEW_VERSION
+          git push origin master --tags
+          git switch develop
+
+      - name: Remove .release_type from develop
+        if: ${{ success() }}
+        run: |
+          cd $GITHUB_WORKSPACE/irispie-package
+          git switch develop
+          git rm .release_type
+          git commit -m "Remove .release_type after release"
+          git push origin develop
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
