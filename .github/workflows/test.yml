@@ -2,7 +2,7 @@ name: Test and deploy
 
 on:
   workflow_dispatch:
-    
+
 jobs:
   test:
      runs-on: ubuntu-latest
@@ -37,7 +37,7 @@ jobs:
             exit 1
           fi
           BUMP_TYPE=$(< .bump_type)
-          python ./irispie-package/scripts/bump_version.py \
+          python ./irispie-package/.github/workflows/bump_version.py \
             --bump_type=$BUMP_TYPE \
             --source_path=./irispie-package/pyproject.toml
 
