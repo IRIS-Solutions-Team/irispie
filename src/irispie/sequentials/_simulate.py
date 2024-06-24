@@ -57,8 +57,14 @@ class Inlay:
 
 ==Simulate sequential model==
 
+Simulate a `Sequential` model, `self`, on a time `span`, period by period,
+equation by equation. The `simulate` function does not reorder the
+equations; if needed, this must be done by running `reorder` before
+simulating the model.
+
+
 ```
-out_db, info = self.simulate(
+out_db = self.simulate(
     input_db,
     simulation_span,
     *,
@@ -70,13 +76,17 @@ out_db, info = self.simulate(
     num_variants=None,
     remove_initial=True,
     remove_terminal=True,
+    return_info=False,
 )
 ```
 
-Simulate a `Sequential` model, `self`, on a time `span`, period by period,
-equation by equation. The `simulate` function does not reorder the
-equations; if needed, this must be done by running `reorder` before
-simulating the model.
+```
+out_db, info = self.simulate(
+    ...,
+    return_info=True,
+    ...,
+)
+```
 
 
 ### Input arguments ###
@@ -140,13 +150,18 @@ simulating the model.
 
 
 ???+ returns "out_db"
-
     Output databox with the simulated time series for the LHS variables.
 
 ???+ returns "info"
+    (Only returned if `return_info=True which is not the default behavior)
+    Dictionary with information about the simulation; `info` contains the
+    following items:
 
-    Information about the simulation; `info` is a dict with the following
-    items.
+    | Key | Description
+    |-----|-------------
+    | `"method"` | Simulation method used
+    | `"execution_order"` | Execution order of the equations and periods
+
 
 ················································································
         """
@@ -260,6 +275,7 @@ def _simulate_v(
     #
     info = {
         "method": "sequential",
+        "execution_order": execution_order,
     }
     #
     for (column, date), equation in columns_dates_equations:
