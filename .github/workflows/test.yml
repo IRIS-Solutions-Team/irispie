@@ -34,8 +34,6 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/irispie-package
           pytest ./tests/series -ra > ./tests/report.txt
-          git add ./tests/report.txt
-          git commit -m "Update test results"
 
       - name: Bump version
         if: ${{ success() }}
@@ -50,6 +48,14 @@ jobs:
             --release_type=$RELEASE_TYPE \
             --source_path=./pyproject.toml \
           )
+
+      - name: Commit and push to develop
+        if: ${{ success() }}
+        run: |
+          cd $GITHUB_WORKSPACE/irispie-package
+          git add ./pyproject.toml ./tests/report.txt
+          git commit -m "Update test results and bump version number to $NEW_VERSION"
+          git push origin develop
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
 
       - name: Merge to master
@@ -60,7 +66,8 @@ jobs:
           git branch
           git switch master
           git pull origin master
-          git merge -X theirs -m "Release irispie-package $NEW_VERSION" --squash develop
+          git merge -X theirs -m "Release irispie-package $NEW_VERSION" develop
+          git ls-tree master
           git tag $NEW_VERSION
           git push origin master --tags
           git switch develop
