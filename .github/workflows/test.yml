@@ -32,14 +32,16 @@ jobs:
       - name: Bump version
         if: ${{ success() }}
         run: |
-          if ! [[ -e .bump_type ]]; then
-            echo "Cannot release without .bump_type"
+          if ! [[ -e .release_type ]]; then
+            echo "Cannot release without .release_type"
             exit 1
           fi
-          BUMP_TYPE=$(< .bump_type)
-          python ./irispie-package/.github/workflows/bump_version.py \
-            --bump_type=$BUMP_TYPE \
-            --source_path=./irispie-package/pyproject.toml
+          RELEASE_TYPE=$(< .release_type)
+          NEW_VERSION=$(python ./irispie-package/.github/workflows/bump_version.py \
+            --release_type=$RELEASE_TYPE \
+            --source_path=./irispie-package/pyproject.toml \
+          )
+          echo $NEW_VERSION
 
       - name: When passed
         if: ${{ success() }}
@@ -53,7 +55,7 @@ jobs:
             git push origin --delete test
           fi
           git switch -c test
-          git add ./tests/report.txt          
+          git add ./tests/report.txt
           git commit -m Test
           git push origin test
 

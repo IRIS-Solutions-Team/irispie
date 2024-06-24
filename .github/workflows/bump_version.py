@@ -19,7 +19,7 @@ def main(args, ):
     with open(args.source_path, "rt", ) as f:
         file = toml.load(f, )
     current_version = file["project"]["version"]
-    bumped_version = _upgrade_version_string(current_version, args.bump_type, )
+    bumped_version = _upgrade_version_string(current_version, args.release_type, )
     file["project"]["version"] = bumped_version
     print(bumped_version, )
     if args.target_path:
@@ -29,7 +29,7 @@ def main(args, ):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--bump_type", choices=["major", "minor", "patch"])
+    parser.add_argument("--release_type", choices=["major", "minor", "patch"])
     parser.add_argument("--source_path", )
     parser.add_argument("--target_path", default=None, )
     args = parser.parse_args()
