@@ -64,7 +64,7 @@ class Inlay:
 
 
 ```
-new, out_info = irispie.x13(
+new = irispie.x13(
     self,
     /,
     span=None,
@@ -77,12 +77,20 @@ new, out_info = irispie.x13(
 )
 ```
 
+```
+new, info = irispie.x13(
+    ...,
+    return_info=True,
+    ...,
+)
+```
+
 
 ### Class methods for changing existing Series objects in-place ###
 
 
 ```
-out_info = self.x13(
+self.x13(
     span=None,
     output="sa",
     mode=None,
@@ -90,6 +98,14 @@ out_info = self.x13(
     clean_up=True,
     unpack_singleton=True,
     return_info=False,
+)
+```
+
+```
+info = self.x13(
+    ...,
+    return_info=True,
+    ...,
 )
 ```
 
@@ -143,12 +159,12 @@ out_info = self.x13(
     | `"error"`   | Raise an error
 
 ???+ input "unpack_singleton"
-    If `True`, unpack `out_info` into a plain dictionary for models with a
+    If `True`, unpack `info` into a plain dictionary for models with a
     single variant.
 
 ???+ input "return_info"
-    If `True`, return a dictionary with information about the X13 run as the
-    second output argument.
+    If `True`, return a dictionary with information about the X13 run as another
+    output argument.
 
 
 ### Returns ###
@@ -160,9 +176,9 @@ out_info = self.x13(
 ???+ returns "new"
     A new `Series` object with the output data.
 
-???+ returns "out_info"
-    A dictionary with information about the X13 run. The dictionary
-    contains the following keys:
+???+ returns "info"
+    (Only returned if `return_info=True`) A dictionary with information about
+    the X13 run. The dictionary contains the following keys:
 
     | Key | Description
     |-----|-------------
