@@ -1,43 +1,21 @@
 [build-system]
-    requires = ["hatchling"]
-    build-backend = "hatchling.build"
+requires = [ "hatchling",]
+build-backend = "hatchling.build"
 
 [project]
-    name = "irispie"
-    version = "0.46.2"
-    authors = [
-      { name="Jaromir Benes", email="jaromir.benes@gmail.com" },
-    ]
-    description = "Macroeconomic modeling package"
-    readme = "README.md"
-    requires-python = ">=3.11"
-    classifiers = [
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
-    ]
-    keywords = [
-        "macroeconomics",
-        "economics",
-        "modeling",
-        "simulation",
-        "forecasting",
-        "dsge",
-    ]
-    dependencies = [
-        "numpy >= 1.26",
-        "scipy >= 1.13",
-        "plotly >= 5.20",
-        "parsimonious >= 0.10",
-        "prettytable >= 3.10",
-        "pandas >= 2.2.1",
-        "dill >= 0.3.8",
-        "requests >= 2.31.0",
-        "wlogging >= 0.3.0",
-    ]
+name = "irispie"
+version = "0.46.3"
+description = "Macroeconomic modeling package"
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [ "Programming Language :: Python :: 3", "License :: OSI Approved :: MIT License", "Operating System :: OS Independent",]
+keywords = [ "macroeconomics", "economics", "modeling", "simulation", "forecasting", "dsge",]
+dependencies = [ "numpy >= 1.26", "scipy >= 1.13", "plotly >= 5.20", "parsimonious >= 0.10", "prettytable >= 3.10", "pandas >= 2.2.1", "dill >= 0.3.8", "requests >= 2.31.0", "wlogging >= 0.3.0",]
+[[project.authors]]
+name = "Jaromir Benes"
+email = "jaromir.benes@gmail.com"
 
 [project.urls]
-    "Homepage" = "https://github.com/iris-solutions-team/irispie"
-    "Documentation" = "https://iris-solutions-team.github.io/irispie-pages"
-    "Bug Tracker" = "https://github.com/iris-solutions-team/irispie/issues"
-
+Homepage = "https://github.com/iris-solutions-team/irispie"
+Documentation = "https://iris-solutions-team.github.io/irispie-pages"
+"Bug Tracker" = "https://github.com/iris-solutions-team/irispie/issues"
