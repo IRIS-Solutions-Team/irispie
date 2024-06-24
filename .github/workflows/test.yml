@@ -61,7 +61,7 @@ jobs:
             git push origin --delete test
           fi
           git switch master
-          git merge -m "Release irispie-package $NEW_VERSION" --squash develop
+          git merge -X theirs -m "Release irispie-package $NEW_VERSION" --squash develop
           git tag $NEW_VERSION
           git push origin master --tags
           git switch develop
