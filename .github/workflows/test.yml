@@ -54,7 +54,6 @@ jobs:
           if [[ $(git ls-remote --heads origin */test) ]]; then
             git push origin --delete test
           fi
-          git branch
           git switch master
           git add ./tests/report.txt
           git commit -m "Release irispie-package $NEW_VERSION"
