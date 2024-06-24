@@ -6,32 +6,31 @@ from typing import (Literal, )
 import argparse
 import toml
 
-def bump_version(version: str, bump: Literal["major", "minor", "patch"]) -> str:
+
+def _bump_version(version: str, bump: Literal["major", "minor", "patch"]) -> str:
     """Bump the version number"""
-    major, minor, patch = version.split(".")
-    if bump == "major":
-        major = str(int(major) + 1)
-    elif bump == "minor":
-        minor = str(int(minor) + 1)
-    elif bump == "patch":
-        patch = str(int(patch) + 1)
-    return ".".join((major, minor, patch, ))
+    major_minor_patch = version.split(".")
+    index = next(i for i, e in enumerate(("major", "minor", "patch", )) if e == bump)
+    major_minor_patch[index] = str(int(major_minor_patch[index]) + 1)
+    return ".".join(major_minor_patch, )
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--bump_type", choices=["major", "minor", "patch"])
-    parser.add_argument("--pyproject_path", default="pyproject.toml")
+    parser.add_argument("--source_path", )
+    parser.add_argument("--target_path", default=None, )
     args = parser.parse_args()
 
-    with open(args.pyproject_path, "rt", ) as f:
-        pyproject = toml.load(f)
-    current_version = pyproject["project"]["version"]
-    bumped_version = bump_version(current_version, args.bump_type, )
-    pyproject["project"]["version"] = bumped_version
-    with open("test.toml", "wt", ) as f:
-       toml.dump(pyproject, f)
-    print(toml.dumps(pyproject))
+    with open(args.source_path, "rt", ) as f:
+        file = toml.load(f, )
+    current_version = file["project"]["version"]
+    bumped_version = _bump_version(current_version, args.bump_type, )
+    file["project"]["version"] = bumped_version
+    print(toml.dumps(file, ), )
+    if args.target_path:
+        with open(args.target_path, "wt", ) as f:
+            f.write(toml.dumps(file, ), )
 
 
 if __name__ == "__main__":
