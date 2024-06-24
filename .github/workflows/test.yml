@@ -17,6 +17,7 @@ jobs:
 
       - name: Set up identity
         run: |
+          cd $GITHUB_WORKSPACE/irispie-package
           git config --local user.email "jaromir.benes@gmail.com"
           git config --local user.name "Jaromir Benes"
 
