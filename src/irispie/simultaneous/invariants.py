@@ -403,7 +403,7 @@ def _create_autovalue_updater(
     lhs_qids = []
     rhs_xtrings = []
     for i in autovalue_definitions:
-        lhs_name, rhs_xtring = i.human.split("=", maxsplit=2, )
+        lhs_name, rhs_xtring = i.human.replace(":=", "=", ).split("=", maxsplit=2, )
         lhs_qid = name_to_qid[lhs_name.strip()]
         rhs_xtring, *_ = _equations.xtring_from_human(rhs_xtring, name_to_qid, )
         lhs_qids.append(lhs_qid)
