@@ -58,7 +58,7 @@ def save_json(
 
 ................................................................................
     """
-    json_settings = _DEFAULT_JSON_SETTINGS.update(kwargs, )
+    json_settings = _DEFAULT_JSON_SETTINGS | kwargs
     with open(filename, "wt", ) as fid:
         _js.dump(object_to_save, fid, **json_settings, )
 

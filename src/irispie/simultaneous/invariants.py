@@ -408,6 +408,11 @@ def _create_autovalue_updater(
         rhs_xtring, *_ = _equations.xtring_from_human(rhs_xtring, name_to_qid, )
         lhs_qids.append(lhs_qid)
         rhs_xtrings.append(rhs_xtring)
+
+    if not lhs_qids:
+        self.update_autovalues_in_variant = None
+        return
+
     joined_rhs_xtrings = "(" + "  ,  ".join(rhs_xtrings, ) + " , )"
     func, func_str, *_ = _makers.make_lambda(_equators.EQUATOR_ARGS, joined_rhs_xtrings, self._context, )
     num_columns = self._max_shift - self._min_shift + 1

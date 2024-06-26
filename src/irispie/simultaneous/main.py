@@ -40,7 +40,6 @@ from . import _covariances as _covariances
 from . import _flags as _flags
 from . import _simulate as _simulate
 from . import _steady as _steady
-from . import _autovalues as _autovalues
 from . import _logly as _logly
 from . import _get as _get
 from . import _pretty as _pretty
@@ -75,7 +74,6 @@ class Simultaneous(
     _assigns.Inlay,
     _simulate.Inlay,
     _steady.Inlay,
-    _autovalues.Inlay,
     _logly.Inlay,
     _get.Inlay,
     _pretty.Inlay,

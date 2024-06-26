@@ -81,6 +81,8 @@ class Inlay:
     def update_autovalues(self, ) -> None:
         """
         """
+        if not self._invariant.update_autovalues_in_variant:
+            return
         for variant in self._variants:
             self._invariant.update_autovalues_in_variant(variant, )
     #]
