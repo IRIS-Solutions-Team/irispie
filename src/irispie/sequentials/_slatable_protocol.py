@@ -34,6 +34,7 @@ class _Slatable(Slatable):
         self.max_lead = sequential.max_lead
         #
         self.databox_names = sequential.all_names
+        self.descriptions = None
         self.databox_validators = None
         #
         residual_names = tuple(sequential._invariant.residual_names)

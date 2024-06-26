@@ -51,6 +51,7 @@ class Inlay:
         self,
         /,
         unpack_singleton: bool = True,
+        update_autovalues: bool = True,
         return_info: bool = False,
         **kwargs,
     ) -> dict | list[dict]:
@@ -63,15 +64,13 @@ class Inlay:
         for vid, v in enumerate(self._variants, ):
             out_info_v = steady_solver(v, model_flags, vid, **kwargs, )
             out_info.append(out_info_v, )
-        #
+        if update_autovalues:
+            self.update_autovalues()
         if return_info:
-            out_info = _has_variants.unpack_singleton(
+            return _has_variants.unpack_singleton(
                 out_info, self.is_singleton,
                 unpack_singleton=unpack_singleton,
             )
-            return out_info
-        else:
-            return
 
     def _steady_linear(
         self,
@@ -161,7 +160,7 @@ class Inlay:
             im = _calculate_steady_incidence_matrix(wrt.equations, wrt.qids, )
             blocks = _blazer.blaze(im, wrt.eids, wrt.qids, )
         else:
-            blocks = (_blazer._Block(wrt.eids, wrt.any_qids), )
+            blocks = (_blazer._Block(wrt.eids, wrt.qids), )
         #
         all_quantities = self.get_quantities()
         all_equations = self.get_steady_equations()
@@ -213,7 +212,7 @@ class Inlay:
             success = root_final.success and func_norm < root_settings["tol"]
             #
             if not success:
-                _throw_block_error(human_block, )
+                _throw_block_error(human_block, header_message, )
             #
             # Update variant with steady levels and changes
             _update_variant_with_final_guess(variant, steady_evaluator, )
@@ -335,8 +334,8 @@ class Inlay:
         t_zero = -equator.min_shift
         dis = [
             _np.hstack((
-                equator.eval(x, t_zero, x[:, t_zero]),
-                equator.eval(x, t_zero+1, x[:, t_zero+1]),
+                equator.eval(x, t_zero, ),
+                equator.eval(x, t_zero+1, ),
             ))
             for x in steady_arrays
         ]
@@ -427,7 +426,7 @@ def _update_variant_with_final_guess(variant, steady_evaluator, ) -> None:
     #]
 
 
-def _throw_block_error(human_block, ) -> NoReturn:
+def _throw_block_error(human_block, header_message: str, ) -> NoReturn:
     """
     """
     #[

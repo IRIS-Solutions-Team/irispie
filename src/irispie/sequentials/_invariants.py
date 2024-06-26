@@ -109,9 +109,12 @@ class Invariant(
         """
         self.residual_names = []
         for x in self.explanatories:
-            if x.residual_name not in self.residual_names:
-                self.residual_names.append(x.residual_name)
-        self.residual_names = tuple(self.residual_names)
+            if x.residual_name is None:
+                continue
+            if x.residual_name in self.residual_names:
+                continue
+            self.residual_names.append(x.residual_name, )
+        self.residual_names = tuple(self.residual_names, )
 
     def collect_rhs_only_names(
         self,

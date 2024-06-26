@@ -99,9 +99,7 @@ class FlatSteadyJacobian(_SteadyJacobian, ):
     ) -> _np.ndarray:
         """
         """
-        diff_array = self._aldi_context.eval_diff_to_array(
-            steady_array, column_offset, steady_array,
-        )
+        diff_array = self._aldi_context.eval_diff_to_array(steady_array, column_offset, )
         return self._create_jacobian(self._shape, diff_array, self._map, )
 
     def _create_diff_value_for_token(
@@ -132,9 +130,7 @@ class NonflatSteadyJacobian(_SteadyJacobian, ):
     ) -> _np.ndarray:
         """
         """
-        diff_array = self._aldi_context.eval_diff_to_array(
-            steady_array, column_offset, steady_array,
-        )
+        diff_array = self._aldi_context.eval_diff_to_array(steady_array, column_offset, )
         A = self._create_jacobian(self._shape, diff_array[:, 0:1], self._map, )
         B = self._create_jacobian(self._shape, diff_array[:, 1:2], self._map, )
         k = self.nonflat_steady_shift

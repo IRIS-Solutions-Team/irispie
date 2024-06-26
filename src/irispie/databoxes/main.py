@@ -60,7 +60,7 @@ class SteadyDataboxableProtocol(Protocol):
     #]
 
 
-def _extended_range_tuple_from_base_span(
+def _extended_span_tuple_from_base_span(
     input_span: Iterable[Period],
     min_shift: int,
     max_shift: int,
@@ -1041,8 +1041,8 @@ Get the encompassing date span for all time series with a specified frequency.
     def steady(
         klass,
         steady_databoxable: SteadyDataboxableProtocol,
-        input_span: Iterable[Period],
-        /,
+        span: Iterable[Period],
+        *,
         deviation: bool = False,
         prepend_initial: bool = True,
         append_terminal: bool = True,
@@ -1050,15 +1050,15 @@ Get the encompassing date span for all time series with a specified frequency.
         """
         """
         self = klass()
-        start_date, end_date = _extended_range_tuple_from_base_span(
-            input_span,
+        start, end = _extended_span_tuple_from_base_span(
+            span,
             steady_databoxable.max_lag,
             steady_databoxable.max_lead,
             prepend_initial,
             append_terminal,
         )
         items = steady_databoxable.generate_steady_items(
-            start_date, end_date,
+            start, end,
             deviation=deviation,
         )
         for name, value in items:
@@ -1071,13 +1071,14 @@ Get the encompassing date span for all time series with a specified frequency.
         self,
         model,
         control: Self,
-        /,
     ) -> None:
         """
         """
         name_to_minus_control_func = model.map_name_to_minus_control_func()
         for name, func in name_to_minus_control_func.items():
+            description = self[name].get_description()
             self[name] = func(self[name], control[name], )
+            self[name].set_description(description, )
 
     def __or__(self, other) -> Self:
         new = _co.deepcopy(self)

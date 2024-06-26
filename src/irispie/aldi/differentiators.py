@@ -388,14 +388,13 @@ class Context:
         self,
         data_array: _np.ndarray,
         column_offset: int,
-        steady_array: _np.ndarray,
     ) -> Iterable[Atom]:
         """
         Evaluate and return the list of final atoms, one atom for each equation
         """
         Atom._data_context = data_array
         Atom._column_offset = column_offset
-        output = self._equator.eval(self._x, 0, steady_array, )
+        output = self._equator.eval(self._x, 0, )
         Atom._data_context = None
         Atom._column_offset = None
         return output
