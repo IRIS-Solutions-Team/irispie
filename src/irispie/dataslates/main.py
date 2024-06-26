@@ -187,6 +187,7 @@ class Dataslate(
         """
         """
         names = tuple(slatable.databox_names, ) if slatable.databox_names else ()
+        descriptions = tuple(slatable.descriptions, ) if slatable.descriptions else ()
         if extra_databox_names:
             names = names + tuple(i for i in extra_databox_names if i not in names)
         periods, base_columns, *min_max_shift = _get_extended_span(
@@ -198,6 +199,7 @@ class Dataslate(
         return klass.from_databox(
             databox, names, periods,
             base_columns=base_columns,
+            descriptions=descriptions,
             min_max_shift=min_max_shift,
             qid_to_logly=slatable.qid_to_logly,
             fallbacks=slatable.fallbacks,

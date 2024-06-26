@@ -106,7 +106,7 @@ def simulate(
         init = current_evaluator.get_init_guess(data, t, )
         root_final = _sp.optimize.root(
             current_evaluator.eval, init,
-            args=(data, t, None, ),
+            args=(data, t, ),
             jac=True,
             **root_settings,
         )

@@ -37,23 +37,22 @@ $$
 #[
 from __future__ import annotations
 
-from typing import (TYPE_CHECKING, )
-
 import warnings as _wa
 import enum as _en
 import numpy as _np
 import scipy as _sp
 import copy as _co
 
+from typing import (TYPE_CHECKING, )
 if TYPE_CHECKING:
     from typing import (Self, Callable, )
-    from numbers import (Real, Number, )
+    from numbers import (Real, )
     from ..fords import descriptors as _descriptors
     from ..fords import systems as _systems
 #]
 
 
-class EigenValueKind(_en.Flag, ):
+class EigenvalueKind(_en.Flag, ):
     STABLE = _en.auto()
     UNIT = _en.auto()
     UNSTABLE = _en.auto()
@@ -196,11 +195,9 @@ class Solution:
         self = klass()
         for n in self.__slots__:
             setattr(self, n, getattr(other, n, None), )
-        #
         self.K = _np.zeros_like(other.K, )
         self.Ka = _np.zeros_like(other.Ka, )
         self.D = _np.zeros_like(other.D, )
-        #
         return self
 
     @property
@@ -236,7 +233,7 @@ class Solution:
     @property
     def num_unit_roots(self, /, ) -> int:
         """==Number of unit roots=="""
-        return self.eigenvalues_stability.count(EigenValueKind.UNIT)
+        return self.eigenvalues_stability.count(EigenvalueKind.UNIT)
 
     @property
     def num_stable(self, /, ) -> int:
@@ -289,6 +286,11 @@ class Solution:
             for i in self.measurement_vector_stability
         ), dtype=bool, )
 
+    def copy(self, ) -> Self:
+        """
+        """
+        return _co.deepcopy(self, )
+
     def expand_square_solution(self, forward: int, /, ) -> list[_np.ndarray]:
         """
         Expand R matrices of square solution for t+1...t+forward
@@ -325,7 +327,7 @@ class Solution:
         num_forwards: int,
         /,
     ) -> None:
-        num_unstable = self.eigenvalues_stability.count(EigenValueKind.UNSTABLE)
+        num_unstable = self.eigenvalues_stability.count(EigenvalueKind.UNSTABLE)
         if num_unstable == num_forwards:
             self.system_stability = SystemStabilityKind.STABLE
         elif num_unstable > num_forwards:
@@ -537,15 +539,15 @@ def _classify_eigenvalue_stability(
     eigenvalue,
     is_stable_root,
     is_unit_root,
-) -> EigenValueKind:
+) -> EigenvalueKind:
     #[
     abs_eigenvalue = _np.abs(eigenvalue)
     if is_stable_root(abs_eigenvalue):
-        return EigenValueKind.STABLE
+        return EigenvalueKind.STABLE
     elif is_unit_root(abs_eigenvalue):
-        return EigenValueKind.UNIT
+        return EigenvalueKind.UNIT
     else:
-        return EigenValueKind.UNSTABLE
+        return EigenvalueKind.UNSTABLE
     #]
 
 

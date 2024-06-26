@@ -42,7 +42,6 @@ class System:
         self,
         descriptor: _descriptors.Descriptor,
         data_array: _np.ndarray,
-        steady_array: _np.ndarray,
         model_flags: _flags.ModelFlags,
         data_array_lagged: _np.ndarray | None,
         column_offset: int,
@@ -53,9 +52,7 @@ class System:
         #
         # Differentiate and evaluate constant
         #
-        td, tc = descriptor.aldi_context.eval_to_arrays(
-            data_array, column_offset, steady_array,
-        )
+        td, tc = descriptor.aldi_context.eval_to_arrays(data_array, column_offset, )
 
         smap = descriptor.system_map
         svec = descriptor.system_vectors

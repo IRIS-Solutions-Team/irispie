@@ -66,7 +66,7 @@ class FlatSteadyEquator(SteadyEquator, ):
     ) -> _np.ndarray:
         """
         """
-        return self._equator.eval(steady_array, column_offset, steady_array, )
+        return self._equator.eval(steady_array, column_offset, )
 
     #]
 
@@ -88,8 +88,8 @@ class NonflatSteadyEquator(SteadyEquator, ):
         """
         k = self.nonflat_steady_shift
         return _np.hstack((
-            self._equator.eval(steady_array, column_offset, steady_array, ),
-            self._equator.eval(steady_array, column_offset + k, steady_array, ),
+            self._equator.eval(steady_array, column_offset, ),
+            self._equator.eval(steady_array, column_offset + k, ),
         ))
     #]
 

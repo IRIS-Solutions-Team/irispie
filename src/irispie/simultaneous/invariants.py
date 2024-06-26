@@ -9,6 +9,7 @@ from typing import (Self, Callable, NoReturn, )
 from numbers import (Number, )
 import copy as _cp
 import functools as _ft
+import numpy as _np
 
 from ..conveniences import descriptions as _descriptions
 from ..fords import descriptors as _descriptors
@@ -47,6 +48,7 @@ class Invariant(
         "quantities",
         "dynamic_equations",
         "steady_equations",
+        "update_autovalues_in_variant",
         "dynamic_descriptor",
         "steady_descriptor",
         "shock_qid_to_std_qid",
@@ -82,8 +84,15 @@ class Invariant(
         std_description_format = std_description_format or self._DEFAULT_STD_DESCRIPTION_FORMAT
         #
         self.quantities = tuple(source.quantities)
-        self.dynamic_equations = tuple(source.dynamic_equations)
-        self.steady_equations = tuple(source.steady_equations)
+        self.dynamic_equations = tuple(_equations.generate_equations_of_kind(
+            source.dynamic_equations, kind=_equations.EquationKind.ENDOGENOUS_EQUATION,
+        ))
+        self.steady_equations = tuple(_equations.generate_equations_of_kind(
+            source.steady_equations, kind=_equations.EquationKind.ENDOGENOUS_EQUATION,
+        ))
+        autovalue_definitions = tuple(_equations.generate_equations_of_kind(
+            source.dynamic_equations, kind=_equations.EquationKind.AUTOVALUE_DEFINITION,
+        ))
         #
         # Create std_ parameters for unanticipated and measurement shocks
         if self._flags.is_stochastic:
@@ -162,8 +171,8 @@ class Invariant(
         #
         # Finalize equations by replacing names with qid pointers
         name_to_qid = _quantities.create_name_to_qid(self.quantities, )
-        _equations.finalize_dynamic_equations(self.dynamic_equations, name_to_qid, )
-        _equations.finalize_steady_equations(self.steady_equations, name_to_qid, )
+        _equations.finalize_equations(self.dynamic_equations, name_to_qid, )
+        _equations.finalize_equations(self.steady_equations, name_to_qid, )
         #
         if check_syntax:
             _check_syntax(self.dynamic_equations, self._context, )
@@ -186,6 +195,9 @@ class Invariant(
             _equations.generate_equations_of_kind(self.steady_equations, _PLAIN_EQUATOR_EQUATION, ),
             context=self._context,
         )
+        #
+        # Create autovalue updater
+        _create_autovalue_updater(self, autovalue_definitions, )
 
     @property
     def num_transition_equations(self, /, ) -> int:
@@ -375,5 +387,42 @@ def _resolve_default_std(
         return _DEFAULT_STD_LINEAR
     else:
         return _DEFAULT_STD_NONLINEAR
+    #]
+
+
+def _create_autovalue_updater(
+    self,
+    autovalue_definitions: Iterable[_equations.Equation],
+    /,
+) -> tuple[int, str]:
+    """
+    """
+    #[
+    name_to_qid = _quantities.create_name_to_qid(self.quantities, )
+    qid_to_logly = _quantities.create_qid_to_logly(self.quantities, )
+    lhs_qids = []
+    rhs_xtrings = []
+    for i in autovalue_definitions:
+        lhs_name, rhs_xtring = i.human.split("=", maxsplit=2, )
+        lhs_qid = name_to_qid[lhs_name.strip()]
+        rhs_xtring, *_ = _equations.xtring_from_human(rhs_xtring, name_to_qid, )
+        lhs_qids.append(lhs_qid)
+        rhs_xtrings.append(rhs_xtring)
+    joined_rhs_xtrings = "(" + "  ,  ".join(rhs_xtrings, ) + " , )"
+    func, func_str, *_ = _makers.make_lambda(_equators.EQUATOR_ARGS, joined_rhs_xtrings, self._context, )
+    num_columns = self._max_shift - self._min_shift + 1
+    shift_in_first_column = self._min_shift
+    t = -self._min_shift
+
+    def update_autovalues(variant, ):
+        steady_array = variant.create_steady_array(
+            qid_to_logly,
+            num_columns=num_columns,
+            shift_in_first_column=shift_in_first_column,
+        )
+        autovalues = _np.vstack(func(steady_array, t, ), )
+        variant.update_levels_from_array(autovalues, lhs_qids, )
+
+    self.update_autovalues_in_variant = update_autovalues
     #]
 

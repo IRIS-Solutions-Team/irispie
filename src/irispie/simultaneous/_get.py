@@ -2,7 +2,7 @@
 """
 
 
-#[
+#
 from __future__ import annotations
 
 from typing import (Literal, Callable, )
@@ -20,7 +20,7 @@ from .. import has_variants as _has_variants
 from ..series import main as _series
 from ..incidences import main as _incidence
 from ..databoxes.main import (Databox, )
-from ..fords import solutions as _solutions
+from ..fords.solutions import (Solution, )
 from ..fords import descriptors as _descriptors
 
 from . import _flags
@@ -348,7 +348,7 @@ steady_changes = self.get_steady_changes(
         self,
         /,
         unpack_singleton: bool = True,
-    ) -> _solutions.Solution | list[_solutions.Solution]:
+    ) -> Solution | list[Solution]:
         """
         """
         solution_matrices = [ v.solution for v in self._variants ]
@@ -358,13 +358,14 @@ steady_changes = self.get_steady_changes(
         self,
         deviation: bool = False,
         vid: int = 0,
-    ) -> _solutions.Solution:
+    ) -> Solution:
         """
         """
-        return (
-            self._variants[vid].solution if not deviation
-            else self._variants[vid].deviation_solution
-        )
+        solution = self._variants[vid].solution
+        if not deviation:
+            return solution
+        else:
+            return Solution.deviation_solution(solution)
 
     def get_dynamic_equations(
         self,
@@ -469,13 +470,15 @@ steady_changes = self.get_steady_changes(
                 out_dict.setdefault(qid_to_name[qid], []).append(apply(value))
         return out_dict
 
-    def get_descriptions(self, ) -> dict[str, str]:
+    def get_quantity_descriptions(self, ) -> dict[str, str]:
         """
         """
-        return (
-            _quantities.create_name_to_description(self._invariant.quantities, )
-            | _equations.create_human_to_description(self._invariant.dynamic_equations, )
-        )
+        return _quantities.create_name_to_description(self._invariant.quantities, )
+
+    def get_equation_descriptions(self, ) -> dict[str, str]:
+        """
+        """
+        return _equations.create_human_to_description(self._invariant.dynamic_equations, )
 
     @_unpack_singleton
     def get_eigenvalues(
@@ -483,8 +486,9 @@ steady_changes = self.get_steady_changes(
         /,
         *,
         unpack_singleton: bool = True,
-    ) -> list[_solutions.Eigenvalues] | _solutions.Eigenvalues:
-        """Eigenvalues
+    ) -> tuple[Real, ...] | list[tuple[Real, ...]]:
+        """
+        Eigenvalues
         """
         return [ v.solution.eigenvalues for v in self._variants ]
 

@@ -25,14 +25,11 @@ class PeriodJacobian(_base.Jacobian, ):
         self,
         data_array: _np.ndarray,
         column_offset: int,
-        steady_array: _np.ndarray | None,
         /,
     ) -> _np.ndarray:
         """
         """
-        diff_array = self._aldi_context.eval_diff_to_array(
-            data_array, column_offset, steady_array,
-        )
+        diff_array = self._aldi_context.eval_diff_to_array(data_array, column_offset, )
         return self._create_jacobian(self._shape, diff_array, self._map, )
 
     def _create_eid_to_wrts(

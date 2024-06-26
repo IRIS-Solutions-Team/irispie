@@ -24,8 +24,10 @@ def resolve_substitutions(
     definitions = _define_substitutions(source, )
     where_substitute = set(where_substitute).intersection(parsed.keys())
     subs_pattern = _re.compile(r"\$(" + "|".join(lhs for lhs in definitions.keys()) + r")\$")
-    replace = lambda match: definitions[match.group(1)]
-    make_substitutions = lambda source: _re.sub(subs_pattern, replace, source)
+    def replace(match, ) -> str:
+        return definitions[match.group(1)]
+    def make_substitutions(source: str, /, ) -> str:
+        return _re.sub(subs_pattern, replace, source)
     for wh in where_substitute:
         parsed[wh] = [
             (label, (make_substitutions(dynamic), make_substitutions(steady)), attributes)

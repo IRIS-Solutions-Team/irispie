@@ -44,6 +44,12 @@ class _Slatable(Slatable):
             for qid in sorted(qid_to_name)
         )
         #
+        name_to_description = model.get_quantity_descriptions()
+        self.descriptions = tuple(
+            name_to_description[name]
+            for name in self.databox_names
+        )
+        #
         # Databox validation - all variables must be time series
         variable_names = model.get_names(kind=_quantities.ANY_VARIABLE, )
         validator = (
@@ -104,6 +110,8 @@ class _Slatable(Slatable):
             qid_to_name[qid]
             for qid in sorted(std_qids)
         )
+        #
+        self.descriptions = None
         #
         # Databox validation - all variables must be time series
         self.databox_validators = None

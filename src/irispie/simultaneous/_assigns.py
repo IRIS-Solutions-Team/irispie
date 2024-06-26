@@ -77,6 +77,12 @@ class Inlay:
             self._enforce_assignment_rules(variant, )
         #
         return assigned_keys, nonexistent_keys
+
+    def update_autovalues(self, ) -> None:
+        """
+        """
+        for variant in self._variants:
+            self._invariant.update_autovalues_in_variant(variant, )
     #]
 
 
