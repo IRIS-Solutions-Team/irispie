@@ -117,6 +117,10 @@ class SteadyPlan(
                 return self._get_names_from_register("{register_name}", )
         """))
 
+    # TODO: pluralize as default
+    fix_levels = fix_level
+    fix_changes = fix_change
+
     @_pages.reference(category="fixing", )
     def fix(self, *args, **kwargs, ) -> None:
         r"""

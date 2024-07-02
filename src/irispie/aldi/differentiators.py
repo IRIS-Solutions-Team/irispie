@@ -216,10 +216,7 @@ class Atom(ValueMixin, ):
         Differenatiate exponential function other**self(x)
         """
         new_value = other_value**self.value
-        new_diff = (
-            other_value**self.value * _np.log(other_value) * self.diff 
-            if other_value != 0 else 0
-        )
+        new_diff = other_value**self.value * _np.log(other_value) * self.diff 
         return new_value, new_diff
 
     def _power(self, other_value):

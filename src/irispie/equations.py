@@ -36,7 +36,7 @@ class EquationKind(_en.Flag):
 
     TRANSITION_EQUATION = _en.auto()
     MEASUREMENT_EQUATION = _en.auto()
-    AUTOVALUE_DEFINITION = _en.auto()
+    STEADY_AUTOVALUES = _en.auto()
 
     ENDOGENOUS_EQUATION = TRANSITION_EQUATION | MEASUREMENT_EQUATION
 
@@ -50,7 +50,7 @@ class EquationKind(_en.Flag):
 __all__  = (
     "TRANSITION_EQUATION",
     "MEASUREMENT_EQUATION",
-    "AUTOVALUE_DEFINITION",
+    "STEADY_AUTOVALUES",
     "ENDOGENOUS_EQUATION",
 )
 for n in __all__:

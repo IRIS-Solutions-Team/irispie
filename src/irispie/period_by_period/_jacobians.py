@@ -10,16 +10,30 @@ from typing import (Protocol, )
 from collections.abc import (Iterable, )
 import numpy as _np
 
+from ..incidences.main import (Token, )
 from ..incidences import main as _incidence
+from ..aldi.maps import (ArrayMap, )
 
-from ..jacobians import _base
+from ..jacobians import base
 #]
 
 
-class PeriodJacobian(_base.Jacobian, ):
+class Jacobian(base.Jacobian, ):
     """
     """
     #[
+
+    _create_map = staticmethod(ArrayMap.static)
+
+    @staticmethod
+    def _calculate_shape(
+        eids: Collection[int],
+        wrt_something: Collection[Any],
+        num_columns_to_eval: int,
+    ) -> tuple[int, int]:
+        """
+        """
+        return len(eids), len(wrt_something),
 
     def eval(
         self,
@@ -30,14 +44,14 @@ class PeriodJacobian(_base.Jacobian, ):
         """
         """
         diff_array = self._aldi_context.eval_diff_to_array(data_array, column_offset, )
-        return self._create_jacobian(self._shape, diff_array, self._map, )
+        return self._create_jacobian_matrix(diff_array, )
 
     def _create_eid_to_wrts(
         self,
         equations: Iterable[_equations.Equation],
-        all_wrt_qids: Iterable[int],
+        all_wrt_qids: Iterable[Tokens],
         /,
-    ) -> dict[int, tuple[int, ...]]:
+    ) -> dict[int, tuple[Token, ...]]:
         """
         """
         return {
@@ -52,16 +66,16 @@ class PeriodJacobian(_base.Jacobian, ):
 
     def create_data_index_for_token(
         self,
-        token: _incidence.Token,
+        token: Token,
         /,
-    ) -> tuple[int, slice]:
+    ) -> tuple[int, int]:
         """
         """
         return (token.qid, token.shift, )
 
     def create_diff_for_token(
         self,
-        token: _incidence.Token,
+        token: Token,
         wrt_qids: tuple[int],
         /,
     ) -> _np.ndarray:

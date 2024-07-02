@@ -18,7 +18,8 @@ from ..databoxes.main import (Databox, )
 from ..dataslates.main import (Dataslate, )
 from ..fords import solutions as _solutions
 from ..fords import simulators as _ford_simulator
-from ..periods import simulators as _period_simulator
+from ..period_by_period import simulators as _period_by_period_simulator
+from ..stacked_time import simulators as _stacked_time_simulator
 from ..plans.simulation_plans import (SimulationPlan, )
 #]
 
@@ -28,7 +29,10 @@ _LOGGER = _wl.get_colored_two_liner(__name__, level=_wl.INFO, )
 
 _SIMULATION_METHOD_DISPATCH = {
     "first_order": _ford_simulator.simulate,
-    "period": _period_simulator.simulate,
+    "period_by_period": _period_by_period_simulator.simulate,
+    "period": _period_by_period_simulator.simulate,
+    "stacked_time": _stacked_time_simulator.simulate,
+    "stacked": _stacked_time_simulator.simulate,
 }
 
 
@@ -47,7 +51,7 @@ class Inlay:
         /,
         *,
         plan: SimulationPlan | None = None,
-        method: Literal["first_order", "period", "stacked"] = "first_order",
+        method: Literal["first_order", "period_by_period", "period", "stacked_time", "stacked", ] = "first_order",
         prepend_input: bool = True,
         target_db: Databox | None = None,
         num_variants: int | None = None,
@@ -102,16 +106,13 @@ class Inlay:
         #
         out_info = []
         for vid, model_v, dataslate_v in zipped:
-            #
             info_v = simulation_func(
                 model_v, dataslate_v, plan, vid,
                 logger=_LOGGER,
                 return_info=return_info,
                 **kwargs,
             )
-            #
             out_info.append(info_v, )
-            #
         #=======================================================================
         #
         # Remove initial and terminal condition data (all lags and leads

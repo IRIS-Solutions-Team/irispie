@@ -463,7 +463,7 @@ class SystemMap:
         #
         # Transition equations
         #
-        self.A = _maps.ArrayMap(
+        self.A = _maps.ArrayMap.static(
             system_vectors.transition_eids,
             system_vectors.eid_to_wrt_tokens,
             system_vectors.transition_variables,
@@ -482,7 +482,7 @@ class SystemMap:
             for t in lagged_transition_variables
         ]
         #
-        self.B = _maps.ArrayMap(
+        self.B = _maps.ArrayMap.static(
             system_vectors.transition_eids,
             system_vectors.eid_to_wrt_tokens,
             lagged_transition_variables,
@@ -494,9 +494,9 @@ class SystemMap:
         self.A.remove_nones()
         self.B.remove_nones()
         #
-        self.C = _maps.VectorMap(system_vectors.transition_eids, )
+        self.C = _maps.VectorMap.static(system_vectors.transition_eids, )
         #
-        self.D = _maps.ArrayMap(
+        self.D = _maps.ArrayMap.static(
             system_vectors.transition_eids,
             system_vectors.eid_to_wrt_tokens,
             system_vectors.unanticipated_shocks,
@@ -505,7 +505,7 @@ class SystemMap:
             lhs_column_offset=0,
         )
         #
-        self.E = _maps.ArrayMap(
+        self.E = _maps.ArrayMap.static(
             system_vectors.transition_eids,
             system_vectors.eid_to_wrt_tokens,
             system_vectors.anticipated_shocks,
@@ -522,7 +522,7 @@ class SystemMap:
         #
         # Measurement equations
         #
-        self.F = _maps.ArrayMap(
+        self.F = _maps.ArrayMap.static(
             system_vectors.measurement_eids,
             system_vectors.eid_to_wrt_tokens,
             system_vectors.measurement_variables,
@@ -531,7 +531,7 @@ class SystemMap:
             lhs_column_offset=0,
         )
         #
-        self.G = _maps.ArrayMap(
+        self.G = _maps.ArrayMap.static(
             system_vectors.measurement_eids,
             system_vectors.eid_to_wrt_tokens,
             system_vectors.transition_variables,
@@ -540,9 +540,9 @@ class SystemMap:
             lhs_column_offset=0,
         )
         #
-        self.H = _maps.VectorMap(system_vectors.measurement_eids, )
+        self.H = _maps.VectorMap.static(system_vectors.measurement_eids, )
         #
-        self.J = _maps.ArrayMap(
+        self.J = _maps.ArrayMap.static(
             system_vectors.measurement_eids,
             system_vectors.eid_to_wrt_tokens,
             system_vectors.measurement_shocks,

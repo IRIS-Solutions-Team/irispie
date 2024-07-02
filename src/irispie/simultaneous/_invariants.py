@@ -48,7 +48,7 @@ class Invariant(
         "quantities",
         "dynamic_equations",
         "steady_equations",
-        "update_autovalues_in_variant",
+        "update_steady_autovalues_in_variant",
         "dynamic_descriptor",
         "steady_descriptor",
         "shock_qid_to_std_qid",
@@ -90,8 +90,8 @@ class Invariant(
         self.steady_equations = tuple(_equations.generate_equations_of_kind(
             source.steady_equations, kind=_equations.EquationKind.ENDOGENOUS_EQUATION,
         ))
-        autovalue_definitions = tuple(_equations.generate_equations_of_kind(
-            source.dynamic_equations, kind=_equations.EquationKind.AUTOVALUE_DEFINITION,
+        steady_autovalues = tuple(_equations.generate_equations_of_kind(
+            source.dynamic_equations, kind=_equations.EquationKind.STEADY_AUTOVALUES,
         ))
         #
         # Create std_ parameters for unanticipated and measurement shocks
@@ -196,8 +196,8 @@ class Invariant(
             context=self._context,
         )
         #
-        # Create autovalue updater
-        _create_autovalue_updater(self, autovalue_definitions, )
+        # Create steady autovalue updater
+        _create_steady_autovalue_updater(self, steady_autovalues, )
 
     @property
     def num_transition_equations(self, /, ) -> int:
@@ -390,9 +390,9 @@ def _resolve_default_std(
     #]
 
 
-def _create_autovalue_updater(
+def _create_steady_autovalue_updater(
     self,
-    autovalue_definitions: Iterable[_equations.Equation],
+    steady_autovalues: Iterable[_equations.Equation],
     /,
 ) -> tuple[int, str]:
     """
@@ -402,7 +402,7 @@ def _create_autovalue_updater(
     qid_to_logly = _quantities.create_qid_to_logly(self.quantities, )
     lhs_qids = []
     rhs_xtrings = []
-    for i in autovalue_definitions:
+    for i in steady_autovalues:
         lhs_name, rhs_xtring = i.human.replace(":=", "=", ).split("=", maxsplit=2, )
         lhs_qid = name_to_qid[lhs_name.strip()]
         rhs_xtring, *_ = _equations.xtring_from_human(rhs_xtring, name_to_qid, )
@@ -410,7 +410,7 @@ def _create_autovalue_updater(
         rhs_xtrings.append(rhs_xtring)
 
     if not lhs_qids:
-        self.update_autovalues_in_variant = None
+        self.update_steady_autovalues_in_variant = None
         return
 
     joined_rhs_xtrings = "(" + "  ,  ".join(rhs_xtrings, ) + " , )"
@@ -419,15 +419,15 @@ def _create_autovalue_updater(
     shift_in_first_column = self._min_shift
     t = -self._min_shift
 
-    def update_autovalues(variant, ):
+    def update_steady_autovalues(variant, ):
         steady_array = variant.create_steady_array(
             qid_to_logly,
             num_columns=num_columns,
             shift_in_first_column=shift_in_first_column,
         )
-        autovalues = _np.vstack(func(steady_array, t, ), )
-        variant.update_levels_from_array(autovalues, lhs_qids, )
+        values = _np.vstack(func(steady_array, t, ), )
+        variant.update_levels_from_array(values, lhs_qids, )
 
-    self.update_autovalues_in_variant = update_autovalues
+    self.update_steady_autovalues_in_variant = update_steady_autovalues
     #]
 

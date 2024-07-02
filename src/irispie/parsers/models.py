@@ -38,7 +38,7 @@ _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
     keyword =
         transition_equations_keyword
         / measurement_equations_keyword
-        / autovalue_definitions_keyword
+        / steady_autovalues_keyword
         / transition_variables_keyword
         / anticipated_shocks_keyword / unanticipated_shocks_keyword
         / measurement_variables_keyword / measurement_shocks_keyword
@@ -55,7 +55,7 @@ _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
         attribute_chain = ~r"(\s*:\w+\s*)+"
 
     eqn_block = eqn_keyword block_attributes? eqn_ended* 
-    eqn_keyword = transition_equations_keyword / measurement_equations_keyword / autovalue_definitions_keyword
+    eqn_keyword = transition_equations_keyword / measurement_equations_keyword / steady_autovalues_keyword
         / substitutions_keyword / autoswaps_simulate_keyword / autoswaps_steady_keyword
         / preprocessor_keyword / postprocessor_keyword
     eqn_ended = white_spaces description white_spaces eqn_body eqn_end
@@ -90,7 +90,7 @@ _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
     transition_equations_keyword = keyword_prefix "transition-equations"
     equations_keyword = keyword_prefix "equations"
     measurement_equations_keyword = keyword_prefix "measurement-equations"
-    autovalue_definitions_keyword = keyword_prefix "autovalue-definitions"
+    steady_autovalues_keyword = keyword_prefix "steady-autovalues"
     log_keyword = keyword_prefix "log-variables"
     all_but_keyword = keyword_prefix "all-but"
     substitutions_keyword = keyword_prefix "substitutions"
@@ -186,7 +186,7 @@ class _Visitor(_pa.nodes.NodeVisitor):
     visit_transition_equations_keyword = _visit_keyword
     visit_equations_keyword = _visit_abbreviated_keyword
     visit_measurement_equations_keyword = _visit_keyword
-    visit_autovalue_definitions_keyword = _visit_keyword
+    visit_steady_autovalues_keyword = _visit_keyword
     visit_substitutions_keyword = _visit_keyword
     visit_autoswaps_simulate_keyword = _visit_keyword
     visit_autoswaps_steady_keyword = _visit_keyword

@@ -14,17 +14,17 @@ import scipy as _sp
 
 from .. import equations as _equations
 from ..incidences import blazer as _blazer
-from ..plans.steady_plans import (SteadyPlan, )
 from .. import has_variants as _has_variants
 from .. import wrongdoings as _wrongdoings
 from ..fords import steadiers as _fs
 from ..evaluators import steady as _evaluators
 
-from . import variants as _variants
 from . import _flags
 
 if TYPE_CHECKING:
+    from ..plans.steady_plans import (SteadyPlan, )
     from ..equations import (Equation, )
+    from ._variants import (Variant, )
     from collections.abc import (Iterable, Callable, )
     from typing import (Any, Literal, NoReturn, )
 #]
@@ -51,7 +51,7 @@ class Inlay:
         self,
         /,
         unpack_singleton: bool = True,
-        update_autovalues: bool = True,
+        update_steady_autovalues: bool = True,
         return_info: bool = False,
         **kwargs,
     ) -> dict | list[dict]:
@@ -64,8 +64,8 @@ class Inlay:
         for vid, v in enumerate(self._variants, ):
             out_info_v = steady_solver(v, model_flags, vid, **kwargs, )
             out_info.append(out_info_v, )
-        if update_autovalues:
-            self.update_autovalues()
+        if update_steady_autovalues:
+            self.update_steady_autovalues()
         if return_info:
             return _has_variants.unpack_singleton(
                 out_info, self.is_singleton,
@@ -74,7 +74,7 @@ class Inlay:
 
     def _steady_linear(
         self,
-        variant: _variants.Variant,
+        variant: Variant,
         model_flags: _flags.Flags,
         vid: int,
         /,
@@ -134,7 +134,7 @@ class Inlay:
 
     def _steady_nonlinear(
         self,
-        variant: _variants.Variant,
+        variant: Variant,
         model_flags: _flags.Flags,
         vid: int,
         /,
