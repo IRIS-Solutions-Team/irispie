@@ -15,7 +15,6 @@ from .. import equations as _equations
 from .. import quantities as _quantities
 from ..equators import steady as _equators
 from ..jacobians import steady as _jacobians
-from ..simultaneous import variants as _variants
 
 from . import printers as _printers
 
@@ -23,6 +22,7 @@ if TYPE_CHECKING:
     from typing import (Any, )
     from collections.abc import (Iterable, )
     from numbers import (Number, )
+    from ..simultaneous._variants import (Variant, )
 #]
 
 
@@ -44,7 +44,7 @@ class SteadyEvaluator:
         wrt_qids_changes: Iterable[int],
         wrt_equations: Iterable[_equations.Equation],
         all_quantities: Iterable[_quantities.Quantity],
-        variant: _variants.Variant,
+        variant: Variant,
         *,
         context: dict | None = None,
         iter_printer_settings: dict[str, Any] | None = None,
@@ -203,7 +203,7 @@ class FlatSteadyEvaluator(SteadyEvaluator, ):
 
     def _reset_changes(
         self,
-        variant: _variants.Variant,
+        variant: Variant,
         qid_to_logly: dict[int, bool],
     ) -> None:
         """

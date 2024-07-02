@@ -7,10 +7,12 @@ sparse) Jacobian matrix
 #[
 from __future__ import annotations
 
-from typing import (Any, )
-from collections.abc import (Iterable, Collection, )
 import itertools as it_
-import dataclasses as dc_
+
+from typing import (TYPE_CHECKING, )
+if TYPE_CHECKING:
+    from typing import (Any, Self, )
+    from collections.abc import (Iterable, Collection, )
 #]
 
 
@@ -23,23 +25,29 @@ class ArrayMap:
 
     def __init__(
         self,
+    ) -> None:
+        """
+        """
+        self.lhs = ([], [], )
+        self.rhs = ([], [], )
+
+    @classmethod
+    def static(
+        klass,
         eids: list[int],
         eid_to_wrt_tokens: dict[int, Any],
         tokens_in_columns_on_lhs: list[Any],
         eid_to_rhs_offset: dict[int, int],
         /,
         **kwargs,
-    ) -> None:
+    ) -> Self:
         """
         """
-        self.lhs = ([], [], )
-        self.rhs = ([], [], )
-        #
+        self = klass()
         token_to_lhs_column = {
             t: i
             for i, t in enumerate(tokens_in_columns_on_lhs, )
         }
-        #
         for lhs_row, eid in enumerate(eids):
             self.add_lhs_rhs(*_get_raw_map_for_single_equation(
                 eid_to_wrt_tokens[eid],
@@ -48,7 +56,7 @@ class ArrayMap:
                 lhs_row,
                 **kwargs,
             ))
-
+        return self
 
     def __len__(self, /, ) -> int:
         return len(self.lhs[0])
@@ -93,6 +101,7 @@ class ArrayMap:
         self.lhs = (list(unzipped_pruned[0]), list(unzipped_pruned[1]))
         self.rhs = (list(unzipped_pruned[2]), list(unzipped_pruned[3]))
 
+
 class VectorMap:
     """
     """
@@ -100,16 +109,25 @@ class VectorMap:
 
     __slots__ = ('lhs', 'rhs', )
 
-    def __init__(
-        self,
+    def __init__(self, /, ) -> None:
+        """
+        """
+        self.lhs = ([], )
+        self.rhs = ([], )
+
+    @classmethod
+    def static(
+        klass,
         eids: Collection[int],
-        /,
-    ) -> None:
+    ) -> Self:
         """
         """
+        self = klass()
         num_equations = len(eids)
         self.lhs = (list(range(num_equations)), )
         self.rhs = (list(eids), )
+        return self
+
 
     def __len__(self, /, ) -> int:
         return len(self.lhs[0])
@@ -154,6 +172,7 @@ def _get_raw_map_for_single_equation(
     /,
     rhs_column: int,
     lhs_column_offset: int,
+    **kwargs,
 ) -> tuple[tuple[list[int], list[int]], tuple[list[int], list[int]]]:
     """
     """

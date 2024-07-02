@@ -86,6 +86,7 @@ class IterPrinter:
         abs_curr_f = _np.abs(self._curr_f)
         index = _np.argmax(abs_curr_f)
         worst_f = abs_curr_f[index]
+        index = index % self.num_equations
         worst_equation = self._equations[index].human if self._equations is not None else ""
         worst_equation = _clip_string_exactly(worst_equation, self._MAX_LEN_EQUATION_STRING)
         return f"{worst_f:.5e}", worst_equation

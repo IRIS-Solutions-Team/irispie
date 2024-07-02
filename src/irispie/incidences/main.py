@@ -25,6 +25,7 @@ class Token(NamedTuple, ):
     Incidence
     """
     #[
+
     qid: int
     shift: int
 
@@ -32,7 +33,7 @@ class Token(NamedTuple, ):
         self: Self,
         by: int,
     ) -> Self:
-        return Token(self.qid, self.shift+by)
+        return Token(self.qid, self.shift+by, )
 
     def print(
         self,
@@ -42,13 +43,12 @@ class Token(NamedTuple, ):
         shift = _PRINT_SHIFT.format(shift=self.shift, ) if self.shift else ""
         return name + shift
 
-    def print_xtring(
-        self,
-    ) -> str:
+    def print_xtring(self, /, ) -> str:
         return (
             _PRINT_TOKEN.format(qid=self.qid, shift=self.shift)
             if self.shift else _PRINT_TOKEN_ZERO_SHIFT.format(qid=self.qid)
         )
+
     #]
 
 

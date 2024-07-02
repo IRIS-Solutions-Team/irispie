@@ -10,6 +10,6 @@ from ..equators import plain as _plain
 #]
 
 
-class PeriodEquator(_plain.PlainEquator, ):
+class Equator(_plain.PlainEquator, ):
     pass
 

@@ -6,26 +6,42 @@ Jacobians for dynamic period-by-period systems
 #[
 from __future__ import annotations
 
-from typing import (Protocol, )
-from collections.abc import (Iterable, )
 import numpy as _np
 
 from ..incidences import main as _incidence
+from ..aldi.maps import (ArrayMap, )
+from ..equations import (Equation, )
 
-from . import _base
+from . import base
+
+from typing import (TYPE_CHECKING, )
+if TYPE_CHECKING:
+    from typing import (Any, )
+    from collections.abc import (Collection, Iterable, )
 #]
 
 
-class _SteadyJacobian(_base.Jacobian, ):
+class _SteadyJacobian(base.Jacobian, ):
     """
     """
     #[
 
+    _create_map = staticmethod(ArrayMap.static)
     _num_diff_columns = ...
+
+    @staticmethod
+    def _calculate_shape(
+        eids: Collection[int],
+        wrt_something: Collection[Any],
+        num_columns_to_eval: int,
+    ) -> tuple[int, int]:
+        """
+        """
+        return len(eids), len(wrt_something),
 
     def _create_eid_to_wrts(
         self,
-        equations: Iterable[_equations.Equation],
+        equations: Iterable[Equation],
         all_wrt_qids: Iterable[int],
         /,
     ) -> dict[int, tuple[int, ...]]:
@@ -100,7 +116,7 @@ class FlatSteadyJacobian(_SteadyJacobian, ):
         """
         """
         diff_array = self._aldi_context.eval_diff_to_array(steady_array, column_offset, )
-        return self._create_jacobian(self._shape, diff_array, self._map, )
+        return self._create_jacobian_matrix(diff_array, )
 
     def _create_diff_value_for_token(
         self,
@@ -131,8 +147,8 @@ class NonflatSteadyJacobian(_SteadyJacobian, ):
         """
         """
         diff_array = self._aldi_context.eval_diff_to_array(steady_array, column_offset, )
-        A = self._create_jacobian(self._shape, diff_array[:, 0:1], self._map, )
-        B = self._create_jacobian(self._shape, diff_array[:, 1:2], self._map, )
+        A = self._create_jacobian_matrix(diff_array[:, 0:1], )
+        B = self._create_jacobian_matrix(diff_array[:, 1:2], )
         k = self.nonflat_steady_shift
         j = _np.vstack((
             _np.hstack((A, B, )),

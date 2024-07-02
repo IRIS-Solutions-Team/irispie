@@ -34,8 +34,8 @@ from ..fords import systems as _systems
 from ..fords import kalmans as _kalmans
 from ..fords import std_simulators as _std_simulators
 
-from .invariants import (Invariant, )
-from .variants import (Variant, )
+from ._invariants import (Invariant, )
+from ._variants import (Variant, )
 from . import _covariances as _covariances
 from . import _flags as _flags
 from . import _simulate as _simulate

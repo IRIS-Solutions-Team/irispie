@@ -35,6 +35,11 @@ from .descriptors import (SolutionVectors, Squid, )
 from .kalmans import (Cache, )
 from . import kalmans as _kalmans
 from . import shock_simulators as _shock_simulators
+
+from typing import (TYPE_CHECKING, )
+if TYPE_CHECKING:
+    from typing import (Any, Callable, )
+    from collections.abc import (Iterable, )
 #]
 
 
@@ -191,26 +196,17 @@ def simulate_flat(
     solution = model_v.get_singleton_solution(deviation=deviation, )
     vec = model_v.solution_vectors
     num_periods = dataslate_v.num_periods
-    #
-    dataslate_v.logarithmize()
-    data_array = dataslate_v.get_data_variant(0, )
+    simulation_columns = tuple(range(*frame.simulation_slice.indices(num_periods, ), ), )
+    curr_xi_qids, curr_xi_indexes = vec.get_curr_transition_indexes()
     #
     T = solution.T
     P = solution.P
-    R = solution.R
     K = solution.K
     #
-    Z = solution.Z
-    H = solution.H
-    D = solution.D
-    #
-    xi = _get_init_xi(data_array, frame.first, vec, )
-    curr_xi_qids, curr_xi_indexes = vec.get_curr_transition_indexes()
-    #
-    # Prepare array of all xi values (needed for measurement simulation)
+    dataslate_v.logarithmize()
+    data_array = dataslate_v.get_data_variant(0, )
     num_xi = len(vec.transition_variables)
     xi_array = _np.full((num_xi, num_periods, ), _np.nan, )
-    #
     u_array = _extract_shock_values(data_array, vec.unanticipated_shocks, )
     all_v_impact = _simulate_anticipated_shocks(model_v, dataslate_v, frame, )
     #
@@ -218,7 +214,8 @@ def simulate_flat(
     # Store results in data_array
     # Capture xi_array for later use
     #
-    for t in range(*frame.simulation_slice.indices(num_periods, ), ):
+    xi = _get_init_xi(data_array, simulation_columns[0], vec, )
+    for t in simulation_columns:
         xi = T @ xi + P @ u_array[:, t] + K
         if all_v_impact[t] is not None:
             xi += all_v_impact[t]
@@ -726,5 +723,83 @@ def _check_needs_splitting(
         return False
     #
     return True
+    #]
+
+
+def create_terminal_simulator(
+    model_v: _FordSimulatableProtocol,
+) -> Callable | None:
+    """
+    """
+    #[
+    solution = model_v.get_singleton_solution(deviation=False, )
+    vec = model_v.solution_vectors
+    max_lead = model_v.max_lead
+    #
+    if not max_lead:
+        return None
+    #
+    curr_xi_qids, curr_xi_indexes = vec.get_curr_transition_indexes()
+    T = solution.T
+    K = solution.K
+    #
+    qid_to_logly = model_v.create_qid_to_logly()
+    logly_rows = tuple( qid for qid, status in qid_to_logly.items() if status )
+    #
+    def terminal_simulator(
+        data_array: _np.ndarray,
+        last_simulation: int,
+    ) -> None:
+        """
+        """
+        first_terminal = last_simulation + 1
+        simulation_columns = tuple(range(first_terminal, first_terminal+max_lead, ), )
+        data_array[logly_rows, :] = _np.log(data_array[logly_rows, :], )
+        xi = _get_init_xi(data_array, first_terminal, vec, )
+        for t in simulation_columns:
+            xi = T @ xi + K
+            data_array[curr_xi_qids, t] = xi[curr_xi_indexes, ...]
+        data_array[logly_rows, :] = _np.exp(data_array[logly_rows, :], )
+    #
+    return terminal_simulator
+    #]
+
+
+def create_extender(
+    model_v: _FordSimulatableProtocol,
+) -> Callable:
+    """
+    """
+    #[
+    solution = model_v.get_singleton_solution(deviation=False, )
+    vec = model_v.solution_vectors
+    curr_xi_qids, curr_xi_indexes = vec.get_curr_transition_indexes()
+    y_qids = [t.qid for t in vec.measurement_variables]
+    T = solution.T
+    K = solution.K
+    Z = solution.Z
+    D = solution.D
+    #
+    qid_to_logly = model_v.create_qid_to_logly()
+    logly_rows = tuple( qid for qid, status in qid_to_logly.items() if status )
+    #
+    def extender(
+        data_array: _np.ndarray,
+        last_simulation: int,
+        num_columns_to_run: int,
+    ) -> None:
+        """
+        """
+        first_column = last_simulation + 1
+        data_array[logly_rows, :] = _np.log(data_array[logly_rows, :], )
+        xi = _get_init_xi(data_array, first_column, vec, )
+        for t in range(first_column, first_column + num_columns_to_run, ):
+            xi = T @ xi + K
+            y = Z @ xi + D
+            data_array[curr_xi_qids, t] = xi[curr_xi_indexes, ...]
+            data_array[y_qids, t] = y
+        data_array[logly_rows, :] = _np.exp(data_array[logly_rows, :], )
+    #
+    return extender
     #]
 

@@ -10,5 +10,6 @@ from ..evaluators import printers as _printers
 #]
 
 
-PeriodIterPrinter = _printers.BasicIterPrinter
+class IterPrinter(_printers.BasicIterPrinter, ):
+    pass
 

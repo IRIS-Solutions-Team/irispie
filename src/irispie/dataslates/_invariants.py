@@ -12,6 +12,7 @@ import copy as _cp
 import numpy as _np
 
 from ..dates import (Period, Frequency, )
+from .. import dates as _dates
 from ..conveniences import descriptions as _descriptions
 from ..series import main as _series
 from ..databoxes import main as _databoxes
@@ -79,6 +80,12 @@ class Invariant:
         """
         """
         return len(self.periods)
+
+    @property
+    def num_base_periods(self, /, ) -> int:
+        """
+        """
+        return len(self.base_columns)
 
     @property
     def num_names(self, /, ) -> int:
@@ -164,31 +171,43 @@ class Invariant:
 
     def remove_periods_from_start(
         self,
-        remove: int,
+        num_periods_to_remove: int,
         /,
     ) -> None:
         """
         """
-        if remove:
-            self.periods = self.periods[remove:]
+        if num_periods_to_remove:
+            self.periods = self.periods[num_periods_to_remove:]
             self.base_columns = tuple(
-                i - remove for i in self.base_columns
-                if i >= remove
+                i - num_periods_to_remove for i in self.base_columns
+                if i >= num_periods_to_remove
             )
 
     def remove_periods_from_end(
         self,
-        remove: int,
+        num_periods_to_remove: int,
         /,
     ) -> None:
         """
         """
-        if remove:
-            self.periods = self.periods[:-remove]
+        if num_periods_to_remove:
+            self.periods = self.periods[:-num_periods_to_remove]
             num_periods = len(self.periods)
             self.base_columns = tuple(
                 i for i in self.base_columns
                 if i < num_periods
             )
+
+    def add_periods_to_end(
+        self,
+        num_periods_to_add: int,
+        /,
+    ) -> None:
+        """
+        """
+        if num_periods_to_add > 0:
+            end_period = self.periods[-1]
+            new_end_period = end_period + num_periods_to_add
+            self.periods = self.periods + _dates.periods_from_until(end_period, new_end_period, )
 
 

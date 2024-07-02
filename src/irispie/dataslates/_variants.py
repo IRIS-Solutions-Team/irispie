@@ -93,23 +93,36 @@ class Variant:
 
     def remove_periods_from_start(
         self,
-        remove: int,
+        num_periods_to_remove: int,
         /,
     ) -> None:
         """
         """
-        if remove:
-            self.data = self.data[:, remove:]
+        if num_periods_to_remove > 0:
+            self.data = self.data[:, num_periods_to_remove:]
 
     def remove_periods_from_end(
         self,
-        remove: int,
+        num_periods_to_remove: int,
         /,
     ) -> None:
         """
         """
-        if remove:
-            self.data = self.data[:, :-remove]
+        if num_periods_to_remove > 0:
+            self.data = self.data[:, :-num_periods_to_remove]
+
+    def add_periods_to_end(
+        self,
+        num_periods_to_add: int,
+    ) -> None:
+        if num_periods_to_add > 0:
+            padding = ((0, 0), (0, num_periods_to_add))
+            self.data = _np.pad(
+                self.data,
+                padding,
+                mode="constant",
+                constant_values=_np.nan,
+            )
 
     def retrieve_record(
         self,
