@@ -373,13 +373,25 @@ self = Series(
 
     @property
     @_pages.reference(category="property", )
-    def frequency(self):
+    def frequency(self, /, ):
         """==Date frequency of the time series=="""
         return (
             self.start.frequency
             if self.start is not None
             else Frequency.UNKNOWN
         )
+
+    @property
+    @_pages.reference(category="property", )
+    def is_empty(self, ) -> bool:
+        """==True if the time series is empty=="""
+        return not self.data.size
+
+    @property
+    @_pages.reference(category="property", )
+    def has_missing(self, /, ):
+        """==True if the time series is non-empty and contains in-sample missing values=="""
+        return (not self.is_empty) and _np.isnan(self.data).any()
 
     def set_data(
         self,
@@ -717,9 +729,6 @@ self = Series(
             return
         self.data = self.get_data_from_until((new_start, new_end, ), )
         self.start = new_start
-
-    def is_empty(self, ) -> bool:
-        return not self.data.size
 
     def empty(
         self,
