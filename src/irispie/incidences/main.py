@@ -4,6 +4,8 @@ Incidence tokens and wrt tokens
 
 
 #[
+from __future__ import annotations
+
 from collections.abc import (Iterable, )
 from numbers import (Real, )
 from typing import (NamedTuple, Callable, Self, Protocol, TypeAlias, )
@@ -22,9 +24,10 @@ _PRINT_SHIFT = "[{shift:+g}]"
 
 class Token(NamedTuple, ):
     """
-    Incidence
+    Incidence of quantities in equations
     """
     #[
+
     qid: int
     shift: int
 
@@ -32,7 +35,10 @@ class Token(NamedTuple, ):
         self: Self,
         by: int,
     ) -> Self:
-        return Token(self.qid, self.shift+by)
+        """
+        Create a new Token with a shifted time
+        """
+        return Token(self.qid, self.shift+by, )
 
     def print(
         self,
@@ -42,14 +48,14 @@ class Token(NamedTuple, ):
         shift = _PRINT_SHIFT.format(shift=self.shift, ) if self.shift else ""
         return name + shift
 
-    def print_xtring(
-        self,
-    ) -> str:
+    def print_xtring(self, /, ) -> str:
         return (
             _PRINT_TOKEN.format(qid=self.qid, shift=self.shift)
             if self.shift else _PRINT_TOKEN_ZERO_SHIFT.format(qid=self.qid)
         )
+
     #]
+
 
 
 def get_max_shift(tokens: Iterable[Token]) -> int:
@@ -69,9 +75,14 @@ def generate_qids_from_tokens(tokens: Iterable[Token]) -> Iterable[int]:
 
 
 def get_some_shift_by_quantities(tokens: Iterable[Token], something: Callable) -> dict:
-    key = _op.attrgetter("qid")
-    sorted_tokens = sorted(tokens, key=key)
-    return { k: something(t.shift for t in tokens) for k, tokens in _it.groupby(sorted_tokens, key=key) }
+    """
+    """
+    key = _op.attrgetter("qid", )
+    sorted_tokens = sorted(tokens, key=key, )
+    return {
+        qid: something(t.shift for t in tokens)
+        for qid, tokens in _it.groupby(sorted_tokens, key=key, )
+    }
 
 
 def generate_tokens_of_kinds(tokens: Iterable[Token], qid_to_kind: dict, kinds: _quantities.QuantityKind) -> Iterable[Token]:

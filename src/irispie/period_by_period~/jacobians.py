@@ -12,11 +12,11 @@ import numpy as _np
 
 from ..incidences import main as _incidence
 
-from ..jacobians import _base
+from ..jacobians import base
 #]
 
 
-class PeriodJacobian(_base.Jacobian, ):
+class PeriodJacobian(base.Jacobian, ):
     """
     """
     #[
@@ -25,15 +25,12 @@ class PeriodJacobian(_base.Jacobian, ):
         self,
         data_array: _np.ndarray,
         column_offset: int,
-        steady_array: _np.ndarray | None,
         /,
     ) -> _np.ndarray:
         """
         """
-        diff_array = self._aldi_context.eval_diff_to_array(
-            data_array, column_offset, steady_array,
-        )
-        return self._create_jacobian(self._shape, diff_array, self._map, )
+        diff_array = self._aldi_context.eval_diff_to_array(data_array, column_offset, )
+        return self._create_jacobian_matrix(diff_array, )
 
     def _create_eid_to_wrts(
         self,

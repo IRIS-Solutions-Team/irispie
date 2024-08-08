@@ -9,9 +9,18 @@ import toml
 
 def _upgrade_version_string(version: str, bump: Literal["major", "minor", "patch"]) -> str:
     """Bump the version number"""
+    def add_one(number: str, ) -> str:
+        return str(int(number) + 1)
     major_minor_patch = version.split(".")
-    index = next(i for i, e in enumerate(("major", "minor", "patch", )) if e == bump)
-    major_minor_patch[index] = str(int(major_minor_patch[index]) + 1)
+    if bump == "major":
+        major_minor_patch[0] = add_one(major_minor_patch[0], )
+        major_minor_patch[1] = "0"
+        major_minor_patch[2] = "0"
+    elif bump == "minor":
+        major_minor_patch[1] = add_one(major_minor_patch[1], )
+        major_minor_patch[2] = "0"
+    elif bump == "patch":
+        major_minor_patch[2] = add_one(major_minor_patch[2], )
     return ".".join(major_minor_patch, )
 
 

@@ -128,6 +128,7 @@ def _get_date_positions(dates, base, num_periods, /, ):
     categories={
         "constructor": "Constructing new time series",
         "conversion": "Converting time series frequency",
+        "manipulation": "Manipulating time series values",
         "homogenizing": "Homogenizing and extrapolating time series",
         "filtering": "Filtering time series",
         "moving": "Applying moving window functions",
@@ -170,7 +171,7 @@ variants of the data, stored as mutliple columns.
         "data",
         "data_type",
         "metadata",
-        "_description", 
+        "_description",
     )
 
     _numeric_format: str = "15g"
@@ -373,13 +374,25 @@ self = Series(
 
     @property
     @_pages.reference(category="property", )
-    def frequency(self):
+    def frequency(self, /, ):
         """==Date frequency of the time series=="""
         return (
             self.start.frequency
             if self.start is not None
             else Frequency.UNKNOWN
         )
+
+    @property
+    @_pages.reference(category="property", )
+    def is_empty(self, ) -> bool:
+        """==True if the time series is empty=="""
+        return not self.data.size
+
+    @property
+    @_pages.reference(category="property", )
+    def has_missing(self, /, ):
+        """==True if the time series is non-empty and contains in-sample missing values=="""
+        return (not self.is_empty) and _np.isnan(self.data).any()
 
     def set_data(
         self,
@@ -653,11 +666,13 @@ self = Series(
         )
         self._replace_data(new_data, )
 
-    def hstack(self, *args):
+    def hstack(self, *args, ):
+        """
+        """
         if not args:
             return self.copy()
         self_args = (self, *args, )
-        if all(i.is_empty() for i in self_args):
+        if all(i.is_empty for i in self_args):
             num_variants = sum(i.num_variants for i in self_args)
             return Series(num_variants=num_variants, )
         encompassing_span, *from_until = _dates.get_encompassing_span(self, *args, )
@@ -717,9 +732,6 @@ self = Series(
             return
         self.data = self.get_data_from_until((new_start, new_end, ), )
         self.start = new_start
-
-    def is_empty(self, ) -> bool:
-        return not self.data.size
 
     def empty(
         self,
@@ -781,6 +793,52 @@ self = Series(
         self.start = new_date \
             if old_date is None \
             else new_date - (old_date - self.start)
+
+    @_pages.reference(category="manipulation", )
+    def replace_where(
+        self,
+        test: Callable,
+        new_value: Real,
+    ) -> None:
+        """
+················································································
+
+==Replace time series values that pass a test==
+
+```
+self.replace_where(
+    test,
+    new_value,
+)
+```
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    Time series whose observations will be tested and those passing the test
+    replaced.
+
+???+ input "test"
+    A function (or a Callable) that takes a numpy array and returns `True` or
+    `False` for each individual value.
+
+???+ input "new_value"
+    The value to replace the observations that pass the test.
+
+
+### Returns ###
+
+
+???+ returns "None"
+    This method modifies `self` in-place and does not return a value.
+
+
+················································································
+        """
+        self.data[test(self.data)] = new_value
+        self.trim()
 
     def _shallow_copy_data(
         self,

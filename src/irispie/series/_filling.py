@@ -16,7 +16,8 @@ if TYPE_CHECKING:
     from typing import (Callable, EllipsisType, )
     from collections.abc import (Iterable, )
     from numbers import (Real, )
-    from ..data import (Period, )
+    from ..dates import (Period, )
+    from ..series import (Series, )
 #]
 
 
@@ -31,10 +32,9 @@ class Inlay:
     @_pages.reference(category="homogenizing", )
     def fill_missing(
         self,
-        method: Literal["next", "previous", "nearest", "linear", "log_linear", "constant"],
-        span: Iterable[Period] | EllipsisType | None = None,
+        method: Literal["next", "previous", "nearest", "linear", "log_linear", "constant", "series", ],
         *args,
-        **kwargs,
+        span: Iterable[Period] | EllipsisType | None = None,
     ) -> None:
         r"""
 ················································································
@@ -47,8 +47,8 @@ class Inlay:
     new = irispie.fill_missing(
         self,
         method,
-        span=None,
         *args,
+        span=None,
     )
 
 
@@ -56,8 +56,8 @@ class Inlay:
 
     self.fill_missing(
         method,
-        span=None,
         *args,
+        span=None,
     )
 
 
@@ -72,11 +72,22 @@ class Inlay:
 
     | Method        | Description
     |---------------|-------------
+    | "constant"    | Fill with a constant value
     | "next"        | Next available observation
     | "previous"    | Previous available observation
     | "nearest"     | Nearest available observation
     | "linear"      | Linear interpolation or extrapolation
     | "log_linear"  | Log-linear interpolation or extrapolation
+    | "series"      | Fill with values from another time series object
+
+???+ input "*args"
+    Additional arguments to be passed to the filling method. The following methods require additional arguments:
+
+    | Method     | Additional argument(s)
+    |------------|-----------------------
+    | "constant" | A single constant value
+    | "series"   | A time `Series` object
+
 
 ???+ input "span"
     The time span to be filled. If `None`, the time span of the input time `Series` is filled.
@@ -94,9 +105,9 @@ class Inlay:
 ················································································
         """
         fill_func = _METHOD_FACTORY[method]
-        data = self.get_data(span, )
+        data, span = self.get_data_and_periods(span, )
         new_data = [
-            fill_func(variant, *args, **kwargs, ).T
+            fill_func(variant, *args, span=span, ).T
             for variant in data.T
         ]
         self.set_data(span, new_data, )
@@ -210,6 +221,19 @@ def _fill_constant(
     return data
 
 
+def _fill_series(
+    values: _np.ndarray,
+    series: Series,
+    span: Iterable[Period],
+) -> _np.ndarray:
+    """
+    """
+    fill_values = series.get_data(span, )
+    index_nan = _np.isnan(values)
+    values[index_nan] = fill_values.flatten()[index_nan]
+    return values
+
+
 def _next_index(i: int, where_obs: _np.ndarray, /, ) -> int:
     """
     """
@@ -255,6 +279,7 @@ _METHOD_FACTORY = {
     "linear": _ft.partial(_fill_interp, func=_interpolation_linear, ),
     "log_linear": _ft.partial(_fill_interp, func=_interpolation_log_linear, ),
     "constant": _fill_constant,
+    "series": _fill_series,
 }
 
 

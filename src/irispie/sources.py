@@ -145,6 +145,9 @@ class ModelSource:
     def add_measurement_equations(self, equation_inputs: Iterable[EquationInput] | None) -> None:
         self._add_equations(equation_inputs, _equations.EquationKind.MEASUREMENT_EQUATION)
 
+    def add_steady_autovalues(self, equation_inputs: Iterable[EquationInput] | None) -> None:
+        self._add_equations(equation_inputs, _equations.EquationKind.STEADY_AUTOVALUES, )
+
     def add_all_but(self, all_but_input: str | None) -> None:
         if not all_but_input:
             return
@@ -232,6 +235,7 @@ class ModelSource:
         measurement_variables: Iterable[QuantityInput] | None = None,
         measurement_equations: Iterable[EquationInput] | None = None,
         measurement_shocks: Iterable[QuantityInput] | None = None,
+        steady_autovalues: Iterable[EquationInput] | None = None,
         parameters: Iterable[QuantityInput] | None = None,
         exogenous_variables: Iterable[QuantityInput] | None = None,
         log_variables: Iterable[str] | None = None,
@@ -246,6 +250,7 @@ class ModelSource:
         self.add_measurement_variables(measurement_variables, )
         self.add_measurement_equations(measurement_equations, )
         self.add_measurement_shocks(measurement_shocks, )
+        self.add_steady_autovalues(steady_autovalues, )
         self.add_parameters(parameters, )
         self.add_exogenous_variables(exogenous_variables, )
         self.add_log_variables(log_variables, )
@@ -276,6 +281,7 @@ class ModelSource:
         self.add_measurement_variables(parsed_content.get("measurement-variables"))
         self.add_measurement_shocks(parsed_content.get("measurement-shocks"))
         self.add_measurement_equations(parsed_content.get("measurement-equations"))
+        self.add_steady_autovalues(parsed_content.get("steady-autovalues"))
         self.add_parameters(parsed_content.get("parameters"))
         self.add_exogenous_variables(parsed_content.get("exogenous-variables"))
         self.add_log_variables(parsed_content.get("log-variables"))

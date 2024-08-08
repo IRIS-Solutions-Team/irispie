@@ -159,6 +159,13 @@ def create_qid_to_description(quantities: Iterable[Quantity]) -> dict[int, str]:
     }
 
 
+def create_name_to_kind(quantities: Iterable[Quantity]) -> dict[str, str]:
+    return {
+        qty.human: qty.kind for qty in quantities
+        if qty.human is not None and qty.description is not None
+    }
+
+
 def create_name_to_description(quantities: Iterable[Quantity]) -> dict[str, str]:
     return {
         qty.human: qty.description for qty in quantities
@@ -224,6 +231,12 @@ def get_max_qid(quantities: Iterable[Quantity]) -> int:
         if qty.id is not None
     )
 
+
+def create_name_to_logly(quantities: Iterable[Quantity]) -> dict[int, bool]:
+    return {
+        qty.human: qty.logly for qty in quantities
+        if qty.id is not None and qty.logly is not None
+    }
 
 def create_qid_to_logly(quantities: Iterable[Quantity]) -> dict[int, bool]:
     return {

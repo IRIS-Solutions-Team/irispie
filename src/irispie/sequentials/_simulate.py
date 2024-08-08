@@ -11,6 +11,7 @@ import numpy as _np
 import itertools as _it
 import wlogging as _wl
 import functools as _ft
+import warnings as _wa
 
 from .. import pages as _pages
 from .. import wrongdoings as _wrongdoings
@@ -48,6 +49,7 @@ class Inlay:
         remove_terminal: bool = True,
         shocks_from_data: bool = True,
         logging_level: int = _wl.INFO,
+        catch_warnings: bool = False,
         unpack_singleton: bool = True,
         return_info: bool = False,
         method: Literal["sequential", ] = "sequential",
@@ -57,8 +59,14 @@ class Inlay:
 
 ==Simulate sequential model==
 
+Simulate a `Sequential` model, `self`, on a time `span`, period by period,
+equation by equation. The `simulate` function does not reorder the
+equations; if needed, this must be done by running `reorder` before
+simulating the model.
+
+
 ```
-out_db, info = self.simulate(
+out_db = self.simulate(
     input_db,
     simulation_span,
     *,
@@ -70,13 +78,17 @@ out_db, info = self.simulate(
     num_variants=None,
     remove_initial=True,
     remove_terminal=True,
+    return_info=False,
 )
 ```
 
-Simulate a `Sequential` model, `self`, on a time `span`, period by period,
-equation by equation. The `simulate` function does not reorder the
-equations; if needed, this must be done by running `reorder` before
-simulating the model.
+```
+out_db, info = self.simulate(
+    ...,
+    return_info=True,
+    ...,
+)
+```
 
 
 ### Input arguments ###
@@ -140,13 +152,18 @@ simulating the model.
 
 
 ???+ returns "out_db"
-
     Output databox with the simulated time series for the LHS variables.
 
 ???+ returns "info"
+    (Only returned if `return_info=True which is not the default behavior)
+    Dictionary with information about the simulation; `info` contains the
+    following items:
 
-    Information about the simulation; `info` is a dict with the following
-    items.
+    | Key | Description
+    |-----|-------------
+    | `"method"` | Simulation method used
+    | `"execution_order"` | Execution order of the equations and periods
+
 
 ················································································
         """
@@ -192,6 +209,7 @@ simulating the model.
                 logger=_LOGGER,
                 when_simulates_nan=when_simulates_nan,
                 execution_order=execution_order,
+                catch_warnings=catch_warnings,
             )
             out_info.append(info_v, )
         #=======================================================================
@@ -233,6 +251,7 @@ def _simulate_v(
     logger: _wl.Logger,
     when_simulates_nan,
     execution_order,
+    catch_warnings,
 ) -> dict[str, Any]:
     """
     """
@@ -260,8 +279,11 @@ def _simulate_v(
     #
     info = {
         "method": "sequential",
+        "execution_order": execution_order,
     }
     #
+    if catch_warnings:
+        _wa.simplefilter("error", )
     for (column, date), equation in columns_dates_equations:
         lhs_date_str = f"{equation.lhs_name}[{date}]"
         residual_date_str = f"{equation.residual_name}[{date}]"
@@ -291,9 +313,11 @@ def _simulate_v(
             when_nonfinite_stream,
             info_eq["is_finite"],
             info_eq["simulated_name"],
+            info_eq["simulated_value"],
             date,
         )
     when_nonfinite_stream._raise()
+    _wa.simplefilter("default", )
     #
     return info
 
@@ -345,8 +369,9 @@ def _detect_exogenized(
 
 def _catch_nonfinite(
     stream: _wrongdoings.Stream,
-    is_finite: bool | _np.ndarray,
+    is_finite: _np.ndarray,
     simulated_name: str,
+    simulated_value: Real | _np.ndarray,
     date: Dater,
 ) -> None:
     """
@@ -354,7 +379,12 @@ def _catch_nonfinite(
     #[
     if is_finite.all():
         return
-    message = f"{simulated_name}[{date}]"
+    simulate_value = (
+        simulated_value.tolist()
+        if isinstance(simulated_value, _np.ndarray)
+        else simulated_value
+    )
+    message = f"{simulated_name}[{date}]={simulated_value}"
     stream.add(message, )
     #]
 

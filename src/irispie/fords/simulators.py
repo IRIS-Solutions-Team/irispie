@@ -11,7 +11,7 @@ Table of contents
 * `simulate_measurement`
 * `_generate_period_system`
 * `_store_smooth`
-* `_get_init_xi`
+* `get_init_xi`
 
 """
 
@@ -35,6 +35,11 @@ from .descriptors import (SolutionVectors, Squid, )
 from .kalmans import (Cache, )
 from . import kalmans as _kalmans
 from . import shock_simulators as _shock_simulators
+
+from typing import (TYPE_CHECKING, )
+if TYPE_CHECKING:
+    from typing import (Any, )
+    from collections.abc import (Iterable, )
 #]
 
 
@@ -46,22 +51,20 @@ _simulate_anticipated_shocks \
     = _shock_simulators.simulate_square_anticipated_shocks
 
 
-class _FordSimulatableProtocol(Protocol, ):
+class FordSimulatableProtocol(Protocol, ):
     """
     """
     #[
 
     num_variants: int
-
     solution_vectors: SolutionVectors
-
     def get_singleton_solution(self, deviation: bool, ) -> Solution: ...
 
     #]
 
 
 def simulate(
-    model_v: _FordSimulatableProtocol,
+    model_v: FordSimulatableProtocol,
     dataslate_v: Dataslate,
     plan: SimulationPlan | None,
     vid: int,
@@ -176,7 +179,7 @@ def simulate(
 
 
 def simulate_flat(
-    model_v: _FordSimulatableProtocol,
+    model_v: FordSimulatableProtocol,
     dataslate_v: Dataslate,
     frame: Frame,
     vid: int,
@@ -191,26 +194,17 @@ def simulate_flat(
     solution = model_v.get_singleton_solution(deviation=deviation, )
     vec = model_v.solution_vectors
     num_periods = dataslate_v.num_periods
-    #
-    dataslate_v.logarithmize()
-    data_array = dataslate_v.get_data_variant(0, )
+    simulation_columns = tuple(range(*frame.simulation_slice.indices(num_periods, ), ), )
+    curr_xi_qids, curr_xi_indexes = vec.get_curr_transition_indexes()
     #
     T = solution.T
     P = solution.P
-    R = solution.R
     K = solution.K
     #
-    Z = solution.Z
-    H = solution.H
-    D = solution.D
-    #
-    xi = _get_init_xi(data_array, frame.first, vec, )
-    curr_xi_qids, curr_xi_indexes = vec.get_curr_transition_indexes()
-    #
-    # Prepare array of all xi values (needed for measurement simulation)
+    dataslate_v.logarithmize()
+    data_array = dataslate_v.get_data_variant(0, )
     num_xi = len(vec.transition_variables)
     xi_array = _np.full((num_xi, num_periods, ), _np.nan, )
-    #
     u_array = _extract_shock_values(data_array, vec.unanticipated_shocks, )
     all_v_impact = _simulate_anticipated_shocks(model_v, dataslate_v, frame, )
     #
@@ -218,7 +212,8 @@ def simulate_flat(
     # Store results in data_array
     # Capture xi_array for later use
     #
-    for t in range(*frame.simulation_slice.indices(num_periods, ), ):
+    xi = get_init_xi(data_array, simulation_columns[0], vec, )
+    for t in simulation_columns:
         xi = T @ xi + P @ u_array[:, t] + K
         if all_v_impact[t] is not None:
             xi += all_v_impact[t]
@@ -232,7 +227,7 @@ def simulate_flat(
 
 
 def simulate_conditional(
-    model_v: _FordSimulatableProtocol,
+    model_v: FordSimulatableProtocol,
     dataslate_v: Dataslate,
     frame: Frame,
     vid: int,
@@ -265,7 +260,7 @@ def simulate_conditional(
     #
     # Initialize Kalman filter:
     # [initial median, initial MSE, number of initials to estimates, ]
-    init_med = _get_init_xi(data_array, frame.first, vec, )
+    init_med = get_init_xi(data_array, frame.first, vec, )
     init_mse = _np.zeros((squid.num_xi, squid.num_xi), )
     unknown_init_impact = None
     initials = (init_med, init_mse, unknown_init_impact, )
@@ -360,7 +355,7 @@ def simulate_conditional(
 
 
 def simulate_measurement(
-    model_v: _FordSimulatableProtocol,
+    model_v: FordSimulatableProtocol,
     dataslate_v: Dataslate,
     frame: Frame,
     xi_array: _np.ndarray,
@@ -572,7 +567,7 @@ def _store_smooth(
     #]
 
 
-def _get_init_xi(
+def get_init_xi(
     maybelog_working_data: _np.ndarray,
     first_column: int,
     solution_vectors: SolutionVectors,
@@ -587,8 +582,8 @@ def _get_init_xi(
             first_column - 1,
         )
     init_xi = maybelog_working_data[init_xi_rows, init_xi_columns]
-    unnecessary_initials = ~_np.array(solution_vectors.are_initial_conditions, )
-    init_xi[unnecessary_initials] = 0
+    false_initials = tuple( not i for i in solution_vectors.true_initials )
+    init_xi[false_initials, ...] = 0
     return init_xi
     #]
 
@@ -727,4 +722,5 @@ def _check_needs_splitting(
     #
     return True
     #]
+
 

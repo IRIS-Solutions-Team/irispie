@@ -34,10 +34,14 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/irispie-package
           pytest ./tests/series -ra > ./tests/report.txt
-          git add ./tests/report.txt
-          git commit -m "Update test results"
 
-      - name: Bump version
+      - name: Upload test results as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Test results
+          path: ./irispie-package/tests/report.txt
+
+      - name: Bump version in pyproject.toml
         if: ${{ success() }}
         run: |
           cd $GITHUB_WORKSPACE/irispie-package
@@ -49,10 +53,20 @@ jobs:
           NEW_VERSION=$(python ./.github/workflows/bump_version.py \
             --release_type=$RELEASE_TYPE \
             --source_path=./pyproject.toml \
+            --target_path=./pyproject.toml \
           )
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
 
-      - name: Merge to master
+      - name: Commit and push test results and new version to develop
+        if: ${{ success() }}
+        run: |
+          cd $GITHUB_WORKSPACE/irispie-package
+          NEW_VERSION=${{ env.NEW_VERSION }}
+          git add ./pyproject.toml ./tests/report.txt
+          git commit -m "Update test results and bump version number to $NEW_VERSION"
+          git push origin develop
+
+      - name: Merge to master, tag and push
         if: ${{ success() }}
         run: |
           cd $GITHUB_WORKSPACE/irispie-package
@@ -60,7 +74,8 @@ jobs:
           git branch
           git switch master
           git pull origin master
-          git merge -X theirs -m "Release irispie-package $NEW_VERSION" --squash develop
+          git merge -X theirs -m "Release irispie-package $NEW_VERSION" develop
+          git ls-tree master
           git tag $NEW_VERSION
           git push origin master --tags
           git switch develop
@@ -74,9 +89,28 @@ jobs:
           git commit -m "Remove .release_type after release"
           git push origin develop
 
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
+      - name: Install build and twine
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade build
+          python -m pip install --upgrade twine
+
+      - name: Build dist files
+        run: |
+          cd $GITHUB_WORKSPACE/irispie-package
+          NEW_VERSION=${{ env.NEW_VERSION }}
+          git switch master
+          echo "Building version ${{ env.NEW_VERSION }}"
+          python -m build
+
+      - name: Upload to PYPI
+        run: |
+          cd $GITHUB_WORKSPACE/irispie-package
+          python -m twine upload dist/* -r pypi -u __token__ -p ${{ secrets.PYPI_API_TOKEN }} --verbose
+
+      - name: Upload new dist as artifact
+        uses: actions/upload-artifact@master
         with:
-          name: Test results
-          path: ./irispie-package/tests/report.txt
+          name: dist-${{ env.NEW_VERSION }}
+          path: irispie-package/dist/*
 

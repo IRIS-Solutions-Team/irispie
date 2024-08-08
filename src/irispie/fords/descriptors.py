@@ -47,6 +47,7 @@ Table of contents
 from __future__ import annotations
 
 from typing import (Self, Any, Protocol, )
+from types import (SimpleNamespace, )
 from collections.abc import (Iterable, )
 import itertools as _it
 import functools as _ft
@@ -57,10 +58,35 @@ from ..incidences.main import (Token, )
 from ..incidences import main as _incidence
 from .. import equations as _equations
 from .. import quantities as _quantities
-from ..aldi import differentiators as _differentiators
+from ..aldi.differentiators import (AtomFactoryProtocol, Context, )
 from ..aldi import maps as _maps
 from .. import sources as _sources
 #]
+
+
+# Implement AtomFactoryProtocol
+
+def _create_diff_for_token(
+    token: Token,
+    wrt_tokens: tuple[Token, ...],
+    /,
+) -> _np.ndarray:
+    """
+    """
+    try:
+        index = wrt_tokens.index(token, )
+    except ValueError:
+        return 0
+    diff = _np.zeros((len(wrt_tokens), 1, ), dtype=float, )
+    diff[index] = 1
+    return diff
+
+
+_ATOM_FACTORY = SimpleNamespace(
+    create_data_index_for_token=lambda token: (token.qid, token.shift, ),
+    create_diff_for_token=_create_diff_for_token,
+    get_diff_shape=lambda wrt_tokens: (len(wrt_tokens), 1, ),
+)
 
 
 class Descriptor:
@@ -102,9 +128,8 @@ class Descriptor:
         )
         #
         # Create the evaluation context for the algorithmic differentiator
-        atom_factory = self
-        self.aldi_context = _differentiators.Context(
-            atom_factory,
+        self.aldi_context = Context(
+            _ATOM_FACTORY,
             system_equations,
             eid_to_wrts=self.system_vectors.eid_to_wrt_tokens,
             qid_to_logly=_quantities.create_qid_to_logly(quantities),
@@ -116,34 +141,6 @@ class Descriptor:
 
     def get_num_forwards(self: Self) -> int:
         return self.system_vectors.get_num_forwards()
-
-    # ===== Implement AtomFactoryProtocol =====
-
-    def create_diff_for_token(
-        self,
-        token: Token,
-        wrt_tokens: tuple[Token, ...],
-        /,
-    ) -> _np.ndarray:
-        """
-        """
-        if token is None:
-            return _np.zeros((len(wrt_tokens), 1, ), )
-        try:
-            index = wrt_tokens.index(token, )
-            diff = _np.zeros((len(wrt_tokens), 1, ), )
-            diff[index] = 1
-            return diff
-        except:
-            return 0
-
-    def create_data_index_for_token(
-        self,
-        token: Token,
-    ) -> tuple[int, slice]:
-        """
-        """
-        return (token.qid, token.shift, )
 
     #]
 
@@ -189,7 +186,7 @@ class SystemVectors:
     #
     transition_variables: Iterable[Token] | None = None
     transition_variables_are_logly: list[bool] | None = None
-    are_initial_conditions: list[bool] | None = None,
+    true_initials: list[bool] | None = None,
     unanticipated_shocks: tuple[Token, ...] | None = None
     anticipated_shocks: tuple[Token, ...] | None = None
     measurement_variables: Iterable[Token] | None = None
@@ -231,7 +228,7 @@ class SystemVectors:
         all_wrt_tokens = set(_incidence.generate_tokens_of_kinds(all_tokens, qid_to_kind, _SYSTEM_QUANTITY))
         self.eid_to_wrt_tokens = _equations.create_eid_to_wrt_tokens(equations, all_wrt_tokens)
         #
-        actual_tokens_transition_variables \
+        actual_transition_variable_tokens \
             = set(_incidence.generate_tokens_of_kinds(all_tokens, qid_to_kind, _quantities.QuantityKind.TRANSITION_VARIABLE))
         #
         # Make adjustment for transition variables in measurement
@@ -239,17 +236,14 @@ class SystemVectors:
         # dated (LHS) vector of transition variables; this is done by
         # pretending x(t-k-1) is needed
         #
-        adjusted_tokens_transition_variables \
-            = _adjust_for_measurement_equations(actual_tokens_transition_variables, equations, qid_to_kind)
+        adjusted_transition_variable_tokens \
+            = _adjust_for_measurement_equations(actual_transition_variable_tokens, equations, qid_to_kind)
         #
         self.transition_variables \
-            = _incidence.sort_tokens(_create_system_transition_vector(adjusted_tokens_transition_variables))
+            = _incidence.sort_tokens(_create_system_transition_vector(adjusted_transition_variable_tokens))
         self.transition_variables_are_logly \
             = [ qid_to_logly[tok.qid] for tok in self.transition_variables ]
-        self.are_initial_conditions = [
-            Token(t.qid, t.shift-1) in actual_tokens_transition_variables and t.shift <= 0
-            for t in self.transition_variables
-        ]
+        self.populate_true_initials(actual_transition_variable_tokens, )
         #
         # Unanticipated shocks
         #
@@ -298,6 +292,23 @@ class SystemVectors:
 
     def get_num_forwards(self) -> int:
         return _get_num_forwards(self.transition_variables)
+
+    def populate_true_initials(
+        self,
+        actual_transition_variable_tokens: set[Token],
+    ) -> None:
+        """
+        """
+        # Get the maximum lag for each transition variable
+        # actual_min_shifts[qid] = min(shifts) across all tokens with qid
+        actual_min_shifts = _incidence.get_some_shift_by_quantities(actual_transition_variable_tokens, min, )
+        def is_true_initial(token, ):
+            shift = token.shift - 1
+            min_shift = actual_min_shifts[token.qid]
+            return min_shift <= shift < 0
+        self.true_initials = tuple(
+            is_true_initial(t) for t in self.transition_variables
+        )
     #]
 
 
@@ -308,7 +319,7 @@ class SolutionVectors:
     """
     #[
     transition_variables: tuple[Token, ...] | None = None
-    are_initial_conditions: list[bool, ...] | None = None
+    true_initials: list[bool, ...] | None = None
     unanticipated_shocks: tuple[Token, ...] | None = None
     anticipated_shocks: tuple[Token, ...] | None = None
     measurement_variables: tuple[Token, ...] | None = None
@@ -318,8 +329,8 @@ class SolutionVectors:
         """
         Construct solution vectors and initial conditions indicator
         """
-        self.transition_variables, self.are_initial_conditions = \
-            _solution_vector_from_system_vector(system_vectors.transition_variables, system_vectors.are_initial_conditions)
+        self.transition_variables, self.true_initials = \
+            _solution_vector_from_system_vector(system_vectors.transition_variables, system_vectors.true_initials)
         self.unanticipated_shocks = tuple(system_vectors.unanticipated_shocks)
         self.anticipated_shocks = tuple(system_vectors.anticipated_shocks)
         self.measurement_variables = tuple(system_vectors.measurement_variables)
@@ -332,7 +343,7 @@ class SolutionVectors:
         """
         Get tokens representing required initial conditions
         """
-        return list(_it.compress(self.transition_variables, self.are_initial_conditions))
+        return list(_it.compress(self.transition_variables, self.true_initials))
 
     def get_curr_transition_indexes(
         self,
@@ -379,7 +390,7 @@ class HumanSolutionVectors:
 
 
 def _create_system_transition_vector(
-    tokens_transition_variables: Iterable[Token],
+    transition_variable_tokens: Iterable[Token],
     /,
 ) -> Iterable[Token]:
     """
@@ -387,19 +398,19 @@ def _create_system_transition_vector(
     along columns of matrix A in unsolved system
     """
     #[
-    tokens_transition_variables = set(tokens_transition_variables)
-    min_shifts = _incidence.get_some_shift_by_quantities(tokens_transition_variables, lambda x: min(min(x), -1))
-    max_shifts = _incidence.get_some_shift_by_quantities(tokens_transition_variables, max)
+    transition_variable_tokens = set(transition_variable_tokens)
+    min_shifts = _incidence.get_some_shift_by_quantities(transition_variable_tokens, lambda x: min(min(x), -1))
+    max_shifts = _incidence.get_some_shift_by_quantities(transition_variable_tokens, max)
     #
     vector_for_id = lambda qid: [Token(qid, sh) for sh in range(min_shifts[qid]+1, max_shifts[qid]+1)]
-    unique_ids = set(t.qid for t in tokens_transition_variables)
+    unique_ids = set(t.qid for t in transition_variable_tokens)
     return _it.chain.from_iterable(vector_for_id(i) for i in unique_ids)
     #]
 
 
 def _solution_vector_from_system_vector(
     system_transition_vector: Iterable[Token],
-    are_initial_conditions: Iterable[bool],
+    true_initials: Iterable[bool],
     /,
 ) -> Iterable[Token]:
     """
@@ -409,7 +420,7 @@ def _solution_vector_from_system_vector(
     num_forwards = _get_num_forwards(system_transition_vector)
     return (
         tuple(system_transition_vector[num_forwards:]),
-        tuple(are_initial_conditions[num_forwards:]),
+        tuple(true_initials[num_forwards:]),
     )
 
 
@@ -463,7 +474,7 @@ class SystemMap:
         #
         # Transition equations
         #
-        self.A = _maps.ArrayMap(
+        self.A = _maps.ArrayMap.static(
             system_vectors.transition_eids,
             system_vectors.eid_to_wrt_tokens,
             system_vectors.transition_variables,
@@ -482,7 +493,7 @@ class SystemMap:
             for t in lagged_transition_variables
         ]
         #
-        self.B = _maps.ArrayMap(
+        self.B = _maps.ArrayMap.static(
             system_vectors.transition_eids,
             system_vectors.eid_to_wrt_tokens,
             lagged_transition_variables,
@@ -494,9 +505,9 @@ class SystemMap:
         self.A.remove_nones()
         self.B.remove_nones()
         #
-        self.C = _maps.VectorMap(system_vectors.transition_eids, )
+        self.C = _maps.VectorMap.static(system_vectors.transition_eids, )
         #
-        self.D = _maps.ArrayMap(
+        self.D = _maps.ArrayMap.static(
             system_vectors.transition_eids,
             system_vectors.eid_to_wrt_tokens,
             system_vectors.unanticipated_shocks,
@@ -505,7 +516,7 @@ class SystemMap:
             lhs_column_offset=0,
         )
         #
-        self.E = _maps.ArrayMap(
+        self.E = _maps.ArrayMap.static(
             system_vectors.transition_eids,
             system_vectors.eid_to_wrt_tokens,
             system_vectors.anticipated_shocks,
@@ -522,7 +533,7 @@ class SystemMap:
         #
         # Measurement equations
         #
-        self.F = _maps.ArrayMap(
+        self.F = _maps.ArrayMap.static(
             system_vectors.measurement_eids,
             system_vectors.eid_to_wrt_tokens,
             system_vectors.measurement_variables,
@@ -531,7 +542,7 @@ class SystemMap:
             lhs_column_offset=0,
         )
         #
-        self.G = _maps.ArrayMap(
+        self.G = _maps.ArrayMap.static(
             system_vectors.measurement_eids,
             system_vectors.eid_to_wrt_tokens,
             system_vectors.transition_variables,
@@ -540,9 +551,9 @@ class SystemMap:
             lhs_column_offset=0,
         )
         #
-        self.H = _maps.VectorMap(system_vectors.measurement_eids, )
+        self.H = _maps.VectorMap.static(system_vectors.measurement_eids, )
         #
-        self.J = _maps.ArrayMap(
+        self.J = _maps.ArrayMap.static(
             system_vectors.measurement_eids,
             system_vectors.eid_to_wrt_tokens,
             system_vectors.measurement_shocks,
@@ -583,7 +594,7 @@ def _create_dynid_matrices(system_transition_vector: Iterable[Token]):
 
 
 def _adjust_for_measurement_equations(
-    tokens_transition_variables: Iterable[_quantities.Quantity],
+    transition_variable_tokens: Iterable[_quantities.Quantity],
     equations: Iterable[_equations.Equation],
     qid_to_kind: dict[int, _quantities.QuantityKind],
     /,
@@ -596,7 +607,7 @@ def _adjust_for_measurement_equations(
         Token(t.qid, t.shift-1) for t in tokens_in_measurement_equations
         if qid_to_kind[t.qid] in _quantities.QuantityKind.TRANSITION_VARIABLE
     ]
-    return set(tokens_transition_variables).union(pretend_needed)
+    return set(transition_variable_tokens).union(pretend_needed)
     #]
 
 

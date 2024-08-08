@@ -15,7 +15,7 @@ from .. import makers as _makers
 #]
 
 
-EQUATOR_ARGS = ("x", "t", "L", )
+EQUATOR_ARGS = ("x", "t", )
 
 
 class PlainEquator:
@@ -80,13 +80,10 @@ class PlainEquator:
         self,
         data_array: _np.ndarray,
         columns: int | _np.ndarray,
-        steady_array: _np.ndarray | None,
-        /,
     ) -> _np.ndarray:
         """
         """
-        steady_array = steady_array if steady_array is not None else data_array
-        return self._func(data_array, columns, steady_array, )
+        return self._func(data_array, columns, )
 
     def eval_as_array(
         self,

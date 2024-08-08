@@ -23,7 +23,6 @@ from . import _lists as _lists
 
 def from_string(
     source: str,
-    /,
     *,
     context: dict[str, Any] | None = None,
     save_preparsed: str = "",
@@ -42,11 +41,8 @@ def from_string(
     # Remove NON-NESTED block comments #{ ... #} or %{ ... %}
     source = _remove_block_comments(source, )
 
-    # Remove line comments %, #, ..., \
-    source = _remove_comments(source, )
-
-    # Evaluate <...> expressions in the local context
-    source = _evaluate_contextual_expressions(source, info["context"])
+    # Remove line comments %, #, ..., \, except for #!, %!
+    source = _remove_line_comments(source, )
 
     # Replace time shifts {...} by [...]
     source = _shifts.standardize_time_shifts(source)
@@ -57,12 +53,20 @@ def from_string(
     # Add blank lines pre and post source
     source = _common.add_blank_lines(source)
 
-    info["preparser_needed"] = _is_preparser_needed(source)
-
+    # Run preparser on !-commands only if necessary
+    preparser_needed = _is_preparser_needed(source)
     preparsed_source = (
         _run_preparser_on_source_string(source, context, )
-        if info["preparser_needed"] else source
+        if preparser_needed else source
     )
+
+    # Remove multiple blank lines
+    preparsed_source = _consolidate_lines(preparsed_source, )
+
+    # Evaluate and stringify Python expressions in <...> or <<...>>
+    # Do this only after the !-command preparser because the <...> expression
+    # may be ?-dependent
+    preparsed_source = _evaluate_contextual_expressions(preparsed_source, info["context"], )
 
     # Expand lists
     preparsed_source = _lists.resolve_lists(preparsed_source, )
@@ -72,6 +76,11 @@ def from_string(
 
     if save_preparsed:
         _save_preparsed_source(preparsed_source, save_preparsed, )
+
+    info = {
+        "preparser_needed": preparser_needed,
+        "preparsed_source": preparsed_source,
+    }
 
     return preparsed_source, info
     #]
@@ -91,12 +100,10 @@ _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
     )
 
     for_do_block = for_keyword white_spaces for_control do_keyword
-        for_control = for_control_name_equals? for_token_ended*
-        for_control_name_equals = for_control_name white_spaces "=" white_spaces
-        for_control_name = ~r"\?\w*"
-        for_token_ended = for_token for_token_end
-        for_token = ~r"\w+"
-        for_token_end = ~r"[,;\s]+"
+        for_control = for_control_name_equals? for_tokens
+        for_control_name_equals = for_control_name white_spaces ~r"[=:]" white_spaces
+        for_control_name = ~r"\?[\w\(\)]*"
+        for_tokens = ~r"\s*[^¡]+\s*"
         for_keyword = keyword_prefix "for"
         do_keyword = keyword_prefix "do"
 
@@ -143,16 +150,16 @@ class _Visitor(_pa.nodes.NodeVisitor):
         self._add(_Else())
 
     def visit_for_do_block(self, node, visited_children, ):
-        control_name, tokens = visited_children[2]
-        self._add(_For(control_name, tokens))
+        control_name, tokens_as_string = visited_children[2]
+        self._add(_For(control_name, tokens_as_string))
 
     def visit_for_control(self, node, visited_children, ):
         control_name = visited_children[0][0] if visited_children[0] else "?"
         tokens = visited_children[1]
         return [control_name, tokens]
 
-    def visit_for_token_ended(self, node, visited_children, ):
-        return visited_children[0]
+    def visit_for_tokens(self, node, visited_children, ):
+        return node.text
 
     def visit_for_control_name_equals(self, node, visited_children, ):
         return visited_children[0]
@@ -162,7 +169,7 @@ class _Visitor(_pa.nodes.NodeVisitor):
         self._add(_If(condition))
 
     def visit_text(self, node, visited_children, ):
-        text = _strip_lines(node.text)
+        text = node.text
         if text:
             self._add(_Text(text))
 
@@ -208,24 +215,53 @@ class _For:
 
     level = 1
 
-    def __init__(self, control_name, tokens, /, ):
+    def __init__(self, control_name, tokens_as_string, /, ):
         self._control_name = control_name
-        self._tokens = tokens
+        self._tokens_as_string = tokens_as_string
 
     def replace(self, pattern, replacement, /, ) -> Self:
+        self._tokens_as_string = self._tokens_as_string.replace(pattern, replacement, )
         return self
 
-    def _expand_tokens(self, for_body_sequence: Sequence, ):
+    def _expand_tokens(self, for_body_sequence: Sequence, context: dict, /, ):
         """
         """
+        tokens = self._prepare_tokens(context, )
+        control_name = self._control_name
+        bare_control_name = control_name.removeprefix("?")
+        #
+        if bare_control_name.startswith("(") and bare_control_name.endswith(")"):
+            upper_control_name = control_name.replace("(", "{", ).replace(")", "}", )
+            lower_control_name = control_name.replace("(", "[", ).replace(")", "]", )
+            def replace_control_by_token(source_text, token):
+                source_text = source_text.replace(upper_control_name, token.upper(), )
+                source_text = source_text.replace(lower_control_name, token.lower(), )
+                source_text = source_text.replace(control_name, token, )
+                return source_text
+        else:
+            def replace_control_by_token(source_text, token):
+                source_text = source_text.replace(control_name, token, )
+                return source_text
+        #
         new = []
-        for t in self._tokens:
-            new.extend(s.replace(self._control_name, t) for s in _cp.deepcopy(for_body_sequence))
+        for t in tokens:
+            new.extend(
+                replace_control_by_token(s, t, )
+                for s in _cp.deepcopy(for_body_sequence, )
+            )
         return new
 
+    def _prepare_tokens(self, context: dict, ):
+        """
+        """
+        tokens_as_string = _evaluate_contextual_expressions(self._tokens_as_string, context, )
+        return _re.findall(r"\w+", tokens_as_string, )
+
     def resolve(self, sequence: Sequence, context: dict, /, ):
+        """
+        """
         index_end = _find_matching_end(sequence)
-        for_body_sequence = self._expand_tokens(sequence[1:index_end], )
+        for_body_sequence = self._expand_tokens(sequence[1:index_end], context, )
         code = _resolve_sequence(for_body_sequence, context, )
         return code, sequence[index_end+1:]
 
@@ -315,10 +351,11 @@ class _End:
     #]
 
 
-_LINE_COMMENT_PATTERN = _re.compile(r'"[^"\n]*"|[%#].*|\.\.\..*|\\.*')
-_BLOCK_COMMENT_PATTERN = _re.compile(r"([%#]){.*?\1\}", _re.DOTALL)
+_LINE_COMMENT_PATTERN = _re.compile(r'"[^"\n]*"|[%#](?!!).*|\.\.\..*|\\.*', )
+_BLOCK_COMMENT_PATTERN = _re.compile(r"([%#]){.*?\1\}", _re.DOTALL, )
 
-def _remove_comments(source: str, /, ) -> str:
+
+def _remove_line_comments(source: str, /, ) -> str:
     return _re.sub(
         _LINE_COMMENT_PATTERN,
         lambda m: m.group(0) if m.group(0).startswith('"') else "",
@@ -372,21 +409,12 @@ def _resolve_sequence(sequence: Sequence, context: dict, /, ) -> str:
     #]
 
 
-def _strip_lines(text: str) -> str:
-    split_text = (t.strip() for t in text.split("\n"))
-    return "\n".join(s for s in split_text if s)
+def _consolidate_lines(text: str) -> str:
+    split_text = _re.split(" *\n+", text, )
+    return "\n".join(i for i in split_text if i)
 
 
-_CONTEXTUAL_EXPRESSION_PATTERN = _re.compile(r"<([^>]*)>")
-
-
-def _stringify(input, /, ):
-    if isinstance(input, str):
-        return input
-    elif not isinstance(input, Iterable):
-        return str(input)
-    else:
-        return ",".join([_stringify(i, ) for i in input])
+_CONTEXTUAL_EXPRESSION_PATTERN = _re.compile(r"<+([^>]*)>+")
 
 
 def _evaluate_contextual_expressions(text: str, context: dict, /):
@@ -401,6 +429,15 @@ def _evaluate_contextual_expressions(text: str, context: dict, /):
             raise Exception(f"Failed to evaluate this contextual expression: {expression}")
     return _re.sub(_CONTEXTUAL_EXPRESSION_PATTERN, _replace, text)
     #]
+
+
+def _stringify(input, /, ):
+    if isinstance(input, str):
+        return input
+    elif not isinstance(input, Iterable):
+        return str(input)
+    else:
+        return ",".join(_stringify(i, ) for i in input)
 
 
 def _is_preparser_needed(source: str, /, ) -> bool:

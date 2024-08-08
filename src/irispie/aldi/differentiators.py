@@ -13,7 +13,7 @@ import numpy as _np
 import scipy as _sp
 import copy as _cp
 
-from ..incidences import main as _incidences
+from ..incidences.main import (Token, )
 from ..equators import plain as _equators
 from .. import equations as _equations
 from . import finite_differentiators as af_
@@ -216,10 +216,7 @@ class Atom(ValueMixin, ):
         Differenatiate exponential function other**self(x)
         """
         new_value = other_value**self.value
-        new_diff = (
-            other_value**self.value * _np.log(other_value) * self.diff 
-            if other_value != 0 else 0
-        )
+        new_diff = other_value**self.value * _np.log(other_value) * self.diff 
         return new_value, new_diff
 
     def _power(self, other_value):
@@ -331,8 +328,14 @@ class Context:
         self._eid_to_wrts = eid_to_wrts
         self._qid_to_logly = qid_to_logly or {}
         self._atom_factory = atom_factory
-        self._populate_equations(equations, )
         #
+        def get_diff_shape_for_equantion(equation, /, ) -> tuple[int, int]:
+            return self._atom_factory.get_diff_shape(self._eid_to_wrts[equation.id], )
+        #
+        self._equations = tuple(
+            _adapt_equation_for_aldi(e, get_diff_shape_for_equantion(e, ), )
+            for e in equations
+        )
         self._populate_atom_dict()
         #
         context = { 
@@ -352,24 +355,6 @@ class Context:
         """
         return len(self._eid_to_wrts[eid])
 
-    def _get_diff_shape_for_eid(self, eid, /, ) -> Atom:
-        """
-        """
-        diff = self._atom_factory.create_diff_for_token(None, self._eid_to_wrts[eid], )
-        return diff.shape
-
-    def _populate_equations(
-        self,
-        equations: Iterable[_equations.Equation],
-        /,
-    ) -> None:
-        """
-        """
-        self._equations = tuple(
-            _adapt_equation_for_aldi(e, self._get_diff_shape_for_eid(e.id, ), )
-            for e in equations
-        )
-
     def _populate_atom_dict(self, /, ) -> None:
         """
         """
@@ -388,14 +373,13 @@ class Context:
         self,
         data_array: _np.ndarray,
         column_offset: int,
-        steady_array: _np.ndarray,
     ) -> Iterable[Atom]:
         """
         Evaluate and return the list of final atoms, one atom for each equation
         """
         Atom._data_context = data_array
         Atom._column_offset = column_offset
-        output = self._equator.eval(self._x, 0, steady_array, )
+        output = self._equator.eval(self._x, 0, )
         Atom._data_context = None
         Atom._column_offset = None
         return output
@@ -450,24 +434,9 @@ class AtomFactoryProtocol(Protocol, ):
     """
     #[
 
-    def create_diff_for_token(
-        self,
-        token: _incidences.Token,
-        wrts: tuple[Any, ...],
-    ) -> _np.ndarray:
-        """
-        Create a diff for an atom representing a given token
-        """
-        ...
-
-    def create_data_index_for_token(
-        self,
-        token: _incidences.Token,
-    ) -> tuple[int, slice]:
-        """
-        Create a data index for an atom representing a given token
-        """
-        ...
+    def create_data_index_for_token (token: Token, /, ) -> tuple[int, int | slice]: ...
+    def create_diff_for_token(token: Token, wrts: tuple[Any, ...], /, ) -> _np.ndarray | int: ...
+    def get_diff_shape(wrts: tuple[Any, ...], /, ) -> tuple[int, int]: ...
 
     #]
 

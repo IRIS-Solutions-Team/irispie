@@ -216,6 +216,7 @@ class Explanatory:
         is_finite = _np.isfinite(data[lhs_row, columns])
         return {
             "simulated_name": self.lhs_name,
+            "simulated_value": data[lhs_row, columns],
             "is_finite": is_finite,
             "lhs_value": data[lhs_row, columns],
             "residual_value": data[residual_row, columns] if residual_row is not None else None,
@@ -237,6 +238,7 @@ class Explanatory:
         is_finite = _np.isfinite(data[residual_row, columns])
         return {
             "simulated_name": self.residual_name,
+            "simulated_value": data[residual_row, columns],
             "is_finite": is_finite,
             "lhs_value": data[lhs_row, columns],
             "residual_value": data[residual_row, columns],

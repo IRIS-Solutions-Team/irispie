@@ -23,7 +23,7 @@ from . import wrongdoings as _wrongdoings
 #]
 
 
-EVALUATOR_PREAMBLE = "lambda x, t, L: "
+EVALUATOR_PREAMBLE = "lambda x, t: "
 _EVALUATOR_FORMAT = EVALUATOR_PREAMBLE + "[{joined_xtrings}]"
 _REPLACE_UKNOWN = "?"
 
@@ -36,6 +36,7 @@ class EquationKind(_en.Flag):
 
     TRANSITION_EQUATION = _en.auto()
     MEASUREMENT_EQUATION = _en.auto()
+    STEADY_AUTOVALUES = _en.auto()
 
     ENDOGENOUS_EQUATION = TRANSITION_EQUATION | MEASUREMENT_EQUATION
 
@@ -49,6 +50,7 @@ class EquationKind(_en.Flag):
 __all__  = (
     "TRANSITION_EQUATION",
     "MEASUREMENT_EQUATION",
+    "STEADY_AUTOVALUES",
     "ENDOGENOUS_EQUATION",
 )
 for n in __all__:
@@ -100,37 +102,7 @@ def generate_all_tokens_from_equations(equations: Iterable[Equation], /, ) -> It
     return _it.chain.from_iterable(eqn.incidence for eqn in equations)
 
 
-def finalize_dynamic_equations(
-    equations: Iterable[Equation],
-    name_to_id: dict[str, int],
-    /,
-) -> None:
-    _finalize_equations_from_humans(equations, name_to_id, )
-    _replace_steady_ref(equations, )
-
-
-def finalize_steady_equations(
-    equations: Iterable[Equation],
-    name_to_id: dict[str, int],
-    /,
-) -> None:
-    _finalize_equations_from_humans(equations, name_to_id, )
-    _remove_steady_ref(equations, )
-
-
-def _replace_steady_ref(equations: Iterable[Equation]) -> None:
-    STEADY_REF_PATTERN = _re.compile(r"&x\[([^,\]]+),[^\]]+\]")
-    for eqn in equations:
-        eqn.xtring = _re.sub(STEADY_REF_PATTERN, lambda match: "L["+match.group(1)+"]", eqn.xtring)
-
-
-def _remove_steady_ref(equations: Iterable[Equation]) -> None:
-    STEADY_REF_PATTERN = _re.compile(r"&x\b")
-    for eqn in equations:
-        eqn.xtring = _re.sub(STEADY_REF_PATTERN, "x", eqn.xtring)
-
-
-def _finalize_equations_from_humans(
+def finalize_equations(
     equations: Iterable[Equation],
     name_to_id: dict[str, int],
 ) -> None:
@@ -233,10 +205,7 @@ def _postprocess_xtring(equation: str) -> str:
     #]
 
 
-def generate_all_eids(
-    equations: Iterable[Equation],
-    /,
-) -> Iterable[int]:
+def generate_all_eids(equations: Iterable[Equation], ) -> Iterable[int]:
     return (eqn.id for eqn in equations)
 
 
@@ -250,7 +219,6 @@ def generate_eids_by_kind(
 def generate_equations_of_kind(
     equations: Iterable[Equation],
     kind: EquationKind | None,
-    /,
 ) -> Iterable[Equation]:
     return (eqn for eqn in equations if kind is None or eqn.kind in kind)
 
@@ -258,22 +226,15 @@ def generate_equations_of_kind(
 def count_equations_of_kind(
     equations: Iterable[Equation],
     kind: EquationKind,
-    /,
 ) -> int:
     return sum(1 for eqn in generate_equations_of_kind(equations, kind, ))
 
 
-def sort_equations(
-    equations: Iterable[Equation],
-    /,
-) -> Iterable[Equation]:
+def sort_equations(equations: Iterable[Equation], ) -> Iterable[Equation]:
     return sorted(equations, key=_op.attrgetter("id"))
 
 
-def get_min_shift_from_equations(
-    equations: Iterable[Equation],
-    /,
-) -> int:
+def get_min_shift_from_equations(equations: Iterable[Equation], ) -> int:
     return _incidence.get_min_shift(generate_all_tokens_from_equations(equations))
 
 

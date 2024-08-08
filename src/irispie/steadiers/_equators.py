@@ -11,7 +11,7 @@ from typing import (Callable, Protocol, )
 from collections.abc import (Iterable, )
 
 from .. import equations as _equations
-from . import plain as _plain
+from ..equators import plain as _plain
 #]
 
 
@@ -66,7 +66,7 @@ class FlatSteadyEquator(SteadyEquator, ):
     ) -> _np.ndarray:
         """
         """
-        return self._equator.eval(steady_array, column_offset, steady_array, )
+        return self._equator.eval(steady_array, column_offset, )
 
     #]
 
@@ -76,7 +76,8 @@ class NonflatSteadyEquator(SteadyEquator, ):
     """
     #[
 
-    nonflat_steady_shift = None
+    # Assigned in the evaluator
+    NONFLAT_STEADY_SHIFT = ...
 
     def eval(
         self,
@@ -86,10 +87,9 @@ class NonflatSteadyEquator(SteadyEquator, ):
     ) -> _np.ndarray:
         """
         """
-        k = self.nonflat_steady_shift
         return _np.hstack((
-            self._equator.eval(steady_array, column_offset, steady_array, ),
-            self._equator.eval(steady_array, column_offset + k, steady_array, ),
+            self._equator.eval(steady_array, column_offset, ),
+            self._equator.eval(steady_array, column_offset + self.NONFLAT_STEADY_SHIFT, ),
         ))
     #]
 

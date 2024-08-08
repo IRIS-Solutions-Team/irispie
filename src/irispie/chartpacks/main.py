@@ -6,8 +6,6 @@ Time series chartpacks
 #[
 from __future__ import annotations
 
-from typing import (Self, Iterator, Iterable, Sequence, Callable, )
-from types import (EllipsisType, )
 import functools as _ft
 import re as _re
 import math as _ma
@@ -19,6 +17,12 @@ from .. import plotly_wrap as _plotly_wrap
 from .. import dates as _dates
 from .. import pages as _pages
 from ..databoxes import main as _databoxes
+
+from typing import (TYPE_CHECKING, )
+if TYPE_CHECKING:
+    from typing import (Self, Callable, )
+    from collections.abc import (Iterator, Iterable, Sequence, )
+    from types import (EllipsisType, )
 #]
 
 
@@ -37,6 +41,7 @@ _FIGURE_SETTINGS_KEYS = tuple(_FIGURE_SETTINGS.keys(), )
 
 
 _CHART_SETTINGS = {
+    "transform": None,
     "transforms": {},
     "reverse_plot_order": False,
     "span": ...,
@@ -169,8 +174,9 @@ self = Chartpack(
         self,
         input_db: _databoxes.Databox,
         show_figures: bool = True,
+        return_info: bool = False,
         **kwargs,
-    ) -> tuple[_pg.Figure, ...]:
+    ) -> dict[str, Any] | None:
         """
 ················································································
 
@@ -184,7 +190,10 @@ self = Chartpack(
         )
         if show_figures:
             for f in figures: f.show()
-        return figures
+        if return_info:
+            return {
+                "figures": figures,
+            }
 
     def format_figure_titles(
         self,
@@ -492,8 +501,10 @@ class _Chart:
     def _apply_transform(self, x, ):
         """
         """
-        if self.transform:
+        if self.transform and self.transforms and self.transform in self.transforms:
             func = self.transforms[self.transform]
+        elif isinstance(self.transform, str):
+            func = eval("lambda x:" + self.transform, )
         else:
             func = None
         return func(x) if func else x

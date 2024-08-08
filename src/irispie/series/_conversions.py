@@ -91,6 +91,7 @@ class Inlay:
     |-----------|-------------
     | "mean"    | Arithmetic average of high-frequency values
     | "sum"     | Sum of high-frequency values
+    | "prod"    | Product of high-frequency values
     | "first"   | Value in the first high-frequency period
     | "last"    | Value in the last high-frequency period
     | "min"     | Minimum of high-frequency values
@@ -414,6 +415,7 @@ _AGGREGATION_METHOD_RESOLUTION = {
     "mean": _st.mean,
     "geometric_mean": _st.geometric_mean,
     "sum": _builtin_sum,
+    "prod": _np.prod,
     "first": _op.itemgetter(0),
     "last": _op.itemgetter(-1),
     "min": _builtin_min,

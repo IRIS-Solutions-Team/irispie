@@ -15,19 +15,31 @@ from . import _substitutions as _substitutions
 #]
 
 
-_WHERE_SUBSTITUTE = ["transition-equations", "measurement-equations"]
+_WHERE_TO_APPLY_SUBSTITUTIONS = ["transition-equations", "measurement-equations", ]
 
 
-def from_string(source_string: str, /, ) -> sources.Source:
+def from_string(source: str, /, ) -> sources.Source:
     """
     """
-    source_string = _resolve_shortcut_keywords(source_string)
-    source_string = _common.add_blank_lines(source_string)
-    source_string = _translate_keywords(source_string)
-    nodes = _GRAMMAR["source"].parse(source_string)
+    #[
+    # Remove #! anfd %! line comments
+    source = _remove_line_comments(source, )
+
+    # TODO: make !variables, !shocks, !equations valid keywords
+    source = _expand_shortcut_keywords(source)
+
+    source = _common.add_blank_lines(source)
+
+    source = _translate_keywords(source)
+
+    nodes = _GRAMMAR["source"].parse(source)
+
     parsed = _Visitor().visit(nodes)
-    parsed = _substitutions.resolve_substitutions(parsed, _WHERE_SUBSTITUTE)
+
+    parsed = _substitutions.resolve_substitutions(parsed, _WHERE_TO_APPLY_SUBSTITUTIONS, )
+
     return parsed
+    #]
 
 
 _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
@@ -36,7 +48,9 @@ _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
     block = white_spaces (qty_block / log_block / eqn_block) white_spaces
 
     keyword =
-        transition_equations_keyword / measurement_equations_keyword
+        transition_equations_keyword
+        / measurement_equations_keyword
+        / steady_autovalues_keyword
         / transition_variables_keyword
         / anticipated_shocks_keyword / unanticipated_shocks_keyword
         / measurement_variables_keyword / measurement_shocks_keyword
@@ -53,7 +67,7 @@ _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
         attribute_chain = ~r"(\s*:\w+\s*)+"
 
     eqn_block = eqn_keyword block_attributes? eqn_ended* 
-    eqn_keyword = transition_equations_keyword / measurement_equations_keyword
+    eqn_keyword = transition_equations_keyword / measurement_equations_keyword / steady_autovalues_keyword
         / substitutions_keyword / autoswaps_simulate_keyword / autoswaps_steady_keyword
         / preprocessor_keyword / postprocessor_keyword
     eqn_ended = white_spaces description white_spaces eqn_body eqn_end
@@ -88,6 +102,7 @@ _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
     transition_equations_keyword = keyword_prefix "transition-equations"
     equations_keyword = keyword_prefix "equations"
     measurement_equations_keyword = keyword_prefix "measurement-equations"
+    steady_autovalues_keyword = keyword_prefix "steady-autovalues"
     log_keyword = keyword_prefix "log-variables"
     all_but_keyword = keyword_prefix "all-but"
     substitutions_keyword = keyword_prefix "substitutions"
@@ -183,6 +198,7 @@ class _Visitor(_pa.nodes.NodeVisitor):
     visit_transition_equations_keyword = _visit_keyword
     visit_equations_keyword = _visit_abbreviated_keyword
     visit_measurement_equations_keyword = _visit_keyword
+    visit_steady_autovalues_keyword = _visit_keyword
     visit_substitutions_keyword = _visit_keyword
     visit_autoswaps_simulate_keyword = _visit_keyword
     visit_autoswaps_steady_keyword = _visit_keyword
@@ -230,7 +246,14 @@ _SHORTCUT_KEYWORDS = [
 # ( _re.compile(_common.HUMAN_PREFIX + r"shocks\b"), _common.HUMAN_PREFIX + r"transition-shocks" ),
 
 
-def _resolve_shortcut_keywords(source_string: str, /, ) -> str:
+_LINE_COMMENT_PATTERN = _re.compile(r" *[%#]!.*", )
+
+
+def _remove_line_comments(source: str, /, ) -> str:
+    return _re.sub(_LINE_COMMENT_PATTERN, "", source)
+
+
+def _expand_shortcut_keywords(source_string: str, /, ) -> str:
     for short, long in _SHORTCUT_KEYWORDS:
         source_string = _re.sub(short, long, source_string)
     return source_string

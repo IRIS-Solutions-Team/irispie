@@ -6,8 +6,6 @@ Dynamic nonlinear period-by-period simulator
 #[
 from __future__ import annotations
 
-from numbers import (Real, )
-from typing import (Callable, Any, Literal, )
 import numpy as _np
 import scipy as _sp
 import functools as _ft
@@ -20,6 +18,13 @@ from ..dataslates.main import (Dataslate, )
 from .. import equations as _equations
 from .. import wrongdoings as _wrongdoings
 from .evaluators import (PeriodEvaluator, )
+from ..fords import simulators as _ford_simulators
+
+from typing import (TYPE_CHECKING, )
+if TYPE_CHECKING:
+    from numbers import (Real, )
+    from typing import (Callable, Any, Literal, )
+    from ..dates import (Period, )
 #]
 
 
@@ -39,11 +44,12 @@ def simulate(
     when_fails: Literal["critical", "error", "warning", "silent"] = "critical",
     when_missing: Literal["critical", "error", "warning", "silent"] = "critical",
     fallback_value: Real = _DEFAULT_FALLBACK_VALUE,
+    terminal: Literal["data", "first_order", ] = "first_order",
     return_info: bool = False,
 ) -> dict[str, Any]:
     """
     """
-    if simulatable_v.num_variants != 1:
+    if not simulatable_v.is_singleton:
         raise ValueError("Simulator requires a singleton simulatable object")
     #
     root_settings = (
@@ -65,13 +71,19 @@ def simulate(
             f"does not match number of endogenous quantities {len(wrt_qids)}"
         )
 
-    if len(wrt_equations) == 0:
+    if not wrt_equations:
         return
+
+    terminal_simulator = (
+        _ford_simulators.create_terminal_simulator(simulatable_v, )
+        if terminal == "first_order" else None
+    )
 
     evaluator_factory = _ft.partial(
         PeriodEvaluator,
         wrt_equations=wrt_equations,
         all_quantities=all_quantities,
+        terminal_simulator=terminal_simulator,
         context=simulatable_v.get_context(),
         iter_printer_settings=iter_printer_settings,
     )
@@ -106,7 +118,7 @@ def simulate(
         init = current_evaluator.get_init_guess(data, t, )
         root_final = _sp.optimize.root(
             current_evaluator.eval, init,
-            args=(data, t, None, ),
+            args=(data, t, ),
             jac=True,
             **root_settings,
         )
@@ -129,8 +141,8 @@ def simulate(
 def _set_up_current_period(
     plan: SimulationPlan | None,
     evaluator_factory: Callable[..., PeriodEvaluator],
-    wrt_qids: tuple[int, ...],
-    current_period: _dates.Dater,
+    base_wrt_qids: tuple[int, ...],
+    current_period: Period,
     base_evaluator: PeriodEvaluator,
     name_to_qid: dict[str, int],
     /,
@@ -138,12 +150,12 @@ def _set_up_current_period(
     """
     """
     if plan is None:
-        return wrt_qids, base_evaluator
+        return base_wrt_qids, base_evaluator
     #
     names_exogenized = plan.get_exogenized_unanticipated_in_period(current_period, )
     names_endogenized = plan.get_endogenized_unanticipated_in_period(current_period, )
     if not names_exogenized and not names_endogenized:
-        return wrt_qids, base_evaluator
+        return base_wrt_qids, base_evaluator
     #
     if len(names_exogenized) != len(names_endogenized):
         raise _wrongdoings.IrisPieCritical(
@@ -154,7 +166,7 @@ def _set_up_current_period(
     #
     qids_exogenized = tuple(name_to_qid[name] for name in names_exogenized)
     qids_endogenized = tuple(name_to_qid[name] for name in names_endogenized)
-    current_wrt_qids = tuple(sorted(set(wrt_qids).difference(qids_exogenized).union(qids_endogenized)))
+    current_wrt_qids = tuple(sorted(set(base_wrt_qids).difference(qids_exogenized).union(qids_endogenized)))
     current_evaluator = evaluator_factory(current_wrt_qids, )
     return current_wrt_qids, current_evaluator
 

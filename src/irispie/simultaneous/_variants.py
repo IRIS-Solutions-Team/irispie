@@ -31,34 +31,47 @@ class Variant:
         "levels",
         "changes",
         "solution",
-        "deviation_solution",
         "_max_qid",
     )
 
-    _missing = _np.nan
+    def __init__(self, ) -> None:
+        """
+        """
+        self.levels = None
+        self.changes = None
+        self.solution = None
+        self._max_qid = None
 
-    def __init__(
-        self,
+    @classmethod
+    def from_source(
+        klass,
         quantities: Iterable[_quantities.Quantity],
         is_flat: bool,
         /,
         **kwargs,
-    ) -> None:
+    ) -> Self:
         """
         """
+        self = klass()
         max_qid = _quantities.get_max_qid(quantities, )
         self._max_qid = max_qid
         self.solution = None
-        self.deviation_solution = None
         self._initilize_values()
         if is_flat:
             qid_to_logly = _quantities.create_qid_to_logly(quantities, )
             self.zero_changes(qid_to_logly, )
+        return self
 
     def copy(self, /, ) -> Self:
         """
         """
-        return _co.deepcopy(self, )
+        new = type(self)()
+        for i in ("levels", "changes", "solution", ):
+            attr = getattr(self, i, )
+            if attr is not None:
+                setattr(new, i, attr.copy(), )
+        new._max_qid = self._max_qid
+        return new
 
     def _initilize_values(self, /, ) -> None:
         """
@@ -69,22 +82,22 @@ class Variant:
     def _reset_levels(self, /, ) -> None:
         """
         """
-        self.levels = _np.full((self._max_qid+1, ), self._missing, dtype=float, )
+        self.levels = _np.full((self._max_qid+1, ), _np.nan, dtype=float, )
 
     def _reset_changes(self, /, ) -> None:
         """
         """
-        self.changes = _np.full((self._max_qid+1, ), self._missing, dtype=float, )
+        self.changes = _np.full((self._max_qid+1, ), _np.nan, dtype=float, )
 
-    def update_values_from_dict(self, update: dict, /, ) -> None:
+    def update_values_from_dict(self, update: dict, ) -> None:
         self.levels = _update_from_dict(self.levels, update, _op.itemgetter(0), lambda x: x, )
         self.changes = _update_from_dict(self.changes, update, _op.itemgetter(1), lambda x: ..., )
 
-    def update_levels_from_array(self, levels: _np.ndarray, qids: Iterable[int], /, ) -> None:
-        self.levels = _update_from_array(self.levels, levels, qids, )
+    def update_levels_from_array(self, levels: _np.ndarray, qids: Iterable[int], ) -> None:
+        _update_from_array(self.levels, levels, qids, )
 
-    def update_changes_from_array(self, changes: _np.ndarray, qids: Iterable[int], /, ) -> None:
-        self.changes = _update_from_array(self.changes, changes, qids, )
+    def update_changes_from_array(self, changes: _np.ndarray, qids: Iterable[int], ) -> None:
+        _update_from_array(self.changes, changes, qids, )
 
     def retrieve_values(
         self,
@@ -199,17 +212,19 @@ class Variant:
 
 def _update_from_array(
     values: _np.ndarray,
-    updated_values: _np.ndarray,
+    updated_values: _np.ndarray | Iterable[Real] | None,
     qids: Iterable[int],
-    /,
-) -> _np.ndarray:
+) -> None:
     """
     Update levels or changes from an array and a list of qids
     """
     #[
-    if updated_values is not None:
+    if updated_values is None:
+        return
+    if hasattr(updated_values, "flat"):
         values[list(qids)] = updated_values.flat
-    return values
+        return
+    values[list(qids)] = updated_values
     #]
 
 

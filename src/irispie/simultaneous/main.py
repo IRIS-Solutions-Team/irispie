@@ -34,14 +34,15 @@ from ..fords import systems as _systems
 from ..fords import kalmans as _kalmans
 from ..fords import std_simulators as _std_simulators
 
-from .invariants import (Invariant, )
-from .variants import (Variant, )
+from ._invariants import (Invariant, )
+from ._variants import (Variant, )
 from . import _covariances as _covariances
 from . import _flags as _flags
 from . import _simulate as _simulate
 from . import _steady as _steady
 from . import _logly as _logly
 from . import _get as _get
+from . import _pretty as _pretty
 from . import _assigns as _assigns
 from . import _slatable_protocols as _slatable_protocols
 from . import _plannable_protocols as _plannable_protocols
@@ -75,6 +76,7 @@ class Simultaneous(
     _steady.Inlay,
     _logly.Inlay,
     _get.Inlay,
+    _pretty.Inlay,
     _covariances.Inlay,
     _slatable_protocols.Inlay,
     _plannable_protocols.Inlay,
@@ -206,9 +208,11 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
 
     def copy(self, /, ) -> Self:
         """
-        Create a deep copy of this model
+        Create a quasi-deep copy of this model
         """
-        return _co.deepcopy(self)
+        new = type(self).skeleton(self, )
+        new._variants = [ variant.copy() for variant in self._variants ]
+        return new
 
     def __getitem__(
         self,
@@ -417,15 +421,20 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
     def systemize(
         self,
         /,
+        unpack_singleton: bool = True,
         **kwargs,
     ) -> Iterable[_systems.System]:
         """
         Create unsolved first-order system for each variant
         """
         model_flags = self.resolve_flags(**kwargs, )
-        return tuple(
+        system = [
             self._systemize(variant, self._invariant.dynamic_descriptor, model_flags, )
             for variant in self._variants
+        ]
+        return _has_variants.unpack_singleton(
+            system, self.is_singleton,
+            unpack_singleton=unpack_singleton,
         )
 
     def _systemize(
@@ -446,17 +455,14 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         if model_flags.is_linear:
             data_array = variant.create_zero_array(qid_to_logly, num_columns=num_columns, shift_in_first_column=min_shift, )
             data_array_lagged = None
-            steady_array = variant.create_steady_array(qid_to_logly, num_columns=1, ).reshape(-1)
         else:
             data_array = variant.create_steady_array(qid_to_logly, num_columns=num_columns, shift_in_first_column=min_shift, )
             data_array_lagged = variant.create_steady_array(qid_to_logly, num_columns=num_columns, shift_in_first_column=min_shift-1, )
-            steady_array = data_array[:, -min_shift]
         #
         column_offset = -min_shift
         return _systems.System(
-            descriptor, data_array, steady_array,
-            model_flags, data_array_lagged,
-            column_offset,
+            descriptor, data_array,
+            model_flags, data_array_lagged, column_offset,
         )
 
     def solve(
@@ -496,7 +502,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         system = self._systemize(variant, self._invariant.dynamic_descriptor, model_flags, )
         variant.solution = _solutions.Solution.from_system(self._invariant.dynamic_descriptor, system, clip_small=clip_small, )
-        variant.deviation_solution = _solutions.Solution.deviation_solution(variant.solution, )
         info = {}
         #
         return info
@@ -539,7 +544,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         self = klass()
         self._invariant = Invariant(source, **kwargs, )
-        initial_variant = Variant(
+        initial_variant = Variant.from_source(
             self._invariant.quantities,
             self._invariant._flags.is_flat,
         )
