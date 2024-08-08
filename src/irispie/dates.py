@@ -1375,7 +1375,7 @@ class RegularPeriodMixin:
     def to_ymd(
         self, 
         /,
-        position: Literal["start", "middle", "end", ] = "middle",
+        position: Literal["start", "middle", "end", ] = "start",
     ) -> tuple[int, int, int]:
         year, per = self.to_year_period()
         month, day = self._MONTH_DAY_RESOLUTION[position][per]
@@ -1407,7 +1407,7 @@ class RegularPeriodMixin:
     def to_daily(
         self,
         /,
-        position: Literal["start", "middle", "end", ] = "middle"
+        position: Literal["start", "middle", "end", ] = "start"
     ) -> DailyPeriod:
         try:
             return DailyPeriod.from_ymd(*self.to_ymd(position=position, ), )
@@ -1474,7 +1474,7 @@ class HalfyearlyPeriod(RegularPeriodMixin, Period, ):
     def to_ymd(
         self, 
         /,
-        position: Literal["start", "middle", "end", ] = "middle",
+        position: Literal["start", "middle", "end", ] = "start",
     ) -> tuple[int, int, int]:
         year, per = self.to_year_period()
         return (
@@ -1485,7 +1485,7 @@ class HalfyearlyPeriod(RegularPeriodMixin, Period, ):
     def get_month(
         self,
         /,
-        position: Literal["start", "middle", "end", ] = "middle",
+        position: Literal["start", "middle", "end", ] = "start",
     ) -> int:
         _, per = self.to_year_period()
         return month_resolution[position][per]
