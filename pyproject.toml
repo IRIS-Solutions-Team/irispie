@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "irispie"
-version = "0.48.1"
+version = "0.49.0"
 description = "Macroeconomic modeling package"
 readme = "README.md"
 requires-python = ">=3.11"
 classifiers = [ "Programming Language :: Python :: 3", "License :: OSI Approved :: MIT License", "Operating System :: OS Independent",]
 keywords = [ "macroeconomics", "economics", "modeling", "simulation", "forecasting", "dsge",]
-dependencies = [ "numpy >= 1.26", "scipy >= 1.13", "python-dateutil >= 2.9.0", "plotly >= 5.23", "parsimonious >= 0.10", "prettytable >= 3.10", "pandas >= 2.1.2", "dill >= 0.3.8", "requests >= 2.31.0", "wlogging >= 0.3.0", ]
+dependencies = [ "numpy >= 1.26", "scipy >= 1.13", "python-dateutil >= 2.9.0", "plotly >= 5.23", "parsimonious >= 0.10", "prettytable >= 3.10", "pandas >= 2.1.2", "dill >= 0.3.8", "requests >= 2.31.0", "wlogging >= 0.3.0",]
 [[project.authors]]
 name = "Jaromir Benes"
 email = "jaromir.benes@gmail.com"
