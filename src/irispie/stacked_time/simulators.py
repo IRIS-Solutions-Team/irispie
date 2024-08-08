@@ -6,9 +6,11 @@ Dynamic nonlinear period-by-period simulator
 #[
 from __future__ import annotations
 
+import warnings as _wa
 import numpy as _np
 import scipy as _sp
 import functools as _ft
+import itertools as _it
 import wlogging as _wl
 
 from ..simultaneous import main as _simultaneous
@@ -18,7 +20,7 @@ from ..incidences.main import (Token, )
 from .. import equations as _equations
 from .. import equations as _equations
 from .. import wrongdoings as _wrongdoings
-from ..fords import simulators as _ford_simulators
+from ..fords import terminators as _terminators
 
 from . import _evaluators as _evaluators
 
@@ -52,7 +54,7 @@ def _simulate_frame(
 ) -> dict[str, Any]:
     """
     """
-    raise NotImplementedError()
+
     if not simulatable_v.is_singleton:
         raise ValueError("Simulator requires a singleton simulatable object")
     #
@@ -62,6 +64,7 @@ def _simulate_frame(
         else _DEFAULT_ROOT_SETTINGS | root_settings
     )
 
+    max_lead = simulatable_v.max_lead
     qid_to_name = simulatable_v.create_qid_to_name()
     name_to_qid = simulatable_v.create_name_to_qid()
     all_quantities = simulatable_v.get_quantities()
@@ -70,12 +73,15 @@ def _simulate_frame(
     wrt_equations = simulatable_v.get_dynamic_equations(kind=_equations.ENDOGENOUS_EQUATION, )
 
     periods = dataslate_v.periods
-    base_columns = _np.array(dataslate_v.base_columns, dtype=int, )
-    columns_to_run = base_columns
+    columns_to_run = _np.array(dataslate_v.base_columns, dtype=int, )
     num_columns_to_run = len(columns_to_run)
+    terminal_columns = tuple(range(
+        columns_to_run[-1] + 1,
+        columns_to_run[-1] + max_lead,
+    ))
 
     if len(wrt_equations) != len(wrt_qids):
-        raise _wrongdoings.IrisPieError(
+        raise _wrongdoings.IrisPieCritical(
             f"Number of endogenous equations {len(wrt_equations)} "
             f"does not match number of endogenous quantities {len(wrt_qids)}"
         )
@@ -83,24 +89,24 @@ def _simulate_frame(
     if not wrt_equations:
         return
 
-    terminal_simulator = (
-        _ford_simulators.create_terminal_simulator(simulatable_v, )
+    terminators = (
+        _terminators.create_terminators(simulatable_v, )
         if terminal == "first_order" else None
     )
 
-    ford_extender = _ford_simulators.create_extender(simulatable_v, )
+    # _wa.warn("!!! Terminal simulator deactivated")
+    # terminate_simulation = None
 
-    create_evaluator = _ft.partial(
-        _evaluators.create_evaluator,
+    create_evaluator_closure = _ft.partial(
+        _evaluators.create_evaluator_closure,
         wrt_equations=wrt_equations,
         all_quantities=all_quantities,
-        terminal_simulator=terminal_simulator,
+        terminate_simulation=terminate_simulation,
         context=simulatable_v.get_context(),
         iter_printer_settings=iter_printer_settings,
-        num_columns_to_eval=num_columns_to_run,
     )
 
-    create_evaluator = _ft.lru_cache(maxsize=None, )(create_evaluator, )
+    create_evaluator_closure = _ft.lru_cache(maxsize=None, )(create_evaluator_closure, )
 
     when_missing_stream = \
         _wrongdoings.STREAM_FACTORY[when_missing] \
@@ -119,37 +125,55 @@ def _simulate_frame(
     data = dataslate_v.get_data_variant(0, )
 
     current_periods = tuple(periods[i] for i in columns_to_run)
-    wrt_tokens = tuple( Token(qid, shift, ) for shift in range(num_columns_to_run) for qid in wrt_qids  )
-    column_offset = columns_to_run[0]
+    first_column = columns_to_run[0]
+    wrt_tokens = tuple(
+        Token(qid, column-first_column, )
+        for column, qid in _it.product(columns_to_run, wrt_qids, )
+    )
+    terminal_wrt_tokens = tuple(
+        Token(qid, column-first_column, )
+        for column, qid in _it.product(terminal_columns, wrt_qids, )
+    )
 
-    current_wrt_qids, current_evaluator = \
-        _setup_current_period(plan, create_evaluator, wrt_tokens, current_periods, name_to_qid, )
+    current_wrt_qids, current_evaluator = _setup_current_period(
+        plan,
+        create_evaluator_closure,
+        wrt_tokens,
+        terminal_wrt_tokens,
+        current_periods,
+        name_to_qid,
+        num_columns_to_run,
+    )
+
     a, b = current_evaluator.evaluate(None, data, columns_to_run, )
 
-    current_evaluator.iter_printer.header_message = _create_header_message(vid, current_periods, )
     # data[current_wrt_qids, t] = starter(data, current_wrt_qids, t, )
-    ford_extender(data, columns_to_run[0]-1, num_columns_to_run, )
+    # ford_extender(data, columns_to_run[0]-1, num_columns_to_run, )
 
     catch_missing(data, columns_to_run, )
     #
     data0 = data.copy()
-    init_guess = current_evaluator.get_init_guess(data, columns_to_run, )
+    # init_guess = current_evaluator.get_init_guess(data, columns_to_run, )
 
-    root_final = _sp.optimize.root(
-        current_evaluator.evaluate, init_guess,
-        args=(data, columns_to_run, ),
-        jac=True,
-        **root_settings,
-    )
+    # root_final = _sp.optimize.root(
+    #     current_evaluator.evaluate, init_guess,
+    #     args=(data, columns_to_run, ),
+    #     jac=True,
+    #     **root_settings,
+    # )
 
+    header_message = _create_header_message(vid, current_periods, )
+    print(header_message, )
+
+    print("*"*80)
     data = data0
     guess = current_evaluator.get_init_guess(data, columns_to_run, )
     for i in range(10):
         f, j = current_evaluator.evaluate(guess, data, columns_to_run, )
+        # import IPython; IPython.embed()
         #j0 = j[0,0:42]
         #index = j0.nonzero()
         #print(j0[*index])
-        print(i, _np.max(_np.abs(f)))
         unit_step = - _np.linalg.solve(j, f)
         opt_step, min_f = None, None
         ff = []
@@ -162,7 +186,6 @@ def _simulate_frame(
         #        min_f = max_f
         #        opt_step = j
         opt_step = 1
-        print(opt_step)
         guess = guess + opt_step*unit_step
 
 
@@ -185,12 +208,14 @@ def _simulate_frame(
 
 def _setup_current_period(
     plan: SimulationPlan | None,
-    create_evaluator: Callable,
+    create_evaluator_closure: Callable,
     current_wrt_tokens: tuple[int, ...],
+    terminal_wrt_tokens: tuple[int, ...],
     current_periods: Period,
     name_to_qid: dict[str, int],
+    num_columns_to_run: int,
     /,
-) -> tuple[tuple[int, ...], PeriodEvaluator]:
+) -> tuple[tuple[int, ...], ...]:
     """
     """
     current_wrt_tokens = tuple(current_wrt_tokens)
@@ -206,7 +231,7 @@ def _setup_current_period(
         qids_exogenized = tuple(name_to_qid[name] for name in names_exogenized)
         qids_endogenized = tuple(name_to_qid[name] for name in names_endogenized)
         current_wrt_tokens = tuple(sorted(set(current_wrt_tokens).difference(qids_exogenized).union(qids_endogenized)))
-    current_evaluator = create_evaluator(current_wrt_tokens, )
+    current_evaluator = create_evaluator_closure(current_wrt_tokens, terminal_wrt_tokens, num_columns_to_run, )
     return current_wrt_tokens, current_evaluator
 
 

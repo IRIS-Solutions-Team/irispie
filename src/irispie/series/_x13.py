@@ -48,10 +48,12 @@ class Inlay:
         when_error: _wrongdoings.HOW = "warning",
         clean_up: bool = True,
         output: str = "sa",
-        mode: Literal["mult", "add", "pseudoadd", "logadd", ] | None = None,
         #
         return_info: bool = False,
         unpack_singleton: bool = True,
+        #
+        mode: Literal["mult", "add", "pseudoadd", "logadd", ] | None = None,
+        allow_missing: bool = False,
         **kwargs,
     ) -> dict[str, Any]:
         r"""
@@ -200,13 +202,15 @@ info = self.x13(
         self.clip(base_start, base_end, )
         #
         mode, transform_function, flip_sign = _resolve_mode(self, mode, )
-        settings = _create_settings(
+        bare_settings, extra_settings, = _prepare_settings(
             base_start, output,
             mode=mode,
             transform_function=transform_function,
+            allow_missing=allow_missing,
             **kwargs,
         )
-        spc = _create_spc_file(_TEMPLATE_SPC, settings, )
+        spc = _create_spc_file(_TEMPLATE_SPC, bare_settings, )
+        spc = _add_extra_settings(spc, extra_settings, )
         #
         new_data = []
         out_info = []
@@ -221,7 +225,7 @@ info = self.x13(
                 variant_data = -variant_data
             #
             new_data_v = _x13_data(
-                spc, base_start, variant_data, settings["x11_save"],
+                spc, base_start, variant_data, bare_settings["x11_save"],
                 info=info_v,
                 clean_up=clean_up,
             )
@@ -275,6 +279,7 @@ def _x13_data(
     spc_file_name_without_ext = _write_spc_to_file(spc, )
     system_output = _execute(spc_file_name_without_ext, )
     raw_output_data, update_info = _collect_outputs(spc_file_name_without_ext, system_output, x11_save, )
+    info.update({"spc": spc, })
     info.update(update_info, )
     if raw_output_data is not None:
         new_data[output_slice] = raw_output_data
@@ -290,7 +295,13 @@ def _print_series_data(
 ) -> str:
     """
     """
-    return "\n".join(f"        {v:g}" for v in variant_data)
+    _INDENT = " " * 8
+    _NAN_REPLACEMENT = "-99999.0"
+    data_str = "\n".join(
+        _INDENT + (f"{v:g}" if not _np.isnan(v) else _NAN_REPLACEMENT)
+        for v in variant_data
+    )
+    return data_str
 
 
 def _execute(
@@ -317,7 +328,7 @@ def _collect_outputs(
     """
     """
     #[
-    info = _read_out_info(spc_file_name_without_ext, )
+    info = _read_out_files(spc_file_name_without_ext, )
     info["success"] = output.returncode == 0 and "ERROR" not in str(output.stdout)
     if info["success"]:
         out_data, info[x11_save] = _read_output_data(spc_file_name_without_ext, x11_save, info, )
@@ -344,17 +355,20 @@ def _read_output_data(
     #]
 
 
-def _read_out_info(
+def _read_out_files(
     spc_file_name_without_ext: str,
-    /,
 ) ->  dict[str, str]:
     """
     """
+    #[
     info = dict()
-    for ext in ["log", "out", "err", ]:
-        with open(spc_file_name_without_ext + "." + ext, "rt", ) as fid:
+    for file_name in _gl.glob(spc_file_name_without_ext + ".*"):
+        ext = file_name.split(".")[-1]
+        encoding = None if ext != "err" else "latin-1"
+        with open(file_name, "rt", encoding=encoding, ) as fid:
             info[ext] = fid.read()
     return info
+    #]
 
 
 def _write_spc_to_file(
@@ -415,24 +429,26 @@ def _resolve_mode(
     #]
 
 
-def _create_settings(
+def _prepare_settings(
     base_start: _dates.Date,
     output: str,
-    /,
-    *,
     mode: Mode,
     transform_function: str = "none",
+    allow_missing: bool = False,
+    **extra_settings,
 ) ->  dict[str, str]:
     """
     """
     #[
-    settings = {
+    bare_settings = {
         "series_period": str(base_start.frequency.value),
         "x11_mode": str(mode),
         "x11_save": _X11_OUTPUT_RESOLUTION.get(output, output),
         "transform_function": str(transform_function),
     }
-    return settings
+    if allow_missing and (not "automdl" in extra_settings) and (not "arima" in extra_settings):
+        extra_settings["automdl"] = True
+    return bare_settings, extra_settings,
     #]
 
 
@@ -451,6 +467,28 @@ def _create_spc_file(
     #]
 
 
+def _add_extra_settings(
+    spc: str,
+    extra_settings: dict[str, Any],
+    /,
+) -> str:
+    """
+    """
+    #[
+    for k, v in extra_settings.items():
+        if v is False:
+            continue
+        add = "\n\n" + k.lower() + "{"
+        if isinstance(v, dict) and v:
+            for kk, vv in v.items():
+                add += f"\n    {kk.lower()}={vv}"
+        add += "\n}"
+        spc += add
+    spc += "\n"
+    return spc
+    #]
+
+
 def _clean_up(
     spc_file_name_without_ext: str,
     /,
@@ -459,7 +497,7 @@ def _clean_up(
     """
     #[
     for f in _gl.glob(spc_file_name_without_ext + ".*"):
-        _os.remove(f)
+        _os.remove(f, )
     #]
 
 

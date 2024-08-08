@@ -11,14 +11,14 @@ import scipy as _sp
 import functools as _ft
 import wlogging as _wl
 
+from ..evaluators.base import (DEFAULT_INIT_GUESS, )
 from ..simultaneous import main as _simultaneous
 from ..plans.simulation_plans import (SimulationPlan, )
 from ..dataslates.main import (Dataslate, )
 from .. import equations as _equations
 from .. import wrongdoings as _wrongdoings
+from .evaluators import (PeriodEvaluator, )
 from ..fords import simulators as _ford_simulators
-
-from . import _evaluators as _evaluators
 
 from typing import (TYPE_CHECKING, )
 if TYPE_CHECKING:
@@ -29,7 +29,6 @@ if TYPE_CHECKING:
 
 
 _DEFAULT_FALLBACK_VALUE = 1/9
-_METHOD_NAME = "period_by_period"
 
 
 def simulate(
@@ -52,8 +51,12 @@ def simulate(
     """
     if not simulatable_v.is_singleton:
         raise ValueError("Simulator requires a singleton simulatable object")
-
-    root_settings = _DEFAULT_SCIPY_ROOT_SETTINGS | (root_settings or {})
+    #
+    root_settings = (
+        _DEFAULT_ROOT_SETTINGS
+        if root_settings is None
+        else _DEFAULT_ROOT_SETTINGS | root_settings
+    )
 
     qid_to_name = simulatable_v.create_qid_to_name()
     name_to_qid = simulatable_v.create_name_to_qid()
@@ -76,8 +79,8 @@ def simulate(
         if terminal == "first_order" else None
     )
 
-    create_evaluator = _ft.partial(
-        _evaluators.create_evaluator,
+    evaluator_factory = _ft.partial(
+        PeriodEvaluator,
         wrt_equations=wrt_equations,
         all_quantities=all_quantities,
         terminal_simulator=terminal_simulator,
@@ -85,7 +88,7 @@ def simulate(
         iter_printer_settings=iter_printer_settings,
     )
 
-    create_evaluator = _ft.lru_cache(maxsize=None, )(create_evaluator, )
+    base_evaluator = evaluator_factory(wrt_qids, )
 
     when_missing_stream = \
         _wrongdoings.STREAM_FACTORY[when_missing] \
@@ -106,15 +109,15 @@ def simulate(
     #
     for t in dataslate_v.base_columns:
         current_wrt_qids, current_evaluator = \
-            _setup_current_period(plan, create_evaluator, wrt_qids, periods[t], name_to_qid, )
+            _set_up_current_period(plan, evaluator_factory, wrt_qids, periods[t], base_evaluator, name_to_qid, )
         current_evaluator.iter_printer.header_message = \
             _create_header_message(vid, t, periods[t], )
         data[current_wrt_qids, t] = starter(data, current_wrt_qids, t, )
         catch_missing(data, t, )
         #
-        init_guess = current_evaluator.get_init_guess(data, t, )
+        init = current_evaluator.get_init_guess(data, t, )
         root_final = _sp.optimize.root(
-            current_evaluator.evaluate, init_guess,
+            current_evaluator.eval, init,
             args=(data, t, ),
             jac=True,
             **root_settings,
@@ -128,36 +131,43 @@ def simulate(
         current_evaluator.iter_printer.reset()
     #
     info = {
-        "method": _METHOD_NAME,
+        "method": "period",
     }
     #
     return info
 
 
-def _setup_current_period(
+# REFACTOR
+def _set_up_current_period(
     plan: SimulationPlan | None,
-    create_evaluator: Callable,
-    current_wrt_qids: tuple[int, ...],
+    evaluator_factory: Callable[..., PeriodEvaluator],
+    base_wrt_qids: tuple[int, ...],
     current_period: Period,
+    base_evaluator: PeriodEvaluator,
     name_to_qid: dict[str, int],
     /,
 ) -> tuple[tuple[int, ...], PeriodEvaluator]:
     """
     """
-    current_wrt_qids = tuple(current_wrt_qids)
-    if plan:
-        names_exogenized = plan.get_exogenized_unanticipated_in_period(current_period, )
-        names_endogenized = plan.get_endogenized_unanticipated_in_period(current_period, )
-        if len(names_exogenized) != len(names_endogenized):
-            raise _wrongdoings.IrisPieCritical(
-                f"Number of exogenized quantities {len(names_exogenized)}"
-                f" does not match number of endogenized quantities {len(names_endogenized)}"
-                f" in period {current_period}"
-            )
-        qids_exogenized = tuple(name_to_qid[name] for name in names_exogenized)
-        qids_endogenized = tuple(name_to_qid[name] for name in names_endogenized)
-        current_wrt_qids = tuple(sorted(set(current_wrt_qids).difference(qids_exogenized).union(qids_endogenized)))
-    current_evaluator = create_evaluator(current_wrt_qids, )
+    if plan is None:
+        return base_wrt_qids, base_evaluator
+    #
+    names_exogenized = plan.get_exogenized_unanticipated_in_period(current_period, )
+    names_endogenized = plan.get_endogenized_unanticipated_in_period(current_period, )
+    if not names_exogenized and not names_endogenized:
+        return base_wrt_qids, base_evaluator
+    #
+    if len(names_exogenized) != len(names_endogenized):
+        raise _wrongdoings.IrisPieCritical(
+            f"Number of exogenized quantities {len(names_exogenized)}"
+            f" does not match number of endogenized quantities {len(names_endogenized)}"
+            f" in period {current_period}"
+        )
+    #
+    qids_exogenized = tuple(name_to_qid[name] for name in names_exogenized)
+    qids_endogenized = tuple(name_to_qid[name] for name in names_endogenized)
+    current_wrt_qids = tuple(sorted(set(base_wrt_qids).difference(qids_exogenized).union(qids_endogenized)))
+    current_evaluator = evaluator_factory(current_wrt_qids, )
     return current_wrt_qids, current_evaluator
 
 
@@ -262,7 +272,7 @@ _ITER_STARTER = {
 }
 
 
-_DEFAULT_SCIPY_ROOT_SETTINGS = {
+_DEFAULT_ROOT_SETTINGS = {
     "method": "hybr",
     "tol": 1e-12,
 }

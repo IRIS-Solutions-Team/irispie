@@ -141,7 +141,6 @@ class Solution:
             return abs(root) >= (1 - tolerance) and abs(root) < (1 + tolerance)
         def clip_func(x: _np.ndarray, /, ) -> _np.ndarray:
             return _np.where(_np.abs(x) < tolerance, 0, x)
-        #
         clip = clip_func if clip_small else None
         #
         # Detach unstable from (stable + unit) roots and solve out expectations

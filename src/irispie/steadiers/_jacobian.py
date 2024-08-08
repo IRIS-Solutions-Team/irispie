@@ -7,18 +7,70 @@ Jacobians for dynamic period-by-period systems
 from __future__ import annotations
 
 import numpy as _np
+from types import (SimpleNamespace, )
 
+from ..incidences.main import (Token, )
 from ..incidences import main as _incidence
 from ..aldi.maps import (ArrayMap, )
 from ..equations import (Equation, )
-
-from . import base
+from ..jacobians import base
 
 from typing import (TYPE_CHECKING, )
 if TYPE_CHECKING:
     from typing import (Any, )
     from collections.abc import (Collection, Iterable, )
+    from ..aldi.differentiators import (AtomFactoryProtocol, )
 #]
+
+
+# Implement AtomFactoryProtocol
+
+
+def _flat_create_diff_for_token(
+    token: Token,
+    wrt_qids: tuple[int],
+    /,
+) -> _np.ndarray | int:
+    """
+    """
+    try:
+        index = wrt_qids.index(token.qid, )
+    except ValueError:
+        return 0
+    diff = _np.zeros((len(wrt_qids), 1, ))
+    diff[index, 0] = 1
+    return diff
+
+
+_FLAT_ATOM_FACTORY = SimpleNamespace(
+    create_data_index_for_token=lambda token: (token.qid, token.shift, ),
+    create_diff_for_token=_flat_create_diff_for_token,
+    get_diff_shape=lambda wrt_qids: (len(wrt_qids), 1, ),
+)
+
+
+def _nonflat_create_diff_for_token(
+    token: Token,
+    wrt_qids: tuple[int],
+    /,
+) -> _np.ndarray | int:
+    """
+    """
+    try:
+        index = wrt_qids.index(token.qid, )
+    except ValueError:
+        return 0
+    diff = _np.zeros((len(wrt_qids), 2, ))
+    diff[index, :] = 1, token.shift,
+    return diff
+
+
+_NONFLAT_ATOM_FACTORY = SimpleNamespace(
+    create_data_index_for_token=lambda token: (token.qid, token.shift, ),
+    create_diff_for_token=_nonflat_create_diff_for_token,
+    get_diff_shape=lambda wrt_qids: (len(wrt_qids), 2, ),
+)
+
 
 
 class _SteadyJacobian(base.Jacobian, ):
@@ -26,18 +78,12 @@ class _SteadyJacobian(base.Jacobian, ):
     """
     #[
 
-    _create_map = staticmethod(ArrayMap.static)
-    _num_diff_columns = ...
+    def _populate_map(self, *args, **kwargs, ) -> None:
+        """
+        """
+        self._map = ArrayMap.static(*args, **kwargs, )
 
-    @staticmethod
-    def _calculate_shape(
-        eids: Collection[int],
-        wrt_something: Collection[Any],
-        num_columns_to_eval: int,
-    ) -> tuple[int, int]:
-        """
-        """
-        return len(eids), len(wrt_something),
+    def eval(*args, **kwargs, ): raise NotImplementedError
 
     def _create_eid_to_wrts(
         self,
@@ -57,46 +103,6 @@ class _SteadyJacobian(base.Jacobian, ):
             for eqn in equations
         }
 
-    # ===== Implement AtomFactoryProtocol =====
-
-    def create_data_index_for_token(
-        self,
-        token: _incidence.Token,
-        /,
-    ) -> tuple[int, slice]:
-        """
-        """
-        return (token.qid, token.shift, )
-
-    def create_diff_for_token(
-        self,
-        token: _incidence.Token,
-        wrt_qids: dict[int, tuple[int]],
-        /,
-    ) -> _np.ndarray:
-        """
-        """
-        if token is None:
-            return _np.zeros((len(wrt_qids), self._num_diff_columns, ))
-        try:
-            index = wrt_qids.index(token.qid)
-        except:
-            index = None
-        if index is None:
-            return 0
-        diff = _np.zeros((len(wrt_qids), self._num_diff_columns, ))
-        diff[index, :] = self._create_diff_value_for_token(token, )
-        return diff
-
-    def _create_diff_value_for_token(
-        self,
-        token: _incidence.Token,
-        /,
-    ) -> _np.ndarray:
-        """
-        """
-        ...
-
         #]
 
 
@@ -105,7 +111,7 @@ class FlatSteadyJacobian(_SteadyJacobian, ):
     """
     #[
 
-    _num_diff_columns = 1
+    _atom_factory = _FLAT_ATOM_FACTORY
 
     def eval(
         self,
@@ -118,15 +124,6 @@ class FlatSteadyJacobian(_SteadyJacobian, ):
         diff_array = self._aldi_context.eval_diff_to_array(steady_array, column_offset, )
         return self._create_jacobian_matrix(diff_array, )
 
-    def _create_diff_value_for_token(
-        self,
-        token: _incidence.Token,
-        /,
-    ) -> _np.ndarray:
-        """
-        """
-        return 1
-
     #]
 
 
@@ -135,8 +132,10 @@ class NonflatSteadyJacobian(_SteadyJacobian, ):
     """
     #[
 
-    _num_diff_columns = 2
-    nonflat_steady_shift = None
+    # Assigned in the evaluator
+    NONFLAT_STEADY_SHIFT = ...
+
+    _atom_factory = _NONFLAT_ATOM_FACTORY
 
     def eval(
         self,
@@ -149,24 +148,11 @@ class NonflatSteadyJacobian(_SteadyJacobian, ):
         diff_array = self._aldi_context.eval_diff_to_array(steady_array, column_offset, )
         A = self._create_jacobian_matrix(diff_array[:, 0:1], )
         B = self._create_jacobian_matrix(diff_array[:, 1:2], )
-        k = self.nonflat_steady_shift
-        j = _np.vstack((
-            _np.hstack((A, B, )),
-            _np.hstack((A, B+k*A, )),
-        ))
+        k = self.NONFLAT_STEADY_SHIFT
         return _np.vstack((
             _np.hstack((A, B, )),
             _np.hstack((A, B+k*A, )),
         ))
-
-    def _create_diff_value_for_token(
-        self,
-        token: _incidence.Token,
-        /,
-    ) -> _np.ndarray:
-        """
-        """
-        return 1, token.shift
 
     #]
 

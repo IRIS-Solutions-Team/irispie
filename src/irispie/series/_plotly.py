@@ -12,6 +12,7 @@ import os as _os
 import json as _js
 import copy as _cp
 import plotly.graph_objects as _pg
+import plotly.io as _pi
 import itertools as _it
 import warnings as _wa
 import datetime as _dt
@@ -19,6 +20,9 @@ import datetime as _dt
 from .. import dates as _dates
 from .. import plotly_wrap as _plotly_wrap
 #]
+
+
+# _pi.renderers.default = "browser"
 
 
 _PLOTLY_STYLES_FOLDER = _os.path.join(_os.path.dirname(__file__), "plotly_styles")
@@ -101,7 +105,7 @@ class Inlay:
         subplot: tuple[int, int] | int | None = None,
         xline = None,
         type = None,
-        chart_type: Literal["line", "bar_stack", "bar_group"] = "line",
+        chart_type: Literal["line", "bar_stack", "bar_group", ] = "line",
         highlight: Iterable[Period] | None = None,
         update_traces: tuple(dict[str, Any], ) | dict | None = None,
         freeze_span: bool = False,

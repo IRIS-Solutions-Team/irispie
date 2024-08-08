@@ -97,7 +97,10 @@ class KalmanOutputData:
     def __repr__(self, /, ) -> str:
         """
         """
-        slots_to_repr = (s for s in self.__slots__ if getattr(self, s) is not None)
+        slots_to_repr = (
+            i for i in self.__slots__
+            if getattr(self, s) is not None
+        )
         return f"KalmanOutputData({', '.join(slots_to_repr)})"
 
     #]
@@ -393,10 +396,11 @@ class _OutputStore:
             attr = getattr(self, name, )
             if attr is None:
                 continue
-            if hasattr(attr, "to_output_arg", ):
-                out_data[name] = attr.to_output_arg()
-            else:
-                out_data[name] = attr
+            out_data[name] = (
+                attr.to_output_arg()
+                if hasattr(attr, "to_output_arg", )
+                else attr
+            )
         return out_data
 
     def store_predict(
@@ -893,8 +897,8 @@ the time series data.
                 unpack_singleton=True,
             )
             return out_data, out_info
-        else:
-            return out_data
+        #
+        return out_data
 
     #]
 

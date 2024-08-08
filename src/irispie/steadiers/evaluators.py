@@ -10,13 +10,13 @@ from typing import (TYPE_CHECKING, )
 import itertools as _it
 import numpy as _np
 
-from .base import (DEFAULT_INIT_GUESS, )
+from ..evaluators.base import (DEFAULT_INIT_GUESS, )
+from ..evaluators import printers as _printers
 from .. import equations as _equations
 from .. import quantities as _quantities
-from ..equators import steady as _equators
-from ..jacobians import steady as _jacobians
+from . import _equators as _equators
+from . import _jacobian as _jacobian
 
-from . import printers as _printers
 
 if TYPE_CHECKING:
     from typing import (Any, )
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 #]
 
 
-_NONFLAT_STEADY_SHIFT = 1
+NONFLAT_STEADY_SHIFT = 1
 
 
 class SteadyEvaluator:
@@ -35,7 +35,9 @@ class SteadyEvaluator:
     #[
 
     _equator_factory = ...
+
     _jacobian_factory = ...
+
     _iter_printer_factory = ...
 
     def __init__(
@@ -197,8 +199,11 @@ class FlatSteadyEvaluator(SteadyEvaluator, ):
     """
     """
     #[
+
     _equator_factory = _equators.FlatSteadyEquator
-    _jacobian_factory = _jacobians.FlatSteadyJacobian
+
+    _jacobian_factory = _jacobian.FlatSteadyJacobian
+
     _iter_printer_factory = _printers.FlatSteadyIterPrinter
 
     def _reset_changes(
@@ -263,10 +268,10 @@ class NonflatSteadyEvaluator(SteadyEvaluator, ):
     #[
 
     _equator_factory = _equators.NonflatSteadyEquator
-    _equator_factory.nonflat_steady_shift = _NONFLAT_STEADY_SHIFT
+    _equator_factory.NONFLAT_STEADY_SHIFT = NONFLAT_STEADY_SHIFT
 
-    _jacobian_factory = _jacobians.NonflatSteadyJacobian
-    _jacobian_factory.nonflat_steady_shift = _NONFLAT_STEADY_SHIFT
+    _jacobian_factory = _jacobian.NonflatSteadyJacobian
+    _jacobian_factory.NONFLAT_STEADY_SHIFT = NONFLAT_STEADY_SHIFT
 
     _iter_printer_factory = _printers.NonflatSteadyIterPrinter
 
@@ -353,7 +358,7 @@ def _prepare_time_shifts(
     #
     min_shift = _equations.get_min_shift_from_equations(equations, )
     max_shift = _equations.get_max_shift_from_equations(equations, ) + add_shift
-    num_columns = -min_shift + _NONFLAT_STEADY_SHIFT + max_shift
+    num_columns = -min_shift + NONFLAT_STEADY_SHIFT + max_shift
     shift_in_first_column = min_shift
     shift_vec = _np.array(range(min_shift, max_shift+1, ), dtype=float, ).reshape(1, -1, )
     return shift_vec, min_shift

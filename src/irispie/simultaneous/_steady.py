@@ -17,7 +17,7 @@ from ..incidences import blazer as _blazer
 from .. import has_variants as _has_variants
 from .. import wrongdoings as _wrongdoings
 from ..fords import steadiers as _fs
-from ..evaluators import steady as _evaluators
+from ..steadiers import evaluators as _evaluators
 
 from . import _flags
 
@@ -315,11 +315,13 @@ class Inlay:
         when_fails: _wrongdoings.HOW = "error",
         tolerance: float = 1e-12,
         return_info: bool = False,
+        unpack_singleton: bool = True,
     ) -> tuple[bool, tuple[dict, ...]]:
         """
         Verify currently assigned steady state in dynamic or steady equations for each variant within this model
         """
         qid_to_logly = self.create_qid_to_logly()
+        equations = getattr(self._invariant, f"{equation_switch}_equations", )
         equator = self._choose_plain_equator(equation_switch, )
         steady_arrays = (
             v.create_steady_array(
@@ -332,31 +334,41 @@ class Inlay:
         # REFACTOR
         #
         t_zero = -equator.min_shift
-        dis = [
+        discrepancies = [
             _np.hstack((
-                equator.eval(x, t_zero, ),
-                equator.eval(x, t_zero+1, ),
+                _np.array(equator.eval(x, t_zero, )).reshape(-1, 1),
+                _np.array(equator.eval(x, t_zero+1, )).reshape(-1, 1),
             ))
             for x in steady_arrays
         ]
         #
         # REFACTOR
         #
-        max_abs_dis = [ _np.max(_np.abs(d)) for d in dis ]
-        status = [ d < tolerance for d in max_abs_dis ]
+        fail_stream = _wrongdoings.create_stream(
+            when_fails,
+            "Steady state discrepancies in these equations",
+        )
+        status = []
+        for vid, i in enumerate(discrepancies, ):
+            where = _np.any(_np.abs(i) > tolerance, axis=1, ).nonzero()[0].tolist()
+            for j in where:
+                fail_stream.add(f"[Variant {vid}] {equations[j].human}")
+            status.append(not where)
+        fail_stream._raise()
         all_status = all(status)
-        if not all_status:
-            message = "Invalid steady state"
-            _wrongdoings.raise_as(when_fails, message)
         #
-        if not return_info:
-            return all_status
-        else:
+        if return_info:
             info = [
-                {"discrepancies": d, "max_abs_discrepancy": m, "is_valid": s}
-                for d, m, s in zip(dis, max_abs_dis, status)
+                {"discrepancies": d, }
+                for d in discrepancies
             ]
+            info = _has_variants.unpack_singleton(
+                info, self.is_singleton,
+                unpack_singleton=unpack_singleton,
+            )
             return all_status, info
+        else:
+            return all_status
 
     #]
 

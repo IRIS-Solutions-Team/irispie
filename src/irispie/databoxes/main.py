@@ -404,7 +404,7 @@ yet to be added to the Databox.
         strict_names: bool = False,
     ) -> Self:
         """
-················································································
+................................................................................
 
 ==Create a copy of the Databox==
 
@@ -443,7 +443,7 @@ during the duplication process.
     A new Databox instance that is a deep copy of the current one, containing 
     either all items or only those specified.
 
-················································································
+................................................................................
         """
         new_databox = _co.deepcopy(self, )
         if source_names is None and target_names is None:
@@ -451,8 +451,8 @@ during the duplication process.
         source_names, target_names, *_ = self._resolve_source_target_names(
             source_names, target_names, strict_names,
         )
-        new_databox.rename(source_names, target_names, )
-        new_databox.keep(target_names, )
+        new_databox.rename(source_names, target_names, strict_names=strict_names, )
+        new_databox.keep(target_names, strict_names=strict_names, )
         return new_databox
 
     def shallow(
@@ -569,8 +569,6 @@ Returns `None`; `self` is modified in place.
             source_names, target_names, strict_names,
         )
         for s, t in zip(source_names, target_names, ):
-            if s == t:
-                continue
             self[t] = self.pop(s)
 
     @_pages.reference(category="manipulation", )

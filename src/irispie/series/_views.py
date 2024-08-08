@@ -18,8 +18,13 @@ class Inlay(_views.Mixin, ):
         """
         """
         shape = self.data.shape
-        range_str = f"{self.start_date}…{self.end_date}" if self.start_date is not None else "None"
-        return f"Series {range_str} {shape[0]}×{shape[1]}"
+        range_str = (
+            f"{self.start_date}…{self.end_date}"
+            if self.start_date is not None
+            else "None"
+        )
+        missing_str = "*" if self.has_missing else " "
+        return f"Series {self.frequency.letter} {range_str}{missing_str}{shape[0]}×{shape[1]}"
 
     def _get_header_separator(self, /, ):
         """"

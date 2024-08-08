@@ -6,6 +6,7 @@ Implement SlatableProtocol
 #[
 from __future__ import annotations
 
+import warnings as _wa
 from typing import (TYPE_CHECKING, )
 
 from ..slatables import (Slatable, )
@@ -36,6 +37,8 @@ class _Slatable(Slatable):
         self = klass(**kwargs, )
         self.max_lag = model.max_lag
         self.max_lead = model.max_lead
+        # _wa.warn("!!! max_lead is doubled", )
+        # self.max_lead = 2*model.max_lead
         #
         # Databox names
         qid_to_name = model.create_qid_to_name()

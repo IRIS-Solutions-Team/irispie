@@ -18,16 +18,28 @@ from . import _substitutions as _substitutions
 _WHERE_TO_APPLY_SUBSTITUTIONS = ["transition-equations", "measurement-equations", ]
 
 
-def from_string(source_string: str, /, ) -> sources.Source:
+def from_string(source: str, /, ) -> sources.Source:
     """
     """
-    source_string = _resolve_shortcut_keywords(source_string)
-    source_string = _common.add_blank_lines(source_string)
-    source_string = _translate_keywords(source_string)
-    nodes = _GRAMMAR["source"].parse(source_string)
+    #[
+    # Remove #! anfd %! line comments
+    source = _remove_line_comments(source, )
+
+    # TODO: make !variables, !shocks, !equations valid keywords
+    source = _expand_shortcut_keywords(source)
+
+    source = _common.add_blank_lines(source)
+
+    source = _translate_keywords(source)
+
+    nodes = _GRAMMAR["source"].parse(source)
+
     parsed = _Visitor().visit(nodes)
+
     parsed = _substitutions.resolve_substitutions(parsed, _WHERE_TO_APPLY_SUBSTITUTIONS, )
+
     return parsed
+    #]
 
 
 _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
@@ -234,7 +246,14 @@ _SHORTCUT_KEYWORDS = [
 # ( _re.compile(_common.HUMAN_PREFIX + r"shocks\b"), _common.HUMAN_PREFIX + r"transition-shocks" ),
 
 
-def _resolve_shortcut_keywords(source_string: str, /, ) -> str:
+_LINE_COMMENT_PATTERN = _re.compile(r" *[%#]!.*", )
+
+
+def _remove_line_comments(source: str, /, ) -> str:
+    return _re.sub(_LINE_COMMENT_PATTERN, "", source)
+
+
+def _expand_shortcut_keywords(source_string: str, /, ) -> str:
     for short, long in _SHORTCUT_KEYWORDS:
         source_string = _re.sub(short, long, source_string)
     return source_string

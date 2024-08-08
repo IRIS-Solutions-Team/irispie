@@ -6,16 +6,45 @@ Jacobians for dynamic period-by-period systems
 #[
 from __future__ import annotations
 
-from typing import (Protocol, )
+from types import (SimpleNamespace, )
 from collections.abc import (Iterable, )
 import numpy as _np
 
 from ..incidences.main import (Token, )
 from ..incidences import main as _incidence
 from ..aldi.maps import (ArrayMap, )
+from ..aldi.differentiators import (AtomFactoryProtocol, )
 
 from ..jacobians import base
 #]
+
+
+# Implement AtomFactoryProtocol
+
+def _create_diff_for_token(
+    self,
+    token: Token,
+    wrt_qids: tuple[int],
+    /,
+) -> _np.ndarray | int:
+    """
+    """
+    if token.shift != 0:
+        return 0
+    try:
+        index = wrt_qids.index(token.qid, )
+    except ValueError:
+        return 0
+    diff = _np.zeros((len(wrt_qids), 1, ), )
+    diff[index] = 1
+    return diff
+
+
+_ATOM_FACTORY = SimpleNamespace(
+    create_data_index_for_token=lambda token: (token.qid, token.shift, ),
+    create_diff_for_token=_create_diff_for_token,
+    get_diff_shape=lambda wrt_qids: (len(wrt_qids), 1, ),
+)
 
 
 class Jacobian(base.Jacobian, ):
@@ -23,17 +52,12 @@ class Jacobian(base.Jacobian, ):
     """
     #[
 
-    _create_map = staticmethod(ArrayMap.static)
+    _atom_factory: AtomFactoryProtocol = _ATOM_FACTORY
 
-    @staticmethod
-    def _calculate_shape(
-        eids: Collection[int],
-        wrt_something: Collection[Any],
-        num_columns_to_eval: int,
-    ) -> tuple[int, int]:
+    def _populate_map(self, *args, **kwargs, ) -> None:
         """
         """
-        return len(eids), len(wrt_something),
+        self._map = ArrayMap.static(*args, **kwargs, )
 
     def eval(
         self,
@@ -62,36 +86,6 @@ class Jacobian(base.Jacobian, ):
             for eqn in equations
         }
 
-    # ===== Implement AtomFactoryProtocol =====
-
-    def create_data_index_for_token(
-        self,
-        token: Token,
-        /,
-    ) -> tuple[int, int]:
-        """
-        """
-        return (token.qid, token.shift, )
-
-    def create_diff_for_token(
-        self,
-        token: Token,
-        wrt_qids: tuple[int],
-        /,
-    ) -> _np.ndarray:
-        """
-        """
-        if token is None:
-            return _np.zeros((len(wrt_qids), 1, ), )
-        if token.shift != 0:
-            return 0
-        try:
-            index = wrt_qids.index(token.qid, )
-            diff = _np.zeros((len(wrt_qids), 1, ), )
-            diff[index] = 1
-            return diff
-        except:
-            return 0
-
     #]
+
 

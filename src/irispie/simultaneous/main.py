@@ -421,15 +421,20 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
     def systemize(
         self,
         /,
+        unpack_singleton: bool = True,
         **kwargs,
     ) -> Iterable[_systems.System]:
         """
         Create unsolved first-order system for each variant
         """
         model_flags = self.resolve_flags(**kwargs, )
-        return tuple(
+        system = [
             self._systemize(variant, self._invariant.dynamic_descriptor, model_flags, )
             for variant in self._variants
+        ]
+        return _has_variants.unpack_singleton(
+            system, self.is_singleton,
+            unpack_singleton=unpack_singleton,
         )
 
     def _systemize(

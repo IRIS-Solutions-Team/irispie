@@ -13,7 +13,7 @@ import scipy as _sp
 from .. import equations as _equations
 from .. import quantities as _quantities
 from ..incidences import main as _incidences
-from ..aldi import differentiators as _differentiators
+from ..aldi.differentiators import (AtomFactoryProtocol, Context, )
 from ..aldi import maps as _maps
 #]
 
@@ -23,8 +23,11 @@ class Jacobian:
     """
     #[
 
-    _create_map = ...
-    _calculate_shape = ...
+    _atom_factory: AtomFactoryProtocol = ...
+
+    _populate_map: Callable = ...
+
+    eval: Callable = ...
 
     def __init__(
         self,
@@ -34,18 +37,15 @@ class Jacobian:
         /,
         *,
         context: dict[str, Callable] | None = None,
-        first_column_to_eval: int | None = None,
-        num_columns_to_eval: int = 1,
         sparse_jacobian: bool = False,
         initial: _np.ndarray | None = None,
+        num_columns_to_eval: int = 1,
     ) -> None:
         """
         """
-        #
-        # Choose dense or sparse array creator
+        self._num_columns_to_eval = num_columns_to_eval
         self._jacobian_matrix = initial
         self.is_sparse = sparse_jacobian
-        self.num_columns_to_eval = num_columns_to_eval
         self._create_jacobian_matrix = (
             self._create_sparse_jacobian_matrix
             if self.is_sparse else self._create_dense_jacobian_matrix
@@ -59,38 +59,37 @@ class Jacobian:
         # differentiated
         eid_to_wrts = self._create_eid_to_wrts(equations, wrt_something, )
         #
-        # Collect all tokens in the euqations, and find the minimum shift
-        all_tokens = set(_equations.generate_all_tokens_from_equations(equations, ), )
-        min_shift = _incidences.get_min_shift(all_tokens, )
-        self._first_column_to_eval = -min_shift
-        #
         # Create the map from eids to rhs offsets; the offset is the number
         # of rows in the Jacobian matrix that precede the equation
         eid_to_rhs_offset = \
             _maps.create_eid_to_rhs_offset(eids, eid_to_wrts, )
         #
-        self._shape = len(eids), len(wrt_something),
-        self._shape = self._calculate_shape(eids, wrt_something, num_columns_to_eval, )
-        #
-        self._map = self._create_map(
+        self._populate_shape(eids, wrt_something, )
+        self._populate_map(
             eids,
             eid_to_wrts,
             wrt_something,
             eid_to_rhs_offset,
             rhs_column=0,
             lhs_column_offset=0,
-            num_columns_to_eval=num_columns_to_eval,
         )
         #
-        # self is the Atom factory
-        atom_factory = self
-        self._aldi_context = _differentiators.Context(
-            atom_factory,
+        self._aldi_context = Context(
+            self._atom_factory,
             equations,
             eid_to_wrts=eid_to_wrts,
             qid_to_logly=qid_to_logly,
             context=context,
         )
+
+    def _populate_shape(
+        self,
+        eids: Collection[int],
+        wrt_something: Collection[Any],
+    ) -> None:
+        """
+        """
+        self._shape = len(eids)*self._num_columns_to_eval, len(wrt_something),
 
     def _create_eid_to_wrts(
         self,

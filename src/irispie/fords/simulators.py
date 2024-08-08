@@ -11,7 +11,7 @@ Table of contents
 * `simulate_measurement`
 * `_generate_period_system`
 * `_store_smooth`
-* `_get_init_xi`
+* `get_init_xi`
 
 """
 
@@ -38,7 +38,7 @@ from . import shock_simulators as _shock_simulators
 
 from typing import (TYPE_CHECKING, )
 if TYPE_CHECKING:
-    from typing import (Any, Callable, )
+    from typing import (Any, )
     from collections.abc import (Iterable, )
 #]
 
@@ -51,22 +51,20 @@ _simulate_anticipated_shocks \
     = _shock_simulators.simulate_square_anticipated_shocks
 
 
-class _FordSimulatableProtocol(Protocol, ):
+class FordSimulatableProtocol(Protocol, ):
     """
     """
     #[
 
     num_variants: int
-
     solution_vectors: SolutionVectors
-
     def get_singleton_solution(self, deviation: bool, ) -> Solution: ...
 
     #]
 
 
 def simulate(
-    model_v: _FordSimulatableProtocol,
+    model_v: FordSimulatableProtocol,
     dataslate_v: Dataslate,
     plan: SimulationPlan | None,
     vid: int,
@@ -181,7 +179,7 @@ def simulate(
 
 
 def simulate_flat(
-    model_v: _FordSimulatableProtocol,
+    model_v: FordSimulatableProtocol,
     dataslate_v: Dataslate,
     frame: Frame,
     vid: int,
@@ -214,7 +212,7 @@ def simulate_flat(
     # Store results in data_array
     # Capture xi_array for later use
     #
-    xi = _get_init_xi(data_array, simulation_columns[0], vec, )
+    xi = get_init_xi(data_array, simulation_columns[0], vec, )
     for t in simulation_columns:
         xi = T @ xi + P @ u_array[:, t] + K
         if all_v_impact[t] is not None:
@@ -229,7 +227,7 @@ def simulate_flat(
 
 
 def simulate_conditional(
-    model_v: _FordSimulatableProtocol,
+    model_v: FordSimulatableProtocol,
     dataslate_v: Dataslate,
     frame: Frame,
     vid: int,
@@ -262,7 +260,7 @@ def simulate_conditional(
     #
     # Initialize Kalman filter:
     # [initial median, initial MSE, number of initials to estimates, ]
-    init_med = _get_init_xi(data_array, frame.first, vec, )
+    init_med = get_init_xi(data_array, frame.first, vec, )
     init_mse = _np.zeros((squid.num_xi, squid.num_xi), )
     unknown_init_impact = None
     initials = (init_med, init_mse, unknown_init_impact, )
@@ -357,7 +355,7 @@ def simulate_conditional(
 
 
 def simulate_measurement(
-    model_v: _FordSimulatableProtocol,
+    model_v: FordSimulatableProtocol,
     dataslate_v: Dataslate,
     frame: Frame,
     xi_array: _np.ndarray,
@@ -569,7 +567,7 @@ def _store_smooth(
     #]
 
 
-def _get_init_xi(
+def get_init_xi(
     maybelog_working_data: _np.ndarray,
     first_column: int,
     solution_vectors: SolutionVectors,
@@ -584,8 +582,8 @@ def _get_init_xi(
             first_column - 1,
         )
     init_xi = maybelog_working_data[init_xi_rows, init_xi_columns]
-    unnecessary_initials = ~_np.array(solution_vectors.are_initial_conditions, )
-    init_xi[unnecessary_initials] = 0
+    false_initials = tuple( not i for i in solution_vectors.true_initials )
+    init_xi[false_initials, ...] = 0
     return init_xi
     #]
 
@@ -725,81 +723,4 @@ def _check_needs_splitting(
     return True
     #]
 
-
-def create_terminal_simulator(
-    model_v: _FordSimulatableProtocol,
-) -> Callable | None:
-    """
-    """
-    #[
-    solution = model_v.get_singleton_solution(deviation=False, )
-    vec = model_v.solution_vectors
-    max_lead = model_v.max_lead
-    #
-    if not max_lead:
-        return None
-    #
-    curr_xi_qids, curr_xi_indexes = vec.get_curr_transition_indexes()
-    T = solution.T
-    K = solution.K
-    #
-    qid_to_logly = model_v.create_qid_to_logly()
-    logly_rows = tuple( qid for qid, status in qid_to_logly.items() if status )
-    #
-    def terminal_simulator(
-        data_array: _np.ndarray,
-        last_simulation: int,
-    ) -> None:
-        """
-        """
-        first_terminal = last_simulation + 1
-        simulation_columns = tuple(range(first_terminal, first_terminal+max_lead, ), )
-        data_array[logly_rows, :] = _np.log(data_array[logly_rows, :], )
-        xi = _get_init_xi(data_array, first_terminal, vec, )
-        for t in simulation_columns:
-            xi = T @ xi + K
-            data_array[curr_xi_qids, t] = xi[curr_xi_indexes, ...]
-        data_array[logly_rows, :] = _np.exp(data_array[logly_rows, :], )
-    #
-    return terminal_simulator
-    #]
-
-
-def create_extender(
-    model_v: _FordSimulatableProtocol,
-) -> Callable:
-    """
-    """
-    #[
-    solution = model_v.get_singleton_solution(deviation=False, )
-    vec = model_v.solution_vectors
-    curr_xi_qids, curr_xi_indexes = vec.get_curr_transition_indexes()
-    y_qids = [t.qid for t in vec.measurement_variables]
-    T = solution.T
-    K = solution.K
-    Z = solution.Z
-    D = solution.D
-    #
-    qid_to_logly = model_v.create_qid_to_logly()
-    logly_rows = tuple( qid for qid, status in qid_to_logly.items() if status )
-    #
-    def extender(
-        data_array: _np.ndarray,
-        last_simulation: int,
-        num_columns_to_run: int,
-    ) -> None:
-        """
-        """
-        first_column = last_simulation + 1
-        data_array[logly_rows, :] = _np.log(data_array[logly_rows, :], )
-        xi = _get_init_xi(data_array, first_column, vec, )
-        for t in range(first_column, first_column + num_columns_to_run, ):
-            xi = T @ xi + K
-            y = Z @ xi + D
-            data_array[curr_xi_qids, t] = xi[curr_xi_indexes, ...]
-            data_array[y_qids, t] = y
-        data_array[logly_rows, :] = _np.exp(data_array[logly_rows, :], )
-    #
-    return extender
-    #]
 
