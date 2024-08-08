@@ -16,4 +16,4 @@ src/irispie/simultaneous/_pretty.py:182
     comparison_func[name](value, base_value, ) if value is not "" else ""
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================== 150 passed, 1 warning in 1.62s ========================
+======================== 150 passed, 1 warning in 1.83s ========================
