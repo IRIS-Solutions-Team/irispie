@@ -1,5 +1,5 @@
 ============================= test session starts ==============================
-platform linux -- Python 3.12.4, pytest-8.2.2, pluggy-1.5.0
+platform linux -- Python 3.12.4, pytest-8.3.2, pluggy-1.5.0
 rootdir: /home/runner/work/irispie/irispie/irispie-package
 configfile: pyproject.toml
 collected 150 items
@@ -16,4 +16,4 @@ src/irispie/simultaneous/_pretty.py:182
     comparison_func[name](value, base_value, ) if value is not "" else ""
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================== 150 passed, 1 warning in 1.57s ========================
+======================== 150 passed, 1 warning in 1.62s ========================
