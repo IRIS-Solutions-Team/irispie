@@ -177,11 +177,13 @@ def _compare_steady_value(
         name: (lambda x, y: x/y) if name_to_logly.get(name, False) else (lambda x, y: x-y)
         for name in row_names
     }
+    #
     def _compare(values: Iterable[Real], ) -> Iterable[Real]:
         return tuple(
-            comparison_func[name](value, base_value, ) if value is not "" else ""
+            comparison_func[name](value, base_value, ) if value != "" else ""
             for name, value, base_value in zip(row_names, values, base_values, )
         )
+    #
     for header, values, settings in orig_value_iterator(self, row_names, **kwargs, ):
         yield "COMPARE_" + header, _compare(values, ), settings
     #]
