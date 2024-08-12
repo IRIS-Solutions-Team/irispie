@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 #]
 
 
-_LOGGER = _wl.get_colored_two_liner(__name__, level=_wl.INFO, )
+_LOGGER = _wl.get_colored_logger(__name__, level=_wl.INFO, )
 
 
 class Mixin:

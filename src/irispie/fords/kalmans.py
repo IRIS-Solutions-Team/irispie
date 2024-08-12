@@ -35,7 +35,7 @@ _simulate_anticipated_shocks \
 
 
 _DEFAULT_DELTA_TOLERANCE = 1e-12
-_LOGGER = _wl.get_colored_two_liner(__name__, level=_wl.INFO, )
+_LOGGER = _wl.get_colored_logger(__name__, level=_wl.INFO, )
 
 
 class SingularMatrixError(ValueError, ):
