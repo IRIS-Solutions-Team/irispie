@@ -48,6 +48,7 @@ class Inlay:
         remove_initial: bool = True,
         remove_terminal: bool = True,
         shocks_from_data: bool = True,
+        parameters_from_data: bool = False,
         logging_level: int = _wl.INFO,
         catch_warnings: bool = False,
         unpack_singleton: bool = True,
@@ -186,6 +187,7 @@ out_db, info = self.simulate(
         #
         slatable = self.get_slatable_for_simulation(
             shocks_from_data=shocks_from_data,
+            parameters_from_data=parameters_from_data,
         )
         dataslate = Dataslate.from_databox_for_slatable(
             slatable, input_db, base_dates,

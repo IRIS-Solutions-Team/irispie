@@ -35,12 +35,14 @@ class Slatable:
         *,
         shocks_from_data: bool = False,
         stds_from_data: bool = False,
+        parameters_from_data: bool = False,
         **kwargs,
     ) -> None:
         """
         """
         self.shocks_from_data = shocks_from_data
         self.stds_from_data = stds_from_data
+        self.parameters_from_data = parameters_from_data
         #
         self.max_lag = None
         self.max_lead = None

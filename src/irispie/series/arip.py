@@ -16,7 +16,7 @@ from . import _conversions as _conversions
 #]
 
 
-FormType = Literal["rate", "diff", ]
+FormType = Literal["rate", "multiplicative", "diff", "additive", ]
 AggregationType = Literal["sum", "mean", "avg", "last", "first", ]
 
 
@@ -161,7 +161,9 @@ def _create_aggregation_vector_last(num_within, ):
 
 _CHOOSE_FORM = {
     "rate": _RateForm,
+    "multiplicative": _RateForm,
     "diff": _DiffForm,
+    "additive": _DiffForm,
 }
 
 

@@ -66,7 +66,14 @@ class _Slatable(Slatable):
         #
         # Fallbacks and overwrites
         self.fallbacks = {}
-        self.overwrites = model.get_parameters(unpack_singleton=False, )
+        self.overwrites = {}
+        #
+        #
+        parameters = model.get_parameters(unpack_singleton=True, )
+        if self.parameters_from_data:
+            self.fallbacks.update(parameters, )
+        else:
+            self.overwrites.update(parameters, )
         #
         shock_names = model.get_names(kind=_quantities.ANY_SHOCK, )
         shock_meds = {

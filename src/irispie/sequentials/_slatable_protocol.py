@@ -40,13 +40,24 @@ class _Slatable(Slatable):
         residual_names = tuple(sequential._invariant.residual_names)
         residuals = { name: 0 for name in residual_names }
         #
+        #
+        #
         self.fallbacks = {}
-        self.overwrites = sequential.get_parameters(unpack_singleton=False, )
+        self.overwrites = {}
+        #
+        #
+        parameters = sequential.get_parameters(unpack_singleton=True, )
+        if self.parameters_from_data:
+            self.fallbacks.update(parameters, )
+        else:
+            self.overwrites.update(parameters, )
+        #
         #
         if self.shocks_from_data:
             self.fallbacks.update(residuals, )
         else:
             self.overwrites.update(residuals, )
+        #
         #
         self.qid_to_logly = {}
         #
@@ -55,6 +66,8 @@ class _Slatable(Slatable):
             + sequential.rhs_only_names
             + sequential.residual_names
         )
+        if self.parameters_from_data:
+            self.output_names += sequential.parameter_names
         #
         return self
 

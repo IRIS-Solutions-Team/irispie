@@ -59,6 +59,7 @@ class Inlay:
         remove_terminal: bool = True,
         shocks_from_data: bool = True,
         stds_from_data: bool = True,
+        parameters_from_data: bool = False,
         logging_level: int = _wl.INFO,
         #
         unpack_singleton: bool = True,
@@ -85,6 +86,7 @@ class Inlay:
         slatable = self.get_slatable_for_simulate(
             shocks_from_data=shocks_from_data,
             stds_from_data=stds_from_data,
+            parameters_from_data=parameters_from_data,
         )
 
         dataslate = Dataslate.from_databox_for_slatable(

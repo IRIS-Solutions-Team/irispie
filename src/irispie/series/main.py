@@ -394,6 +394,12 @@ self = Series(
         """==True if the time series is non-empty and contains in-sample missing values=="""
         return (not self.is_empty) and _np.isnan(self.data).any()
 
+    def any_missing(self, *args, ) -> bool:
+        """
+        """
+        data = self.get_data(*args, )
+        return _np.isnan(data).any()
+
     def set_data(
         self,
         dates: Dates,
