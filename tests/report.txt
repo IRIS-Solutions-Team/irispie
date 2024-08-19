@@ -10,10 +10,4 @@ tests/series/ar_test.py ................................................ [ 42%]
 tests/series/contributions_plot_test.py .....                            [ 80%]
 tests/series/hpf_test.py ..............................                  [100%]
 
-=============================== warnings summary ===============================
-src/irispie/simultaneous/_pretty.py:182
-  /home/runner/work/irispie/irispie/irispie-package/src/irispie/simultaneous/_pretty.py:182: SyntaxWarning: "is not" with 'str' literal. Did you mean "!="?
-    comparison_func[name](value, base_value, ) if value is not "" else ""
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================== 150 passed, 1 warning in 1.83s ========================
+============================= 150 passed in 1.68s ==============================
