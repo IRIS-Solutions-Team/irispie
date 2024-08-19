@@ -397,8 +397,23 @@ self = Series(
     def any_missing(self, *args, ) -> bool:
         """
         """
+        return self._func_missing(_np.any, *args, )
+
+    def all_missing(self, *args, ) -> bool:
+        """
+        """
+        return self._func_missing(_np.all, *args, )
+
+    def count_missing(self, *args, ) -> int:
+        """
+        """
+        return self._func_missing(_np.count_nonzero, *args, )
+
+    def _func_missing(self, func, *args, ) -> bool:
+        """
+        """
         data = self.get_data(*args, )
-        return _np.isnan(data).any()
+        return func(_np.isnan(data))
 
     def set_data(
         self,
