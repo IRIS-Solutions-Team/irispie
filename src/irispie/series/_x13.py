@@ -383,37 +383,34 @@ def _execute(
 def _collect_outputs(
     specs_file_name_without_ext: str,
     output: _sp.CompletedProcess,
-    x11_save: str,
+    out_table: str,
     /,
 ) -> tuple[_np.ndarray | None, dict[str, str]]:
     """
     """
     #[
     info = _read_out_files(specs_file_name_without_ext, )
-    info["success"] = output.returncode == 0 and "ERROR" not in str(output.stdout)
-    if info["success"]:
-        out_data, info[x11_save] = _read_output_data(specs_file_name_without_ext, x11_save, info, )
-    else:
+    try:
+        info[out_table] = str(info[out_table])
+        out_data = _read_output_data(info[out_table], )
+    except:
         out_data = None
-        info[x11_save] = None
+        info[out_table] = None
+    info["success"] = (
+        output.returncode == 0
+        and "ERROR" not in str(output.stdout)
+        and out_data is not None
+    )
     return out_data, info
     #]
 
 
 def _read_output_data(
-    specs_file_name_without_ext: str,
-    x11_save: str,
-    info: dict[str, str],
-    /,
+    out_table: str,
 ) -> tuple[tuple[float, ...], str]:
     """
     """
-    #[
-    with open(specs_file_name_without_ext + "." + x11_save, "rt", ) as fid:
-        table = str(fid.read())
-    out_data = tuple(float(i) for i in table.split()[5::2])
-    return out_data, table
-    #]
+    return tuple(float(i) for i in out_table.split()[5::2])
 
 
 def _read_out_files(

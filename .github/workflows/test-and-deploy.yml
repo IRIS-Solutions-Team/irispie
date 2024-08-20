@@ -33,7 +33,11 @@ jobs:
       - name: Run tests
         run: |
           cd $GITHUB_WORKSPACE/irispie-package
-          pytest ./tests/series -ra > ./tests/report.txt
+          date > ./tests/report.txt
+          echo "==================================================" >> ./tests/report.txt
+          pytest ./tests/series -ra >> ./tests/report.txt
+          echo "==================================================" >> ./tests/report.txt
+          pytest ./tests/dates -ra >> ./tests/report.txt
 
       - name: Upload test results as artifact
         uses: actions/upload-artifact@v4

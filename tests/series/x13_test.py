@@ -59,12 +59,19 @@ def test_with_forecast_specs():
         db["GDP_NSA"],
         return_info=True,
         add_to_specs={
-            "automdl": True,
-            "forecast": {"maxlead": 12, "maxback": 12, },
+            "pickmdl": {},
+            "outlier": {},
+            "forecast": {"maxlead": 12, "maxback": 0, },
         },
     )
     assert info["success"]
     assert sa.start == db["GDP_NSA"].start
     assert sa.end == db["GDP_NSA"].end
 
+
+if __name__ == "__main__":
+    # test_vanilla()
+    # test_seasonal_factors()
+    # test_in_sample_missing()
+    test_with_forecast_specs()
 
