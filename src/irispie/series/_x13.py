@@ -150,7 +150,6 @@ info = self.x13(
     | `"seasonally_adjusted"` | `d11`     | Seasonally adjusted series
     | `"trend_cycle"`         | `d12`     | Trend-cycle component
     | `"irregular"`           | `d13`     | Irregular component
-    | `"irregular"`           | `d13`     | Irregular component
     | `"seasonal_and_td"`     | `d16`     | Combined seasonal and trading day factors
     | `"holiday_and_td"`      | `d18`     | Combined holiday and trading day factors
 

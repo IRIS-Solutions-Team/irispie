@@ -122,8 +122,8 @@ for n in ("fill_missing", ):
 
 def _fill_neighbor(
     data,
+    method_args: Any | None,
     func: Callable,
-    method_args: Any | None = None,
     **kwargs,
 ) -> _np.ndarray:
     """
@@ -143,8 +143,8 @@ def _fill_neighbor(
 
 def _fill_interp(
     data: _np.ndarray,
+    method_args: Any | None,
     func: Callable,
-    method_args: Any | None = None,
     **kwargs,
 ) -> _np.ndarray:
     """
