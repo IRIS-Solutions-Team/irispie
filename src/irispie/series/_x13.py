@@ -12,13 +12,14 @@ import numpy as _np
 import subprocess as _sp
 import platform as _pf
 import tempfile as _tf
+import copy as _co
 import glob as _gl
 
 from .. import executables as _executables
 from .. import wrongdoings as _wrongdoings
 from .. import has_variants as _has_variants
-from .. import dates as _dates
 from .. import pages as _pages
+from ..dates import (Period, Span, Frequency, )
 
 from . import _functionalize
 
@@ -44,17 +45,18 @@ class Inlay:
     def x13(
         self,
         *,
-        span: _dates.Span | EllipsisType = ...,
+        span: Span | EllipsisType = ...,
         when_error: _wrongdoings.HOW = "warning",
         clean_up: bool = True,
-        output: str = "sa",
+        output: str = "seasonally_adjusted",
         #
         return_info: bool = False,
         unpack_singleton: bool = True,
         #
+        specs_template: dict[str, Any] | None = None,
         mode: Literal["mult", "add", "pseudoadd", "logadd", ] | None = None,
         allow_missing: bool = False,
-        **kwargs,
+        add_to_specs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         r"""
 ................................................................................
@@ -68,12 +70,18 @@ class Inlay:
 ```
 new = irispie.x13(
     self,
-    /,
+
     span=None,
-    output="sa",
+    output="seasonally_adjusted",
     mode=None,
     when_error="warning",
     clean_up=True,
+
+    specs_template=None,
+    add_to_specs=None,
+    allow_missing=False,
+    mode=None,
+
     unpack_singleton=True,
     return_info=False,
 )
@@ -93,11 +101,19 @@ new, info = irispie.x13(
 
 ```
 self.x13(
+    self,
+
     span=None,
-    output="sa",
+    output="seasonally_adjusted",
     mode=None,
     when_error="warning",
     clean_up=True,
+
+    specs_template=None,
+    add_to_specs=None,
+    allow_missing=False,
+    mode=None,
+
     unpack_singleton=True,
     return_info=False,
 )
@@ -126,14 +142,21 @@ info = self.x13(
 
 ???+ input "output"
     The type of output to be returned by X13. The following options are
-    available:
+    available at the moment:
 
-    | Output    | Description
-    |-----------|-------------
-    | `"sf"`    | Seasonal factors
-    | `"sa"`    | Seasonally adjusted series
-    | `"tc"`    | Trend-cycle
-    | `"irr"`   | Irregular component
+    | Output                  | X13 table | Description
+    |-------------------------|-----------|-------------
+    | `"seasonal"`            | `d10`     | Seasonal factors
+    | `"seasonally_adjusted"` | `d11`     | Seasonally adjusted series
+    | `"trend_cycle"`         | `d12`     | Trend-cycle component
+    | `"irregular"`           | `d13`     | Irregular component
+    | `"irregular"`           | `d13`     | Irregular component
+    | `"seasonal_and_td"`     | `d16`     | Combined seasonal and trading day factors
+    | `"holiday_and_td"`      | `d18`     | Combined holiday and trading day factors
+
+???+ input "specs_template"
+    A dictionary with a specs template for the X13 run; if `None`, a default
+    specs template is used (see below for the structure of the default template).
 
 ???+ input "mode"
     The mode to be used for the X13 run. The following options are available (see the
@@ -150,6 +173,14 @@ info = self.x13(
     If `mode=None`, the mode is automatically selected based on the data. If the data is
     strictly positive or strictly negative, the multiplicative mode is used, otherwise
     the additive mode is used.
+
+???+ input "allow_missing"
+    If `True`, allow missing values in the input time series and automatically
+    add an empty `automdl` spec if no ARIMA model is specified.
+
+???+ input "add_to_specs"
+    A dictionary with additional settings to be added to the `specs_template` (or
+    the default templated).
 
 ???+ input "when_error"
     The action to be taken when an error occurs. The following options are
@@ -185,15 +216,45 @@ info = self.x13(
 
     | Key | Description
     |-----|-------------
+    | `success` | True if the X13 run was successful
+    | `specs_template` | The specs template used for the X13 run
     | `mode` | The mode used for the X13 run
+    | `spc` | The spc file from the X13 run
     | `log` | The log file from the X13 run
     | `out` | The output file from the X13 run
     | `err` | The error file from the X13 run
-    | `success` | A boolean indicating whether the X13 run was successful
+    | `*` | Any other output file written by X13
 
 
 ### Details ###
 
+
+???+ abstract "Default SPC template structure"
+
+    The default specs template is a dictionary equivalent to the following SPC
+    file:
+
+    ```
+    series{
+        start=$(series_start)
+        data=(
+    $(series_data)
+        )
+        period=$(series_period)
+        decimals=5
+        precision=5
+    }
+
+    transform{
+        function=$(transform_function)
+    }
+
+    x11{
+        mode=$(x11_mode)
+        save=$(x11_save)
+    }
+
+    ```
 
 ................................................................................
         """
@@ -202,34 +263,35 @@ info = self.x13(
         self.clip(base_start, base_end, )
         #
         mode, transform_function, flip_sign = _resolve_mode(self, mode, )
-        bare_settings, extra_settings, = _prepare_settings(
+        basic_settings = _prepare_basic_settings(
             base_start, output,
             mode=mode,
             transform_function=transform_function,
-            allow_missing=allow_missing,
-            **kwargs,
         )
-        spc = _create_spc_file(_TEMPLATE_SPC, bare_settings, )
-        spc = _add_extra_settings(spc, extra_settings, )
+        specs_template = _get_specs_template(specs_template, )
+        _update_specs_template_with_extra_settings(specs_template, add_to_specs, allow_missing, )
+        specs_template_string = _print_specs_template(specs_template, )
+        specs_template_string = _insert_basic_settings_into_specs_template_string(specs_template_string, basic_settings, )
         #
         new_data = []
         out_info = []
         for variant_data in self.data.T:
             info_v = {
+                "specs_template": specs_template,
                 "mode": mode,
                 "transform_function": transform_function,
                 "flip_sign": flip_sign,
             }
-            #
             if flip_sign:
                 variant_data = -variant_data
-            #
             new_data_v = _x13_data(
-                spc, base_start, variant_data, bare_settings["x11_save"],
+                specs_template_string,
+                base_start,
+                variant_data,
+                basic_settings["x11_save"],
                 info=info_v,
                 clean_up=clean_up,
             )
-            #
             if flip_sign:
                 new_data_v = -new_data_v
             new_data.append(new_data_v.reshape(-1, 1, ))
@@ -259,8 +321,8 @@ for n in ("x13", ):
 
 
 def _x13_data(
-    spc: str,
-    base_start: _dates.Date,
+    specs: str,
+    base_start: Period,
     base_variant_data: _np.ndarray,
     x11_save: str,
     /,
@@ -274,17 +336,17 @@ def _x13_data(
     new_data = _np.full(base_variant_data.shape, _np.nan, dtype=float, )
     start_date, variant_data, output_slice = _remove_leading_trailing_nans(base_start, base_variant_data, )
     year, period = start_date.to_year_period()
-    spc = spc.replace("$(series_start)", _X13_DATE_FORMAT_RESOLUTION[start_date.frequency].format(year=year, period=period, ), )
-    spc = spc.replace("$(series_data)", _print_series_data(variant_data, ), )
-    spc_file_name_without_ext = _write_spc_to_file(spc, )
-    system_output = _execute(spc_file_name_without_ext, )
-    raw_output_data, update_info = _collect_outputs(spc_file_name_without_ext, system_output, x11_save, )
-    info.update({"spc": spc, })
+    specs = specs.replace("$(series_start)", _X13_DATE_FORMAT_RESOLUTION[start_date.frequency].format(year=year, period=period, ), )
+    specs = specs.replace("$(series_data)", _print_series_data(variant_data, ), )
+    specs_file_name_without_ext = _write_specs_to_file(specs, )
+    system_output = _execute(specs_file_name_without_ext, )
+    raw_output_data, update_info = _collect_outputs(specs_file_name_without_ext, system_output, x11_save, )
+    info.update({"specs": specs, })
     info.update(update_info, )
     if raw_output_data is not None:
         new_data[output_slice] = raw_output_data
     if clean_up:
-        _clean_up(spc_file_name_without_ext, )
+        _clean_up(specs_file_name_without_ext, )
     return new_data
     #]
 
@@ -305,14 +367,14 @@ def _print_series_data(
 
 
 def _execute(
-    spc_file_name_without_ext: str,
+    specs_file_name_without_ext: str,
     /,
 ) -> _sp.CompletedProcess:
     """
     """
     #[
     return _sp.run(
-        [_X13_EXECUTABLE_PATH, spc_file_name_without_ext, ],
+        [_X13_EXECUTABLE_PATH, specs_file_name_without_ext, ],
         stdout=_sp.PIPE,
         check=True,
     )
@@ -320,7 +382,7 @@ def _execute(
 
 
 def _collect_outputs(
-    spc_file_name_without_ext: str,
+    specs_file_name_without_ext: str,
     output: _sp.CompletedProcess,
     x11_save: str,
     /,
@@ -328,10 +390,10 @@ def _collect_outputs(
     """
     """
     #[
-    info = _read_out_files(spc_file_name_without_ext, )
+    info = _read_out_files(specs_file_name_without_ext, )
     info["success"] = output.returncode == 0 and "ERROR" not in str(output.stdout)
     if info["success"]:
-        out_data, info[x11_save] = _read_output_data(spc_file_name_without_ext, x11_save, info, )
+        out_data, info[x11_save] = _read_output_data(specs_file_name_without_ext, x11_save, info, )
     else:
         out_data = None
         info[x11_save] = None
@@ -340,7 +402,7 @@ def _collect_outputs(
 
 
 def _read_output_data(
-    spc_file_name_without_ext: str,
+    specs_file_name_without_ext: str,
     x11_save: str,
     info: dict[str, str],
     /,
@@ -348,7 +410,7 @@ def _read_output_data(
     """
     """
     #[
-    with open(spc_file_name_without_ext + "." + x11_save, "rt", ) as fid:
+    with open(specs_file_name_without_ext + "." + x11_save, "rt", ) as fid:
         table = str(fid.read())
     out_data = tuple(float(i) for i in table.split()[5::2])
     return out_data, table
@@ -356,13 +418,13 @@ def _read_output_data(
 
 
 def _read_out_files(
-    spc_file_name_without_ext: str,
+    specs_file_name_without_ext: str,
 ) ->  dict[str, str]:
     """
     """
     #[
     info = dict()
-    for file_name in _gl.glob(spc_file_name_without_ext + ".*"):
+    for file_name in _gl.glob(specs_file_name_without_ext + ".*"):
         ext = file_name.split(".")[-1]
         encoding = None if ext != "err" else "latin-1"
         with open(file_name, "rt", encoding=encoding, ) as fid:
@@ -371,23 +433,23 @@ def _read_out_files(
     #]
 
 
-def _write_spc_to_file(
-    spc: str,
+def _write_specs_to_file(
+    specs: str,
     /,
 ) -> str:
     """
     """
     with _tf.NamedTemporaryFile(dir=".", mode="wt", suffix=".spc", delete=False, ) as fid:
-        spc_file_name = fid.name
-        fid.write(spc)
-    return spc_file_name.removesuffix(".spc")
+        specs_file_name = fid.name
+        fid.write(specs)
+    return specs_file_name.removesuffix(".spc")
 
 
 def _remove_leading_trailing_nans(
-    base_start: _dates.Date,
+    base_start: Period,
     variant_data: _np.ndarray,
     /,
-) -> tuple[_dates.Date, _np.ndarray, slice]:
+) -> tuple[Period, _np.ndarray, slice]:
     """
     """
     #[
@@ -429,53 +491,72 @@ def _resolve_mode(
     #]
 
 
-def _prepare_settings(
-    base_start: _dates.Date,
+def _prepare_basic_settings(
+    base_start: Period,
     output: str,
     mode: Mode,
     transform_function: str = "none",
-    allow_missing: bool = False,
-    **extra_settings,
 ) ->  dict[str, str]:
     """
     """
     #[
-    bare_settings = {
+    return {
         "series_period": str(base_start.frequency.value),
         "x11_mode": str(mode),
         "x11_save": _X11_OUTPUT_RESOLUTION.get(output, output),
         "transform_function": str(transform_function),
     }
-    if allow_missing and (not "automdl" in extra_settings) and (not "arima" in extra_settings):
-        extra_settings["automdl"] = True
-    return bare_settings, extra_settings,
     #]
 
 
-def _create_spc_file(
-    spc: str,
-    settings: dict[str, str],
-    /,
-) -> str:
-    """
-    Replace placeholders with custom setting in the spc file
-    """
+def _get_specs_template(
+    specs_template: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Get specs template either from a custom dict or a default dict"""
+    return _co.deepcopy(specs_template or _DEFAULT_TEMPLATE)
+
+
+def _update_specs_template_with_extra_settings(
+    specs_template: dict[str, Any] | None,
+    add_to_specs: dict[str, Any] | None,
+    allow_missing: bool,
+) -> None:
+    """Update specs template with extra custom settings"""
     #[
-    for k, v in settings.items():
-        spc = spc.replace(f"$({k})", v)
-    return spc
+    if add_to_specs:
+        for k, v in add_to_specs.items():
+            if k in specs_template:
+                specs_template[k].update(v, )
+            else:
+                specs_template[k] = v
+    _add_arima_model_if_needed(specs_template, allow_missing, )
     #]
 
 
-def _add_extra_settings(
-    spc: str,
-    extra_settings: dict[str, Any],
-    /,
-) -> str:
-    """
-    """
+def _add_arima_model_if_needed(
+    specs_template: dict[str, Any],
+    allow_missing: bool,
+) -> None:
+    """Add arima model if not present and in-sample missing values are allowed"""
     #[
-    for k, v in extra_settings.items():
+    if not allow_missing:
+        return
+    has_arima = (
+        ("automdl" in specs_template and specs_template["automdl"] is not False)
+        or ("arima" in specs_template and specs_template["arima"] is not False)
+    )
+    if not has_arima:
+        specs_template["automdl"] = {}
+    #]
+
+
+def _print_specs_template(
+    specs_template: dict[str, Any],
+) -> str:
+    """Print the specs template dict to a string"""
+    #[
+    specs_template_string = "\n"
+    for k, v in specs_template.items():
         if v is False:
             continue
         add = "\n\n" + k.lower() + "{"
@@ -483,45 +564,81 @@ def _add_extra_settings(
             for kk, vv in v.items():
                 add += f"\n    {kk.lower()}={vv}"
         add += "\n}"
-        spc += add
-    spc += "\n"
-    return spc
+        specs_template_string += add
+    specs_template_string += "\n"
+    return specs_template_string
+    #]
+
+
+def _insert_basic_settings_into_specs_template_string(
+    specs_template_string: str,
+    settings: dict[str, str],
+) -> str:
+    """
+    Replace placeholders with custom setting
+    """
+    #[
+    for k, v in settings.items():
+        specs_template_string = specs_template_string.replace(f"$({k})", v)
+    return specs_template_string
     #]
 
 
 def _clean_up(
-    spc_file_name_without_ext: str,
+    specs_file_name_without_ext: str,
     /,
 ) -> None:
     """
     """
     #[
-    for f in _gl.glob(spc_file_name_without_ext + ".*"):
+    for f in _gl.glob(specs_file_name_without_ext + ".*"):
         _os.remove(f, )
     #]
 
 
 _EXECUTABLES_PATH = _os.path.dirname(_executables.__file__)
-_TEMPLATE_SPC_PATH = _os.path.join(_EXECUTABLES_PATH, "template.spc", )
 
+_DEFAULT_SERIES_TEMPLATE = {
+    "start": "$(series_start)",
+    "data": "(\n$(series_data)\n    )",
+    "period": "$(series_period)",
+    "decimals": 5,
+    "precision": 5,
+}
 
-with open(_TEMPLATE_SPC_PATH, "rt", ) as fid:
-    _TEMPLATE_SPC = fid.read()
+_DEFAULT_TRANSFORM_TEMPLATE = {
+    "function": "$(transform_function)",
+}
 
+_DEFAULT_X11_TEMPLATE = {
+    "mode": "$(x11_mode)",
+    "save": "$(x11_save)",
+}
+
+_DEFAULT_TEMPLATE = {
+    "series": _DEFAULT_SERIES_TEMPLATE,
+    "transform": _DEFAULT_TRANSFORM_TEMPLATE,
+    "x11": _DEFAULT_X11_TEMPLATE,
+}
 
 _X11_OUTPUT_RESOLUTION = {
     "sf": "d10",
+    "seasonal": "d10",
+    "seasonal_factors": "d10",
     "sa": "d11",
+    "seasonally_adjusted": "d11",
     "tc": "d12",
+    "trend_cycle": "d12",
     "irr": "d13",
+    "irregular": "d13",
+    "seasonal_and_td": "d16",
+    "holiday_and_td": "d18",
 }
-
 
 _X13_DATE_FORMAT_RESOLUTION = {
-    _dates.Frequency.MONTHLY: "{year:04d}.{period:02d}",
-    _dates.Frequency.QUARTERLY: "{year:04d}.{period:1d}",
+    Frequency.MONTHLY: "{year:04d}.{period:02d}",
+    Frequency.QUARTERLY: "{year:04d}.{period:1d}",
 }
-
 
 _X13_EXECUTABLE_FILE = {
     "Windows": "x13aswin.exe",

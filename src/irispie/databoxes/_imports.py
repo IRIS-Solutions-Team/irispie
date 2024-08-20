@@ -12,6 +12,7 @@ import csv as _cs
 import numpy as _np
 import dataclasses as _dc
 import pickle as _pickle
+import warnings as _wa
 
 from ..dates import (Period, Frequency, Span, )
 from ..series.main import (Series, )
@@ -19,7 +20,7 @@ from .. import pages as _pages
 #]
 
 
-_DEFAULT_DATE_CREATOR = Period.from_sdmx_string
+_DEFAULT_PERIOD_FROM_STRING = Period.from_sdmx_string
 
 
 @_dc.dataclass
@@ -70,8 +71,10 @@ class Inlay:
         klass,
         file_name: str,
         *,
-        date_creator: Callable | None = None,
-        start_date_only: bool = False,
+        period_from_string: Callable | None = None,
+            date_creator: Callable | None = None,
+        start_period_only: bool = False,
+            start_date_only: bool | None = None,
         description_row: bool = False,
         delimiter: str = ",",
         name_row_transform: Callable | None = None,
@@ -89,8 +92,8 @@ class Inlay:
     self = Databox.from_csv(
         file_name,
         *,
-        date_creator=None,
-        start_date_only=False,
+        period_from_string=None,
+        start_period_only=False,
         description_row=False,
         delimiter=",",
         csv_reader_settings={},
@@ -105,11 +108,11 @@ class Inlay:
 ???+ input "file_name"
     Path to the CSV file to be read.
 
-???+ input "date_creator"
+???+ input "period_from_string"
     A callable for creating date objects from string representations. If `None`,
     a default method based on the SDMX string format is used.
 
-???+ input "start_date_only"
+???+ input "start_period_only"
     If `True`, only the start date of each time series is parsed from the CSV;
     subsequent periods are inferred based on frequency.
 
@@ -143,6 +146,17 @@ class Inlay:
         """
         self = klass(**databox_settings, )
         #
+        period_from_string = _resolve_legacy_option(
+            period_from_string,
+            date_creator,
+            "The 'date_creator' option is deprecated; use 'period_from_string' instead",
+            )
+        start_period_only = _resolve_legacy_option(
+            start_period_only,
+            start_date_only,
+            "The 'start_date_only' option is deprecated; use 'start_period_only' instead",
+        )
+        #
         num_header_rows = 1 + int(description_row)
         csv_rows = _read_csv(file_name, num_header_rows, **csv_reader_settings, )
         if not csv_rows:
@@ -156,9 +170,9 @@ class Inlay:
             name_row = _apply_name_row_transform(name_row, name_row_transform, )
         #
         description_row = header_rows[1] if description_row else [""] * len(name_row)
-        date_creator = date_creator or _DEFAULT_DATE_CREATOR
+        period_from_string = period_from_string or _DEFAULT_PERIOD_FROM_STRING
         #
-        for b in _block_iterator(name_row, description_row, data_rows, date_creator, start_date_only, ):
+        for b in _block_iterator(name_row, description_row, data_rows, period_from_string, start_period_only, ):
             array = _read_array_for_block(file_name, b, num_header_rows, delimiter=delimiter, **numpy_reader_settings, )
             _add_series_for_block(self, b, array, )
         #
@@ -211,8 +225,8 @@ def _block_iterator(
     name_row,
     description_row,
     data_rows,
-    date_creator,
-    start_date_only,
+    period_from_string,
+    start_period_only,
     /,
 ):
     """
@@ -248,8 +262,8 @@ def _block_iterator(
                 data_rows,
                 current_frequency,
                 current_date_column,
-                date_creator,
-                start_date_only,
+                period_from_string,
+                start_period_only,
             )
             yield _ImportBlock(row_index, periods, current_start, num_columns, names, descriptions)
         if not status and _is_start(cell):
@@ -264,22 +278,22 @@ def _extract_periods_from_data_rows(
     data_rows,
     frequency: Frequency | None,
     column: int,
-    date_creator: Callable,
-    start_date_only: bool,
+    period_from_string: Callable,
+    start_period_only: bool,
     /,
 ) -> tuple[tuple[int], tuple[Period]]:
     """
     """
     #[
-    start_date = date_creator(data_rows[0][column], frequency=frequency, )
+    start_date = period_from_string(data_rows[0][column], frequency=frequency, )
     date_extractor = {
         True: lambda i, line: start_date + i,
-        False: lambda i, line: date_creator(line[column], frequency=frequency, ),
-    }[start_date_only]
+        False: lambda i, line: period_from_string(line[column], frequency=frequency, ),
+    }[start_period_only]
     row_indices_and_dates = ( 
         (i, date_extractor(i, line))
         for i, line in enumerate(data_rows)
-        if start_date_only or line[column]
+        if start_period_only or line[column]
     )
     return tuple(zip(*row_indices_and_dates)) or ((), ())
     #]
@@ -312,4 +326,17 @@ def _apply_name_row_transform(
     """
     """
     return [ name_row_transform(s) for s in name_row ]
+
+
+def _resolve_legacy_option(
+    option,
+    legacy,
+    warning_message: str,
+):
+    """
+    """
+    if (option is None) and (legacy is not None):
+        _wa.warn(warning_message, FutureWarning, )
+        option = legacy
+    return option
 

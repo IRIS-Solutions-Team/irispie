@@ -5,15 +5,15 @@
 #[
 from __future__ import annotations
 
-from typing import (TYPE_CHECKING, Literal, )
 import functools as _ft
 import numpy as _np
 
 from .. import pages as _pages
 from . import _functionalize
 
+from typing import (TYPE_CHECKING, )
 if TYPE_CHECKING:
-    from typing import (Callable, EllipsisType, )
+    from typing import (Any, Literal, Callable, EllipsisType, )
     from collections.abc import (Iterable, )
     from numbers import (Real, )
     from ..dates import (Period, )
@@ -33,7 +33,7 @@ class Inlay:
     def fill_missing(
         self,
         method: Literal["next", "previous", "nearest", "linear", "log_linear", "constant", "series", ],
-        *args,
+        method_args: Any | None = None,
         span: Iterable[Period] | EllipsisType | None = None,
     ) -> None:
         r"""
@@ -104,10 +104,10 @@ class Inlay:
 
 ················································································
         """
-        fill_func = _METHOD_FACTORY[method]
+        fill_func = _FILL_METHOD_DISPATCH[method]
         data, span = self.get_data_and_periods(span, )
         new_data = [
-            fill_func(variant, *args, span=span, ).T
+            fill_func(variant, method_args, span=span, ).T
             for variant in data.T
         ]
         self.set_data(span, new_data, )
@@ -122,9 +122,8 @@ for n in ("fill_missing", ):
 
 def _fill_neighbor(
     data,
-    /,
     func: Callable,
-    *args,
+    method_args: Any | None = None,
     **kwargs,
 ) -> _np.ndarray:
     """
@@ -144,9 +143,8 @@ def _fill_neighbor(
 
 def _fill_interp(
     data: _np.ndarray,
-    /,
     func: Callable,
-    *args,
+    method_args: Any | None = None,
     **kwargs,
 ) -> _np.ndarray:
     """
@@ -209,13 +207,12 @@ def _interpolation_log_linear(
 
 def _fill_constant(
     data: _np.ndarray,
-    constant: Real,
-    /,
-    *args,
+    method_args: Real,
     **kwargs,
 ) -> _np.ndarray:
     """
     """
+    constant = method_args
     index_nan = _np.isnan(data)
     data[index_nan] = constant
     return data
@@ -223,11 +220,12 @@ def _fill_constant(
 
 def _fill_series(
     values: _np.ndarray,
-    series: Series,
+    method_args: Series,
     span: Iterable[Period],
 ) -> _np.ndarray:
     """
     """
+    series = method_args
     fill_values = series.get_data(span, )
     index_nan = _np.isnan(values)
     values[index_nan] = fill_values.flatten()[index_nan]
@@ -272,7 +270,7 @@ def _nearest_index(i: int, where_obs: _np.ndarray, /, ) -> int:
     #]
 
 
-_METHOD_FACTORY = {
+_FILL_METHOD_DISPATCH = {
     "next": _ft.partial(_fill_neighbor, func=_next_index, ),
     "previous": _ft.partial(_fill_neighbor, func=_previous_index, ),
     "nearest": _ft.partial(_fill_neighbor, func=_nearest_index, ),
