@@ -22,7 +22,6 @@ from ..jacobians import base
 # Implement AtomFactoryProtocol
 
 def _create_diff_for_token(
-    self,
     token: Token,
     wrt_qids: tuple[int],
     /,

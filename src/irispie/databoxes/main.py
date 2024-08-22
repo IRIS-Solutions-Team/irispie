@@ -353,7 +353,7 @@ No input arguments are required for this method.
         return tuple(self.keys())
 
     @_pages.reference(category="information", )
-    def get_missing_names(self, names: Iterable[str], /, ) -> tuple[str]:
+    def get_missing_names(self, names: Iterable[str], ) -> tuple[str]:
         """
 ················································································
 
@@ -454,6 +454,18 @@ during the duplication process.
         new_databox.rename(source_names, target_names, strict_names=strict_names, )
         new_databox.keep(target_names, strict_names=strict_names, )
         return new_databox
+
+    def has(
+        self: Self,
+        /,
+        names: Iterable[str] | str,
+    ) -> bool:
+        """
+        """
+        return (
+            names in self if isinstance(names, str)
+            else not self.get_missing_names(names, )
+        )
 
     def shallow(
         self: Self,

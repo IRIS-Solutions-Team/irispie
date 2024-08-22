@@ -16,7 +16,7 @@ from ..plans.simulation_plans import (SimulationPlan, )
 from ..dataslates.main import (Dataslate, )
 from .. import equations as _equations
 from .. import wrongdoings as _wrongdoings
-from ..fords import simulators as _ford_simulators
+from ..fords import terminators as _terminators
 
 from . import _evaluators as _evaluators
 
@@ -71,25 +71,23 @@ def simulate(
     if not wrt_equations:
         return
 
-    terminal_simulator = (
-        _ford_simulators.create_terminal_simulator(simulatable_v, )
-        if terminal == "first_order" else None
-    )
+    terminators = _terminators.create_terminators(simulatable_v, terminal, )
 
     create_evaluator = _ft.partial(
         _evaluators.create_evaluator,
         wrt_equations=wrt_equations,
         all_quantities=all_quantities,
-        terminal_simulator=terminal_simulator,
+        terminal_simulator=terminators.terminate_simulation,
         context=simulatable_v.get_context(),
         iter_printer_settings=iter_printer_settings,
     )
 
     create_evaluator = _ft.lru_cache(maxsize=None, )(create_evaluator, )
 
-    when_missing_stream = \
-        _wrongdoings.STREAM_FACTORY[when_missing] \
-        (f"These values are missing at the start of simulation: ")
+    when_missing_stream = _wrongdoings.create_stream(
+        when_missing,
+        f"These values are missing at the start of simulation: ",
+    )
 
     starter = _ITER_STARTER[start_iter_from]
 
@@ -103,6 +101,10 @@ def simulate(
     #
     periods = dataslate_v.periods
     data = dataslate_v.get_data_variant(0, )
+    when_fails_stream = _wrongdoings.create_stream(
+        when_fails,
+        "Simulation failed to successfully complete",
+    )
     #
     for t in dataslate_v.base_columns:
         current_wrt_qids, current_evaluator = \
@@ -121,11 +123,13 @@ def simulate(
         )
         #
         if not root_final.success:
-            _catch_fail(root_final, when_fails, )
+            _catch_fail(when_fails_stream, root_final, periods[t], )
         current_evaluator.update(root_final.x, data, t, )
         #
         current_evaluator.iter_printer.print_footer()
         current_evaluator.iter_printer.reset()
+    #
+    when_fails_stream._raise()
     #
     info = {
         "method": _METHOD_NAME,
@@ -219,12 +223,15 @@ def _catch_missing(
 
 
 def _catch_fail(
+    when_fails_stream,
     root_final: _sp.optimize.OptimizeResult,
-    when_fails: Literal["error", "warning", "silent"],
+    period: Period,
 ) -> None:
     """
     """
-    raise ValueError()
+    when_fails_stream.add(
+        f"Simulation failed in {period} with message: {root_final.message}"
+    )
 
 
 def _create_header_message(
@@ -265,5 +272,6 @@ _ITER_STARTER = {
 _DEFAULT_SCIPY_ROOT_SETTINGS = {
     "method": "hybr",
     "tol": 1e-12,
+    "options": {"xtol": 1e-12, },
 }
 

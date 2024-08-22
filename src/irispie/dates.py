@@ -1745,6 +1745,12 @@ from a start period to an end period (possibly with a step size other than
         if not self.needs_resolve:
             _check_periods(from_per, until_per)
 
+    @classmethod
+    def encompassing(klass, *args, ) -> Self:
+        """
+        """
+        return get_encompassing_span(*args, )[0]
+
     @property
     @_pages.reference(category="property", )
     def start(self):
@@ -2284,16 +2290,18 @@ def periods_from_iso_strings(
     return tuple(period_class.from_iso_string(i, ) for i in iso_strings)
 
 
-def get_encompassing_span(*args: ResolutionContextProtocol, ) -> Span:
+def get_encompassing_span(
+    *args: tuple[ResolutionContextProtocol | None, ...],
+) -> tuple[Span, Period, Period, ]:
     """
     """
-    start_dates = tuple(_get_period(x, "start_date", min, ) for x in args)
-    end_periods = tuple( _get_period(x, "end_date", max, ) for x in args)
-    start_dates = tuple(d for d in start_dates if d is not None)
-    end_periods = tuple(d for d in end_periods if d is not None)
+    start_dates = tuple(_get_period(i, "start_date", min, ) for i in args if i is not None)
+    end_periods = tuple( _get_period(i, "end_date", max, ) for i in args if i is not None)
+    start_dates = tuple(i for i in start_dates if i is not None)
+    end_periods = tuple(i for i in end_periods if i is not None)
     start = min(start_dates) if start_dates else None
     end = max(end_periods) if end_periods else None
-    return (Span(start, end), start, end, )
+    return Span(start, end), start, end,
 
 
 def _get_period(something, attr_name, select_func, ) -> Period | None:

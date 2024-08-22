@@ -249,10 +249,10 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
             f"{self.__class__.__name__} model",
             f"Description: \"{self.get_description()}\"",
             f"⏐",
-            f"⏐ Num variants: {self.num_variants}",
-            f"⏐ Num equations [transition, measurement]: [{self.num_transition_equations}, {self.num_measurement_equations}]",
-            f"⏐ Max [lag, lead]: [{self.max_lag:+g}, {self.max_lead:+g}]",
-            f"⏐",
+            f"[Num variants: {self.num_variants}]",
+            f"[Num (transition, measurement) equations: ({self.num_transition_equations}, {self.num_measurement_equations})]",
+            f"[Max (lag, lead): ({self.max_lag:+g}, {self.max_lead:+g})]",
+            f"",
         ))
 
     def get_value(

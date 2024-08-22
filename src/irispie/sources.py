@@ -24,8 +24,11 @@ __all__ = (
 )
 
 
-QuantityInput: TypeAlias = tuple[str, str, tuple[str, ...]]
-EquationInput: TypeAlias = tuple[str, tuple[str, str], tuple[str, ...]]
+Description: TypeAlias = str
+Human: TypeAlias = str
+Attributes: TypeAlias = tuple[str, ...]
+QuantityInput: TypeAlias = tuple[Description, Human, Attributes]
+EquationInput: TypeAlias = tuple[Description, tuple[Human, Human], Attributes]
 
 
 LOGLY_VARIABLE = (
@@ -83,7 +86,7 @@ def from_file(
 ) -> SourceMixinProtocol:
     """Create a new object from source file(s)"""
     #[
-    source_string = _combine_source_files(source_files, )
+    source_string = _combine_source_files_into_string(source_files, )
     return from_string(klass, source_string, **kwargs, )
     #]
 
@@ -202,6 +205,7 @@ class ModelSource:
         def _human_func_steady(ein):
             return _handle_white_spaces(ein[1][1] if ein[1][1] else ein[1][0])
         #
+        equation_inputs = tuple(equation_inputs)
         start_entry = self.dynamic_equations[-1].entry + 1 if self.dynamic_equations else 0
         self.dynamic_equations += _create_equations(equation_inputs, kind, start_entry, _human_func_dynamic)
         self.steady_equations += _create_equations(equation_inputs, kind, start_entry, _human_func_steady)
@@ -265,8 +269,7 @@ class ModelSource:
         context: dict | None = None,
         save_preparsed: str = "",
     ) -> tuple[Self, dict]:
-        """
-        """
+        """Create a new ModelSource from string"""
         self = klass()
         self.context = context
         preparsed_string, preparser_info = _preparser.from_string(
@@ -291,6 +294,18 @@ class ModelSource:
         #
         return self, preparser_info
 
+    @classmethod
+    def from_file(
+        klass,
+        source_files: str | Iterable[str],
+        /,
+        **kwargs,
+    ) -> Self:
+        """Create a new ModelSource from source file(s)"""
+        source_string = _combine_source_files_into_string(source_files, )
+        return klass.from_string(source_string, **kwargs, )
+
+
     #]
 
 
@@ -310,7 +325,7 @@ def _conform_attributes(attributes: str | Iterable[str] | None, /, ) -> set:
     #]
 
 
-def _combine_source_files(
+def _combine_source_files_into_string(
     source_files: str | Iterable[str],
     /,
     joint: str = "\n\n",

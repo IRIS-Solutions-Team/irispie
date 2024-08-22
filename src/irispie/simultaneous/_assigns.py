@@ -62,7 +62,7 @@ class Inlay:
         dict_to_assign.update(*args, )
         dict_to_assign.update(kwargs, )
         if not dict_to_assign:
-            return
+            return (), (),
         #
         name_to_qid = self.create_name_to_qid()
         qid_to_name = self.create_qid_to_name()

@@ -233,9 +233,15 @@ class _For:
         if bare_control_name.startswith("(") and bare_control_name.endswith(")"):
             upper_control_name = control_name.replace("(", "{", ).replace(")", "}", )
             lower_control_name = control_name.replace("(", "[", ).replace(")", "]", )
+            control_name_upper = control_name + "|upper"
+            control_name_lower = control_name + "|lower"
             def replace_control_by_token(source_text, token):
-                source_text = source_text.replace(upper_control_name, token.upper(), )
-                source_text = source_text.replace(lower_control_name, token.lower(), )
+                token_upper = token.upper()
+                token_lower = token.lower()
+                source_text = source_text.replace(upper_control_name, token_upper, )
+                source_text = source_text.replace(lower_control_name, token_lower, )
+                source_text = source_text.replace(control_name_upper, token_upper, )
+                source_text = source_text.replace(control_name_lower, token_lower, )
                 source_text = source_text.replace(control_name, token, )
                 return source_text
         else:

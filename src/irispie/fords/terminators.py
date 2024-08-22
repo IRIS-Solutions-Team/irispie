@@ -22,17 +22,21 @@ if TYPE_CHECKING:
 
 def create_terminators(
     simulatable_v: FordSimulatableProtocol,
-) -> tuple[Callable, Callable] | tuple[None, None]:
+    terminal: Literal["data", "first_order", ],
+) -> SimpleNamespace:
     """
     """
     #[
+    max_lead = simulatable_v.max_lead
+    if terminal != "first_order" or not max_lead:
+        return SimpleNamespace(
+            terminate_simulation=None,
+            terminate_jacobian=None,
+        )
+    #
+    import ipdb; ipdb.set_trace()
     solution = simulatable_v.get_singleton_solution(deviation=False, )
     vec = simulatable_v.solution_vectors
-    max_lead = simulatable_v.max_lead
-    #
-    if not max_lead:
-        return None, None
-    #
     curr_xi_qids, curr_xi_indexes = vec.get_curr_transition_indexes()
     T = solution.T
     K = solution.K
@@ -54,6 +58,7 @@ def create_terminators(
     qid_to_logly = simulatable_v.create_qid_to_logly()
     logly_rows = tuple( qid for qid, status in qid_to_logly.items() if status )
     #
+    #
     def terminate_simulation(
         data_array: _np.ndarray,
         last_simulation: int,
@@ -71,13 +76,15 @@ def create_terminators(
         data_array[_np.ix_(curr_xi_qids, terminal_columns)] = terminal_curr_xi
         data_array[logly_rows, :] = _np.exp(data_array[logly_rows, :])
     #
+    #
     def terminate_jacobian(
     ) -> None:
         """
         """
         pass
     #
-    terminators = SimpleNamespace(
+    #
+    return SimpleNamespace(
         terminate_simulation=terminate_simulation,
         terminate_jacobian=terminate_jacobian,
     )
