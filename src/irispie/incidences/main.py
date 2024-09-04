@@ -74,7 +74,7 @@ def generate_qids_from_tokens(tokens: Iterable[Token]) -> Iterable[int]:
     return (tok.qid for tok in tokens)
 
 
-def get_some_shift_by_quantities(tokens: Iterable[Token], something: Callable) -> dict:
+def get_some_shift_by_quantities(tokens: Iterable[Token], something: Callable, ) -> dict:
     """
     """
     key = _op.attrgetter("qid", )

@@ -20,7 +20,7 @@ from .. import has_variants as _has_variants
 from ..series import main as _series
 from ..incidences import main as _incidence
 from ..databoxes.main import (Databox, )
-from ..fords.solutions import (Solution, )
+from ..fords.solutions import (VariableStability, Solution, )
 from ..fords import descriptors as _descriptors
 
 from . import _flags
@@ -495,12 +495,40 @@ steady_changes = self.get_steady_changes(
     @_unpack_singleton
     def get_eigenvalues_stability(
         self,
-        /,
         *,
         unpack_singleton: bool = True,
     ):
         return [ v.solution.eigenvalues_stability for v in self._variants ]
 
+    def _get_variable_stability_for_variant(self, variant, /, ) -> dict[str, bool]:
+        """
+        """
+        vec = self._invariant.dynamic_descriptor.solution_vectors
+        qid_to_name = self.create_qid_to_name()
+        return {
+            qid_to_name[token.qid]: \
+                variant.solution.transition_vector_stability[index] == VariableStability.STABLE
+            for index, token in enumerate(vec.transition_variables)
+            if token.shift == 0
+        } | {
+            qid_to_name[token.qid]: \
+                variant.solution.measurement_vector_stability[index] == VariableStability.STABLE
+            for index, token in enumerate(vec.measurement_variables)
+            if token.shift == 0
+        }
+
+    @_unpack_singleton
+    def get_variable_stability(
+        self,
+        *,
+        unpack_singleton: bool = True,
+    ) -> dict[str, bool] | list[dict[str, bool]]:
+        """
+        """
+        return [
+            self._get_variable_stability_for_variant(v, )
+            for v in self._variants
+        ]
 
     def generate_minus_control_quantities(self, /, ) -> tuple[int]:
         """

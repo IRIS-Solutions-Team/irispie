@@ -30,6 +30,7 @@ from ..dataslates.main import (Dataslate, )
 from ..plans.simulation_plans import (SimulationPlan, )
 from .. import frames as _frames
 from ..incidences import main as _incidences
+from ..incidences.main import (Token, )
 from .solutions import (Solution, )
 from .descriptors import (SolutionVectors, Squid, )
 from .kalmans import (Cache, )
@@ -212,7 +213,8 @@ def simulate_flat(
     # Store results in data_array
     # Capture xi_array for later use
     #
-    xi = get_init_xi(data_array, simulation_columns[0], vec, )
+    xi = get_init_xi(data_array, vec.transition_variables, simulation_columns[0], )
+    zero_false_init_xi(xi, vec.true_initials, )
     for t in simulation_columns:
         xi = T @ xi + P @ u_array[:, t] + K
         if all_v_impact[t] is not None:
@@ -260,7 +262,8 @@ def simulate_conditional(
     #
     # Initialize Kalman filter:
     # [initial median, initial MSE, number of initials to estimates, ]
-    init_med = get_init_xi(data_array, frame.first, vec, )
+    init_med = get_init_xi(data_array, vec.transition_variables, frame.first, )
+    zero_false_init_xi(init_med, vec.true_initials, )
     init_mse = _np.zeros((squid.num_xi, squid.num_xi), )
     unknown_init_impact = None
     initials = (init_med, init_mse, unknown_init_impact, )
@@ -569,22 +572,27 @@ def _store_smooth(
 
 def get_init_xi(
     maybelog_working_data: _np.ndarray,
+    transition_solution_vector: Iterable[Token, ...],
     first_column: int,
-    solution_vectors: SolutionVectors,
-    /,
 ) -> _np.ndarray:
     """
     """
     #[
-    init_xi_rows, init_xi_columns \
-        = _incidences.rows_and_columns_from_tokens(
-            solution_vectors.transition_variables,
-            first_column - 1,
-        )
-    init_xi = maybelog_working_data[init_xi_rows, init_xi_columns]
-    false_initials = tuple( not i for i in solution_vectors.true_initials )
+    init_xi_rows, init_xi_columns = _incidences.rows_and_columns_from_tokens(
+        transition_solution_vector,
+        first_column - 1,
+    )
+    return maybelog_working_data[init_xi_rows, init_xi_columns]
+    #]
+
+
+def zero_false_init_xi(
+    init_xi: _np.ndarray,
+    true_initials: Iterable[bool, ...],
+) -> None:
+    #[
+    false_initials = [ (not i) for i in true_initials ]
     init_xi[false_initials, ...] = 0
-    return init_xi
     #]
 
 

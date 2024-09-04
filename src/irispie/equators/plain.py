@@ -27,6 +27,7 @@ class PlainEquator:
         "_equations",
         "_func",
         "_func_str",
+        "_columns",
         "min_shift",
         "max_shift",
     )
@@ -34,8 +35,7 @@ class PlainEquator:
     def __init__(
         self,
         equations: Iterable[_equations.Equation],
-        /,
-        *,
+        columns: Iterable[int] | None = None,
         context: dict[str, Callable] | None = None,
     ) -> None:
         """
@@ -43,6 +43,7 @@ class PlainEquator:
         self._equations = tuple(equations)
         self._create_function(context, )
         self._populate_min_max_shifts()
+        self._populate_columns(columns, )
 
     @property
     def humans(self, /, ) -> tuple[str]:
@@ -72,6 +73,16 @@ class PlainEquator:
         self.min_shift = _equations.get_min_shift_from_equations(self._equations, )
         self.max_shift = _equations.get_max_shift_from_equations(self._equations, )
 
+    def _populate_columns(self, columns: Iterable[int] | None, /, ) -> None:
+        """
+        """
+        if columns is None:
+            self._columns = None
+        elif isinstance(columns, int):
+            self._columns = columns
+        else:
+            self._columns = _np.array(columns, dtype=int, )
+
     @property
     def min_num_columns(self, /, ) -> int:
         return -self.min_shift + 1 + self.max_shift
@@ -79,10 +90,12 @@ class PlainEquator:
     def eval(
         self,
         data_array: _np.ndarray,
-        columns: int | _np.ndarray,
+        columns: int | _np.ndarray | None = None,
     ) -> _np.ndarray:
         """
         """
+        if columns is None:
+            columns = self._columns
         return self._func(data_array, columns, )
 
     def eval_as_array(
@@ -94,5 +107,6 @@ class PlainEquator:
         """
         value = self.eval(*args, **kwargs, )
         return _np.array(value, dtype=_np.float64, ).reshape(self.num_equations, -1, )
+
     #]
 

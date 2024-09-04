@@ -16,22 +16,24 @@ from ..incidences.main import (Token, )
 from ._printers import (IterPrinter, )
 from ._equators import (Equator, )
 from ._jacobians import (Jacobian, )
+from ..evaluators.base import (Evaluator, )
 
 from typing import (TYPE_CHECKING, )
 if TYPE_CHECKING:
     from typing import (Any, Callable, )
-    from collections.abc import (Iterable, )
+    from collections.abc import (Iterable, Sequence, )
+    from ..fords.terminators import (Terminator, )
 #]
 
 
 def _create_update_map(
-    wrt_tokens: Iterable[Token],
+    wrt_spots: Iterable[Token],
 ) -> ArrayMap:
     """
 Create a map for updating the data array with the new guess.
     """
     update_map = ArrayMap()
-    lhs_rows, lhs_columns = zip(*wrt_tokens, )
+    lhs_rows, lhs_columns = zip(*wrt_spots, )
     lhs_rows = _np.array(lhs_rows, dtype=int, )
     lhs_columns = _np.array(lhs_columns, dtype=int, )
     update_map.lhs = (lhs_rows, lhs_columns, )
@@ -39,113 +41,143 @@ Create a map for updating the data array with the new guess.
 
 
 def create_evaluator_closure(
-    wrt_tokens: Iterable[Token],
-    extended_wrt_tokens: Iterable[Token],
+    wrt_spots: Iterable[Token],
+    columns_to_eval: Sequence[int],
     #
     wrt_equations: Iterable[_equations.Equation],
     all_quantities: Iterable[_quantities.Quantity],
-    terminate_simulation: Callable | None,
+    terminator: Terminator | None,
     context: dict | None,
     iter_printer_settings: dict[str, Any] | None,
-    num_columns_to_eval: int,
-) -> tuple[Callable, Callable]:
+) -> SimpleNamespace:
     """
     """
     #[
-
-    wrt_tokens = list(wrt_tokens, )
-    extended_wrt_tokens = list(extended_wrt_tokens, )
+    num_columns_to_eval = len(columns_to_eval)
+    wrt_spots = list(wrt_spots, )
+    needs_terminal = terminator is not None
+    #
     qid_to_logly = _quantities.create_qid_to_logly(all_quantities, )
     qid_to_name = _quantities.create_qid_to_name(all_quantities, )
     #
-    # Index of loglies within wrt_tokens; needs to be list not tuple
+    # Index of loglies within wrt_spots; needs to be list not tuple
     # because of numpy indexing
     index_logly = list(_quantities.generate_where_logly(
-        ( tok.qid for tok in wrt_tokens ), qid_to_logly,
+        ( tok.qid for tok in wrt_spots ), qid_to_logly,
     ))
 
-    update_map = _create_update_map(wrt_tokens, )
+    update_map = _create_update_map(wrt_spots, )
 
     equator = Equator(
         wrt_equations,
+        columns=columns_to_eval,
         context=context,
     )
 
     jacobian = Jacobian(
         wrt_equations,
-        wrt_tokens + extended_wrt_tokens,
+        wrt_spots + list(terminator.terminal_wrt_spots),
         qid_to_logly,
+        sparse=True,
         context=context,
-        num_columns_to_eval=num_columns_to_eval,
+        columns_to_eval=columns_to_eval,
+        terminator=terminator,
     )
 
     iter_printer = IterPrinter(
         wrt_equations,
-        tuple(tok.qid for tok in wrt_tokens),
+        tuple(tok.qid for tok in wrt_spots),
         qid_to_logly,
         qid_to_name,
         **(iter_printer_settings or {}),
     )
 
-    def get_init_guess(
-        data_array: _np.ndarray,
-        columns_to_eval: int | _np.ndarray,
-    ) -> _np.ndarray:
+    def get_init_guess(data_array: _np.ndarray, /, ) -> _np.ndarray:
         """
         """
-        column_offset = columns_to_eval[0]
-        maybelog_guess = data_array[update_map.lhs[0], update_map.lhs[1]+column_offset]
+        maybelog_guess = data_array[update_map.lhs[0], update_map.lhs[1]]
         maybelog_guess[index_logly] = _np.log(maybelog_guess[index_logly])
         return maybelog_guess
 
     def update(
         maybelog_guess: _np.ndarray,
         data_array: _np.ndarray,
-        columns_to_eval: _np.ndarray,
     ) -> None:
         """
         """
-        column_offset = columns_to_eval[0]
         # Create a copy of maybelog_guess to avoid modifying the original
         # array in scipy.optimize.root
         maybelog_guess = _np.copy(maybelog_guess, )
         maybelog_guess[index_logly] = _np.exp(maybelog_guess[index_logly])
-        data_array[update_map.lhs[0], update_map.lhs[1]+column_offset] = maybelog_guess
+        data_array[update_map.lhs[0], update_map.lhs[1]] = maybelog_guess
 
-    def evaluate(
+    def eval_func_jacob(
         maybelog_guess: _np.ndarray | None,
         data_array: _np.ndarray,
-        columns_to_eval: _np.ndarray,
-    ) -> tuple[_np.ndarray, _np.ndarray]:
+    ) -> tuple[_np.ndarray, _sp.sparse.csc_matrix]:
         """
         """
-        first_column = columns_to_eval[0]
-        last_column = columns_to_eval[-1]
         if maybelog_guess is not None:
-            update(maybelog_guess, data_array, columns_to_eval, )
-        if terminate_simulation is not None:
-            terminate_simulation(data_array, last_simulation=last_column, )
+            update(maybelog_guess, data_array, )
         #
-        # The equator evaluates to a tuple of 1D arrays, each tuple element for
+        if needs_terminal:
+            terminator.terminate_simulation(data_array, )
+        #
+        # The equator evaluates to a tuple of 1D arrays, each array for
         # one equation across all periods. Reorganize into a 1D array ordered
         # as follows:
         #
         # [eq1[t=0], eq2[t=0], ..., eq1[t=1], eq2[t=1], ...]
         #
-        equator_outcome = equator.eval(data_array, columns_to_eval, )
+        equator_outcome = equator.eval(data_array, )
         equator_outcome = _np.vstack(equator_outcome, ).flatten(order="Fortran"[0], )
         #
-        jacobian_outcome = jacobian.eval(data_array, column_offset=first_column, )
+        jacobian_outcome = jacobian.eval(data_array, )
+        if needs_terminal:
+            jacobian_outcome = terminator.terminate_jacobian(jacobian_outcome, )
         #
-        if maybelog_guess is not None:
-            iter_printer.next(maybelog_guess, equator_outcome, jacobian_calculated=True, )
-        return equator_outcome, jacobian_outcome,
+        # if maybelog_guess is not None:
+        #    iter_printer.next(maybelog_guess, equator_outcome, jacobian_calculated=True, )
+        #
+        return equator_outcome, jacobian_outcome, 
 
-    return SimpleNamespace(
-        evaluate=evaluate,
+    def eval_func(
+        maybelog_guess: _np.ndarray | None,
+        data_array: _np.ndarray,
+    ) -> _np.ndarray:
+        """
+        """
+        if maybelog_guess is not None:
+            update(maybelog_guess, data_array, )
+        if needs_terminal:
+            terminator.terminate_simulation(data_array, )
+        equator_outcome = equator.eval(data_array, )
+        equator_outcome = _np.vstack(equator_outcome, ).flatten(order="Fortran"[0], )
+        return equator_outcome
+
+    def eval_jacob(
+        maybelog_guess: _np.ndarray | None,
+        data_array: _np.ndarray,
+    ) -> _sp.sparse.csc_matrix:
+        """
+        """
+        if maybelog_guess is not None:
+            update(maybelog_guess, data_array, )
+        if needs_terminal:
+            terminator.terminate_simulation(data_array, )
+        jacobian_outcome = jacobian.eval(data_array, )
+        if needs_terminal:
+            jacobian_outcome = terminator.terminate_jacobian(jacobian_outcome, )
+        return jacobian_outcome
+
+    return Evaluator(
+        eval_func_jacob=eval_func_jacob,
+        eval_func=eval_func,
+        eval_jacob=eval_jacob,
         update=update,
         get_init_guess=get_init_guess,
     )
 
     #]
+
 

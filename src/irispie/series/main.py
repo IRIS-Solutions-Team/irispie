@@ -807,13 +807,13 @@ self = Series(
         self,
         new_date: Period,
         old_date: Period | None = None,
-        /,
     ) -> None:
         """
         """
-        self.start = new_date \
-            if old_date is None \
-            else new_date - (old_date - self.start)
+        if old_data is None:
+            self.start = new_date
+        else:
+            self.start = new_date - (old_date - self.start)
 
     @_pages.reference(category="manipulation", )
     def replace_where(

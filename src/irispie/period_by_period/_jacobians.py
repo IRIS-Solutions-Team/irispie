@@ -15,11 +15,9 @@ from ..incidences import main as _incidence
 from ..aldi.maps import (ArrayMap, )
 from ..aldi.differentiators import (AtomFactoryProtocol, )
 
-from ..jacobians import base
+from ..jacobians.base import (DenseJacobian, )
 #]
 
-
-# Implement AtomFactoryProtocol
 
 def _create_diff_for_token(
     token: Token,
@@ -46,7 +44,7 @@ _ATOM_FACTORY = SimpleNamespace(
 )
 
 
-class Jacobian(base.Jacobian, ):
+class Jacobian(DenseJacobian, ):
     """
     """
     #[

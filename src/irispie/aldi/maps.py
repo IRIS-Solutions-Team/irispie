@@ -25,11 +25,13 @@ class ArrayMap:
 
     def __init__(
         self,
+        lhs: tuple[list[int], list[int]] | None = None,
+        rhs: tuple[list[int], list[int]] | None = None,
     ) -> None:
         """
         """
-        self.lhs = ([], [], )
-        self.rhs = ([], [], )
+        self.lhs = ([], [], ) if lhs is None else lhs
+        self.rhs = ([], [], ) if rhs is None else rhs
 
     @classmethod
     def static(

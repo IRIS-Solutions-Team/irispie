@@ -3,9 +3,9 @@
 
 
 #[
+
 from __future__ import annotations
 
-from typing import (TYPE_CHECKING, )
 import warnings as _wa
 import copy as _co
 import numpy as _np
@@ -14,10 +14,12 @@ import operator as _op
 from ..conveniences import copies as _copies
 from .. import quantities as _quantities
 
+from typing import (TYPE_CHECKING, )
 if TYPE_CHECKING:
     from numbers import (Real, )
     from typing import (Self, Literal, Callable, )
     from collections.abc import (Iterable, )
+
 #]
 
 

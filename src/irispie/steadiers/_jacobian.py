@@ -13,7 +13,7 @@ from ..incidences.main import (Token, )
 from ..incidences import main as _incidence
 from ..aldi.maps import (ArrayMap, )
 from ..equations import (Equation, )
-from ..jacobians import base
+from ..jacobians.base import (DenseJacobian, )
 
 from typing import (TYPE_CHECKING, )
 if TYPE_CHECKING:
@@ -73,7 +73,7 @@ _NONFLAT_ATOM_FACTORY = SimpleNamespace(
 
 
 
-class _SteadyJacobian(base.Jacobian, ):
+class _SteadyJacobian(DenseJacobian, ):
     """
     """
     #[

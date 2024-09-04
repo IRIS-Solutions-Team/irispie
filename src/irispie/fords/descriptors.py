@@ -402,9 +402,9 @@ def _create_system_transition_vector(
     min_shifts = _incidence.get_some_shift_by_quantities(transition_variable_tokens, lambda x: min(min(x), -1))
     max_shifts = _incidence.get_some_shift_by_quantities(transition_variable_tokens, max)
     #
-    vector_for_id = lambda qid: [Token(qid, sh) for sh in range(min_shifts[qid]+1, max_shifts[qid]+1)]
-    unique_ids = set(t.qid for t in transition_variable_tokens)
-    return _it.chain.from_iterable(vector_for_id(i) for i in unique_ids)
+    vector_for_qid = lambda qid: [Token(qid, sh) for sh in range(min_shifts[qid]+1, max_shifts[qid]+1)]
+    unique_qids = set(t.qid for t in transition_variable_tokens)
+    return _it.chain.from_iterable(vector_for_qid(i) for i in unique_qids)
     #]
 
 

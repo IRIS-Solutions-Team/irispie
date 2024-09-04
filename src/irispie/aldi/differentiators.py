@@ -36,7 +36,7 @@ class Atom(ValueMixin, ):
     #[
 
     _data_context: _np.ndarray | None = None
-    _column_offset: int | None = None
+    _column_offset: int = 0
     _is_atom: bool = True
 
     __slots__ = (
@@ -107,11 +107,7 @@ class Atom(ValueMixin, ):
         if self._value is not None:
             return self._value
         else:
-            column_index = (
-                self._column_index + self._column_offset
-                if self._column_offset is not None
-                else self._column_index
-            )
+            column_index = self._column_index + self._column_offset
             return self._data_context[self._row_index, column_index]
 
     @property
@@ -372,7 +368,7 @@ class Context:
     def eval(
         self,
         data_array: _np.ndarray,
-        column_offset: int,
+        column_offset: int = 0,
     ) -> Iterable[Atom]:
         """
         Evaluate and return the list of final atoms, one atom for each equation
