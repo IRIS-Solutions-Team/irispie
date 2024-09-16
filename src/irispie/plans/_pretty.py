@@ -3,15 +3,17 @@
 
 
 #[
+
 from __future__ import annotations
 
 from typing import (Self, Any, )
 import numpy as _np
 import prettytable as _pt
+import documark as _dm
 
-from .. import pages as _pages
 from ..databoxes.main import (Databox, )
 from ..dates import (Period, )
+
 #]
 
 
@@ -41,7 +43,7 @@ class Mixin:
         table.align = "r"
         table.align["NAME"] = "l"
         for action in self._registers:
-            register = self._get_register_by_name(action, )
+            register = self.get_register_by_name(action, )
             if register:
                 self._add_register_to_table(
                     table, register, action,
@@ -51,7 +53,7 @@ class Mixin:
 
     get_pretty = get_table
 
-    @_pages.reference(
+    @_dm.reference(
         category="information",
     )
     def print_table(self, *args, **kwargs, ) -> None:

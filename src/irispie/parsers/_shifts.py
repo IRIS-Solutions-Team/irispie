@@ -1,4 +1,5 @@
 """
+Replaces curly braces around time shifts with square brackets
 """
 
 

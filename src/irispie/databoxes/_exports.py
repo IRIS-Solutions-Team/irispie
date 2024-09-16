@@ -4,6 +4,7 @@ Exporting data to CSV sheets
 
 
 #[
+
 from __future__ import annotations
 
 from typing import (TYPE_CHECKING, )
@@ -13,15 +14,16 @@ import numpy as _np
 import itertools as _it
 import dataclasses as _dc
 import functools as _ft
+import documark as _dm
 
 from ..dates import (Frequency, Period, EmptySpan, )
 from .. import wrongdoings as _wrongdoings
-from .. import pages as _pages
 
 if TYPE_CHECKING:
     from collections.abc import (Iterable, )
     from typing import (Any, Callable, )
     from ..databoxes.main import (Databox, )
+
 #]
 
 
@@ -100,7 +102,7 @@ class Inlay:
     Databox inlay for writing databox time series to CSV file
     """
     #[
-    @_pages.reference(
+    @_dm.reference(
         category="import_export",
     )
     def to_csv(

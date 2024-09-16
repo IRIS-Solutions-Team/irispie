@@ -3,12 +3,13 @@
 
 
 #[
+
 from __future__ import annotations
 
 import functools as _ft
 import numpy as _np
+import documark as _dm
 
-from .. import pages as _pages
 from . import _functionalize
 
 from typing import (TYPE_CHECKING, )
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
     from numbers import (Real, )
     from ..dates import (Period, )
     from ..series import (Series, )
+
 #]
 
 
@@ -29,7 +31,7 @@ class Inlay:
     """
     #[
 
-    @_pages.reference(category="homogenizing", )
+    @_dm.reference(category="homogenizing", )
     def fill_missing(
         self,
         method: Literal["next", "previous", "nearest", "linear", "log_linear", "constant", "series", ],

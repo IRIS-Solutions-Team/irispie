@@ -1,4 +1,5 @@
 
+import wlogging as _wl
 import importlib.metadata as _md
 
 from .dates import *
@@ -100,4 +101,6 @@ __all__ = (
     "__version__",
 )
 
+
+_LOGGER = _wl.get_colored_logger(__name__, level=_wl.WARNING, )
 

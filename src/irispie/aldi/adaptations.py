@@ -14,7 +14,10 @@ _ELEMENTWISE_FUNCTIONS = {
     "log": _np.log,
     "exp": _np.exp,
     "sqrt": _np.sqrt,
+    "abs": _np.abs,
     "logistic": _sp.special.expit,
+    "normal_cdf": _sp.stats.norm.cdf,
+    "normal_pdf": _sp.stats.norm.pdf,
     "maximum": _np.maximum,
     "minimum": _np.minimum,
 }

@@ -148,6 +148,13 @@ class _Stream:
     ) -> None:
         ...
 
+    def add_from_iterable(
+        self,
+        messages: Iterable[str],
+    ) -> None:
+        for message in messages:
+            self.add(message, )
+
     def _raise(self, /, ) -> None:
         ...
 

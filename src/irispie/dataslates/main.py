@@ -263,6 +263,12 @@ class Dataslate(
         self._invariant.base_periods = base_periods
 
     @property
+    def base_start(self, /, ) -> Period:
+        """
+        """
+        return self._invariant.base_periods[0]
+
+    @property
     def names(self, /, ) -> tuple[str]:
         """
         """
@@ -356,6 +362,7 @@ class Dataslate(
         self,
         /,
         target_db: Databox | None = None,
+        span: Literal["base", "full", ] = "full",
     ) -> Databox:
         """
         Add data from a dataslate to a new or existing databox
@@ -363,14 +370,19 @@ class Dataslate(
         #[
         if target_db is None:
             target_db = Databox()
+        if span == "full":
+            start = self.start
+            column_slice = slice(None, None, )
+        elif span == "base":
+            start = self.base_start
+            column_slice = self.base_slice
         num_names = self.num_names
         num_variants = self.num_variants
-        start = self._invariant.periods[0]
         for qid in self._invariant.output_qids:
             name = self._invariant.names[qid]
             description = self._invariant.descriptions[qid]
             values = _np.vstack([
-                v.data[qid, :] for v in self._variants
+                v.data[qid, column_slice] for v in self._variants
             ]).T
             target_db[name] = Series._guaranteed(
                 start=start,

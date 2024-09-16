@@ -4,10 +4,13 @@ Time series indexing inlay
 
 
 #[
+
 from __future__ import annotations
 
+import documark as _dm
+
 from .. import dates as _dates
-from .. import pages as _pages
+
 #]
 
 
@@ -17,7 +20,7 @@ class Inlay:
     #[
 
 
-    @_pages.reference(
+    @_dm.reference(
         category=None,
         call_name="Time series indexing",
         call_name_is_code=False,

@@ -4,6 +4,7 @@ Data management tools for storing and manipulating unstructured data
 
 
 #[
+
 from __future__ import annotations
 
 from typing import (Self, TypeAlias, Literal, Sequence, Protocol, Any, NoReturn, )
@@ -18,6 +19,7 @@ import operator as _op
 import functools as _ft
 import itertools as _it
 import os as _os
+import documark as _dm
 
 from ..conveniences import views as _views
 from ..conveniences import descriptions as _descriptions
@@ -26,7 +28,6 @@ from ..series.main import (Series, )
 from ..dates import (Period, Frequency, Span, EmptySpan, )
 from .. import quantities as _quantities
 from .. import wrongdoings as _wrongdoings
-from .. import pages as _pages
 
 from . import _imports as _imports
 from . import _exports as _exports
@@ -34,6 +35,7 @@ from . import _merge as _merge
 from . import _dotters as _dotters
 from . import _fred as _fred
 from . import _views as _views
+
 #]
 
 
@@ -77,7 +79,7 @@ def _extended_span_tuple_from_base_span(
     return start_date, end_date
 
 
-@_pages.reference(
+@_dm.reference(
     path=("data_management", "databoxes.md", ),
     categories={
         "constructor": "Creating new databoxes",
@@ -127,7 +129,7 @@ batch processing, importing and exporting data, and more.
         self._dotters = []
 
     @classmethod
-    @_pages.reference(
+    @_dm.reference(
         category="constructor",
         call_name="Databox.empty",
     )
@@ -162,7 +164,7 @@ No input arguments are required for this method.
         return klass()
 
     @classmethod
-    @_pages.reference(category="constructor", call_name="Databox.from_dict", )
+    @_dm.reference(category="constructor", call_name="Databox.from_dict", )
     def from_dict(
         klass,
         _dict: dict,
@@ -203,7 +205,7 @@ Databox, incorporating all its functionalities.
         return self
 
     @classmethod
-    @_pages.reference(category="constructor", call_name="Databox.from_array", )
+    @_dm.reference(category="constructor", call_name="Databox.from_array", )
     def from_array(
         klass,
         array: _np.ndarray,
@@ -325,7 +327,7 @@ of the numeric array.
         while True:
             yield { k: next(v, ) for k, v in dict_variant_iter.items() }
 
-    @_pages.reference(category="information", )
+    @_dm.reference(category="information", )
     def get_names(self, /, ) -> list[str]:
         """
 ················································································
@@ -352,7 +354,7 @@ No input arguments are required for this method.
         """
         return tuple(self.keys())
 
-    @_pages.reference(category="information", )
+    @_dm.reference(category="information", )
     def get_missing_names(self, names: Iterable[str], ) -> tuple[str]:
         """
 ················································································
@@ -384,7 +386,7 @@ yet to be added to the Databox.
         return tuple(name for name in names if name not in self)
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def num_items(self, /, ) -> int:
         """==Number of items in the databox=="""
         return len(self.keys())
@@ -395,7 +397,7 @@ yet to be added to the Databox.
         """
         return { k: v for k, v in self.items() }
 
-    @_pages.reference(category="manipulation", )
+    @_dm.reference(category="manipulation", )
     def copy(
         self: Self,
         /,
@@ -496,7 +498,7 @@ during the duplication process.
         print("\n".join(content_view, ))
         print()
 
-    @_pages.reference(category="validation", )
+    @_dm.reference(category="validation", )
     def validate(
         self: Self,
         validators: dict[str, Callable] | None,
@@ -527,7 +529,7 @@ during the duplication process.
                 when_fails_stream.add(f"{message}: {key}", )
         when_fails_stream._raise()
 
-    @_pages.reference(category="manipulation", )
+    @_dm.reference(category="manipulation", )
     def rename(
         self: Self,
         /,
@@ -583,7 +585,7 @@ Returns `None`; `self` is modified in place.
         for s, t in zip(source_names, target_names, ):
             self[t] = self.pop(s)
 
-    @_pages.reference(category="manipulation", )
+    @_dm.reference(category="manipulation", )
     def remove(
         self: Self,
         remove_names: SourceNames = None,
@@ -636,7 +638,7 @@ Returns `None`; `self` is modified in place.
             del self[n]
 
 
-    @_pages.reference(category="manipulation", )
+    @_dm.reference(category="manipulation", )
     def keep(
         self: Self,
         /,
@@ -689,7 +691,7 @@ callable function determining which items to retain.
                 continue
             del self[n]
 
-    @_pages.reference(category="manipulation", )
+    @_dm.reference(category="manipulation", )
     def apply(
         self,
         func: Callable,
@@ -789,7 +791,7 @@ the results.
                 output[n] = _max_abs(self[n] - other[n], )
         return output
 
-    @_pages.reference(category="information", )
+    @_dm.reference(category="information", )
     def filter(
         self,
         /,
@@ -842,7 +844,7 @@ Select Databox items based on custom name or value test functions.
             if name_test(name) and value_test(self[name], )
         )
 
-    @_pages.reference(category="information", )
+    @_dm.reference(category="information", )
     def get_series_names_by_frequency(
         self,
         frequency: Frequency,
@@ -880,7 +882,7 @@ Obtain a list of time series names that match a specified frequency.
             return isinstance(x, Series) and x.frequency == frequency
         return self.filter(value_test=_is_series_with_frequency, )
 
-    @_pages.reference(category="information", )
+    @_dm.reference(category="information", )
     def get_span_by_frequency(
         self,
         frequency: Frequency,
@@ -1032,10 +1034,8 @@ Get the encompassing date span for all time series with a specified frequency.
         """
         """
         expression = _reformat_eval_expression(expression, )
-        globals = { k: v for k, v in self.items() }
-        if context:
-            globals |= context
-        return eval(expression, globals, )
+        context = (dict(context) if context else {}) | { k: v for k, v in self.items() }
+        return eval(expression, context, )
 
     def __call__(
         self,

@@ -9,10 +9,10 @@ from __future__ import annotations
 from typing import (Self, Callable, )
 from numbers import (Real, )
 import numpy as _np
+import documark as _dm
 
 from ..dates import (Span, )
 from . import _functionalize
-from .. import pages as _pages
 #]
 
 
@@ -24,7 +24,7 @@ class Inlay:
     """
     #[
 
-    @_pages.reference(
+    @_dm.reference(
         category=None,
         call_name="Temporal change calculations",
         call_name_is_code=False,
@@ -124,7 +124,7 @@ self.aroc()
         other.shift(shift, )
         self._binop(other, func, new=self, )
 
-    @_pages.reference(category="temporal_change", )
+    @_dm.reference(category="temporal_change", )
     def diff(
         self,
         shift: int | str = -1,
@@ -142,7 +142,7 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         """
         self.temporal_change(shift, lambda x, y: x - y, )
 
-    @_pages.reference(category="temporal_change", )
+    @_dm.reference(category="temporal_change", )
     def adiff(
         self,
         /,
@@ -161,7 +161,7 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         factor = self.frequency.value or 1
         self.temporal_change(shift, lambda x, y: factor*(x - y), )
 
-    @_pages.reference(category="temporal_change", )
+    @_dm.reference(category="temporal_change", )
     def diff_log(
         self,
         shift: int | str = -1,
@@ -179,7 +179,7 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         """
         self.temporal_change(shift, lambda x, y: _np.log(x) - _np.log(y), )
 
-    @_pages.reference(category="temporal_change", )
+    @_dm.reference(category="temporal_change", )
     def adiff_log(
         self,
         /,
@@ -198,7 +198,7 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         factor = self.frequency.value or 1
         self.temporal_change(shift, lambda x, y: factor*(_np.log(x) - _np.log(y)), )
 
-    @_pages.reference(category="temporal_change", )
+    @_dm.reference(category="temporal_change", )
     def roc(
         self,
         shift: int | str = -1,
@@ -216,7 +216,7 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         """
         self.temporal_change(shift, lambda x, y: x/y, )
 
-    @_pages.reference(category="temporal_change", )
+    @_dm.reference(category="temporal_change", )
     def aroc(
         self,
         /,
@@ -235,7 +235,7 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         factor = self.frequency.value or 1
         self.temporal_change(shift, lambda x, y: (x/y)**factor, )
 
-    @_pages.reference(category="temporal_change", )
+    @_dm.reference(category="temporal_change", )
     def pct(
         self,
         shift: int | str = -1,
@@ -253,7 +253,7 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         """
         self.temporal_change(shift, lambda x, y: 100*(x/y - 1), )
 
-    @_pages.reference(category="temporal_change", )
+    @_dm.reference(category="temporal_change", )
     def apct(
         self,
         /,
@@ -315,7 +315,7 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         factor = self.frequency.value or 1
         self.data = self.data**factor
 
-    @_pages.reference(category="temporal_cumulation", )
+    @_dm.reference(category="temporal_cumulation", )
     def cum_diff(self, *args, **kwargs, ) -> None:
         r"""
 ................................................................................
@@ -329,7 +329,7 @@ See documentation for [temporal cumulation calculations](#temporal-cumulation-ca
         """
         self.temporal_cumulation("diff", *args, **kwargs, )
 
-    @_pages.reference(category="temporal_cumulation", )
+    @_dm.reference(category="temporal_cumulation", )
     def cum_diff_log(self, *args, **kwargs, ) -> None:
         r"""
 ................................................................................
@@ -343,7 +343,7 @@ See documentation for [temporal cumulation calculations](#temporal-cumulation-ca
         """
         self.temporal_cumulation("diff_log", *args, **kwargs, )
 
-    @_pages.reference(category="temporal_cumulation", )
+    @_dm.reference(category="temporal_cumulation", )
     def cum_pct(self, *args, **kwargs, ) -> None:
         r"""
 ................................................................................
@@ -357,7 +357,7 @@ See documentation for [temporal cumulation calculations](#temporal-cumulation-ca
         """
         self.temporal_cumulation("pct", *args, **kwargs, )
 
-    @_pages.reference(category="temporal_cumulation", )
+    @_dm.reference(category="temporal_cumulation", )
     def cum_roc(self, *args, **kwargs, ) -> None:
         r"""
 ................................................................................
@@ -371,7 +371,7 @@ See documentation for [temporal cumulation calculations](#temporal-cumulation-ca
         """
         self.temporal_cumulation("roc", *args, **kwargs, )
 
-    @_pages.reference(
+    @_dm.reference(
         category=None,
         call_name="Temporal cumulation calculations",
         call_name_is_code=False,

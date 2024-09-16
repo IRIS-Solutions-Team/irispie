@@ -82,7 +82,7 @@ class Equation(
         self.xtring, self.incidence, *_ = xtring_from_human(self.human, name_to_id, )
 
     def create_equator_func(self, /, *, context: dict[str, Callable]) -> Callable:
-        context = dict(context) if context else {}
+        context = (dict(context) if context else {}) | {"__builtins__": {}}
         equator_func_string = create_equator_func_string([self.xtring], context, )
         eval(equator_func_string, context, )
 

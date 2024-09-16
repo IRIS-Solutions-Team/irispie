@@ -4,25 +4,27 @@ Steady state evaluator
 
 
 #[
+
 from __future__ import annotations
 
-from typing import (TYPE_CHECKING, )
 import itertools as _it
 import numpy as _np
 
-from ..evaluators.base import (DEFAULT_INIT_GUESS, )
-from ..evaluators import printers as _printers
+from ..evaluators.base import DEFAULT_INIT_GUESS
 from .. import equations as _equations
 from .. import quantities as _quantities
+
 from . import _equators as _equators
 from . import _jacobian as _jacobian
+from . import _iter_printers as _iter_printers
 
-
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import (Any, )
-    from collections.abc import (Iterable, )
-    from numbers import (Number, )
-    from ..simultaneous._variants import (Variant, )
+    from typing import Any
+    from collections.abc import Iterable
+    from numbers import Number
+    from ..simultaneous._variants import Variant
+
 #]
 
 
@@ -111,12 +113,12 @@ class SteadyEvaluator:
             qid_to_logly,
             context=context,
         )
-        iter_printer_settings = iter_printer_settings or {}
+        #
         self.iter_printer = self._iter_printer_factory(
-            wrt_equations,
-            self.wrt_qids,
-            qid_to_logly,
-            qid_to_name,
+            equations=wrt_equations,
+            qids=self.wrt_qids,
+            qid_to_logly=qid_to_logly,
+            qid_to_name=qid_to_name,
             **(iter_printer_settings or {}),
         )
         #
@@ -204,7 +206,7 @@ class FlatSteadyEvaluator(SteadyEvaluator, ):
 
     _jacobian_factory = _jacobian.FlatSteadyJacobian
 
-    _iter_printer_factory = _printers.FlatSteadyIterPrinter
+    _iter_printer_factory = _iter_printers.FlatIterPrinter
 
     def _reset_changes(
         self,
@@ -273,7 +275,7 @@ class NonflatSteadyEvaluator(SteadyEvaluator, ):
     _jacobian_factory = _jacobian.NonflatSteadyJacobian
     _jacobian_factory.NONFLAT_STEADY_SHIFT = NONFLAT_STEADY_SHIFT
 
-    _iter_printer_factory = _printers.NonflatSteadyIterPrinter
+    _iter_printer_factory = _iter_printers.NonflatIterPrinter
 
     def _reset_changes(self, *args, **kwargs, ) -> None:
         """

@@ -3,15 +3,17 @@
 
 
 #[
+
 from __future__ import annotations
 
 import numpy as _np
+import documark as _dm
 
 from .. import quantities as _quantities
-from .. import pages as _pages
 from .. import wrongdoings as _wrongdoings
 from .. import has_variants as _has_variants
 from ..databoxes.main import (Databox, )
+
 #]
 
 
@@ -20,7 +22,7 @@ class Inlay:
     """
     #[
 
-    @_pages.reference(category="parameters", )
+    @_dm.reference(category="parameters", )
     def assign(
         self,
         *args,
@@ -97,7 +99,7 @@ self.assign(databox, )
         for v in self._variants:
             v.assign_from_dict_like(kwargs_to_assign, )
 
-    @_pages.reference(category="parameters", )
+    @_dm.reference(category="parameters", )
     def check_missing_parameters(self, /, ) -> Databox:
         r"""
 ................................................................................
@@ -133,7 +135,7 @@ list of missing parameter names.
             message = ("Missing parameters: ", ) + missing
             raise _wrongdoings.IrisPieCritical(message, )
 
-    @_pages.reference(category="parameters", )
+    @_dm.reference(category="parameters", )
     def get_parameters(
         self,
         /,

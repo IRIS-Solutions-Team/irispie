@@ -4,21 +4,23 @@ Evaluators for dynamic period-by-period systems
 
 
 #[
+
 from __future__ import annotations
 
 import numpy as _np
-from collections import (namedtuple, )
+from collections import namedtuple
 
 from .. import equations as _equations
 from .. import quantities as _quantities
-from ._printers import (IterPrinter, )
-from ._equators import (Equator, )
-from ._jacobians import (Jacobian, )
+from ._iter_printers import IterPrinter
+from ._equators import Equator
+from ._jacobians import Jacobian
 
-from typing import (TYPE_CHECKING, )
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import (Any, Callable, )
-    from collections.abc import (Iterable, )
+    from typing import Any, Callable
+    from collections.abc import Iterable
+
 #]
 
 
@@ -60,10 +62,10 @@ def create_evaluator(
     )
 
     iter_printer = IterPrinter(
-        wrt_equations,
-        wrt_qids,
-        qid_to_logly,
-        qid_to_name,
+        equation=wrt_equations,
+        qids=wrt_qids,
+        qid_to_logly=qid_to_logly,
+        qid_to_name=qid_to_name,
         **(iter_printer_settings or {}),
     )
 

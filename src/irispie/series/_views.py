@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from ..conveniences import views as _views
+from .. import dates as _dates
 #]
 
 
@@ -18,13 +19,9 @@ class Inlay(_views.Mixin, ):
         """
         """
         shape = self.data.shape
-        range_str = (
-            f"{self.start_date}…{self.end_date}"
-            if self.start_date is not None
-            else "None"
-        )
+        span_str = _dates.get_printable_span(self.start, self.end, )
         missing_str = "*" if self.has_missing else " "
-        return f"Series {self.frequency.letter} {range_str}{missing_str}{shape[0]}×{shape[1]}"
+        return f"Series {self.frequency.letter} {span_str}{missing_str}{shape[0]}×{shape[1]}"
 
     def _get_header_separator(self, /, ):
         """"
@@ -36,7 +33,7 @@ class Inlay(_views.Mixin, ):
         """
         return tuple(
             _get_series_row_str_(date, data_row, self._date_str_format, self._numeric_format, self._missing_str) 
-            for row, (date, data_row) in enumerate(zip(self.range, self.data))
+            for row, (date, data_row) in enumerate(zip(self.span, self.data))
         )
 
     def _get_short_row_(self):

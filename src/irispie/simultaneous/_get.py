@@ -357,15 +357,16 @@ steady_changes = self.get_steady_changes(
     def get_singleton_solution(
         self,
         deviation: bool = False,
+        *,
         vid: int = 0,
     ) -> Solution:
         """
         """
         solution = self._variants[vid].solution
-        if not deviation:
-            return solution
-        else:
-            return Solution.deviation_solution(solution)
+        return (
+            solution if not deviation
+            else Solution.deviation_solution(solution, )
+        )
 
     def get_dynamic_equations(
         self,

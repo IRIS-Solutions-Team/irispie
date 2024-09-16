@@ -4,6 +4,7 @@ Databox imports
 
 
 #[
+
 from __future__ import annotations
 
 from typing import (Self, )
@@ -13,10 +14,11 @@ import numpy as _np
 import dataclasses as _dc
 import pickle as _pickle
 import warnings as _wa
+import documark as _dm
 
 from ..dates import (Period, Frequency, Span, )
 from ..series.main import (Series, )
-from .. import pages as _pages
+
 #]
 
 
@@ -63,7 +65,7 @@ class Inlay:
     """
     #[
     @classmethod
-    @_pages.reference(
+    @_dm.reference(
         category="import_export",
         call_name="Databox.from_csv",
     )

@@ -4,17 +4,18 @@ Sequential models
 
 
 #[
+
 from __future__ import annotations
 
 from typing import (TYPE_CHECKING, )
 import numpy as _np
 import copy as _co
 import os as _os
+import documark as _dm
 
 from .. import equations as _equations
 from .. import quantities as _quantities
 from .. import sources as _sources
-from .. import pages as _pages
 from ..incidences.main import (Token, )
 from ..incidences import main as _incidences
 from ..incidences import blazer as _blazer
@@ -43,7 +44,7 @@ __all__ = (
 )
 
 
-@_pages.reference(
+@_dm.reference(
     path=("structural_models", "sequential.md", ),
     categories={
         "constructor": "Creating new `Sequential` models",
@@ -92,7 +93,7 @@ and period-by-period.
         self._invariant = _invariants.Invariant()
         self._variants = []
 
-    @_pages.reference(category="manipulation", )
+    @_dm.reference(category="manipulation", )
     def copy(self, /, ) -> Self:
         """
 ················································································
@@ -134,7 +135,7 @@ other = self.copy()
         return self
 
     @classmethod
-    @_pages.reference(category="constructor", call_name="Sequential.from_file", )
+    @_dm.reference(category="constructor", call_name="Sequential.from_file", )
     def from_file(klass, *args, **kwargs, ) -> _sources.SourceMixinProtocol:
         """
 ················································································
@@ -182,7 +183,7 @@ model object.
         return _sources.from_file(klass, *args, **kwargs, )
 
     @classmethod
-    @_pages.reference(category="constructor", call_name="Sequential.from_string",)
+    @_dm.reference(category="constructor", call_name="Sequential.from_string",)
     def from_string(klass, *args, **kwargs, ) -> _sources.SourceMixinProtocol:
         """
 ················································································
@@ -259,37 +260,37 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
     #
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def all_names(self, /, ) -> tuple[str]:
         """==Names of all variables occurring in the model in order of appearance=="""
         return tuple(self._invariant.all_names)
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def lhs_names(self, /, ) -> tuple[str]:
         """==Unique names of LHS variables in order of their first appearance in equations=="""
         return self._invariant.lhs_names
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def lhs_names_in_equations(self, /, ) -> tuple[str]:
         """==Names of LHS variables in order of their appearance in equations=="""
         return tuple( x.lhs_name for x in self._invariant.explanatories )
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def residual_names(self, /, ) -> tuple[str]:
         """==Unique names of residuals in order of their first appearance in  equations=="""
         return self._invariant.residual_names
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def residual_names_in_equations(self, /, ) -> tuple[str]:
         """==Names of residuals in order of their appearance in  equations=="""
         return tuple( x.residual_name for x in self._invariant.explanatories )
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def rhs_only_names(self, /, ) -> tuple[str]:
         """==Names of variables appearing only on the RHS of equations=="""
         exclude_names = self._invariant.lhs_names + self._invariant.residual_names + self._invariant.parameter_names
@@ -299,13 +300,13 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
         )
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def parameter_names(self, /, ) -> tuple[str]:
         """==Names of model parameters=="""
         return tuple(self._invariant.parameter_names)
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def identity_index(self, /, ) -> tuple[int]:
         """==Indexes of identity equations=="""
         return tuple(
@@ -314,7 +315,7 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
         )
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def nonidentity_index(self, /, ) -> tuple[int]:
         """==Indexes of nonidentity equations=="""
         return tuple(
@@ -323,7 +324,7 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
         )
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def equation_strings(self, /, ) -> tuple[Equation]:
         """==Equation strings in order of appearance=="""
         return tuple(
@@ -332,7 +333,7 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
         )
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def lhs_quantities(self, /, ) -> tuple[Quantity]:
         """==LHS quantities in order of appearance=="""
         lhs_names = self._invariant.lhs_names
@@ -345,13 +346,13 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
         )
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def num_equations(self, /, ) -> int:
         """==Number of equations=="""
         return self._invariant.num_equations
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def num_lhs_names(self, /, ) -> int:
         """==Number of unique LHS names=="""
         return self._invariant.num_lhs_names
@@ -365,7 +366,7 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
         )
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def incidence_matrix(self, /, ) -> _np.ndarray:
         """==Incidence matrix with equations in rows and LHS quantities in columns=="""
         num_lhs_names = len(self.lhs_names)
@@ -383,7 +384,7 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
         )
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def max_lag(self, /, ) -> int:
         """==Maximum lag occurring on the RHS of equations=="""
         return min(
@@ -396,7 +397,7 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
         return self.max_lag
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def max_lead(self, /, ) -> int:
         """==Maximum lead occurring on the RHS of equations=="""
         return max(
@@ -409,7 +410,7 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
         return self.max_lead
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def is_sequential(
         self,
         /,
@@ -424,7 +425,7 @@ See [`Sequential.from_file`](sequentialfrom_file) for return values.
     def equations(self, /, ) -> tuple[Equation]:
         return self._invariant.equations
 
-    @_pages.reference(category="manipulation", )
+    @_dm.reference(category="manipulation", )
     def reorder_equations(self, *args, **kwargs, ) -> None:
         """
 ......................................................................
@@ -455,7 +456,7 @@ equation indexes.
         """
         self._invariant.reorder_equations(*args, **kwargs, )
 
-    @_pages.reference(category="manipulation", )
+    @_dm.reference(category="manipulation", )
     def sequentialize(
         self,
         /,
@@ -504,7 +505,7 @@ sequentially. The reordered equation indexes are returned as a tuple.
 
     iter_explanatories = iter_equations
 
-    @_pages.reference(category="information", )
+    @_dm.reference(category="information", )
     def get_description(self, /, ) -> str:
         """
 ················································································
@@ -534,7 +535,7 @@ description = self.get_description()
         """
         return self._invariant.get_description()
 
-    @_pages.reference(category="information", )
+    @_dm.reference(category="information", )
     def set_description(self, *args, **kwargs, ) -> None:
         """
 ················································································

@@ -3,14 +3,15 @@
 
 
 #[
+
 from __future__ import annotations
 
 from typing import (TYPE_CHECKING, )
 import numpy as _np
 import scipy as _sp
 import itertools as _it
+import documark as _dm
 
-from .. import pages as _pages
 from ..incidences import main as _incidences
 from ..fords import covariances as _covariances
 from .. import quantities as _quantities
@@ -18,6 +19,7 @@ from .. import namings as _namings
 
 if TYPE_CHECKING:
     from numbers import (Real, )
+
 #]
 
 
@@ -25,7 +27,7 @@ class Inlay:
     """
     """
 
-    @_pages.reference(category="parameters", )
+    @_dm.reference(category="parameters", )
     def rescale_stds(
         self,
         factor: Real,

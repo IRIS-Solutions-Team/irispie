@@ -3,6 +3,7 @@
 
 
 #[
+
 from __future__ import annotations
 
 from typing import (Any, Iterable, Sequence, Literal, Self, Protocol, NoReturn, )
@@ -14,10 +15,10 @@ import dataclasses as _dc
 import numpy as _np
 import scipy as _sp
 import wlogging as _wl
+import documark as _dm
 
 from .. import has_variants as _has_variants
 from .. import quantities as _quantities
-from .. import pages as _pages
 from ..frames import (Frame, )
 from ..dataslates.main import (Dataslate, )
 from ..databoxes.main import (Databox, )
@@ -27,6 +28,7 @@ from ..dates import (Dater, )
 from . import initializers as _initializers
 from . import shock_simulators as _shock_simulators
 from .descriptors import (Squid, )
+
 #]
 
 
@@ -542,7 +544,7 @@ class Mixin:
     """
     #[
 
-    @_pages.reference(category="filtering", )
+    @_dm.reference(category="filtering", )
     def kalman_filter(
         self,
         #
@@ -562,6 +564,7 @@ class Mixin:
         #
         shocks_from_data: bool = False,
         stds_from_data: bool = False,
+        parameters_from_data: bool = False,
         #
         prepend_initial: bool = False,
         append_terminal: bool = False,
@@ -722,13 +725,13 @@ the time series data.
 
         _LOGGER.set_level(logging_level, )
 
-        num_variants \
-            = self.resolve_num_variants_in_context(num_variants, )
+        num_variants = self.resolve_num_variants_in_context(num_variants, )
         _LOGGER.debug(f"Running {num_variants} variants")
 
         slatable = self.get_slatable_for_kalman_filter(
             shocks_from_data=shocks_from_data,
             stds_from_data=stds_from_data,
+            parameters_from_data=parameters_from_data,
         )
 
         input_ds = Dataslate.from_databox_for_slatable(
@@ -797,18 +800,19 @@ the time series data.
 
             solution_v = self_v.get_singleton_solution(deviation=deviation, )
             data_array = input_ds_v.get_data_variant()
+
             #
             # Initialize medians and stds
             #
             init_cov_u = self_v.get_cov_unanticipated_shocks()
             init_med, init_mse, unknown_init_impact \
                 = initialize(solution_v, init_cov_u, )
+
             #
             # Presimulate the impact of anticipated shocks
             #
-            all_v_impact \
-                = _simulate_anticipated_shocks \
-                (self_v, input_ds_v, frame, )
+            all_v_impact = _simulate_anticipated_shocks(self_v, input_ds_v, frame, )
+
             #
             # Get values of observables
             #
@@ -896,9 +900,9 @@ the time series data.
                 out_info, self.is_singleton,
                 unpack_singleton=True,
             )
-            return out_data, out_info
-        #
-        return out_data
+            return out_data, out_info, 
+        else:
+            return out_data
 
     #]
 

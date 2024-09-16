@@ -15,6 +15,7 @@ from . import main as _databoxes
 
 if TYPE_CHECKING:
     from typing import (Self, Iterable, Literal, )
+    MergeStrategyType = Literal["hstack", "replace", "discard", "silent", "warning", "error", "critical", ]
 #]
 
 
@@ -23,10 +24,22 @@ class Inlay:
     """
     #[
 
+    @classmethod
+    def merged(
+        klass,
+        databoxes: Iterable[Self],
+        merge_strategy: MergeStrategyType = "hstack",
+    ) -> Self:
+        """
+        """
+        out = klass()
+        out.merge(databoxes, merge_strategy, )
+        return out
+
     def merge(
         self: Self,
         other: Iterable[Self] | Self,
-        merge_strategy: Literal["hstack", "replace", "discard", "silent", "warning", "error", "critical", ] = "hstack",
+        merge_strategy: MergeStrategyType = "hstack",
         #
         action = None,
         **kwargs,

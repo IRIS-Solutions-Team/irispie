@@ -12,6 +12,7 @@ import parsimonious as _pa
 import functools as _ft
 import itertools as _it
 import copy as _cp
+import jinja2 as _jj
 
 from .. import wrongdoings as _wrongdoings
 from . import _pseudofunctions as _pseudofunctions
@@ -21,11 +22,15 @@ from . import _lists as _lists
 #]
 
 
+_JJ_ENVIRONMENT = _jj.Environment()
+
+
 def from_string(
     source: str,
     *,
     context: dict[str, Any] | None = None,
     save_preparsed: str = "",
+    jinja: bool = True,
 ) -> tuple[str, dict]:
     """
     """
@@ -35,11 +40,15 @@ def from_string(
         "preparser_needed": None,
     }
 
-    context = dict(context) if context else {}
+    context = (dict(context) if context else {}) | {"__builtins__": {}}
     info["context"] = context
 
     # Remove NON-NESTED block comments #{ ... #} or %{ ... %}
     source = _remove_block_comments(source, )
+
+    # Run Jinja2 templater
+    if jinja:
+        source = _JJ_ENVIRONMENT.from_string(source, ).render(context, )
 
     # Remove line comments %, #, ..., \, except for #!, %!
     source = _remove_line_comments(source, )
@@ -65,7 +74,7 @@ def from_string(
 
     # Evaluate and stringify Python expressions in <...> or <<...>>
     # Do this only after the !-command preparser because the <...> expression
-    # may be ?-dependent
+    # may contain ?(...) control tokens
     preparsed_source = _evaluate_contextual_expressions(preparsed_source, info["context"], )
 
     # Expand lists
@@ -135,7 +144,7 @@ class _Visitor(_pa.nodes.NodeVisitor):
     def __init__(self, context=None):
         super().__init__()
         self.content = []
-        self.context = dict(context) if context else {}
+        self.context = (dict(context) if context else {}) | {"__builtins__": {}}
 
     def _add(self, new):
         self.content.append(new)
@@ -307,9 +316,10 @@ class _If:
     ) -> None:
         """
         """
-        context = dict(context) if context else {}
+        context = (dict(context) if context else {}) | {"__builtins__": {}}
         try:
-            self._condition_result = bool(eval(self._condition_text, {}, context, ))
+            value = eval(self._condition_text, context, )
+            self._condition_result = bool(value)
         except Exception as exc:
             raise _wrongdoings.IrisPieError(
                 f"Failed to evaluate this !if condition: {self._condition_text}",
@@ -423,14 +433,19 @@ def _consolidate_lines(text: str) -> str:
 _CONTEXTUAL_EXPRESSION_PATTERN = _re.compile(r"<+([^>]*)>+")
 
 
-def _evaluate_contextual_expressions(text: str, context: dict, /):
+def _evaluate_contextual_expressions(
+    text: str,
+    context: dict[str, Any] | None,
+) -> str:
     """
     """
     #[
     def _replace(match):
         try:
             expression = match.group(1).strip()
-            return _stringify(eval(expression, {}, context, ), )
+            context = (dict(context) if context else {}) | {"__builtins__": {}}
+            value = eval(expression, context, )
+            return _stringify(value, )
         except:
             raise Exception(f"Failed to evaluate this contextual expression: {expression}")
     return _re.sub(_CONTEXTUAL_EXPRESSION_PATTERN, _replace, text)

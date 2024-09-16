@@ -37,8 +37,7 @@ def _prepare_globals(
     """
     """
     #[
-    globals_ = _cp.deepcopy(context, ) if context else {}
-    globals_["__builtins__"] = None
+    globals_ = (context or {}) | {"__builtins__": {}}
     globals_ = _adaptations.add_function_adaptations_to_context(globals_, )
     return globals_
     #]

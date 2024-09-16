@@ -129,7 +129,7 @@ class Invariant:
         """
         """
         base_columns = self.base_columns
-        return slice(base_columns[0], base_columns[-1]+1)
+        return slice(base_columns[0], base_columns[-1]+1, )
 
     def copy(self, /, ) -> Invariant:
         """

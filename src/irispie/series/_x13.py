@@ -14,11 +14,11 @@ import platform as _pf
 import tempfile as _tf
 import copy as _co
 import glob as _gl
+import documark as _dm
 
 from .. import executables as _executables
 from .. import wrongdoings as _wrongdoings
 from .. import has_variants as _has_variants
-from .. import pages as _pages
 from ..dates import (Period, Span, Frequency, )
 
 from . import _functionalize
@@ -41,7 +41,7 @@ class Inlay:
     """
     #[
 
-    @_pages.reference(category="filtering", )
+    @_dm.reference(category="filtering", )
     def x13(
         self,
         *,

@@ -3,6 +3,7 @@
 
 
 #[
+
 from __future__ import annotations
 
 from typing import (Self, Any, )
@@ -12,8 +13,8 @@ import itertools as _it
 import wlogging as _wl
 import functools as _ft
 import warnings as _wa
+import documark as _dm
 
-from .. import pages as _pages
 from .. import wrongdoings as _wrongdoings
 from .. import has_variants as _has_variants
 from ..databoxes.main import (Databox, )
@@ -21,6 +22,7 @@ from ..plans.simulation_plans import (SimulationPlan, )
 from ..plans.transforms import (PlanTransform, )
 from ..explanatories import main as _explanatories
 from ..dataslates.main import (Dataslate, )
+
 #]
 
 
@@ -32,7 +34,7 @@ class Inlay:
     """
     #[
 
-    @_pages.reference(category="simulation", )
+    @_dm.reference(category="simulation", )
     def simulate(
         self,
         input_db: Databox,

@@ -4,22 +4,21 @@ Dynamic nonlinear period-by-period simulator
 
 
 #[
-
 from __future__ import annotations
 
 import numpy as _np
 import scipy as _sp
+import functools as _ft
+import wlogging as _wl
 
-from .. import equations as _equations
-from .. import wrongdoings as _wrongdoings
-from .. import frames as _frames
 from ..simultaneous import main as _simultaneous
 from ..plans.simulation_plans import SimulationPlan
 from ..dataslates.main import Dataslate
+from .. import equations as _equations
+from .. import wrongdoings as _wrongdoings
 from ..fords import terminators as _terminators
 
 from . import _evaluators as _evaluators
-from ..stacked_time import simulators as _stacked_time_simulators
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -27,65 +26,123 @@ if TYPE_CHECKING:
     from typing import Callable, Any, Literal
     from ..dates import Period
     from ..frames import Frame
-    from ..incidences.main import Token
-
 #]
 
 
 METHOD_NAME = "period_by_period"
+def create_frames(): ...
+def simulate_initial_guess(): ...
+def simulate_frame(): ...
 
 
-def create_frames(
-    model_v: Simultaneous,
-    dataslate_v: Dataslate,
-    plan: SimulationPlan | None,
-    **kwargs,
-) -> tuple[Frame, ...]:
-    """
-    """
-    #[
-    base_break_points = _frames.create_empty_base_break_points(dataslate_v, )
-    base_break_points[:] = True
-    base_end = dataslate_v.base_periods[-1]
-    return _frames.split_into_frames_by_breakpoints(
-        base_break_points, dataslate_v,
-        get_simulation_end=lambda start, end: end,
-    )
-    #]
-
-
-def simulate_initial_guess(
-    *args,
-    initial_guess: Literal["first_order", "data"] = "data",
-    **kwargs,
-) -> None:
-    """
-    """
-    return _stacked_time_simulators.simulate_initial_guess(
-        *args,
-        initial_guess=initial_guess,
-        **kwargs,
-    )
+_DEFAULT_FALLBACK_VALUE = 1/9
 
 
 def simulate_frame(
-    model_v: Simultaneous,
+    model_v: _simultaneous.Simultaneous,
     frame_ds: Dataslate,
     *,
+    plan: SimulationPlan | None,
     frame: Frame,
-    **kwargs,
+    simulation_header: str,
+    vid: int,
+    #
+    initial_guess: Literal["data", "previous_period"] = "previous_period",
+    solver_settings: dict[str, Any] | None = None,
+    iter_printer_settings: dict[str, Any] | None = None,
+    when_fails: Literal["critical", "error", "warning", "silent"] = "critical",
+    when_missing: Literal["critical", "error", "warning", "silent"] = "critical",
+    fallback_value: Real = _DEFAULT_FALLBACK_VALUE,
+    terminal: Literal["data", "first_order", ] = "first_order",
+    return_info: bool = False,
 ) -> dict[str, Any]:
     """
     """
-    is_first_frame = frame_ds.base_columns[0] == frame.first
-    return _stacked_time_simulators.simulate_frame(
-        model_v,
-        frame_ds,
-        frame=frame,
-        **kwargs,
-        terminal="data",
-        _precatch_missing=_precatch_missing_first_frame if is_first_frame else _precatch_missing,
+    if not model_v.is_singleton:
+        raise ValueError("Simulator requires a singleton simulatable object")
+
+    solver_settings = _DEFAULT_SOLVER_SETTINGS | (solver_settings or {})
+
+    qid_to_name = model_v.create_qid_to_name()
+    name_to_qid = model_v.create_name_to_qid()
+    all_quantities = model_v.get_quantities()
+    #
+    wrt_qids = _get_wrt_qids(model_v, name_to_qid, )
+    wrt_equations = model_v.get_dynamic_equations(kind=_equations.ENDOGENOUS_EQUATION, )
+
+    if len(wrt_equations) != len(wrt_qids):
+        raise _wrongdoings.IrisPieError(
+            f"Number of endogenous equations {len(wrt_equations)} "
+            f"does not match number of endogenous quantities {len(wrt_qids)}"
+        )
+
+    if not wrt_equations:
+        return
+
+    terminators = _terminators.create_terminators(model_v, terminal, )
+
+    create_evaluator = _ft.partial(
+        _evaluators.create_evaluator,
+        wrt_equations=wrt_equations,
+        all_quantities=all_quantities,
+        terminal_simulator=terminators.terminate_simulation,
+        context=model_v.get_context(),
+        iter_printer_settings=iter_printer_settings,
     )
+
+    create_evaluator = _ft.lru_cache(maxsize=None, )(create_evaluator, )
+
+    when_missing_stream = _wrongdoings.create_stream(
+        when_missing,
+        f"These values are missing at the start of simulation: ",
+    )
+
+    starter = _INITIAL_GUESS[initial_guess]
+
+    catch_missing = _ft.partial(
+        _catch_missing,
+        frame_ds=frame_ds,
+        qid_to_name=qid_to_name,
+        fallback_value=fallback_value,
+        when_missing_stream=when_missing_stream,
+    )
+    #
+    periods = frame_ds.periods
+    data = frame_ds.get_data_variant(0, )
+    when_fails_stream = _wrongdoings.create_stream(
+        when_fails,
+        "Simulation failed to successfully complete",
+    )
+    #
+    for t in frame_ds.base_columns:
+        current_wrt_qids, current_evaluator = \
+            _setup_current_period(plan, create_evaluator, wrt_qids, periods[t], name_to_qid, )
+        current_evaluator.iter_printer.custom_header = simulation_header
+        data[current_wrt_qids, t] = starter(data, current_wrt_qids, t, )
+        catch_missing(data, t, )
+        #
+        init_guess = current_evaluator.get_init_guess(data, t, )
+        root_final = _sp.optimize.root(
+            current_evaluator.evaluate, init_guess,
+            args=(data, t, ),
+            jac=True,
+            **solver_settings,
+        )
+        #
+        if not root_final.success:
+            _catch_fail(when_fails_stream, root_final, periods[t], )
+        current_evaluator.update(root_final.x, data, t, )
+        #
+        current_evaluator.iter_printer.print_footer()
+        current_evaluator.iter_printer.reset()
+    #
+    when_fails_stream._raise()
+    #
+    info = {
+        "method": _METHOD_NAME,
+    }
+    #
+    return info
 
 
 def _setup_current_period(
@@ -213,32 +270,4 @@ _DEFAULT_SOLVER_SETTINGS = {
     "tol": 1e-12,
     "options": {"xtol": 1e-12, },
 }
-
-
-def _precatch_missing(
-    data: _np.ndarray,
-    wrt_spots: Iterable[Token],
-) -> None:
-    """
-    In the second and subsequent periods, always copy the previous period's
-    values for endogenous quantities
-    """
-    for qid, column in wrt_spots:
-        if column == 0:
-            continue
-        data[qid, column] = data[qid, column-1]
-
-
-def _precatch_missing_first_frame(
-    data: _np.ndarray,
-    wrt_spots: Iterable[Token],
-) -> None:
-    """
-    In the first period, copy the previous period's values for endogenous
-    quantities only if they are NaN
-    """
-    for qid, column in wrt_spots:
-        if column == 0 or not _np.isnan(data[qid, column]):
-            continue
-        data[qid, column] = data[qid, column-1]
 

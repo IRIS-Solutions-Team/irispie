@@ -4,84 +4,129 @@ Dynamic nonlinear stacked-time simulator
 
 
 #[
+
 from __future__ import annotations
 
 import warnings as _wa
 import numpy as _np
 import scipy as _sp
-import functools as _ft
 import itertools as _it
 import wlogging as _wl
+import neqs as _nq
 
 from ..simultaneous import main as _simultaneous
-from ..plans.simulation_plans import (SimulationPlan, )
-from ..dataslates.main import (Dataslate, )
+from ..plans.simulation_plans import SimulationPlan
+from ..dataslates.main import Dataslate
 from ..incidences import main as _incidences
-from ..incidences.main import (Token, )
+from ..incidences.main import Token
+from .. import quantities as _quantities
 from .. import equations as _equations
-from .. import equations as _equations
+from .. import frames as _frames
+from .. import dates as _dates
+from ..dates import Span
+from ..frames import SingleFrame
 from .. import wrongdoings as _wrongdoings
-from ..fords.terminators import (Terminator, )
+from ..fords import simulators as _ford_simulators
+from ..fords.terminators import Terminator
 
 from . import _evaluators as _evaluators
+from . import _iter_printers as _iter_printers
 
-from typing import (TYPE_CHECKING, )
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from numbers import (Real, )
-    from typing import (Callable, Any, Literal, )
-    from ..dates import (Period, )
+    from numbers import Real
+    from typing import Callable, Any, Literal
+    from ..dates import Period
+    from ..simultaneous.main import Simultaneous
+    from ..frames import Frame
+
 #]
 
 
+# Simulator protocol requirements
+METHOD_NAME = "stacked_time"
+def create_frames(): ...
+def simulate_initial_guess(): ...
+def simulate_frame(): ...
+
+
 _DEFAULT_FALLBACK_VALUE = 1/9
-_METHOD_NAME = "stacked_time"
 
 
-def _simulate_frame(
-    simulatable_v: _simultaneous.Simultaneous,
+_RELEVANT_REGISTER_NAMES = (
+    "exogenized_anticipated",
+    "endogenized_anticipated",
+    "exogenized_unanticipated",
+    "endogenized_unanticipated",
+)
+
+
+def create_frames(
+    model_v: Simultaneous,
     dataslate_v: Dataslate,
     plan: SimulationPlan | None,
-    vid: int,
+    **kwargs,
+) -> tuple[Frame, ...]:
+    """
+    """
+    #[
+    base_end = dataslate_v.base_periods[-1]
+    return _frames.split_into_frames(
+        model_v, dataslate_v, plan,
+        get_simulation_end=lambda *_, : base_end,
+    )
+    #]
+
+
+def simulate_initial_guess(
+    model_v: Simultaneous,
+    dataslate_v: Dataslate,
+    plan: SimulationPlan | None,
     *,
-    logger: _wl.Logger,
+    initial_guess: Literal["first_order", "data"] = "first_order",
+    **kwargs,
+) -> None:
+    """
+    """
+    _INITIAL_GUESS_SIMULATOR[initial_guess](model_v, dataslate_v, )
+
+
+def simulate_frame(
+    model_v: Simultaneous,
+    frame_ds: Dataslate,
+    *,
+    frame: Frame,
+    input_data_array: _np.ndarray,
+    plan: SimulationPlan | None,
+    simulation_header: str,
     return_info: bool = False,
-    #
-    start_iter_from: Literal["data", "first_order", "previous_period"] = "previous_period",
-    root_settings: dict[str, Any] | None = None,
-    iter_printer_settings: dict[str, Any] | None = None,
-    when_fails: Literal["critical", "error", "warning", "silent"] = "critical",
-    when_missing: Literal["critical", "error", "warning", "silent"] = "critical",
+    # Method specific settings
+    solver_settings: dict[str, Any] | None = None,
+    when_fails: Literal["critical", "error", "warning", "silent"] = "error",
+    when_missing: Literal["critical", "error", "warning", "silent"] = "error",
     fallback_value: Real = _DEFAULT_FALLBACK_VALUE,
     terminal: Literal["data", "first_order", ] = "first_order",
+    _precatch_missing: Callable | None = None,
+    **kwargs,
 ) -> dict[str, Any]:
     """
     """
+    #[
 
-    if not simulatable_v.is_singleton:
-        raise ValueError("Simulator requires a singleton simulatable object")
-    #
-    root_settings = (
-        _DEFAULT_ROOT_SETTINGS
-        if root_settings is None
-        else _DEFAULT_ROOT_SETTINGS | root_settings
-    )
-    #
+    solver_settings = solver_settings or {}
+
     when_missing_stream = \
         _wrongdoings.STREAM_FACTORY[when_missing] \
-        (f"These values are missing at the start of simulation: ")
+        (f"These values are missing at the start of the {frame} simulation: ")
 
-    max_lead = simulatable_v.max_lead
-    qid_to_name = simulatable_v.create_qid_to_name()
-    name_to_qid = simulatable_v.create_name_to_qid()
-    all_quantities = simulatable_v.get_quantities()
+    all_quantities = model_v.get_quantities()
+    qid_to_logly = _quantities.create_qid_to_logly(all_quantities, )
+    qid_to_name = model_v.create_qid_to_name()
+    name_to_qid = model_v.create_name_to_qid()
 
-
-    endogenous_qids = _get_sorted_endogenous_qids(simulatable_v, name_to_qid, )
-    wrt_equations = simulatable_v.get_dynamic_equations(kind=_equations.ENDOGENOUS_EQUATION, )
-
-
-    periods = dataslate_v.periods
-    columns_to_run = tuple(dataslate_v.base_columns)
+    endogenous_quantities = model_v.get_quantities(kind=_quantities.ENDOGENOUS_VARIABLE, )
+    endogenous_qids = tuple(i.id for i in endogenous_quantities)
+    wrt_equations = model_v.get_dynamic_equations(kind=_equations.ENDOGENOUS_EQUATION, )
 
     if len(wrt_equations) != len(endogenous_qids):
         raise _wrongdoings.IrisPieCritical(
@@ -90,153 +135,131 @@ def _simulate_frame(
         )
 
     if not wrt_equations:
-        return
+        success = True
+        return success
 
-    needs_terminal = terminal == "first_order" and max_lead
+    periods = frame_ds.periods
+    columns_to_run = tuple(range(frame.first, frame.simulation_last+1, ))
+    periods_to_run = tuple(periods[i] for i in columns_to_run)
 
-    iter_printer_settings = {"every": 1, }
-    # create_evaluator_closure = _ft.lru_cache(maxsize=None, )(create_evaluator_closure, )
+    wrt_spots, exogenized_spots = _get_wrt_spots(
+        plan=plan,
+        endogenous_qids=endogenous_qids,
+        columns_to_run=columns_to_run,
+        periods_to_run=periods_to_run,
+        name_to_qid=name_to_qid,
+    )
 
-    # starter = _ITER_STARTER[start_iter_from]
+    terminator = None
+    needs_terminator = terminal == "first_order" and model_v.max_lead
+    if needs_terminator:
+        terminator = Terminator(model_v, columns_to_run, wrt_equations, )
+        terminator.create_terminal_jacobian_map(wrt_spots, )
 
-    catch_missing = _ft.partial(
-        _catch_missing,
+    evaluator = _evaluators.create_evaluator(
+        wrt_spots=wrt_spots,
+        columns_to_eval=columns_to_run,
+        wrt_equations=wrt_equations,
+        all_quantities=all_quantities,
+        terminator=terminator,
+        context=model_v.get_context(),
+    )
+
+    data = frame_ds.get_data_variant()
+
+    if _precatch_missing is not None:
+        _precatch_missing(data, wrt_spots, )
+
+    _catch_missing(
+        data=data,
+        wrt_spots=wrt_spots,
+        frame=frame,
         qid_to_name=qid_to_name,
         fallback_value=fallback_value,
         when_missing_stream=when_missing_stream,
         periods=periods,
     )
 
-    data = dataslate_v.get_data_variant(0, )
+    _copy_exogenized_data_to_frame_data(data, exogenized_spots, input_data_array, )
 
-    # Create list of periods for reporting purposes
-    current_periods = tuple(periods[i] for i in columns_to_run)
-
-    current_wrt_spots = _get_current_wrt_spots(
-        plan=plan,
-        endogenous_qids=endogenous_qids,
-        columns_to_run=columns_to_run,
-        current_periods=current_periods,
-        name_to_qid=name_to_qid,
+    iter_printer = _iter_printers.create_iter_printer(
+        equations=wrt_equations,
+        qids=tuple(tok.qid for tok in wrt_spots),
+        qid_to_logly=qid_to_logly,
+        qid_to_name=qid_to_name,
+        custom_header=simulation_header,
+        **solver_settings,
     )
 
-    terminator = None
-    if needs_terminal:
-        terminator = Terminator(simulatable_v, columns_to_run, wrt_equations, )
-        terminator.create_terminal_jacobian_map(current_wrt_spots, )
+    init_guess = evaluator.get_init_guess(data, )
 
-    current_evaluator = _evaluators.create_evaluator_closure(
-        current_wrt_spots,
-        columns_to_run,
-        wrt_equations=wrt_equations,
-        all_quantities=all_quantities,
-        terminator=terminator,
-        context=simulatable_v.get_context(),
-        #iter_printer_settings=iter_printer_settings,
-        iter_printer_settings={"every": 1, },
+    final_guess, exit_status = _nq.damped_newton(
+        eval_func=evaluator.eval_func,
+        eval_jacob=evaluator.eval_jacob,
+        init_guess=init_guess,
+        iter_printer=iter_printer,
+        args=(data, ),
+        **solver_settings,
     )
 
+    evaluator.update(final_guess, data, )
+    return exit_status
+
+    #]
 
 
-    # data[current_wrt_qids, t] = starter(data, current_wrt_qids, t, )
-    # ford_extender(data, columns_to_run[0]-1, num_columns_to_run, )
-
-    catch_missing(data, columns_to_run, )
-
-    header_message = _create_header_message(vid, current_periods, )
-    # print(header_message, )
-
-    data0 = data.copy()
-    # guess = current_evaluator.get_init_guess(data, )
-    # for i in range(7):
-    #     f, j = current_evaluator.eval_func_jacob(guess, data, )
-    #     unit_step = - _sp.sparse.linalg.spsolve(j, f)
-    #     opt_step, min_f = None, None
-    #     ff = []
-    #     #for j in (0.1, 0.5, 1.0, 1.2, 1.5, 1.8):
-    #     #    candidate = guess + j*unit_step
-    #     #    f, _ = current_evaluator.eval_func_jacob(candidate, data, columns_to_run, )
-    #     #    max_f = _np.abs(f).max()
-    #     #    ff.append(max_f)
-    #     #    if min_f is None or max_f < min_f:
-    #     #        min_f = max_f
-    #     #        opt_step = j
-    #     opt_step = 1
-    #     guess = guess + opt_step*unit_step
-
-    info = {
-        "method": _METHOD_NAME,
-        "evaluator": current_evaluator,
-        "data": data0,
-    }
-
-    return info
-
-
-def _get_current_wrt_spots(
+def _get_wrt_spots(
     plan: SimulationPlan | None,
     endogenous_qids: Iterable[int],
     columns_to_run: Iterable[int],
+    periods_to_run: Iterable[Period],
     name_to_qid: dict[str, int],
-    current_periods: Period,
-) -> tuple[int, ...]:
+) -> tuple[tuple[Token, ...], set[Token, ...]]:
     """
     """
-    current_wrt_spots = tuple(
+    wrt_spots = tuple(
         Token(qid, column, )
         for column, qid in _it.product(columns_to_run, endogenous_qids, )
     )
     if plan is None:
-        return current_wrt_spots
-    names_exogenized = plan.get_exogenized_unanticipated_in_period(current_periods, )
-    names_endogenized = plan.get_endogenized_unanticipated_in_period(current_periods, )
-    if len(names_exogenized) != len(names_endogenized):
-        raise _wrongdoings.IrisPieCritical(
-            f"Number of exogenized quantities {len(names_exogenized)}"
-           f" does not match number of endogenized quantities {len(names_endogenized)}"
-            f" in periods {current_periods[0]}>>{current_periods[-1]}"
+        return wrt_spots, None,
+    #
+    registers_as_bool_arrays = plan.get_registers_as_bool_arrays(
+        periods=periods_to_run,
+        register_names=_RELEVANT_REGISTER_NAMES,
+    )
+    row_names_in_registers = {
+        n: tuple(plan.get_register_by_name(n, ).keys())
+        for n in _RELEVANT_REGISTER_NAMES
+    }
+    base_first = columns_to_run[0]
+    def spots_from_register(register_name: str, columns_to_run: Iterable[int], ) -> set[Token]:
+        return set(
+            Token(name_to_qid[n], shift, )
+            for row, n in enumerate(row_names_in_registers[register_name])
+            for column, shift in enumerate(columns_to_run)
+            if registers_as_bool_arrays[register_name][row, column]
         )
-    qids_exogenized = tuple(name_to_qid[name] for name in names_exogenized)
-    qids_endogenized = tuple(name_to_qid[name] for name in names_endogenized)
-    current_wrt_spots = tuple(sorted(set(current_wrt_spots).difference(qids_exogenized).union(qids_endogenized)))
-    return current_wrt_spots
-
-
-def _start_iter_from_previous_period(
-    data: _np.ndarray,
-    wrt_qids: tuple[int, ...],
-    t: int,
-) -> _np.ndarray:
-    """
-    """
-    source_t = t - 1 if t > 0 else 0
-    return data[wrt_qids, source_t]
-
-
-def _start_iter_from_data(
-    data: _np.ndarray,
-    wrt_qids: tuple[int, ...],
-    t: int,
-) -> _np.ndarray:
-    """
-    """
-    return data[wrt_qids, t]
-
-
-def _start_iter_from_first_order(
-    data: _np.ndarray,
-    wrt_qid: tuple[int, ...],
-    t: int,
-) -> _np.ndarray:
-    """
-    """
-    raise NotImplementedError()
+    exogenized_spots = (
+        spots_from_register("exogenized_anticipated", columns_to_run, )
+        | spots_from_register("exogenized_unanticipated", columns_to_run[0:1], )
+    )
+    endogenized_spots = (
+        spots_from_register("endogenized_anticipated", columns_to_run, )
+        | spots_from_register("endogenized_unanticipated", columns_to_run[0:1], )
+    )
+    wrt_spots = tuple(sorted(
+        set(wrt_spots)
+        .difference(exogenized_spots)
+        .union(endogenized_spots)
+    ))
+    return wrt_spots, exogenized_spots
 
 
 def _catch_missing(
     data: _np.ndarray,
-    columns: int,
-    /,
+    wrt_spots: Iterable[Token],
+    frame: Frame,
     qid_to_name: dict[int, str],
     when_missing_stream: _wrongdoings.Stream,
     periods: Iterable[Period],
@@ -244,16 +267,17 @@ def _catch_missing(
 ) -> None:
     """
     """
-    missing = _np.isnan(data[:, columns])
+    #[
+    missing = _np.isnan(data)
     if not missing.any():
         return
-    missing_qids, *_ = missing.any(axis=1, ).nonzero()
-    start = periods[columns[0]]
-    end = periods[columns[-1]]
-    for qid in missing_qids:
-        message = f"{qid_to_name[qid]} when simulating {start}>>{end}"
-        when_missing_stream.add(message, )
-    data[:, columns][missing] = fallback_value
+    for qid, column in wrt_spots:
+        if not missing[qid, column]:
+            continue
+        when_missing_stream.add(f"{qid_to_name[qid]}[{periods[column]}]", )
+        data[qid, column] = fallback_value
+    when_missing_stream._raise()
+    #]
 
 
 def _catch_fail(
@@ -265,45 +289,47 @@ def _catch_fail(
     raise ValueError()
 
 
-def _create_header_message(
-    vid: str,
-    current_periods: int,
-) -> str:
+def _simulate_initial_guess_first_order(
+    model_v: Simultaneous,
+    frame_ds: DataSlate,
+) -> None:
     """
+    Simulate initial guess by running a first-order simulation without any
+    shocks or conditioning
     """
-    start = current_periods[0]
-    end = current_periods[-1]
-    return f"[Variant {vid}][Periods {start}>>{end}]"
-
-
-def _get_sorted_endogenous_qids(
-    simulatable_v,
-    name_to_qid: dict[str, int],
-    /,
-) -> tuple[int, ...]:
-    """
-    """
-    plannable = simulatable_v.get_simulation_plannable()
-    wrt_names = set(
-        tuple(plannable.can_be_exogenized_unanticipated)
-        + tuple(plannable.can_be_exogenized_anticipated)
+    frame = SingleFrame(frame_ds.base_periods[0], frame_ds.base_periods[-1], )
+    frame.resolve_columns(frame_ds.periods[0], )
+    _ford_simulators.simulate_flat(
+        model_v, frame_ds, frame,
+        deviation=False,
+        ignore_shocks=True,
     )
-    return sorted(name_to_qid[name] for name in wrt_names)
 
 
-_ITER_STARTER = {
-    "previous_period": _start_iter_from_previous_period,
-    "data": _start_iter_from_data,
-    "first_order": _start_iter_from_first_order,
+def _simulate_initial_guess_data(
+    *args, **kwargs,
+) -> None:
+    """
+    Initial guess is the data
+    """
+    pass
+
+
+_INITIAL_GUESS_SIMULATOR = {
+    "first_order": _simulate_initial_guess_first_order,
+    "data": _simulate_initial_guess_data,
 }
 
 
-_DEFAULT_ROOT_SETTINGS = {
-    "method": "hybr",
-    "tol": 1e-12,
-    # "options": {"col_deriv": True},
-}
-
-
-simulate = _simulate_frame
+def _copy_exogenized_data_to_frame_data(
+    data: _np.ndarray,
+    exogenized_spots: set[Token],
+    input_data_array: _np.ndarray,
+) -> None:
+    """
+    """
+    if not exogenized_spots:
+        return
+    indexes = tuple(zip(*exogenized_spots))
+    data[indexes] = input_data_array[indexes]
 

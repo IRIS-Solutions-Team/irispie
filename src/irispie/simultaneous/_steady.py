@@ -176,7 +176,7 @@ class Inlay:
         }
         #=======================================================================
         for bid, (block, human_block) in enumerate(zip(blocks, human_blocks, ), ):
-            header_message = f"[Variant {vid}][Block {bid}]"
+            custom_header = f"[Variant {vid}][Block {bid}]"
             #
             block_level_qids = tuple(sorted(set(block.qids) - set(wrt.fixed_level_qids)))
             block_change_qids = tuple(sorted(set(block.qids) - set(wrt.fixed_change_qids)))
@@ -187,7 +187,7 @@ class Inlay:
             if has_no_qids or has_no_equations:
                 info["block_success"].append(True, )
                 info["block_root_final"].append(None, )
-                print(f"\n-Skipping {header_message}")
+                print(f"\n-Skipping {custom_header}")
                 continue
             #
             steady_evaluator = evaluator_class(
@@ -198,7 +198,7 @@ class Inlay:
                 variant,
                 iter_printer_settings=iter_printer_settings,
             )
-            steady_evaluator.iter_printer.header_message = header_message
+            steady_evaluator.iter_printer.custom_header = custom_header
             root_final = _sp.optimize.root(
                steady_evaluator.eval,
                steady_evaluator.get_init_guess(),
@@ -212,7 +212,7 @@ class Inlay:
             success = root_final.success and func_norm < root_settings["tol"]
             #
             if not success:
-                _throw_block_error(human_block, header_message, )
+                _throw_block_error(human_block, custom_header, )
             #
             # Update variant with steady levels and changes
             _update_variant_with_final_guess(variant, steady_evaluator, )
@@ -334,13 +334,14 @@ class Inlay:
         # REFACTOR
         #
         t_zero = -equator.min_shift
-        discrepancies = [
-            _np.hstack((
-                _np.array(equator.eval(x, t_zero, )).reshape(-1, 1),
-                _np.array(equator.eval(x, t_zero+1, )).reshape(-1, 1),
-            ))
-            for x in steady_arrays
-        ]
+        discrepancies = []
+        for x in steady_arrays:
+            at_t_zero = equator.eval(x, t_zero, )
+            at_t_zero_plus_one = equator.eval(x, t_zero + 1, )
+            discrepancies.append(_np.hstack((
+                _np.array(at_t_zero).reshape(-1, 1),
+                _np.array(at_t_zero_plus_one).reshape(-1, 1),
+            )))
         #
         # REFACTOR
         #
@@ -438,11 +439,11 @@ def _update_variant_with_final_guess(variant, steady_evaluator, ) -> None:
     #]
 
 
-def _throw_block_error(human_block, header_message: str, ) -> NoReturn:
+def _throw_block_error(human_block, custom_header: str, ) -> NoReturn:
     """
     """
     #[
-    message = (f"Steady state calculations failed to converge in {header_message}", )
+    message = (f"Steady state calculations failed to converge in {custom_header}", )
     message += human_block.equations
     raise _wrongdoings.IrisPieError(message, )
     #]

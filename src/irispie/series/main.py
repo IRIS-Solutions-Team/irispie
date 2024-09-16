@@ -4,6 +4,7 @@ Main time series class definition
 
 
 #[
+
 from __future__ import annotations
 
 from numbers import (Real, )
@@ -17,6 +18,7 @@ import functools as _ft
 import operator as _op
 import copy as _cp
 import textwrap as _tw
+import documark as _dm
 
 from ..conveniences import descriptions as _descriptions
 from ..conveniences import copies as _copies
@@ -25,7 +27,6 @@ from ..dates import (Period, Span, Frequency, EmptyRanger, )
 from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
 from .. import has_variants as _has_variants
-from .. import pages as _pages
 
 from . import _temporal
 from . import _filling
@@ -60,6 +61,7 @@ from ._moving import *
 
 from ._conversions import __all__ as _conversions__all__
 from ._conversions import *
+
 #]
 
 
@@ -76,6 +78,8 @@ _ELEMENTWISE_FUNCTIONS = {
     "logistic": _sp.special.expit,
     "normal_cdf": _sp.stats.norm.cdf,
     "normal_pdf": _sp.stats.norm.pdf,
+    "maximum": _np.maximum,
+    "minimum": _np.minimum,
 }
 
 FUNCTION_ADAPTATIONS_TIMEWISE_NUMPY = (
@@ -123,7 +127,7 @@ def _get_date_positions(dates, base, num_periods, /, ):
     return pos_adjusted, add_before, add_after
 
 
-@_pages.reference(
+@_dm.reference(
     path=("data_management", "time_series.md", ),
     categories={
         "constructor": "Constructing new time series",
@@ -181,7 +185,7 @@ variants of the data, stored as mutliple columns.
     _missing_str: str = "⋅"
     _test_missing_period = staticmethod(lambda x: _np.all(_np.isnan(x)))
 
-    @_pages.reference(
+    @_dm.reference(
         category="constructor",
         call_name="Series",
     )
@@ -302,19 +306,19 @@ self = Series(
         )
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def shape(self, /, ) -> tuple[int, int]:
         """==Shape of time series data=="""
         return self.data.shape
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def num_periods(self, /, ) -> int:
         """==Number of periods from the first to the last observation=="""
         return self.data.shape[0]
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def num_variants(self, /, ) -> int:
         """==Number of variants (columns) within the `Series` object=="""
         return self.data.shape[1]
@@ -327,7 +331,7 @@ self = Series(
         return _has_variants.is_singleton(self.num_variants, )
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def span(self, ):
         """==Time span of the time series=="""
         return Span(self.start, self.end, ) if self.start else ()
@@ -335,13 +339,13 @@ self = Series(
     range = span
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def from_until(self, ):
         """==Two-tuple with the start date and end date of the time series=="""
         return self.start, self.end
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def periods(self, /, ) -> tuple[Period, ...]:
         """==N-tuple with the periods from the start period to the end period of the time series=="""
         return tuple(self.range, )
@@ -349,7 +353,7 @@ self = Series(
     dates = periods
 
     @property
-    @_pages.reference(category="property", call_name="start", )
+    @_dm.reference(category="property", call_name="start", )
     def _start(self):
         """==Start date of the time series=="""
         raise NotImplementedError
@@ -361,7 +365,7 @@ self = Series(
     start_date = start_period
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def end(self):
         """==End period of the time series=="""
         return (
@@ -373,7 +377,7 @@ self = Series(
     end_date = end
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def frequency(self, /, ):
         """==Date frequency of the time series=="""
         return (
@@ -383,13 +387,13 @@ self = Series(
         )
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def is_empty(self, ) -> bool:
         """==True if the time series is empty=="""
         return not self.data.size
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def has_missing(self, /, ):
         """==True if the time series is non-empty and contains in-sample missing values=="""
         return (not self.is_empty) and _np.isnan(self.data).any()
@@ -709,7 +713,7 @@ self = Series(
         new.set_data(encompassing_span, new_data, )
         return new
 
-    @_pages.reference(category="homogenizing", )
+    @_dm.reference(category="homogenizing", )
     def clip(
         self,
         /,
@@ -815,7 +819,7 @@ self = Series(
         else:
             self.start = new_date - (old_date - self.start)
 
-    @_pages.reference(category="manipulation", )
+    @_dm.reference(category="manipulation", )
     def replace_where(
         self,
         test: Callable,

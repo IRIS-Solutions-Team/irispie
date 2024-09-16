@@ -3,14 +3,16 @@
 
 
 #[
+
 from __future__ import absolute_import
 
 from typing import (Sequence, Iterable, )
 import plotly.graph_objects as _pg
 import plotly.subplots as _ps
+import documark as _dm
 
 from .dates import (Period, )
-from . import pages as _pages
+
 #]
 
 
@@ -22,7 +24,7 @@ __all__ = (
 _EMPTY_SUBPLOT_TITLE = " "
 
 
-@_pages.reference(category="arrange", )
+@_dm.reference(category="arrange", )
 def make_subplots(
     rows: int,
     columns: int | None = None,
@@ -54,7 +56,7 @@ def make_subplots(
     )
 
 
-@_pages.reference(category="custom", )
+@_dm.reference(category="custom", )
 def highlight(
     figure: _pg.Figure,
     span: Iterable[Period] | None = None,
@@ -157,7 +159,7 @@ def resolve_subplot(
     raise TypeError(f"Invalid subplot type: {type(subplot)}")
 
 
-@_pages.reference(
+@_dm.reference(
     path=("visualization_reporting", "plotly_wrapper.md", ),
     categories={
         "arrange": "Arranging charts",

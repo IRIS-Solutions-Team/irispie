@@ -13,7 +13,6 @@ from .. import equations as _equations
 from .. import quantities as _quantities
 from ..aldi.maps import (ArrayMap, )
 from ..incidences.main import (Token, )
-from ._printers import (IterPrinter, )
 from ._equators import (Equator, )
 from ._jacobians import (Jacobian, )
 from ..evaluators.base import (Evaluator, )
@@ -40,15 +39,13 @@ Create a map for updating the data array with the new guess.
     return update_map
 
 
-def create_evaluator_closure(
+def create_evaluator(
     wrt_spots: Iterable[Token],
     columns_to_eval: Sequence[int],
-    #
     wrt_equations: Iterable[_equations.Equation],
     all_quantities: Iterable[_quantities.Quantity],
     terminator: Terminator | None,
     context: dict | None,
-    iter_printer_settings: dict[str, Any] | None,
 ) -> SimpleNamespace:
     """
     """
@@ -74,22 +71,18 @@ def create_evaluator_closure(
         context=context,
     )
 
+    jacobian_wrt_spots = tuple(wrt_spots)
+    if needs_terminal:
+        jacobian_wrt_spots += tuple(terminator.terminal_wrt_spots)
+
     jacobian = Jacobian(
         wrt_equations,
-        wrt_spots + list(terminator.terminal_wrt_spots),
+        jacobian_wrt_spots,
         qid_to_logly,
         sparse=True,
         context=context,
         columns_to_eval=columns_to_eval,
         terminator=terminator,
-    )
-
-    iter_printer = IterPrinter(
-        wrt_equations,
-        tuple(tok.qid for tok in wrt_spots),
-        qid_to_logly,
-        qid_to_name,
-        **(iter_printer_settings or {}),
     )
 
     def get_init_guess(data_array: _np.ndarray, /, ) -> _np.ndarray:
@@ -105,8 +98,6 @@ def create_evaluator_closure(
     ) -> None:
         """
         """
-        # Create a copy of maybelog_guess to avoid modifying the original
-        # array in scipy.optimize.root
         maybelog_guess = _np.copy(maybelog_guess, )
         maybelog_guess[index_logly] = _np.exp(maybelog_guess[index_logly])
         data_array[update_map.lhs[0], update_map.lhs[1]] = maybelog_guess
@@ -135,10 +126,6 @@ def create_evaluator_closure(
         jacobian_outcome = jacobian.eval(data_array, )
         if needs_terminal:
             jacobian_outcome = terminator.terminate_jacobian(jacobian_outcome, )
-        #
-        # if maybelog_guess is not None:
-        #    iter_printer.next(maybelog_guess, equator_outcome, jacobian_calculated=True, )
-        #
         return equator_outcome, jacobian_outcome, 
 
     def eval_func(
@@ -152,8 +139,7 @@ def create_evaluator_closure(
         if needs_terminal:
             terminator.terminate_simulation(data_array, )
         equator_outcome = equator.eval(data_array, )
-        equator_outcome = _np.vstack(equator_outcome, ).flatten(order="Fortran"[0], )
-        return equator_outcome
+        return _np.vstack(equator_outcome, ).flatten(order="F", )
 
     def eval_jacob(
         maybelog_guess: _np.ndarray | None,

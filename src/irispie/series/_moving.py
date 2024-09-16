@@ -4,16 +4,18 @@ Time series mixin for moving sum, average, product
 
 
 #[
+
 from __future__ import annotations
 
 from collections.abc import (Iterable, )
 from typing import (Self, Callable, )
 import numpy as _np
 import functools as _ft
+import documark as _dm
 
-from .. import pages as _pages
 from .. import dates as _dates
 from . import _functionalize
+
 #]
 
 
@@ -26,7 +28,7 @@ class Inlay:
     """
     #[
 
-    @_pages.reference(
+    @_dm.reference(
         category=None,
         call_name="Moving window calculations",
         call_name_is_code=False,
@@ -141,7 +143,7 @@ self.mov_prod(window=None, )
         new_data = func(data_windows, axis=2, )
         self._replace_data(new_data, )
 
-    @_pages.reference(category="moving", )
+    @_dm.reference(category="moving", )
     def mov_sum(self, window: int | None = None, ) -> Self:
         r"""
 ................................................................................
@@ -156,7 +158,7 @@ See documentation of [moving window calculations](#moving-window-calculations) o
         """
         return self.moving_window(_np.sum, window=window, )
 
-    @_pages.reference(category="moving", )
+    @_dm.reference(category="moving", )
     def mov_avg(self, window: int | None = None, ) -> Self:
         r"""
 ................................................................................
@@ -171,7 +173,7 @@ See documentation of [moving window calculations](#moving-window-calculations) o
         """
         return self.moving_window(_np.mean, window=window, )
 
-    @_pages.reference(category="moving", )
+    @_dm.reference(category="moving", )
     def mov_mean(self, window: int | None = None, ) -> Self:
         r"""
 ................................................................................
@@ -186,7 +188,7 @@ See documentation of [moving window calculations](#moving-window-calculations) o
         """
         return self.moving_window(_np.mean, window=window, )
 
-    @_pages.reference(category="moving", )
+    @_dm.reference(category="moving", )
     def mov_prod(self, window: int | None = None, ) -> Self:
         r"""
 ................................................................................

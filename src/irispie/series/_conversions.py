@@ -4,6 +4,7 @@ Frequency conversion of time series
 
 
 #[
+
 from __future__ import annotations
 
 from typing import (Self, Callable, )
@@ -12,11 +13,12 @@ import numpy as _np
 import functools as _ft
 import operator as _op
 import statistics as _st
+import documark as _dm
 
 from .. import dates as _dates
-from .. import pages as _pages
 from . import arip as _arip
 from . import _functionalize
+
 #]
 
 
@@ -39,7 +41,7 @@ class Inlay:
     """
     #[
 
-    @_pages.reference(category="conversion", )
+    @_dm.reference(category="conversion", )
     def aggregate(
         self,
         target_freq: _dates.Frequency,
@@ -144,7 +146,7 @@ class Inlay:
         new_start_date, new_data = aggregate_func(self, new_dater_class, aggregate_within_data_func, )
         self._replace_start_and_values(new_start_date, new_data, )
 
-    @_pages.reference(category="conversion", )
+    @_dm.reference(category="conversion", )
     def disaggregate(
         self,
         target_freq: _dates.Frequency,

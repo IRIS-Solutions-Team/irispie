@@ -4,6 +4,7 @@ Simultaneous models
 
 
 #[
+
 from __future__ import annotations
 
 from typing import (Self, Any, TypeAlias, Literal, )
@@ -14,6 +15,7 @@ import copy as _co
 import numpy as _np
 import itertools as _it
 import functools as _ft
+import documark as _dm
 
 from .. import has_invariant as _has_invariant
 from .. import has_variants as _has_variants
@@ -22,7 +24,6 @@ from .. import quantities as _quantities
 from .. import sources as _sources
 from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
-from .. import pages as _pages
 from ..conveniences import iterators as _iterators
 from ..parsers import common as _pc
 from ..databoxes import main as _databoxes
@@ -46,6 +47,7 @@ from . import _pretty as _pretty
 from . import _assigns as _assigns
 from . import _slatable_protocols as _slatable_protocols
 from . import _plannable_protocols as _plannable_protocols
+
 #]
 
 
@@ -55,7 +57,7 @@ __all__ = [
 ]
 
 
-@_pages.reference(
+@_dm.reference(
     path=("structural_models", "simultaneous.md", ),
     categories={
         "constructor": "Creating new simultaneous models",
@@ -119,7 +121,7 @@ class Simultaneous(
         return self
 
     @classmethod
-    @_pages.reference(category="constructor", call_name="Simultaneous.from_file", )
+    @_dm.reference(category="constructor", call_name="Simultaneous.from_file", )
     def from_file(klass, *args, **kwargs, ) -> _sources.SourceMixinProtocol:
         """
 ················································································
@@ -167,7 +169,7 @@ model object.
         return _sources.from_file(klass, *args, **kwargs, )
 
     @classmethod
-    @_pages.reference(category="constructor", call_name="Simultaneous.from_string",)
+    @_dm.reference(category="constructor", call_name="Simultaneous.from_string",)
     def from_string(klass, *args, **kwargs, ) -> _sources.SourceMixinProtocol:
         """
 ················································································
@@ -289,43 +291,43 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         self._invariant.quantities = _quantities.change_logly(self._invariant.quantities, new_logly, qids)
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def is_linear(self, /, ) -> bool:
         """==True for models declared as linear=="""
         return self._invariant._flags.is_linear
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def is_flat(self, /, ) -> bool:
         """==True for models declared as flat=="""
         return self._invariant._flags.is_flat
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def is_deterministic(self, /, ) -> bool:
         """==True for models declared as deterministic=="""
         return self._invariant._flags.is_deterministic
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def num_transition_equations(self, /, ) -> int:
         """==Number of transition equations=="""
         return self._invariant.num_transition_equations
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def num_measurement_equations(self, /, ) -> int:
         """==Number of measurement equations=="""
         return self._invariant.num_measurement_equations
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def max_lag(self, /, ) -> int:
         """==Maximul lag in the model (negative or zero)=="""
         return self._invariant._min_shift
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def max_lead(self, /, ) -> int:
         """==Maximul lead in the model (positive or zero)=="""
         return self._invariant._max_shift

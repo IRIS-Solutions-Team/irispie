@@ -14,8 +14,8 @@ import enum as _en
 import functools as _ft
 import datetime as _dt
 import calendar as _ca
+import documark as _dm
 
-from . import pages as _pages
 from .conveniences import copies as _copies
 from . import wrongdoings as _wrongdoings
 #]
@@ -37,7 +37,7 @@ __all__ = (
 )
 
 
-@_pages.reference(
+@_dm.reference(
     path=("data_management", "frequencies.md", ),
     categories=None,
 )
@@ -93,7 +93,7 @@ custom check of time period or time series properties is needed.
     UNKNOWN = -1
 
     @classmethod
-    @_pages.reference(
+    @_dm.reference(
         category="constructor",
         call_name="Frequency.from_letter",
     )
@@ -113,7 +113,7 @@ custom check of time period or time series properties is needed.
         return next( x for x in klass if x.name.startswith(letter) )
 
     @classmethod
-    @_pages.reference(
+    @_dm.reference(
         category="constructor",
         call_name="Frequency.from_sdmx_string",
     )
@@ -142,7 +142,7 @@ custom check of time period or time series properties is needed.
             )
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def letter(self, /, ) -> str:
         r"""==Single letter representation of time frequency=="""
         return self.name[0] if self is not self.UNKNOWN else "?"
@@ -152,7 +152,7 @@ custom check of time period or time series properties is needed.
         return PLOTLY_FORMATS[self]
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def is_regular(self, /, ) -> bool:
         r"""==True for regular time frequency=="""
         return self in (self.YEARLY, self.HALFYEARLY, self.QUARTERLY, self.MONTHLY, )
@@ -384,7 +384,7 @@ def _period_constructor_with_ellipsis(
 
 
 
-@_pages.reference(
+@_dm.reference(
     path=("data_management", "periods.md", ),
     categories={
         "constructor": "Creating new time periods",
@@ -418,7 +418,7 @@ creating time [`Spans`](spans.md).
     frequency = None
 
     @property
-    @_pages.reference(
+    @_dm.reference(
         category="property",
         call_name="frequency",
     )
@@ -428,7 +428,7 @@ creating time [`Spans`](spans.md).
 
     needs_resolve = False
 
-    @_pages.reference(
+    @_dm.reference(
         category=None,
         call_name="Time period constructors",
         call_name_is_code=False,
@@ -496,7 +496,7 @@ Overview of time period constructors:
         """
         self.serial = int(serial)
 
-    @_pages.reference(
+    @_dm.reference(
         category=None,
         call_name="Time period arithmetics",
         call_name_is_code=False,
@@ -533,7 +533,7 @@ historical data analysis in various applications.
 ................................................................................
         """
 
-    @_pages.reference(
+    @_dm.reference(
         category=None,
         call_name="Time period comparison",
         call_name_is_code=False,
@@ -692,18 +692,18 @@ literal.
     end_date = end
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def year(self, /, ) -> int:
         r"""==Calendar year of the time period=="""
         raise NotImplementedError
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def period(self, /, ) -> int:
         r"""==Period number within the calendar year=="""
         raise NotImplementedError
 
-    @_pages.reference(category="conversion", )
+    @_dm.reference(category="conversion", )
     def refrequent(self, new_freq: Frequency, *args ,**kwargs, ) -> Self:
         r"""
 ................................................................................
@@ -754,7 +754,7 @@ additional arguments.
     convert_to_new_freq = refrequent
     convert = refrequent
 
-    @_pages.reference(category="conversion", )
+    @_dm.reference(category="conversion", )
     def to_ymd(self, **kwargs, ) -> tuple[int, int, int]:
         r"""
 ................................................................................
@@ -804,7 +804,7 @@ integers.
         """
         raise NotImplementedError
 
-    @_pages.reference(category="print", )
+    @_dm.reference(category="print", )
     def to_iso_string(self, **kwargs, ) -> str:
         r"""
 ................................................................................
@@ -842,7 +842,7 @@ integers.
         year, month, day = self.to_ymd(**kwargs, )
         return f"{year:04g}-{month:02g}-{day:02g}"
 
-    @_pages.reference(category="print", )
+    @_dm.reference(category="print", )
     def to_sdmx_string(self, /, ) -> str:
         r"""
 ................................................................................
@@ -926,7 +926,7 @@ where lowercase letters represent the respective time period components
     def __hash__(self, /, ) -> int:
         return hash((int(self.serial), hash(self.frequency), ))
 
-    @_pages.reference(
+    @_dm.reference(
         category="arithmetics_comparison",
         call_name="+",
     )
@@ -972,7 +972,7 @@ periods (if positive) or backward (if negative).
 
     __radd__ = __add__
 
-    @_pages.reference(
+    @_dm.reference(
         category="arithmetics_comparison",
         call_name="-",
     )
@@ -1038,7 +1038,7 @@ respective frequency to move backward or forward.
     def __index__(self):
         return self.serial
 
-    @_pages.reference(
+    @_dm.reference(
         category="arithmetics_comparison",
         call_name="==",
     )
@@ -1055,7 +1055,7 @@ See documentation for [time period comparison](#time-period-comparison).
         _check_periods(self, other, )
         return self.serial == other.serial
 
-    @_pages.reference(
+    @_dm.reference(
         category="arithmetics_comparison",
         call_name="!=",
     )
@@ -1072,7 +1072,7 @@ See documentation for [time period comparison](#time-period-comparison).
         _check_periods(self, other, )
         return self.serial != other.serial
 
-    @_pages.reference(
+    @_dm.reference(
         category="arithmetics_comparison",
         call_name="<",
     )
@@ -1089,7 +1089,7 @@ See documentation for [time period comparison](#time-period-comparison).
         _check_periods(self, other, )
         return self.serial < other.serial
 
-    @_pages.reference(
+    @_dm.reference(
         category="arithmetics_comparison",
         call_name="<=",
     )
@@ -1106,7 +1106,7 @@ See documentation for [time period comparison](#time-period-comparison).
         _check_periods(self, other, )
         return self.serial <= other.serial
 
-    @_pages.reference(
+    @_dm.reference(
         category="arithmetics_comparison",
         call_name=">",
     )
@@ -1123,7 +1123,7 @@ See documentation for [time period comparison](#time-period-comparison).
         _check_periods(self, other, )
         return self.serial > other.serial
 
-    @_pages.reference(
+    @_dm.reference(
         category="arithmetics_comparison",
         call_name=">=",
     )
@@ -1140,7 +1140,7 @@ See documentation for [time period comparison](#time-period-comparison).
         _check_periods(self, other, )
         return self.serial >= other.serial
 
-    @_pages.reference(
+    @_dm.reference(
         category="arithmetics_comparison",
     )
     def shift(
@@ -1581,7 +1581,7 @@ and the [`Span` constructors](spans.md).
 ................................................................................
 """
 yy.__name__ = "irispie.yy"
-yy = _pages.reference(category="constructor", )(yy)
+yy = _dm.reference(category="constructor", )(yy)
 
 
 hh = _period_constructor_with_ellipsis(HalfyearlyPeriod.from_year_period, )
@@ -1596,7 +1596,7 @@ and the [`Span` constructors](spans.md).
 ................................................................................
 """
 hh.__name__ = "irispie.hh"
-hh = _pages.reference(category="constructor", )(hh)
+hh = _dm.reference(category="constructor", )(hh)
 
 
 qq = _period_constructor_with_ellipsis(QuarterlyPeriod.from_year_period)
@@ -1611,7 +1611,7 @@ and the [`Span` constructors](spans.md).
 ................................................................................
 """
 qq.__name__ = "irispie.qq"
-qq = _pages.reference(category="constructor", )(qq)
+qq = _dm.reference(category="constructor", )(qq)
 
 
 mm = _period_constructor_with_ellipsis(MonthlyPeriod.from_year_period)
@@ -1626,7 +1626,7 @@ and the [`Span` constructors](spans.md).
 ................................................................................
 """
 mm.__name__ = "irispie.mm"
-mm = _pages.reference(category="constructor", )(mm)
+mm = _dm.reference(category="constructor", )(mm)
 
 
 ii = _period_constructor_with_ellipsis(IntegerPeriod)
@@ -1641,10 +1641,10 @@ and the [`Span` constructors](spans.md).
 ................................................................................
 """
 ii.__name__ = "irispie.ii"
-ii = _pages.reference(category="constructor", )(ii)
+ii = _dm.reference(category="constructor", )(ii)
 
 
-@_pages.reference(
+@_dm.reference(
     category="constructor",
     call_name="irispie.dd",
 )
@@ -1673,7 +1673,7 @@ def daily_serial_from_ymd(year: int, month: int, day: int, ) -> int:
     return _dt.date(year, month, day).toordinal()
 
 
-@_pages.reference(
+@_dm.reference(
     path=("data_management", "spans.md", ),
     categories={
         "constructor": "Creating new time spans",
@@ -1700,7 +1700,7 @@ from a start period to an end period (possibly with a step size other than
     """
     #[
 
-    @_pages.reference(
+    @_dm.reference(
         category="constructor",
         call_name="Span",
         priority=20,
@@ -1752,7 +1752,7 @@ from a start period to an end period (possibly with a step size other than
         return get_encompassing_span(*args, )[0]
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def start(self):
         """==Start period of the time span=="""
         return self._start
@@ -1760,7 +1760,7 @@ from a start period to an end period (possibly with a step size other than
     start_date = start
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def end(self):
         """==End period of the time span=="""
         return self._end
@@ -1768,7 +1768,7 @@ from a start period to an end period (possibly with a step size other than
     end_date = end
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def step(self):
         """==Step size of the time span=="""
         return self._step
@@ -1778,7 +1778,7 @@ from a start period to an end period (possibly with a step size other than
         return type(self._start) if not self.needs_resolve else None
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def direction(self, ) -> Literal["forward", "backward", ]:
         """==Direction of the time span=="""
         return "forward" if self._step > 0 else "backward"
@@ -1792,12 +1792,12 @@ from a start period to an end period (possibly with a step size other than
         # return bool(self._start and self._end)
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def frequency(self) -> Frequency:
         """==Frequency of the time span=="""
         return self._class.frequency
 
-    @_pages.reference(category="manipulation", )
+    @_dm.reference(category="manipulation", )
     def reverse(self, ) -> None:
         r"""
 ................................................................................
@@ -1836,7 +1836,7 @@ The time span is reversed in place.
         return new
         #]
 
-    @_pages.reference(category="manipulation", )
+    @_dm.reference(category="manipulation", )
     def shift_end(
         self,
         by: int,
@@ -1873,7 +1873,7 @@ depending on the direction and magnitude of the shift.
         """
         self._end += by
 
-    @_pages.reference(category="manipulation", )
+    @_dm.reference(category="manipulation", )
     def shift_start(
         self,
         by: int,
@@ -1911,7 +1911,7 @@ This method modifies the object in place and does not return a value.
     def to_plotly_dates(self, *args, **kwargs, ) -> tuple[str]:
         return tuple(t.to_plotly_date(*args, **kwargs, ) for t in self)
 
-    @_pages.reference(category="print", )
+    @_dm.reference(category="print", )
     def to_iso_strings(self, *args, **kwargs, ) -> tuple[str]:
         r"""
 ................................................................................
@@ -1946,7 +1946,7 @@ Converts each period within the time span to an ISO-8601 string format.
         """
         return tuple(t.to_iso_string(*args, **kwargs, ) for t in self)
 
-    @_pages.reference(category="print", )
+    @_dm.reference(category="print", )
     def to_sdmx_strings(self, *args, **kwargs, ) -> tuple[str]:
         r"""
 ................................................................................
@@ -1995,7 +1995,7 @@ Converts each period within the time span to a SDMX string format.
         step_rep = f", {self._step}" if self._step!=1 else ""
         return f"Span({start_rep}, {end_rep}{step_rep})"
 
-    @_pages.reference(
+    @_dm.reference(
         category="arithmetics",
         call_name="+",
     )
@@ -2036,7 +2036,7 @@ earlier or later than the original.
 
     __radd__ = __add__
 
-    @_pages.reference(
+    @_dm.reference(
         category="arithmetics",
         call_name="-",
     )
@@ -2106,7 +2106,7 @@ distance between each period in the span and a given `Period`.
         resolved_end = self._end if self._end else self._end.resolve(context, )
         return type(self)(resolved_start, resolved_end, self._step, )
 
-    @_pages.reference(category="manipulation", )
+    @_dm.reference(category="manipulation", )
     def shift(self, by: int) -> None:
         r"""
 ................................................................................
@@ -2381,6 +2381,19 @@ def refrequent(
 
 
 convert_to_new_freq = refrequent
+
+
+SPAN_ELLIPSIS = "…"
+
+
+def get_printable_span(start: Period, end: Period, ) -> str:
+    """
+    """
+    return (
+        f"{start}{SPAN_ELLIPSIS}{end}"
+        if start is not None or end is not None
+        else "None"
+    )
 
 
 #

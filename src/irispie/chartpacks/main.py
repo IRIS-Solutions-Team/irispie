@@ -4,18 +4,19 @@ Time series chartpacks
 
 
 #[
+
 from __future__ import annotations
 
 import functools as _ft
 import re as _re
 import math as _ma
+import documark as _dm
 import plotly.graph_objects as _pg
 
 from ..conveniences import descriptions as _descriptions
 from ..conveniences import copies as _copies
 from .. import plotly_wrap as _plotly_wrap
 from .. import dates as _dates
-from .. import pages as _pages
 from ..databoxes import main as _databoxes
 
 from typing import (TYPE_CHECKING, )
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
     from typing import (Self, Callable, )
     from collections.abc import (Iterator, Iterable, Sequence, )
     from types import (EllipsisType, )
+
 #]
 
 
@@ -55,7 +57,7 @@ _CHART_INPUT_STRING_PATTERN = _re.compile(
 )
 
 
-@_pages.reference(
+@_dm.reference(
     path=("visualization_reporting", "chartpacks.md", ),
     categories={
         "constructor": "Creating new chartpacks",
@@ -110,7 +112,7 @@ Chartpacks
         }
 
     @classmethod
-    @_pages.reference(category="constructor", call_name="Chartpack", )
+    @_dm.reference(category="constructor", call_name="Chartpack", )
     def _constructor_doc():
         """
 ················································································
@@ -169,7 +171,7 @@ self = Chartpack(
         """
         pass
 
-    @_pages.reference(category="plot", )
+    @_dm.reference(category="plot", )
     def plot(
         self,
         input_db: _databoxes.Databox,
@@ -205,7 +207,7 @@ self = Chartpack(
             figure.format_figure_title(**kwargs, )
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def num_figures(self, ) -> int:
         """==Total number of figures in the chartpack=="""
         return len(self._figures, ) if self._figures else 0
@@ -217,7 +219,7 @@ self = Chartpack(
             self._figures = []
         self._figures.append(figure, )
 
-    @_pages.reference(category="add", )
+    @_dm.reference(category="add", )
     def add_figure(self, figure_string: str, **kwargs, ) -> None:
         """
 ················································································
@@ -236,7 +238,7 @@ self = Chartpack(
         return new_figure
 
     @staticmethod
-    @_pages.reference(category="add", call_name="add_chart", )
+    @_dm.reference(category="add", call_name="add_chart", )
     def _add_chart_doc():
         """
 ················································································

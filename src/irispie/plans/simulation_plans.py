@@ -4,6 +4,7 @@ Meta plans for dynamic simulations
 
 
 #[
+
 from __future__ import annotations
 
 from collections.abc import (Iterable, )
@@ -12,16 +13,18 @@ from types import (EllipsisType, )
 import itertools as _it
 import numpy as _np
 import textwrap as _tw
+import functools as _ft
+import documark as _dm
 
 from ..conveniences import copies as _copies
 from ..dates import (Period, )
 from ..series.main import (Series, )
 from .. import wrongdoings as _wrongdoings
-from .. import pages as _pages
 from . import _registers as _registers
 from . import _pretty as _pretty
 from . import _indexes as _indexes
 from . import transforms as _transforms
+
 #]
 
 
@@ -50,7 +53,7 @@ class SimulationPlannableProtocol(Protocol, ):
 
 
 #[
-@_pages.reference(
+@_dm.reference(
     path=("structural_models", "simulation_plans.md", ),
     categories={
         "constructor": "Creating new simulation plans",
@@ -109,7 +112,7 @@ the input databox when the simulation is run.
         + tuple(f"default_{r}" for r in _registers)
     )
 
-    @_pages.reference(
+    @_dm.reference(
         category="constructor",
         call_name="SimulationPlan",
     )
@@ -175,7 +178,7 @@ Create a new simulation plan object for a
                 raise _wrongdoings.IrisPieError(f"Plan must be created using the simulated model")
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def start(self, /, ) -> Period:
         """==Start date of the simulation span=="""
         return self.base_span[0]
@@ -184,7 +187,7 @@ Create a new simulation plan object for a
     start_date = start
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def end(self, /, ) -> Period:
         """==End date of the simulation span=="""
         return self.base_span[-1]
@@ -193,18 +196,18 @@ Create a new simulation plan object for a
     end_date = end
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def num_periods(self, /, ) -> int:
         """==Number of periods in the simulation span=="""
         return len(self.base_span) if self.base_span is not None else 1
 
     @property
-    @_pages.reference(category="property", )
+    @_dm.reference(category="property", )
     def frequency(self, /, ) -> str:
         """==Date frequency of the simulation span=="""
         return self.start.frequency
 
-    @_pages.reference(category="definition_sequential", )
+    @_dm.reference(category="definition_sequential", )
     def exogenize(
         self,
         dates: Iterable[Period] | EllipsisType,
@@ -287,7 +290,7 @@ values.
         transform = _transforms.resolve_transform(transform, **kwargs, )
         self._write_to_register("exogenized", dates, names, transform, )
 
-    @_pages.reference(category="definition_simultaneous", )
+    @_dm.reference(category="definition_simultaneous", )
     def exogenize_anticipated(
         self,
         dates: Iterable[Period] | EllipsisType,
@@ -327,7 +330,7 @@ self.exogenize_anticipated(
             status,
         )
 
-    @_pages.reference(category="definition_simultaneous", )
+    @_dm.reference(category="definition_simultaneous", )
     def exogenize_unanticipated(
         self,
         dates: Iterable[Period] | EllipsisType,
@@ -382,7 +385,7 @@ self.exogenize_unanticipated(
             status,
         )
 
-    @_pages.reference(category="information_sequential", )
+    @_dm.reference(category="information_sequential", )
     def get_exogenized_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
         """
 ················································································
@@ -396,7 +399,7 @@ self.exogenize_unanticipated(
             *args, **kwargs,
         )
 
-    @_pages.reference(category="information_simultaneous", )
+    @_dm.reference(category="information_simultaneous", )
     def get_exogenized_unanticipated_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
         """
 ················································································
@@ -410,7 +413,7 @@ self.exogenize_unanticipated(
             *args, **kwargs,
         )
 
-    @_pages.reference(category="information_simultaneous", )
+    @_dm.reference(category="information_simultaneous", )
     def get_exogenized_anticipated_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
         """
 ················································································
@@ -424,7 +427,7 @@ self.exogenize_unanticipated(
             *args, **kwargs,
         )
 
-    # @_pages.reference(category="definition_sequential", )
+    # @_dm.reference(category="definition_sequential", )
     def endogenize(
         self,
         dates: Iterable[Period] | EllipsisType,
@@ -435,7 +438,7 @@ self.exogenize_unanticipated(
         """
         self._write_to_register("endogenized", dates, names, True, )
 
-    @_pages.reference(category="definition_simultaneous", )
+    @_dm.reference(category="definition_simultaneous", )
     def endogenize_anticipated(
         self,
         dates: Iterable[Period] | EllipsisType,
@@ -457,7 +460,7 @@ self.exogenize_unanticipated(
             status,
         )
 
-    @_pages.reference(category="definition_simultaneous", )
+    @_dm.reference(category="definition_simultaneous", )
     def endogenize_unanticipated(
         self,
         dates: Iterable[Period] | EllipsisType,
@@ -479,7 +482,7 @@ self.exogenize_unanticipated(
             status,
         )
 
-    @_pages.reference(category="information_simultaneous", )
+    @_dm.reference(category="information_simultaneous", )
     def get_endogenized_unanticipated_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
         """
 ················································································
@@ -494,7 +497,7 @@ self.exogenize_unanticipated(
             **kwargs,
         )
 
-    @_pages.reference(category="information_simultaneous", )
+    @_dm.reference(category="information_simultaneous", )
     def get_endogenized_anticipated_in_period(self, *args, **kwargs, ) -> tuple[str, ...]:
         """
 ················································································
@@ -539,7 +542,7 @@ self.exogenize_unanticipated(
         True if there are no exogenized or endogenized points in the plan
         """
         has_any_points = any(
-            _has_points_in_register(self._get_register_by_name(n, ), )
+            _has_points_in_register(self.get_register_by_name(n, ), )
             for n in self._registers
         )
         return not has_any_points
@@ -677,24 +680,48 @@ quantity in the pair at the specified dates. It is equivalent to calling
     ) -> _np.ndarray:
         """
         """
-        register = self._get_register_by_name(register_name, )
+        register = self.get_register_by_name(register_name, )
         per_indexes = self._get_per_indexes(periods, )
-        names = self._resolve_validate_register_names(register, names, register_name, )
+        names = self._resolve_register_names(register, names, )
         num_names, num_pers = len(names), len(per_indexes)
         #
-        if names and per_indexes:
-            def get_points_for_name(name: str, ) -> tuple[bool, ...]:
-                return tuple(
-                    register[name][t] if t is not None else False
-                    for t in per_indexes
-                )
-            array = _np.array(tuple(
-                get_points_for_name(n, ) for n in names
-            ), dtype=bool, )
-        else:
-            array = _np.zeros((num_names, num_pers, ), dtype=bool, )
+        if not names or not per_indexes:
+            return _np.zeros((num_names, num_pers, ), dtype=bool, )
         #
-        return array
+        def get_points_for_name(name: str, ) -> tuple[bool, ...]:
+            return tuple(
+                register[name][t] if t is not None else False
+                for t in per_indexes
+            )
+        return _np.array(tuple(
+            get_points_for_name(n, )
+            for n in names
+        ), dtype=bool, )
+
+    def get_registers_as_bool_arrays(
+        self,
+        periods: tuple[Period, ...] | EllipsisType = ...,
+        register_names: Iterable[str] | EllipsisType = ...,
+    ) -> dict[str, _np.ndarray]:
+        """
+        """
+        #[
+        if periods is Ellipsis:
+            periods = tuple(self.base_span)
+        #
+        if register_names is Ellipsis:
+            register_names = tuple(self._registers)
+        #
+        get_register_as_bool_array = _ft.partial(
+            self.get_register_as_bool_array,
+            names=...,
+            periods=periods,
+        )
+        return {
+            n: get_register_as_bool_array(register_name=n, )
+            for n in register_names
+        }
+        #]
 
     def _get_per_indexes(
         self,
@@ -780,8 +807,8 @@ quantity in the pair at the specified dates. It is equivalent to calling
     ) -> None:
         """
         """
-        register = self._get_register_by_name(register_name, )
-        names = self._resolve_validate_register_names(register, names, register_name, )
+        register = self.get_register_by_name(register_name, )
+        names = self._resolve_register_names(register, names, )
         per_indexes, *_ = self._get_period_indexes(periods, )
         for n in names:
             for t in per_indexes:
@@ -910,5 +937,4 @@ _PRETTY_SYMBOL = {
     True: "⋅",
     False: "",
 }
-
 

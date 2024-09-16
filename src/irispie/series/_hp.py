@@ -4,6 +4,7 @@ Univariate time series filters
 
 
 #[
+
 from __future__ import annotations
 
 from numbers import (Real, )
@@ -11,12 +12,13 @@ from collections.abc import (Iterable, Callable, )
 from types import (EllipsisType, )
 from typing import (Self, )
 import numpy as _np
+import documark as _dm
 
-from .. import pages as _pages
 from ..dates import (Period, Frequency, )
 from .. import dates as _dates
 from . import main as _series
 from . import _functionalize
+
 #]
 
 
@@ -163,7 +165,7 @@ class Inlay:
     """
     #[
 
-    @_pages.reference(
+    @_dm.reference(
         category="filtering",
     )
     def hpf(self, /, ):

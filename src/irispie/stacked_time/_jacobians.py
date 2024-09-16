@@ -10,7 +10,7 @@ from types import (SimpleNamespace, )
 import numpy as _np
 import itertools as _it
 
-from ..jacobians.base import (SparseJacobian, )
+from ..jacobians.base import SparseJacobian, DenseJacobian
 from ..fords.terminators import (Terminator, )
 from ..aldi.maps import (ArrayMap, )
 
@@ -76,7 +76,6 @@ class Jacobian(SparseJacobian, ):
         #     jacobian_matrix += 0.*extended_jacobian_matrix[:, 42+i*42:42+i*42+42]
         # # j = jacobian_matrix
         # # x = extended_jacobian_matrix
-        # # import IPython; IPython.embed(header=__name__)
         # return jacobian_matrix
 
     def _create_eid_to_wrts(

@@ -4,20 +4,22 @@ Meta plans for steady-state calculations
 
 
 #[
+
 from __future__ import annotations
 
 from typing import (TYPE_CHECKING, Protocol, )
 from numbers import (Real, )
 import textwrap as _tw
+import documark as _dm
 
 from ..conveniences import copies as _copies
 from ..series.main import (Series, )
-from .. import pages as _pages
 from . import _registers as _registers
 from . import _pretty as _pretty
 
 if TYPE_CHECKING:
     from typing import (Iterable, )
+
 #]
 
 
@@ -45,7 +47,7 @@ class SimulationPlannableProtocol(Protocol, ):
 
 
 #[
-@_pages.reference(
+@_dm.reference(
     path=("structural_models", "steady_plans.md", ),
     categories={
         "constructor": "Creating new steady plans",
@@ -79,7 +81,7 @@ class SteadyPlan(
         + tuple(f"_{r}_register" for r in _registers)
     )
 
-    @_pages.reference(
+    @_dm.reference(
         category="constructor",
         call_name="SteadyPlan",
     )
@@ -121,7 +123,7 @@ class SteadyPlan(
     fix_levels = fix_level
     fix_changes = fix_change
 
-    @_pages.reference(category="fixing", )
+    @_dm.reference(category="fixing", )
     def fix(self, *args, **kwargs, ) -> None:
         r"""
 ................................................................................
@@ -134,7 +136,7 @@ class SteadyPlan(
         if self._fixed_change_register:
             self.fix_change(*args, **kwargs, )
 
-    @_pages.reference(category="fixing", )
+    @_dm.reference(category="fixing", )
     def unfix(self, *args, **kwargs, ) -> None:
         r"""
 ................................................................................
@@ -171,7 +173,7 @@ class SteadyPlan(
     def any_in_register(self, register_name: str, /, ) -> bool:
         """
         """
-        return any(self._get_register_by_name(register_name, ).values(), )
+        return any(self.get_register_by_name(register_name, ).values(), )
 
     def _write_to_register(
         self,
@@ -181,8 +183,8 @@ class SteadyPlan(
     ) -> None:
         """
         """
-        register = self._get_register_by_name(register_name, )
-        names = self._resolve_validate_register_names(register, names, register_name, )
+        register = self.get_register_by_name(register_name, )
+        names = self._resolve_register_names(register, names, )
         for n in names:
             register[n] = new_status
 
@@ -192,7 +194,7 @@ class SteadyPlan(
     ) -> tuple[str, ...]:
         """
         """
-        register = self._get_register_by_name(register_name, )
+        register = self.get_register_by_name(register_name, )
         return tuple(
             name for name, value in register.items()
             if value
