@@ -4,22 +4,24 @@ Model equations
 
 
 #[
+
 from __future__ import annotations
 
-from typing import (Self, Iterable, Callable, )
+from typing import Self, Callable
+from collections.abc import Iterable, Sequence
 import enum as _en
 import re as _re
 import numpy as _np
-import dataclasses as _dc
 import itertools as _it
 import operator as _op
-import copy as _cp
+from dataclasses import dataclass
 
-from .incidences.main import (Token, )
-from .incidences import main as _incidence
+from .incidences.main import Token
+from .incidences import main as _incidences
 from . import quantities as _quantities
 from . import attributes as _attributes
 from . import wrongdoings as _wrongdoings
+
 #]
 
 
@@ -57,10 +59,8 @@ for n in __all__:
     exec(f"{n} = EquationKind.{n}")
 
 
-@_dc.dataclass(slots=True, )
-class Equation(
-    _attributes.AttributesMixin,
-):
+@dataclass
+class Equation:
     """
     """
     #[
@@ -72,7 +72,7 @@ class Equation(
     xtring: str | None = None
     incidence: Iterable[Token] | None = None
     entry: int | None = None
-    attributes: set[str] = ()
+    attributes: set[str] | None = None
 
     def finalize(self, name_to_id: dict[str, int], ) -> None:
         """
@@ -90,10 +90,41 @@ class Equation(
         """
         Shallow copy of the equation
         """
-        return _cp.copy(self, )
+        return type(self)(**self.__dict__, )
 
     def __hash__(self, /, ) -> int:
         return hash(self.__repr__)
+
+    has_attributes = _attributes.has_attributes
+
+    def serialize(self, /, ) -> tuple[int, str, str, str, str, int, tuple[str, ...]]:
+        """
+        """
+        return (
+            int(self.id),
+            str(self.human),
+            str(self.kind.name),
+            str(self.description) if self.description else "",
+            str(self.xtring),
+            _incidences.serialize(self.incidence, ),
+            int(self.entry) if self.entry is not None else None,
+            _attributes.serialize(self.attributes, ),
+        )
+
+    @classmethod
+    def deserialize(klass, data: Sequence[Any], /) -> Self:
+        """
+        """
+        return klass(
+            id=int(data[0]),
+            human=str(data[1]),
+            kind=EquationKind[data[2]],
+            description=str(data[3]) if data[3] is not None else None,
+            xtring=str(data[4]),
+            incidence=_incidences.deserialize(data[5], ),
+            entry=int(data[6]) if data[6] is not None else None,
+            attributes=_attributes.deserialize(data[7], ),
+        )
 
     #]
 
@@ -150,7 +181,7 @@ def create_eid_to_wrt_tokens(
     #[
     eid_to_wrt_tokens = {}
     for eqn in equations:
-        eid_to_wrt_tokens[eqn.id] = _incidence.sort_tokens(
+        eid_to_wrt_tokens[eqn.id] = _incidences.sort_tokens(
             wrt for wrt in all_wrt_tokens
             if wrt in eqn.incidence
         )
@@ -183,7 +214,9 @@ def xtring_from_human(
         tokens_list.append(new_token)
         return new_token.print_xtring()
 
-    xtring = _quantities.QUANTITY_OCCURRENCE_PATTERN.sub(_replace_human_with_x, human)
+    xtring = human
+    xtring = xtring.replace(":=", "=")
+    xtring = _quantities.QUANTITY_OCCURRENCE_PATTERN.sub(_replace_human_with_x, xtring, )
     xtring = _postprocess_xtring(xtring)
     return xtring, set(tokens_list), tokens_list
     #]
@@ -235,14 +268,14 @@ def sort_equations(equations: Iterable[Equation], ) -> Iterable[Equation]:
 
 
 def get_min_shift_from_equations(equations: Iterable[Equation], ) -> int:
-    return _incidence.get_min_shift(generate_all_tokens_from_equations(equations))
+    return _incidences.get_min_shift(generate_all_tokens_from_equations(equations))
 
 
 def get_max_shift_from_equations(
     equations: Iterable[Equation],
     /,
 ) -> int:
-    return _incidence.get_max_shift(generate_all_tokens_from_equations(equations))
+    return _incidences.get_max_shift(generate_all_tokens_from_equations(equations))
 
 
 def validate_selection_of_equations(

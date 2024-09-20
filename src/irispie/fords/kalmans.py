@@ -6,28 +6,29 @@
 
 from __future__ import annotations
 
-from typing import (Any, Iterable, Sequence, Literal, Self, Protocol, NoReturn, )
-from types import (EllipsisType, )
-from numbers import (Real, )
-from collections import (namedtuple, )
+from typing import Protocol
 import functools as _ft
-import dataclasses as _dc
 import numpy as _np
-import scipy as _sp
-import wlogging as _wl
 import documark as _dm
 
 from .. import has_variants as _has_variants
 from .. import quantities as _quantities
-from ..frames import (Frame, )
-from ..dataslates.main import (Dataslate, )
-from ..databoxes.main import (Databox, )
-from .solutions import (Solution, right_div, left_div, )
-from ..dates import (Dater, )
+from ..frames import Frame
+from ..dataslates.main import Dataslate
+from ..databoxes.main import Databox
+from ..series.main import Series
+from .solutions import Solution, right_div, left_div
 
 from . import initializers as _initializers
 from . import shock_simulators as _shock_simulators
-from .descriptors import (Squid, )
+from .descriptors import Squid
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Any, Iterable, Sequence, Literal, Self, NoReturn
+    from types import EllipsisType
+    from numbers import Real
+    from ..dates import Period
 
 #]
 
@@ -37,7 +38,6 @@ _simulate_anticipated_shocks \
 
 
 _DEFAULT_DELTA_TOLERANCE = 1e-12
-_LOGGER = _wl.get_colored_logger(__name__, level=_wl.INFO, )
 
 
 class SingularMatrixError(ValueError, ):
@@ -50,8 +50,6 @@ class KalmanFilterableProtocol(Protocol, ):
     #[
 
     is_singleton: bool
-
-    def get_variant(self, vid: int, /) -> Self: ...
 
     def get_singleton_solution(self, deviation: bool = False, ) -> Solution: ...
 
@@ -118,19 +116,21 @@ class Needs:
         "return_update",
         "return_smooth",
         "return_predict_err",
-        "predict_mse_obs",
+        "return_predict_mse_obs",
         "rescale_variance",
+        "likelihood_contributions",
     )
 
     def __init__(
         self: Self,
-        return_: Iterable[str, ...],
-        return_predict: bool = True,
-        return_update: bool = True,
-        return_smooth: bool = True,
-        return_predict_err: bool = True,
-        predict_mse_obs: bool = True,
+        return_: Iterable[str, ...] = (),
+        return_predict: bool = False,
+        return_update: bool = False,
+        return_smooth: bool = False,
+        return_predict_err: bool = False,
+        return_predict_mse_obs: bool = False,
         rescale_variance: bool = False,
+        likelihood_contributions: bool = False,
     ) -> None:
         """
         """
@@ -139,8 +139,21 @@ class Needs:
         self.return_update = return_update and "update" in return_
         self.return_smooth = return_smooth and "smooth" in return_
         self.return_predict_err = return_predict_err and "predict_err" in return_
-        self.predict_mse_obs = predict_mse_obs and "predict_mse_obs" in return_
+        self.return_predict_mse_obs = return_predict_mse_obs and "predict_mse_obs" in return_
         self.rescale_variance = rescale_variance
+        self.likelihood_contributions = likelihood_contributions
+
+    @property
+    def output_store(self, /, ) -> _OutputStore:
+        """
+        """
+        return any((
+            self.return_predict,
+            self.return_update,
+            self.return_smooth,
+            self.return_predict_err,
+            self.return_predict_mse_obs,
+        ))
 
     #]
 
@@ -168,7 +181,7 @@ class _LogDataslate:
     def from_names_dates(
         klass,
         measurement_names: Iterable[str],
-        dates: Iterable[Dater],
+        dates: Iterable[Period],
         num_variants: int,
         name_to_log_name: dict[str, str],
     ) -> Self:
@@ -352,7 +365,7 @@ class _OutputStore:
         self.predict_std = _std_constructor() if needs.return_predict else None
         self.predict_mse_obs = [
             [None]*input_ds.num_periods for _ in range(num_variants, )
-        ] if needs.return_predict else None
+        ] if needs.return_predict and needs.return_predict_mse_obs else None
         #
         # Updating step
         #
@@ -549,7 +562,7 @@ class Mixin:
         self,
         #
         input_db: Databox,
-        span: Iterable[Dater],
+        span: Iterable[Period],
         #
         diffuse_scale: Real | None = None,
         diffuse_method: Literal["approx_diffuse", "fixed_unknown", "fixed_zero", ] = "fixed_unknown",
@@ -559,8 +572,9 @@ class Mixin:
         return_update: bool = True,
         return_smooth: bool = True,
         return_predict_err: bool = True,
-        predict_mse_obs: bool = True,
+        return_predict_mse_obs: bool = True,
         rescale_variance: bool = False,
+        likelihood_contributions: bool = True,
         #
         shocks_from_data: bool = False,
         stds_from_data: bool = False,
@@ -574,7 +588,6 @@ class Mixin:
         #
         unpack_singleton: bool = True,
         return_info: bool = False,
-        logging_level: int = _wl.INFO,
     ) -> Databox | tuple[Databox, _Info]:
         r"""
 ················································································
@@ -595,8 +608,9 @@ the time series data.
         return_update=True,
         return_smooth=True,
         return_predict_err=True,
-        predict_mse_obs=True,
+        return_predict_mse_obs=True,
         rescale_variance=False,
+        likelihood_contributions=True,
         shocks_from_data=False,
         stds_from_data=False,
         prepend_initial=False,
@@ -647,6 +661,10 @@ the time series data.
 ???+ input "rescale_variance"
     If `True`, rescale all variances by the optimal variance scale factor
     estimated using maximum likelihood after the filtering process.
+
+???+ input "likelihood_contributions"
+    If `True`, return the contributions of individual periods to the overall
+    (negative) log likelihood.
 
 ???+ input "shocks_from_data"
     If `True`, use possibly time-varying shock values from the data; these
@@ -723,10 +741,7 @@ the time series data.
         #    std_names = self.get_names(kind=_quantities.ANY_STD, )
         #    work_db.remove(std_names, strict_names=False, )
 
-        _LOGGER.set_level(logging_level, )
-
         num_variants = self.resolve_num_variants_in_context(num_variants, )
-        _LOGGER.debug(f"Running {num_variants} variants")
 
         slatable = self.get_slatable_for_kalman_filter(
             shocks_from_data=shocks_from_data,
@@ -754,8 +769,9 @@ the time series data.
             return_update=return_update,
             return_smooth=return_smooth,
             return_predict_err=return_predict_err,
-            predict_mse_obs=predict_mse_obs,
+            return_predict_mse_obs=return_predict_mse_obs,
             rescale_variance=rescale_variance,
+            likelihood_contributions=likelihood_contributions,
         )
 
         squid = Squid(self, )
@@ -788,7 +804,10 @@ the time series data.
             diffuse_scale=diffuse_scale,
         )
 
-        zipped = zip(
+        #
+        # Include the variants even though they are not used because otherwise
+        # the number of loops is undetermined (infite iterators)
+        main_iter = zip(
             range(num_variants, ),
             self.iter_variants(),
             input_ds.iter_variants(),
@@ -796,7 +815,7 @@ the time series data.
 
         out_info = []
 
-        for vid, self_v, input_ds_v in zipped:
+        for _, self_v, input_ds_v in main_iter:
 
             solution_v = self_v.get_singleton_solution(deviation=deviation, )
             data_array = input_ds_v.get_data_variant()
@@ -805,8 +824,7 @@ the time series data.
             # Initialize medians and stds
             #
             init_cov_u = self_v.get_cov_unanticipated_shocks()
-            init_med, init_mse, unknown_init_impact \
-                = initialize(solution_v, init_cov_u, )
+            init_med, init_mse, unknown_init_impact = initialize(solution_v, init_cov_u, )
 
             #
             # Presimulate the impact of anticipated shocks
@@ -875,20 +893,17 @@ the time series data.
                 )
 
             if needs.return_update:
-                update(
-                    cache=cache,
-                    store_update=store_update,
-                )
+                update(cache=cache, store_update=store_update, )
 
             if needs.return_smooth:
-                smooth(
-                    cache=cache,
-                    store_smooth=store_smooth,
-                )
+                smooth(cache=cache, store_smooth=store_smooth, )
 
             cache.calculate_likelihood(rescale_variance=needs.rescale_variance, )
+            if needs.likelihood_contributions:
+                cache.calculate_likelihood_contributions()
+
             output_store_v.rescale_stds(cache.var_scale, )
-            out_info_v = cache.create_out_info()
+            out_info_v = cache.create_out_info(span, )
 
             output_store.extend(output_store_v, )
             out_info.append(out_info_v, )
@@ -900,7 +915,7 @@ the time series data.
                 out_info, self.is_singleton,
                 unpack_singleton=True,
             )
-            return out_data, out_info, 
+            return out_data, out_info,
         else:
             return out_data
 
@@ -912,7 +927,7 @@ class Cache:
     """
     #[
 
-    LOG_2_PI = _np.log(2 * _np.pi)
+    _LOG_2_PI = _np.log(2 * _np.pi)
 
     _slots_to_input = (
         "num_periods",
@@ -949,6 +964,8 @@ class Cache:
         "var_scale",
         "neg_log_likelihood",
         "neg_log_likelihood_contributions",
+        "all_log_det_F",
+        "all_pe_Fi_pe",
     )
 
     # __slots__ = _slots_to_input + _slots_to_preallocate + _other_slots
@@ -969,35 +986,38 @@ class Cache:
     def calculate_likelihood(self: Self, rescale_variance: bool, ) -> None:
         """
         """
-        all_pe_Fi_pe = tuple(
+        self.all_pe_Fi_pe = tuple(
             pe @ Fi @ pe if pe is not None and Fi is not None else None
             for pe, Fi in zip(self.all_pe, self.all_Fi, )
         )
-        all_log_det_F = tuple(
+        self.all_log_det_F = tuple(
             -_np.log(_np.linalg.det(Fi)) if Fi is not None else None
             for Fi in self.all_Fi
         )
         self.sum_num_obs = sum(i for i in self.all_num_obs if i is not None)
-        self.sum_log_det_F = sum(i for i in all_log_det_F if i is not None)
-        self.sum_pe_Fi_pe = sum(i for i in all_pe_Fi_pe if i is not None)
+        self.sum_log_det_F = sum(i for i in self.all_log_det_F if i is not None)
+        self.sum_pe_Fi_pe = sum(i for i in self.all_pe_Fi_pe if i is not None)
         self.var_scale = 1
         #
         if rescale_variance:
             self._calculate_variance_scale()
         #
-        self.neg_log_likelihood_contributions = [
-            (log_det_F + pe_Fi_pe + num_obs * self.LOG_2_PI)/2 if num_obs else 0
-            for log_det_F, pe_Fi_pe, num_obs in zip(
-                all_log_det_F, all_pe_Fi_pe, self.all_num_obs,
-            )
-            if num_obs is not None
-        ]
-        #
         self.neg_log_likelihood = (
-            + self.sum_num_obs*self.LOG_2_PI
+            + self.sum_num_obs*self._LOG_2_PI
             + self.sum_log_det_F
             + self.sum_pe_Fi_pe
         ) / 2;
+
+    def calculate_likelihood_contributions(self: Self, ) -> None:
+        """
+        """
+        self.neg_log_likelihood_contributions = tuple(
+            (log_det_F + pe_Fi_pe + num_obs * self._LOG_2_PI)/2 if num_obs else 0
+            for log_det_F, pe_Fi_pe, num_obs in zip(
+                self.all_log_det_F, self.all_pe_Fi_pe, self.all_num_obs,
+            )
+            # if num_obs is not None
+        )
 
     def _calculate_variance_scale(self: Self, /, ) -> None:
         """
@@ -1010,13 +1030,14 @@ class Cache:
         self.sum_log_det_F += self.sum_num_obs * _np.log(self.var_scale)
         self.sum_pe_Fi_pe = self.sum_pe_Fi_pe / self.var_scale
 
-    def create_out_info(self: Self, /, ) -> dict[str, Any]:
+    def create_out_info(self: Self, span: Iterable[Period], ) -> dict[str, Any]:
         """
         """
         return {
-            "neg_log_likelihood": self.neg_log_likelihood,
-            "neg_log_likelihood_contributions": self.neg_log_likelihood_contributions,
-            "var_scale": self.var_scale,
+            "neg_log_likelihood": float(self.neg_log_likelihood),
+            "neg_log_likelihood_contributions": Series(periods=span, values=self.neg_log_likelihood_contributions, ),
+            "var_scale": float(self.var_scale),
+            "std_scale": float(_sqrt_positive(self.var_scale)),
         }
 
     #]

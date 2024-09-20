@@ -417,7 +417,7 @@ def _adapt_equation_for_aldi(
     """
     """
     #[
-    aldi_equation = _cp.deepcopy(equation)
+    aldi_equation = equation.copy()
     aldi_equation.xtring = aldi_equation.xtring.replace("x[", f"x[{aldi_equation.id}][")
     aldi_equation.xtring += f" + Atom.zero({diff_shape}, )"
     return aldi_equation

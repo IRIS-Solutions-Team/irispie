@@ -3,53 +3,57 @@
 
 
 #[
+
 from __future__ import annotations
 
-import dill as _di
+import dill as _dl
+import pickle as _pk
 import json as _js
 
-from typing import (TYPE_CHECKING, )
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import (Any, )
+    from typing import Any
+
 #]
 
 
 __all__ = (
     "save",
     "load",
+    "save_dill",
+    "load_dill",
+    "save_pickle",
+    "load_pickle",
     "save_json",
     "load_json",
+    "save_text",
+    "load_text",
 )
 
 
-_DEFAULT_JSON_SETTINGS = {
-    "indent": 4,
-}
-
-
-def save(filename: str, object_to_save: Any, ) -> None:
+def save(file_name: str, object_to_save: Any, ) -> None:
     r"""
 ................................................................................
 
 ................................................................................
     """
-    with open(filename, "wb", ) as fid:
-        _di.dump(object_to_save, fid, )
+    with open(file_name, "wb", ) as fid:
+        _dl.dump(object_to_save, fid, )
 
 
-def load(filename: str, ) -> Any:
+def load(file_name: str, ) -> Any:
     r"""
 ................................................................................
 
 ................................................................................
     """
-    with open(filename, "rb", ) as fid:
-        return _di.load(fid, )
+    with open(file_name, "rb", ) as fid:
+        return _dl.load(fid, )
 
 
-def save_json(
-    filename: str,
+def save_pickle(
     object_to_save: Any,
+    file_name: str,
     **kwargs,
 ) -> None:
     r"""
@@ -58,33 +62,88 @@ def save_json(
 
 ................................................................................
     """
-    json_settings = _DEFAULT_JSON_SETTINGS | kwargs
-    with open(filename, "wt", ) as fid:
-        _js.dump(object_to_save, fid, **json_settings, )
+    with open(file_name, "wb", ) as fid:
+        _pk.dump(object_to_save, fid, **kwargs, )
 
 
-def load_json(filename: str, **kwargs, ) -> Any:
+def load_pickle(
+    file_name: str,
+    **kwargs,
+) -> Any:
     """
     """
-    with open(filename, "rt", ) as fid:
-        return _js.load(fid, )
+    with open(file_name, "rb", ) as fid:
+        return _pk.load(fid, **kwargs, )
+
+
+def save_dill(
+    object_to_save: Any,
+    file_name: str,
+    **kwargs,
+) -> None:
+    r"""
+................................................................................
+
+
+................................................................................
+    """
+    with open(file_name, "wb", ) as fid:
+        _dl.dump(object_to_save, fid, **kwargs, )
+
+
+def load_dill(
+    file_name: str,
+    **kwargs,
+) -> Any:
+    """
+    """
+    with open(file_name, "rb", ) as fid:
+        return _dl.load(fid, **kwargs, )
+
+
+def save_json(
+    object_to_save: Any,
+    file_name: str,
+    **kwargs,
+) -> None:
+    r"""
+................................................................................
+
+
+................................................................................
+    """
+    with open(file_name, "wt", ) as fid:
+        _js.dump(object_to_save, fid, **kwargs, )
+
+
+def load_json(
+    file_name: str,
+    **kwargs,
+) -> Any:
+    """
+    """
+    with open(file_name, "rt", ) as fid:
+        return _js.load(fid, **kwargs, )
 
 
 def save_text(
-    filename: str,
     text: str,
+    file_name: str,
+    **kwargs,
 ) -> None:
     """
     """
-    with open(filename, "wt", ) as fid:
-        fid.write(text, )
+    with open(file_name, "wt", ) as fid:
+        fid.write(text, **kwargs, )
 
 
 def load_text(
-    filename: str,
+    file_name: str,
+    **kwargs,
 ) -> str:
     """
     """
-    with open(filename, "rt", ) as fid:
-        return fid.read()
+    with open(file_name, "rt", ) as fid:
+        return fid.read(**kwargs, )
+
 

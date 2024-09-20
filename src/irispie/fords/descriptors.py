@@ -66,27 +66,34 @@ from .. import sources as _sources
 
 # Implement AtomFactoryProtocol
 
-def _create_diff_for_token(
-    token: Token,
-    wrt_tokens: tuple[Token, ...],
-    /,
-) -> _np.ndarray:
+
+class _AtomFactory:
     """
     """
-    try:
-        index = wrt_tokens.index(token, )
-    except ValueError:
-        return 0
-    diff = _np.zeros((len(wrt_tokens), 1, ), dtype=float, )
-    diff[index] = 1
-    return diff
+    #[
 
+    @staticmethod
+    def create_data_index_for_token(token: Token, ) -> tuple[int, int]:
+        return token.qid, token.shift,
 
-_ATOM_FACTORY = SimpleNamespace(
-    create_data_index_for_token=lambda token: (token.qid, token.shift, ),
-    create_diff_for_token=_create_diff_for_token,
-    get_diff_shape=lambda wrt_tokens: (len(wrt_tokens), 1, ),
-)
+    @staticmethod
+    def create_diff_for_token(
+        token: Token,
+        wrt_tokens: tuple[Token, ...],
+    ) -> _np.ndarray:
+        try:
+            index = wrt_tokens.index(token, )
+        except ValueError:
+            return 0
+        diff = _np.zeros((len(wrt_tokens), 1, ), dtype=float, )
+        diff[index] = 1
+        return diff
+
+    @staticmethod
+    def get_diff_shape(wrt_tokens: tuple[Token, ...]) -> tuple[int, int]:
+        return len(wrt_tokens), 1,
+
+    #]
 
 
 class Descriptor:
@@ -129,7 +136,7 @@ class Descriptor:
         #
         # Create the evaluation context for the algorithmic differentiator
         self.aldi_context = Context(
-            _ATOM_FACTORY,
+            _AtomFactory,
             system_equations,
             eid_to_wrts=self.system_vectors.eid_to_wrt_tokens,
             qid_to_logly=_quantities.create_qid_to_logly(quantities),
@@ -402,9 +409,10 @@ def _create_system_transition_vector(
     min_shifts = _incidence.get_some_shift_by_quantities(transition_variable_tokens, lambda x: min(min(x), -1))
     max_shifts = _incidence.get_some_shift_by_quantities(transition_variable_tokens, max)
     #
-    vector_for_qid = lambda qid: [Token(qid, sh) for sh in range(min_shifts[qid]+1, max_shifts[qid]+1)]
+    def list_for_qid(qid: int, ):
+        return [Token(qid, sh) for sh in range(min_shifts[qid]+1, max_shifts[qid]+1)]
     unique_qids = set(t.qid for t in transition_variable_tokens)
-    return _it.chain.from_iterable(vector_for_qid(i) for i in unique_qids)
+    return _it.chain.from_iterable(list_for_qid(i) for i in unique_qids)
     #]
 
 

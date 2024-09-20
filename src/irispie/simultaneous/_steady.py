@@ -5,8 +5,7 @@
 #[
 from __future__ import annotations
 
-from typing import (TYPE_CHECKING, )
-from collections import (namedtuple, )
+from collections import namedtuple
 import functools as _ft
 import itertools as _it
 import numpy as _np
@@ -18,15 +17,18 @@ from .. import has_variants as _has_variants
 from .. import wrongdoings as _wrongdoings
 from ..fords import steadiers as _fs
 from ..steadiers import evaluators as _evaluators
+from ..sources import LOGGABLE_VARIABLE
+from ..equations import ENDOGENOUS_EQUATION
 
 from . import _flags
 
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from ..plans.steady_plans import (SteadyPlan, )
-    from ..equations import (Equation, )
-    from ._variants import (Variant, )
-    from collections.abc import (Iterable, Callable, )
-    from typing import (Any, Literal, NoReturn, )
+    from ..plans.steady_plans import SteadyPlan
+    from ..equations import Equation
+    from ._variants import Variant
+    from collections.abc import Iterable, Callable
+    from typing import Any, Literal, NoReturn
 #]
 
 
@@ -40,6 +42,9 @@ _Wrt = namedtuple("Wrt", (
     "fixed_level_qids",
     "fixed_change_qids",
 ))
+
+
+_STEADY_EQUATION_SOLVED = ENDOGENOUS_EQUATION
 
 
 class Inlay:
@@ -148,6 +153,7 @@ class Inlay:
     ) -> dict[str, Any]:
         """
         """
+        qid_to_kind = self.create_qid_to_kind()
         root_settings = (
             _DEFAULT_ROOT_SETTINGS
             if root_settings is None
@@ -163,7 +169,7 @@ class Inlay:
             blocks = (_blazer._Block(wrt.eids, wrt.qids), )
         #
         all_quantities = self.get_quantities()
-        all_equations = self.get_steady_equations()
+        all_equations = self.get_steady_equations(kind=_STEADY_EQUATION_SOLVED, )
         human_blocks \
             = _blazer.human_blocks_from_blocks \
             (blocks, all_equations, all_quantities, )
@@ -215,7 +221,7 @@ class Inlay:
                 _throw_block_error(human_block, custom_header, )
             #
             # Update variant with steady levels and changes
-            _update_variant_with_final_guess(variant, steady_evaluator, )
+            _update_variant_with_final_guess(variant, steady_evaluator, qid_to_kind, )
             #
             info["block_success"].append(success, )
             info["block_root_final"].append(root_final, )
@@ -242,7 +248,7 @@ class Inlay:
     ) -> _Wrt:
         """
         """
-        wrt_equations = self.get_steady_equations()
+        wrt_equations = self.get_steady_equations(kind=_STEADY_EQUATION_SOLVED, )
         wrt_eids = tuple(e.id for e in wrt_equations)
         #
         plannable = self.get_steady_plannable(is_flat=is_flat, )
@@ -425,7 +431,7 @@ def _resolve_split_into_blocks(
     #]
 
 
-def _update_variant_with_final_guess(variant, steady_evaluator, ) -> None:
+def _update_variant_with_final_guess(variant, steady_evaluator, qid_to_kind, ) -> None:
     """
     """
     #[
@@ -435,6 +441,13 @@ def _update_variant_with_final_guess(variant, steady_evaluator, ) -> None:
     variant.update_levels_from_array(levels, wrt_level_qids, )
     #
     changes, wrt_change_qids = steady_evaluator.extract_changes(final_guess, )
+    #
+    # Drop non-loggable quantities, i.e. endogenized parameters (only loggable
+    # quantities can have steady-state change)
+    changes, wrt_change_qids = zip(*(
+        (change, qid, ) for change, qid, in zip(changes, wrt_change_qids, )
+        if qid_to_kind[qid] in LOGGABLE_VARIABLE
+    ))
     variant.update_changes_from_array(changes, wrt_change_qids, )
     #]
 

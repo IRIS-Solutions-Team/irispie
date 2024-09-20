@@ -83,9 +83,9 @@ Chartpacks
     __slots__ = (
         "title",
         "_figures",
-        "_description",
         "_figure_settings",
         "_chart_settings",
+        "__description__",
     )
 
     def __init__(
@@ -97,7 +97,7 @@ Chartpacks
         """
         self.title = title
         self._figures = None
-        self._description = None
+        self.__description__ = None
         #
         self._figure_settings = {
             n: kwargs[n]

@@ -60,5 +60,18 @@ class Flags(_en.IntFlag, ):
             self |= cls.DETERMINISTIC
         return self
 
+    def serialize(self, /, ) -> str:
+        return str(self.name)
+
+    @classmethod
+    def deserialize(cls: type, data: str | None, /, ) -> Self:
+        self = cls.DEFAULT
+        if not data:
+            return self
+        flag_names = data.upper().split("|")
+        for n in flag_names:
+            self |= cls[n.strip().upper()]
+        return self
+
     #]
 

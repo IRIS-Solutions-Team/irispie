@@ -105,13 +105,14 @@ class Solution:
         "T", "P", "R", "K", "Z", "H", "D",
         "Ta", "Pa", "Ra", "Ka", "Za", "Ua",
         "J", "Ru", "X", "Xa",
+        "square_expansion",
+        "triangular_expansion",
         "eigenvalues",
+
         "eigenvalues_stability",
         "system_stability",
         "transition_vector_stability",
         "measurement_vector_stability",
-        "square_expansion",
-        "triangular_expansion",
     )
 
     def __init__(self, ) -> None:

@@ -177,9 +177,9 @@ class SteadyEvaluator:
         """
         levels = self._get_maybelog_levels(guess, )
         levels[self._where_logly] = _np.exp(levels[self._where_logly])
-        levels = levels[self._bool_index_wrt_levels]
+        levels = tuple(levels[self._bool_index_wrt_levels].tolist())
         wrt_qids_levels = tuple(_it.compress(self.wrt_qids, self._bool_index_wrt_levels, ))
-        return levels, wrt_qids_levels
+        return levels, wrt_qids_levels,
 
     def extract_changes(
         self,
@@ -190,9 +190,9 @@ class SteadyEvaluator:
         """
         changes = self._get_maybelog_changes(guess, )
         changes[self._where_logly] = _np.exp(changes[self._where_logly])
-        changes = changes[self._bool_index_wrt_changes]
+        changes = tuple(changes[self._bool_index_wrt_changes].tolist())
         wrt_qids_changes = tuple(_it.compress(self.wrt_qids, self._bool_index_wrt_changes, ))
-        return changes, wrt_qids_changes
+        return changes, wrt_qids_changes,
 
     #]
 

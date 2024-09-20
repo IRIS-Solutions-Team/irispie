@@ -27,8 +27,8 @@ class IrisPieError(Exception, ):
     """
     #[
     def __init__(self, message, ):
-        message = _prepare_message(message)
-        super().__init__(message)
+        message = _prepare_message(message, )
+        super().__init__(message, )
     #]
 
 

@@ -125,8 +125,8 @@ batch processing, importing and exporting data, and more.
         """
         """
         super().__init__(*args, **kwargs, )
-        self._description = ""
         self._dotters = []
+        self.__description__ = ""
 
     @classmethod
     @_dm.reference(

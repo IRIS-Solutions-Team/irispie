@@ -8,12 +8,14 @@ Model source
 from __future__ import annotations
 
 import re as _re
-from typing import (Self, Type, TypeAlias, Literal, Protocol, )
-from collections.abc import (Iterable, )
+from typing import Self, Any, Type, TypeAlias, Literal, Protocol, NoReturn
+from collections.abc import Iterable
 import documark as _dm
 
 from . import equations as _equations
 from . import quantities as _quantities
+from .quantities import QuantityKind, Quantity
+from . import wrongdoings as _wd
 from .parsers import preparser as _preparser
 from .parsers import models as _models
 from .parsers import common as _common
@@ -33,16 +35,16 @@ QuantityInput: TypeAlias = tuple[Description, Human, Attributes]
 EquationInput: TypeAlias = tuple[Description, tuple[Human, Human], Attributes]
 
 
-LOGLY_VARIABLE = (
-    _quantities.QuantityKind.TRANSITION_VARIABLE
-    | _quantities.QuantityKind.MEASUREMENT_VARIABLE
-    | _quantities.QuantityKind.EXOGENOUS_VARIABLE
+LOGGABLE_VARIABLE = (
+    QuantityKind.TRANSITION_VARIABLE
+    | QuantityKind.MEASUREMENT_VARIABLE
+    | QuantityKind.EXOGENOUS_VARIABLE
 )
 
 
-LOGLY_VARIABLE_OR_ANY_SHOCK = (
-    LOGLY_VARIABLE
-    | _quantities.QuantityKind.ANY_SHOCK
+LOGGABLE_VARIABLE_OR_ANY_SHOCK = (
+    LOGGABLE_VARIABLE
+    | QuantityKind.ANY_SHOCK
 )
 
 
@@ -102,75 +104,71 @@ class ModelSource:
         "quantities",
         "dynamic_equations",
         "steady_equations",
-        "log_variables",
-        "all_but",
         "context",
     )
 
-    def __init__(self, /) -> None:
+    def __init__(self, /, ) -> None:
         self.quantities = []
         self.dynamic_equations = []
         self.steady_equations = []
-        self.log_variables = []
-        self.all_but = []
         self.context = None
 
     @property
-    def num_quantities(self, /) -> int:
+    def num_quantities(self, /, ) -> int:
         return len(self.quantities)
 
     @property
-    def all_names(self, /) -> Iterable[str]:
+    def all_names(self, /, ) -> Iterable[str]:
         return [ qty.human for qty in self.quantities ]
 
-    def add_parameters(self, names: Iterable[QuantityInput] | None) -> None:
-        self._add_quantities(names, _quantities.QuantityKind.PARAMETER)
+    def _add_parameters(self, names: Iterable[QuantityInput] | None) -> None:
+        self._add_quantities(names, QuantityKind.PARAMETER)
 
-    def add_exogenous_variables(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
-        self._add_quantities(quantity_inputs, _quantities.QuantityKind.EXOGENOUS_VARIABLE)
+    def _add_exogenous_variables(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
+        self._add_quantities(quantity_inputs, QuantityKind.EXOGENOUS_VARIABLE)
 
-    def add_transition_variables(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
-        self._add_quantities(quantity_inputs, _quantities.QuantityKind.TRANSITION_VARIABLE)
+    def _add_transition_variables(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
+        self._add_quantities(quantity_inputs, QuantityKind.TRANSITION_VARIABLE)
 
-    def add_anticipated_shocks(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
-        self._add_quantities(quantity_inputs, _quantities.QuantityKind.ANTICIPATED_SHOCK)
+    def _add_anticipated_shocks(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
+        self._add_quantities(quantity_inputs, QuantityKind.ANTICIPATED_SHOCK)
 
-    def add_unanticipated_shocks(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
-        self._add_quantities(quantity_inputs, _quantities.QuantityKind.UNANTICIPATED_SHOCK)
+    def _add_unanticipated_shocks(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
+        self._add_quantities(quantity_inputs, QuantityKind.UNANTICIPATED_SHOCK)
 
-    def add_transition_equations(self, equation_inputs: Iterable[EquationInput] | None) -> None:
+    def _add_transition_equations(self, equation_inputs: Iterable[EquationInput] | None) -> None:
         self._add_equations(equation_inputs, _equations.EquationKind.TRANSITION_EQUATION)
 
-    def add_measurement_variables(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
-        self._add_quantities(quantity_inputs, _quantities.QuantityKind.MEASUREMENT_VARIABLE)
+    def _add_measurement_variables(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
+        self._add_quantities(quantity_inputs, QuantityKind.MEASUREMENT_VARIABLE)
 
-    def add_measurement_shocks(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
-        self._add_quantities(quantity_inputs, _quantities.QuantityKind.MEASUREMENT_SHOCK)
+    def _add_measurement_shocks(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
+        self._add_quantities(quantity_inputs, QuantityKind.MEASUREMENT_SHOCK)
 
-    def add_measurement_equations(self, equation_inputs: Iterable[EquationInput] | None) -> None:
+    def _add_measurement_equations(self, equation_inputs: Iterable[EquationInput] | None) -> None:
         self._add_equations(equation_inputs, _equations.EquationKind.MEASUREMENT_EQUATION)
 
-    def add_steady_autovalues(self, equation_inputs: Iterable[EquationInput] | None) -> None:
+    def _add_steady_autovalues(self, equation_inputs: Iterable[EquationInput] | None) -> None:
         self._add_equations(equation_inputs, _equations.EquationKind.STEADY_AUTOVALUES, )
 
-    def add_all_but(self, all_but_input: str | None) -> None:
+    def _add_all_but(self, all_but_input: str | None) -> None:
         if not all_but_input:
             return
         self.all_but.append(all_but_input)
 
-    def add_log_variables(self, log_variable_inputs: Iterable[str] | None, /, ) -> None:
+    def _add_log_variables(self, log_variable_inputs: Iterable[str] | None, /, ) -> None:
         if not log_variable_inputs:
             return
         self.log_variables += log_variable_inputs
 
-    def _add_quantities(self, quantity_inputs: Iterable[QuantityInput] | None, kind: _quantities.QuantityKind) -> None:
+    def _add_quantities(self, quantity_inputs: Iterable[QuantityInput] | None, kind: QuantityKind) -> None:
         """
         """
         if not quantity_inputs:
             return
         start_entry = self.quantities[-1].entry + 1 if self.quantities else 0
         self.quantities = self.quantities + [
-            _quantities.Quantity(
+            Quantity(
                 id=None,
                 human=q[1].strip(),
                 kind=kind,
@@ -179,10 +177,10 @@ class ModelSource:
                 entry=i,
                 attributes=_conform_attributes(q[2], )
             )
-            for i, q in enumerate(quantity_inputs, start=start_entry)
+            for i, q in enumerate(quantity_inputs, start=start_entry, )
         ]
 
-    def _add_equations(self, equation_inputs: Iterable[EquationInput] | None, kind: _equations.EquationKind, /) -> None:
+    def _add_equations(self, equation_inputs: Iterable[EquationInput] | None, kind: _equations.EquationKind, /, ) -> None:
         """
         """
         if not equation_inputs:
@@ -212,30 +210,41 @@ class ModelSource:
         self.dynamic_equations += _create_equations(equation_inputs, kind, start_entry, _human_func_dynamic)
         self.steady_equations += _create_equations(equation_inputs, kind, start_entry, _human_func_steady)
 
-    def populate_logly(self, /) -> None:
+    def _verify_log_variables(self, log_variables: Iterable[str] | None) -> None:
         """
         """
-        default_logly = self._resolve_default_logly()
-        listed_logly = not default_logly
+        if not log_variables:
+            return
+        loggables = _extract_loggable_names(self.quantities, )
+        illegal_log_variables = set(log_variables) - loggables
+        if illegal_log_variables:
+            raise _wd.IrisPieCritical((
+                f"Illegal name(s) on the {_models.LOG_VARIABLES_KEYWORD} list",
+                *illegal_log_variables,
+            ))
+
+    def _populate_logly(
+        self,
+        log_variables: Iterable[str] | None,
+        all_but: bool | False,
+    ) -> None:
+        """
+        """
+        log_variables = set(log_variables) if log_variables else set()
+        unlisted_logly = bool(all_but)
+        listed_logly = not unlisted_logly
+        def is_logly(human: str, /, ) -> bool:
+            return listed_logly if human in log_variables else unlisted_logly
         for qty in self.quantities:
-            if qty.kind not in LOGLY_VARIABLE:
+            if qty.kind not in LOGGABLE_VARIABLE:
                 continue
-            qty.logly = listed_logly if qty.human in self.log_variables else default_logly
-
-    def _is_logly_consistent(self, /) -> bool:
-        return all(a=="all-but" for a in self.all_but) or all(a=="" for a in self.all_but) if self.all_but else True
-
-    def _resolve_default_logly(self, /) -> bool:
-        if not self._is_logly_consistent():
-            raise Exception("Inconsistent use of !all-but in !log-variables")
-        return self.all_but.pop()=="all-but" if self.all_but else False
+            qty.logly = is_logly(qty.human, )
 
     @classmethod
     def from_lists(
         klass,
-        /,
         transition_variables: Iterable[QuantityInput],
-        transition_equations: Iterable[EquationInput], 
+        transition_equations: Iterable[EquationInput],
         anticipated_shocks: Iterable[QuantityInput] | None = None,
         unanticipated_shocks: Iterable[QuantityInput] | None = None,
         measurement_variables: Iterable[QuantityInput] | None = None,
@@ -245,54 +254,64 @@ class ModelSource:
         parameters: Iterable[QuantityInput] | None = None,
         exogenous_variables: Iterable[QuantityInput] | None = None,
         log_variables: Iterable[str] | None = None,
+        all_but: bool = False,
+        context: dict | None = None,
     ) -> Self:
         """
         """
         self = klass()
-        self.add_transition_variables(transition_variables, )
-        self.add_transition_equations(transition_equations, )
-        self.add_anticipated_shocks(anticipated_shocks, )
-        self.add_unanticipated_shocks(unanticipated_shocks, )
-        self.add_measurement_variables(measurement_variables, )
-        self.add_measurement_equations(measurement_equations, )
-        self.add_measurement_shocks(measurement_shocks, )
-        self.add_steady_autovalues(steady_autovalues, )
-        self.add_parameters(parameters, )
-        self.add_exogenous_variables(exogenous_variables, )
-        self.add_log_variables(log_variables, )
-        self.populate_logly()
+        #
+        self._add_transition_variables(transition_variables, )
+        self._add_transition_equations(transition_equations, )
+        self._add_anticipated_shocks(anticipated_shocks, )
+        self._add_unanticipated_shocks(unanticipated_shocks, )
+        self._add_measurement_variables(measurement_variables, )
+        self._add_parameters(parameters, )
+        self._add_exogenous_variables(exogenous_variables, )
+        self._verify_log_variables(log_variables, )
+        self._populate_logly(log_variables, all_but, )
+        #
+        self._add_measurement_equations(measurement_equations, )
+        self._add_measurement_shocks(measurement_shocks, )
+        self._add_steady_autovalues(steady_autovalues, )
+        #
+        self.context = (dict(context) if context else {}) | {"__builtins__": {}}
+        #
         return self
 
     @classmethod
     def from_string(
         klass,
         source_string: str,
-        /,
+        *,
         context: dict | None = None,
         save_preparsed: str = "",
-    ) -> tuple[Self, dict]:
-        """Create a new ModelSource from string"""
-        self = klass()
-        self.context = context
+    ) -> tuple[Self, dict[str, Any]]:
+        """
+        """
+        context = (dict(context) if context else {}) | {"__builtins__": {}}
         preparsed_string, preparser_info = _preparser.from_string(
-            source_string, context=self.context, save_preparsed=save_preparsed, 
+            source_string, context=context, save_preparsed=save_preparsed, 
         )
         parsed_content = _models.from_string(preparsed_string)
+        all_but = _is_all_but_present(parsed_content.get("all-but", ), )
+        log_variables = set(parsed_content.get("log-variables", ()), )
         #
-        self.add_transition_variables(parsed_content.get("transition-variables"))
-        self.add_anticipated_shocks(parsed_content.get("anticipated-shocks"))
-        self.add_unanticipated_shocks(parsed_content.get("unanticipated-shocks"))
-        self.add_transition_equations(parsed_content.get("transition-equations"))
-        self.add_measurement_variables(parsed_content.get("measurement-variables"))
-        self.add_measurement_shocks(parsed_content.get("measurement-shocks"))
-        self.add_measurement_equations(parsed_content.get("measurement-equations"))
-        self.add_steady_autovalues(parsed_content.get("steady-autovalues"))
-        self.add_parameters(parsed_content.get("parameters"))
-        self.add_exogenous_variables(parsed_content.get("exogenous-variables"))
-        self.add_log_variables(parsed_content.get("log-variables"))
-        for i in parsed_content.get("all-but", []):
-            self.add_all_but(i)
-        self.populate_logly()
+        self = klass.from_lists(
+            transition_variables=parsed_content.get("transition-variables", ),
+            transition_equations=parsed_content.get("transition-equations", ),
+            anticipated_shocks=parsed_content.get("anticipated-shocks", ),
+            unanticipated_shocks=parsed_content.get("unanticipated-shocks", ),
+            measurement_variables=parsed_content.get("measurement-variables", ),
+            measurement_equations=parsed_content.get("measurement-equations", ),
+            measurement_shocks=parsed_content.get("measurement-shocks", ),
+            steady_autovalues=parsed_content.get("steady-autovalues", ),
+            parameters=parsed_content.get("parameters", ),
+            exogenous_variables=parsed_content.get("exogenous-variables", ),
+            log_variables=log_variables,
+            all_but=all_but,
+            context=context,
+        )
         #
         return self, preparser_info
 
@@ -307,11 +326,19 @@ class ModelSource:
         source_string = _combine_source_files_into_string(source_files, )
         return klass.from_string(source_string, **kwargs, )
 
-
+    def serialize(self, /, ) -> str:
+        """
+        """
+        return {
+            "quantities": [i.serialize() for i in self.quantities],
+            "dynamic_equations": [i.serialize() for i in self.dynamic_equations],
+            "steady_equations": [i.serialize() for i in self.steady_equations],
+            "context": None,
+        }
     #]
 
 
-def _handle_white_spaces(x: str, /) -> str:
+def _handle_white_spaces(x: str, /, ) -> str:
     return _re.sub(r"[\s\n\r]+", "", x)
 
 
@@ -343,4 +370,31 @@ def _combine_source_files_into_string(
             source_strings.append(fid.read(), )
     return "\n\n".join(source_strings, )
     #]
+
+
+def _verify_all_but(all_but: list[str] | None, /, ) -> None | NoReturn:
+    if all_but is None:
+        return
+    if all(i == _models.ALL_BUT_KEYWORD for i in all_but):
+        return
+    if all(i == "" for i in all_but):
+        return
+    raise Exception("Inconsistent use of !all-but in !log-variables")
+
+
+def _is_all_but_present(all_but: Iterable[str] | None, /, ) -> bool:
+    if not all_but:
+        return False
+    all_but = tuple(all_but)
+    _verify_all_but(all_but, )
+    return all_but[0] == _models.ALL_BUT_KEYWORD
+
+
+def _extract_loggable_names(quantities: Iterable[Quantity], /, ) -> set[str]:
+    """
+    """
+    return set(
+        i.human for i in quantities
+        if i.kind in LOGGABLE_VARIABLE
+    )
 

@@ -64,8 +64,8 @@ class PlainEquator:
         """
         joined_xtrings = "  ,  ".join(i.xtring for i in self._equations)
         expression = "(" + joined_xtrings + " , )"
-        self._func, self._func_str, *_ = \
-            _makers.make_lambda(EQUATOR_ARGS, expression, context, )
+        self._func, self._func_str, *_ \
+            = _makers.make_function("__equator", EQUATOR_ARGS, expression, context, )
 
     def _populate_min_max_shifts(self, /, ) -> None:
         """

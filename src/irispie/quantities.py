@@ -6,13 +6,12 @@ Model quantities
 #[
 from __future__ import annotations
 
-from typing import (Self, )
-from collections.abc import (Iterable, Iterator, )
+from typing import Self, Any
+from collections.abc import Iterable, Iterator, Sequence
 import enum
 import collections as _co
-import dataclasses as _dc
-import copy as _cp
 import re as _re
+from dataclasses import dataclass
 
 from . import wrongdoings as _wrongdoings
 from . import attributes as _attributes
@@ -99,10 +98,8 @@ __all__ = (
 )
 
 
-@_dc.dataclass(slots=True, )
-class Quantity(
-    _attributes.AttributesMixin,
-):
+@dataclass
+class Quantity:
     """
     """
     #[
@@ -115,10 +112,6 @@ class Quantity(
     entry: int | None = None
     attributes: set[str] | None = None
 
-    def set_logly(self, logly: bool) -> Self:
-        self.logly = logly
-        return self
-
     def wrap_logly(self, /, ) -> str:
         return wrap_logly(self.human, self.logly, )
 
@@ -126,10 +119,37 @@ class Quantity(
         """
         Shallow copy of the quantity
         """
-        return _cp.copy(self, )
+        return type(self)(**self.__dict__, )
 
     def __hash__(self, /, ) -> int:
         return hash(self.__repr__)
+
+    has_attributes = _attributes.has_attributes
+
+    def serialize(self, /, ) -> tuple[int, str, str, bool | None, str | None, int | None, tuple[str, ...]]:
+        """
+        """
+        return (
+            int(self.id),
+            str(self.human),
+            str(self.kind.name),
+            bool(self.logly) if self.logly is not None else None,
+            str(self.description) if self.description is not None else None,
+            int(self.entry) if self.entry is not None else None,
+            _attributes.serialize(self.attributes, ),
+        )
+
+    @classmethod
+    def deserialize(klass, data: Sequence[Any], /, ) -> Self:
+        return klass(
+            id=int(data[0]),
+            human=str(data[1]),
+            kind=QuantityKind[data[2]],
+            logly=bool(data[3]) if data[3] is not None else None,
+            description=str(data[4]) if data[4] is not None else None,
+            entry=int(data[5]) if data[5] is not None else None,
+            attributes=_attributes.deserialize(data[6], ),
+        )
 
     #]
 

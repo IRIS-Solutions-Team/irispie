@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-from typing import (TYPE_CHECKING, )
 import numpy as _np
 import scipy as _sp
 import itertools as _it
@@ -17,10 +16,13 @@ from ..fords import covariances as _covariances
 from .. import quantities as _quantities
 from .. import namings as _namings
 
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from numbers import (Real, )
+    from numbers import Real
 
 #]
+
+
 
 
 class Inlay:
@@ -77,7 +79,7 @@ model based on the provided factor.
 
 ················································································
         """
-        if not isinstance(factor, Real) or factor <= 0:
+        if 1.0 * factor <= 0:
             raise ValueError("The scaling factor must be a real non-negative number")
         std_qids = self._get_std_qids(kind=kind, )
         for v in self._variants:
@@ -278,6 +280,6 @@ def _retrieve_stds(self, variant, shocks, ) -> _np.ndarray:
         self._invariant.shock_qid_to_std_qid[t.qid]
         for t in shocks
     )
-    return variant.retrieve_values("levels", std_qids, )
+    return variant.retrieve_values_as_array("levels", std_qids, )
     #]
 

@@ -14,7 +14,8 @@ from .aldi import adaptations as _adaptations
 #]
 
 
-def make_lambda(
+def make_function(
+    func_name: str,
     args: Iterable[str],
     expression: str,
     context: dict[str, Any] | None,
@@ -25,9 +26,10 @@ def make_lambda(
     """
     #[
     globals_ = _prepare_globals(context, )
-    func_str = f"lambda {', '.join(args, )}: {str(expression)}"
-    func = eval(func_str, globals_, )
-    return func, func_str, globals_
+    args_string = ', '.join(args, )
+    func_str = f"def {func_name}({args_string}): return {str(expression)}"
+    exec(func_str, globals_, )
+    return globals_[func_name], func_str, globals_,
     #]
 
 

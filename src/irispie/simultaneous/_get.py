@@ -125,7 +125,7 @@ steady_levels = self.get_steady_levels(
         """
         kind = kind if kind is not None else _resolve_steady_kind(**kwargs, )
         qids = _quantities.generate_qids_by_kind(self._invariant.quantities, kind, )
-        return self._get_values("levels", qids, **kwargs, )
+        return self._get_values_as_dict("levels", qids, **kwargs, )
 
     @_cast_as_output_type
     @_unpack_singleton_in_dict
@@ -181,7 +181,7 @@ steady_changes = self.get_steady_changes(
         """
         kind = kind if kind is not None else _resolve_steady_kind(**kwargs, )
         qids = _quantities.generate_qids_by_kind(self._invariant.quantities, kind, )
-        return self._get_values("changes", qids, **kwargs, )
+        return self._get_values_as_dict("changes", qids, **kwargs, )
 
     @_cast_as_output_type
     @_unpack_singleton_in_dict
@@ -196,8 +196,8 @@ steady_changes = self.get_steady_changes(
         """
         kind = kind if kind is not None else _resolve_steady_kind(**kwargs, )
         qids = tuple(_quantities.generate_qids_by_kind(self._invariant.quantities, kind, ))
-        levels = self._get_values("levels", qids, **kwargs, )
-        changes = self._get_values("changes", qids, **kwargs, )
+        levels = self._get_values_as_dict("levels", qids, **kwargs, )
+        changes = self._get_values_as_dict("changes", qids, **kwargs, )
         return {
             k: list(zip(levels[k], changes[k]))
             for k in levels.keys()
@@ -214,7 +214,7 @@ steady_changes = self.get_steady_changes(
         """
         """
         qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _quantities.QuantityKind.PARAMETER, )
-        return self._get_values("levels", qids, **kwargs, )
+        return self._get_values_as_dict("levels", qids, **kwargs, )
 
     @_cast_as_output_type
     @_unpack_singleton_in_dict
@@ -228,7 +228,7 @@ steady_changes = self.get_steady_changes(
         """
         """
         std_qids = self._get_std_qids(kind=kind, )
-        return self._get_values("levels", std_qids, **kwargs, )
+        return self._get_values_as_dict("levels", std_qids, **kwargs, )
 
     def _get_std_qids(
         self,
@@ -252,17 +252,14 @@ steady_changes = self.get_steady_changes(
         """
         """
         qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _quantities.QuantityKind.PARAMETER_OR_STD, )
-        return self._get_values("levels", qids, **kwargs, )
+        return self._get_values_as_dict("levels", qids, **kwargs, )
 
     @_cast_as_output_type
-    def get_log_status(
-        self,
-        /,
-    ) -> dict[str, bool]:
+    def get_log_status(self, **kwargs, ) -> dict[str, bool]:
         return {
             qty.human: qty.logly
             for qty in self._invariant.quantities
-            if qty.kind in _sources.LOGLY_VARIABLE
+            if qty.kind in _sources.LOGGABLE_VARIABLE
         }
 
     def get_initials(
@@ -447,7 +444,7 @@ steady_changes = self.get_steady_changes(
     ) -> dict[str, Callable]:
         return self._invariant._context
 
-    def _get_values(
+    def _get_values_as_dict(
         self,
         variant_attr: Literal["levels", "changes"],
         qids: Iterable[int],
@@ -458,17 +455,19 @@ steady_changes = self.get_steady_changes(
         """
         custom_round = kwargs.pop("round", None, )
         def apply(value: Real) -> Real:
-            value = float(value)
-            return round(value, custom_round) if custom_round is not None else value
+            return (
+                round(value, custom_round)
+                if custom_round is not None and value is not None
+                else value
+            )
         #
-        qids = tuple(qids)
         qid_to_name = self.create_qid_to_name()
         out_dict = {}
-        #
-        for v in self._variants:
-            values = v.retrieve_values(variant_attr, qids)
-            for qid, value in zip(qids, values):
-                out_dict.setdefault(qid_to_name[qid], []).append(apply(value))
+        for qid in qids:
+            out_dict[qid_to_name[qid]] = [
+                apply(getattr(v, variant_attr, )[qid], )
+                for v in self._variants
+            ]
         return out_dict
 
     def get_quantity_descriptions(self, ) -> dict[str, str]:
@@ -562,8 +561,8 @@ def _resolve_steady_kind(
     """
     #[
     return (
-        _sources.LOGLY_VARIABLE if not include_shocks
-        else _sources.LOGLY_VARIABLE_OR_ANY_SHOCK
+        _sources.LOGGABLE_VARIABLE if not include_shocks
+        else _sources.LOGGABLE_VARIABLE_OR_ANY_SHOCK
     )
     #]
 

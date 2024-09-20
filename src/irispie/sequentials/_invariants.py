@@ -29,7 +29,7 @@ class Invariant(
         "rhs_only_names",
         "parameter_names",
         "_context",
-        "_description",
+        "__description__",
     )
 
     def __init__(self, /, ) -> None:
@@ -41,7 +41,7 @@ class Invariant(
         self.rhs_only_names = ()
         self.parameter_names = ()
         self._context = {}
-        self._description = ""
+        self.__description__ = ""
 
     @classmethod
     def from_equations(

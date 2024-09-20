@@ -120,6 +120,10 @@ _KEYWORDS_PATTERN = _common.compile_keywords_pattern(_KEYWORDS)
 _translate_keywords = _ft.partial(_common.translate_keywords, _KEYWORDS_PATTERN)
 
 
+ALL_BUT_KEYWORD = _GRAMMAR["all_but_keyword"].members[1].literal
+LOG_VARIABLES_KEYWORD = _GRAMMAR["log_keyword"].members[1].literal
+
+
 class _Visitor(_pa.nodes.NodeVisitor):
     """
     """

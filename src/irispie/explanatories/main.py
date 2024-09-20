@@ -172,8 +172,8 @@ class Explanatory:
     ) -> None:
         args = ("x", "t", )
         body = self._lhs_transform.create_eval_level_str(lhs_token, rhs_xtring, )
-        self.eval_level, self._eval_level_str, *_ = \
-            _makers.make_lambda(args, body, self._context, )
+        self.eval_level, self._eval_level_str, *_ \
+            = _makers.make_function("__simulate_level", args, body, self._context, )
 
     def _create_eval_residual(
         self,
@@ -185,8 +185,8 @@ class Explanatory:
             return
         args = ("x", "t", )
         body = f"{lhs_xtring}-({rhs_xtring})"
-        self.eval_residual, self._eval_residual_str, *_ = \
-            _makers.make_lambda(args, body, self._context, )
+        self.eval_residual, self._eval_residual_str, *_ \
+            = _makers.make_function("__simulate_residual", args, body, self._context, )
 
     def __str__(self, /, ) -> str:
         """

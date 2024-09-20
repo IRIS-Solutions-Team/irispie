@@ -175,7 +175,7 @@ variants of the data, stored as mutliple columns.
         "data",
         "data_type",
         "metadata",
-        "_description",
+        "__description__",
     )
 
     _numeric_format: str = "15g"
@@ -257,7 +257,7 @@ self = Series(
         self.data_type = data_type
         self.data = _np.full((0, num_variants), _np.nan, dtype=self.data_type, )
         self.metadata = {}
-        self._description = description
+        self.__description__ = description
         #
         start = start_date if start is None else start
         periods = dates if periods is None else periods
@@ -286,7 +286,7 @@ self = Series(
         self = klass()
         self.start = start
         self.data = values
-        self._description = description
+        self.__description__ = description
         self.trim()
         return self
 

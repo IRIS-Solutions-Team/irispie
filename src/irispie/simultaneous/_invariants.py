@@ -5,11 +5,10 @@
 #[
 from __future__ import annotations
 
-from typing import (Self, Callable, NoReturn, )
-from numbers import (Number, )
 import copy as _cp
 import functools as _ft
 import numpy as _np
+import re as _re
 
 from ..conveniences import descriptions as _descriptions
 from ..fords import descriptors as _descriptors
@@ -18,8 +17,16 @@ from .. import equations as _equations
 from .. import quantities as _quantities
 from .. import wrongdoings as _wrongdoings
 from .. import makers as _makers
+from ..incidences.main import ZERO_SHIFT_TOKEN_PATTERN
 
-from . import _flags
+from ._flags import Flags
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Self, Callable, NoReturn, Any
+    from numbers import Real
+    from .. sources import ModelSource
+
 #]
 
 
@@ -33,6 +40,10 @@ _PLAIN_EQUATOR_EQUATION = (
 )
 
 
+_DEFAULT_STD_NAME_FORMAT = "std_{}"
+_DEFAULT_STD_DESCRIPTION_FORMAT = "(Std) {}"
+
+
 class Invariant(
     _descriptions.DescriptionMixin,
 ):
@@ -41,60 +52,70 @@ class Invariant(
     """
     #[
 
-    _DEFAULT_STD_NAME_FORMAT = "std_{}"
-    _DEFAULT_STD_DESCRIPTION_FORMAT = "(Std) {}"
-
-    __slots__ = (
+    _serialized_slots = (
         "quantities",
         "dynamic_equations",
         "steady_equations",
-        "update_steady_autovalues_in_variant",
-        "dynamic_descriptor",
-        "steady_descriptor",
+        "steady_autovalues",
         "shock_qid_to_std_qid",
-        "_flags",
         "_context",
-        "_plain_dynamic_equator",
-        "_plain_steady_equator",
+        "_default_std",
+        "_flags",
         "_min_shift",
         "_max_shift",
-        "_default_std",
-        "_description",
+        "__description__",
     )
 
-    def __init__(
-        self,
-        source,
+    _derived_slots = (
+        "dynamic_descriptor",
+        "steady_descriptor",
+        "update_steady_autovalues_in_variant",
+        "_plain_dynamic_equator",
+        "_plain_steady_equator",
+    )
+
+    __slots__ = _serialized_slots + _derived_slots
+
+    def __init__(self, **kwargs, ) -> None:
+        """
+        """
+        for n in self._serialized_slots:
+            setattr(self, n, kwargs.get(n, ), )
+        for n in self._derived_slots:
+            setattr(self, n, None, )
+
+    @classmethod
+    def from_source(
+        klass,
+        source: ModelSource,
         /,
         check_syntax: bool = True,
-        std_name_format: str | None = None,
-        std_description_format: str | None = None,
+        std_name_format: str = _DEFAULT_STD_NAME_FORMAT,
+        std_description_format: str = _DEFAULT_STD_DESCRIPTION_FORMAT,
         autodeclare_as: str | None = None,
-        default_std: Number | None = None,
+        default_std: Real | None = None,
         description: str | None = None,
         **kwargs,
     ) -> Self:
         """
         """
+        self = klass()
         self.set_description(description, )
-        self._flags = _flags.Flags.from_kwargs(**kwargs, )
+        self._flags = Flags.from_kwargs(**kwargs, )
         self._default_std = _resolve_default_std(default_std, self._flags, )
-        self._context = source.context or {}
-        std_name_format = std_name_format or self._DEFAULT_STD_NAME_FORMAT
-        std_description_format = std_description_format or self._DEFAULT_STD_DESCRIPTION_FORMAT
+        self._context = (dict(source.context) or {}) | {"__builtins__": None}
         #
         self.quantities = tuple(source.quantities)
         self.dynamic_equations = tuple(_equations.generate_equations_of_kind(
-            source.dynamic_equations, kind=_equations.EquationKind.ENDOGENOUS_EQUATION,
+            source.dynamic_equations,
+            kind=_equations.EquationKind.ENDOGENOUS_EQUATION
         ))
         self.steady_equations = tuple(_equations.generate_equations_of_kind(
-            source.steady_equations, kind=_equations.EquationKind.ENDOGENOUS_EQUATION,
-        ))
-        steady_autovalues = tuple(_equations.generate_equations_of_kind(
-            source.dynamic_equations, kind=_equations.EquationKind.STEADY_AUTOVALUES,
+            source.steady_equations,
+            kind=_equations.EquationKind.ENDOGENOUS_EQUATION | _equations.EquationKind.STEADY_AUTOVALUES,
         ))
         #
-        # Create std_ parameters for unanticipated and measurement shocks
+        # Create std_ parameters for all shocks
         if self._flags.is_stochastic:
             get_shocks = _ft.partial(_quantities.generate_quantities_of_kind, self.quantities, )
             unanticipated_shocks = get_shocks(kind=_quantities.UNANTICIPATED_SHOCK, )
@@ -140,7 +161,7 @@ class Invariant(
         # Verify uniqueness of all quantity names
         _quantities.check_unique_names(self.quantities)
         #
-        # Number of transition equations must equal number of transition variables
+        # Count of transition equations must equal count of transition variables
         _check_numbers_of_variables_equations(
             self.quantities,
             self.dynamic_equations,
@@ -148,7 +169,7 @@ class Invariant(
             _equations.EquationKind.TRANSITION_EQUATION,
         )
         #
-        # Number of measurement equations must equal number of measurement variables
+        # count of measurement equations must equal count of measurement variables
         _check_numbers_of_variables_equations(
             self.quantities,
             self.dynamic_equations,
@@ -178,26 +199,42 @@ class Invariant(
             _check_syntax(self.dynamic_equations, self._context, )
             _check_syntax(self.steady_equations, self._context, )
         #
-        self._min_shift, self._max_shift = None, None
         self._populate_min_max_shifts()
         #
+        self._populate_derived_attributes()
+        #
+        return self
+
+    def _populate_derived_attributes(self, /, ) -> None:
+        """
+        """
+        #
+        # Descriptors for first-order systems
         self.dynamic_descriptor = _descriptors.Descriptor(self.dynamic_equations, self.quantities, self._context, )
         self.steady_descriptor = _descriptors.Descriptor(self.steady_equations, self.quantities, self._context, )
         #
-        # Create a function to evaluate LHS–RHS in dynamic equations
+        # Evaluators of LHS-minus-RHS in dynamic and steady equations
         self._plain_dynamic_equator = _equators.PlainEquator(
             _equations.generate_equations_of_kind(self.dynamic_equations, _PLAIN_EQUATOR_EQUATION, ),
             context=self._context,
         )
-        #
-        # Create a function to evaluate LHS–RHS in steady equations
         self._plain_steady_equator = _equators.PlainEquator(
             _equations.generate_equations_of_kind(self.steady_equations, _PLAIN_EQUATOR_EQUATION, ),
             context=self._context,
         )
         #
-        # Create steady autovalue updater
+        # Steady autovalue updater
+        steady_autovalues = tuple(_equations.generate_equations_of_kind(
+            self.steady_equations,
+            kind=_equations.EquationKind.STEADY_AUTOVALUES,
+        ))
         _create_steady_autovalue_updater(self, steady_autovalues, )
+
+    def copy(self, /, ) -> Self:
+        """
+        """
+        # TODO: Optimize
+        return _cp.deepcopy(self, )
 
     @property
     def num_transition_equations(self, /, ) -> int:
@@ -226,6 +263,47 @@ class Invariant(
         self._max_shift = _equations.get_max_shift_from_equations(
             self.dynamic_equations + self.steady_equations,
         )
+
+    def serialize(self, /, ) -> dict[str, Any]:
+        return {
+            "quantities": tuple(i.serialize() for i in self.quantities),
+            "dynamic_equations": tuple(i.serialize() for i in self.dynamic_equations),
+            "steady_equations": tuple(i.serialize() for i in self.steady_equations),
+            "shock_qid_to_std_qid": self.shock_qid_to_std_qid,
+            "_context": None,
+            "_default_std": self._default_std,
+            "_flags": self._flags.serialize(),
+            "_min_shift": self._min_shift,
+            "_max_shift": self._max_shift,
+            "__description__": self.__description__,
+        }
+
+    @classmethod
+    def deserialize(klass, data: dict[str, Any], /) -> Self:
+        self = klass(
+            quantities=tuple(_quantities.Quantity.deserialize(i) for i in data["quantities"]),
+            dynamic_equations=tuple(_equations.Equation.deserialize(i) for i in data["dynamic_equations"]),
+            steady_equations=tuple(_equations.Equation.deserialize(i) for i in data["steady_equations"]),
+            shock_qid_to_std_qid={ int(k): v for k, v in data["shock_qid_to_std_qid"].items() },
+            _default_std=data["_default_std"],
+            _flags=Flags.deserialize(data["_flags"], ),
+            _min_shift=data["_min_shift"],
+            _max_shift=data["_max_shift"],
+            __description__=str(data["__description__"]) if data["__description__"] is not None else None,
+        )
+        self._populate_derived_attributes()
+        return self
+
+    def __getstate__(self, /, ) -> dict[str, Any]:
+        return {
+            k: getattr(self, k)
+            for k in self._serialized_slots
+        }
+
+    def __setstate__(self, state: dict[str, Any], ) -> None:
+        for k in self._serialized_slots:
+            setattr(self, k, state[k])
+        self._populate_derived_attributes()
 
     #]
 
@@ -375,19 +453,24 @@ def _check_numbers_of_variables_equations(
 
 
 def _resolve_default_std(
-    custom_default_std: Number | None,
-    flags: _flags.Flags,
-) -> Number:
+    custom_default_std: Real | None,
+    flags: Flags,
+) -> Real:
     """
     """
     #[
     if custom_default_std is not None:
-        return custom_default_std
+        return float(custom_default_std)
     elif flags.is_linear:
         return _DEFAULT_STD_LINEAR
     else:
         return _DEFAULT_STD_NONLINEAR
     #]
+
+
+_STEADY_AUTOVALUE_PATTERN = _re.compile(
+    r"-\(" + ZERO_SHIFT_TOKEN_PATTERN + r"\)(.*)"
+)
 
 
 def _create_steady_autovalue_updater(
@@ -398,26 +481,30 @@ def _create_steady_autovalue_updater(
     """
     """
     #[
-    name_to_qid = _quantities.create_name_to_qid(self.quantities, )
-    qid_to_logly = _quantities.create_qid_to_logly(self.quantities, )
     lhs_qids = []
     rhs_xtrings = []
     for i in steady_autovalues:
-        lhs_name, rhs_xtring = i.human.replace(":=", "=", ).split("=", maxsplit=2, )
-        lhs_qid = name_to_qid[lhs_name.strip()]
-        rhs_xtring, *_ = _equations.xtring_from_human(rhs_xtring, name_to_qid, )
-        lhs_qids.append(lhs_qid)
-        rhs_xtrings.append(rhs_xtring)
+        match = _STEADY_AUTOVALUE_PATTERN.match(i.xtring, )
+        lhs_qid = int(match.group(1))
+        rhs_xtring = match.group(2)
+        lhs_qids.append(lhs_qid, )
+        rhs_xtrings.append(rhs_xtring, )
 
     if not lhs_qids:
         self.update_steady_autovalues_in_variant = None
         return
 
     joined_rhs_xtrings = "(" + "  ,  ".join(rhs_xtrings, ) + " , )"
-    func, func_str, *_ = _makers.make_lambda(_equators.EQUATOR_ARGS, joined_rhs_xtrings, self._context, )
+    func, func_str, *_ = _makers.make_function(
+        "__equator",
+        _equators.EQUATOR_ARGS,
+        joined_rhs_xtrings,
+        self._context,
+    )
     num_columns = self._max_shift - self._min_shift + 1
     shift_in_first_column = self._min_shift
     t = -self._min_shift
+    qid_to_logly = _quantities.create_qid_to_logly(self.quantities, )
 
     def update_steady_autovalues(variant, ):
         steady_array = variant.create_steady_array(
@@ -429,5 +516,6 @@ def _create_steady_autovalue_updater(
         variant.update_levels_from_array(values, lhs_qids, )
 
     self.update_steady_autovalues_in_variant = update_steady_autovalues
+
     #]
 

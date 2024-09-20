@@ -14,10 +14,10 @@ class DescriptionMixin:
     #[
 
     def get_description(self, /, ) -> str:
-        return str(self._description or "")
+        return str(self.__description__ or "")
 
     def set_description(self, description: str, /, ) -> None:
-        self._description = str(description or "")
+        self.__description__ = str(description or "")
 
     #]
 

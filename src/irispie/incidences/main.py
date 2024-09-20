@@ -18,8 +18,9 @@ from .. import quantities as _quantities
 
 
 _PRINT_TOKEN = "x[({qid},t{shift:+g})]"
-_PRINT_TOKEN_ZERO_SHIFT = "x[({qid},t)]"
+_PRINT_ZERO_SHIFT_TOKEN = "x[({qid},t)]"
 _PRINT_SHIFT = "[{shift:+g}]"
+ZERO_SHIFT_TOKEN_PATTERN = r"x\[\((\d+),t\)\]"
 
 
 class Token(NamedTuple, ):
@@ -50,12 +51,11 @@ class Token(NamedTuple, ):
 
     def print_xtring(self, /, ) -> str:
         return (
-            _PRINT_TOKEN.format(qid=self.qid, shift=self.shift)
-            if self.shift else _PRINT_TOKEN_ZERO_SHIFT.format(qid=self.qid)
+            _PRINT_TOKEN.format(qid=self.qid, shift=self.shift, )
+            if self.shift else _PRINT_ZERO_SHIFT_TOKEN.format(qid=self.qid, )
         )
 
     #]
-
 
 
 def get_max_shift(tokens: Iterable[Token]) -> int:
@@ -138,4 +138,18 @@ def rows_and_columns_from_tokens(
     """
     rows, columns = zip(*((t.qid, column_zero+t.shift) for t in tokens))
     return tuple(rows), tuple(columns)
+
+
+def serialize(tokens: Iterable[Token], ) -> tuple[tuple[int, int]]:
+    return (
+        tuple(tuple(i) for i in tokens)
+        if tokens is not None else None
+    )
+
+
+def deserialize(data: tuple[tuple[int, int]], ) -> tuple[Token]:
+    return (
+        tuple(Token(*i) for i in data)
+        if data is not None else None
+    )
 

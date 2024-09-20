@@ -7,11 +7,10 @@ Simultaneous models
 
 from __future__ import annotations
 
-from typing import (Self, Any, TypeAlias, Literal, )
+from typing import Self, Any, TypeAlias, Literal
 from types import EllipsisType
-from collections.abc import (Iterable, Iterator, Callable, )
-from numbers import (Number, )
-import copy as _co
+from collections.abc import Iterable, Iterator, Callable
+from numbers import Number
 import numpy as _np
 import itertools as _it
 import functools as _ft
@@ -35,8 +34,8 @@ from ..fords import systems as _systems
 from ..fords import kalmans as _kalmans
 from ..fords import std_simulators as _std_simulators
 
-from ._invariants import (Invariant, )
-from ._variants import (Variant, )
+from ._invariants import Invariant
+from ._variants import Variant
 from . import _covariances as _covariances
 from . import _flags as _flags
 from . import _simulate as _simulate
@@ -47,6 +46,7 @@ from . import _pretty as _pretty
 from . import _assigns as _assigns
 from . import _slatable_protocols as _slatable_protocols
 from . import _plannable_protocols as _plannable_protocols
+from . import _io as _io
 
 #]
 
@@ -82,6 +82,7 @@ class Simultaneous(
     _covariances.Inlay,
     _slatable_protocols.Inlay,
     _plannable_protocols.Inlay,
+    _io.Inlay,
 ):
     """
 ················································································
@@ -212,7 +213,8 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         Create a quasi-deep copy of this model
         """
-        new = type(self).skeleton(self, )
+        new = type(self)()
+        new._invariant = self._invariant.copy()
         new._variants = [ variant.copy() for variant in self._variants ]
         return new
 
@@ -248,12 +250,11 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         indented = " " * 4
         return "\n".join((
             f"",
-            f"{self.__class__.__name__} model",
-            f"Description: \"{self.get_description()}\"",
-            f"⏐",
+            f"<{self.__class__.__name__} at {id(self):#x}>",
+            f"[Description: \"{self.get_description()}\"]",
             f"[Num variants: {self.num_variants}]",
-            f"[Num (transition, measurement) equations: ({self.num_transition_equations}, {self.num_measurement_equations})]",
-            f"[Max (lag, lead): ({self.max_lag:+g}, {self.max_lead:+g})]",
+            f"[Num transition, measurement equations: {self.num_transition_equations}, {self.num_measurement_equations}]",
+            f"[Max lag, lead: t{self.max_lag:+g}, t{self.max_lead:+g}]",
             f"",
         ))
 
@@ -269,7 +270,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         if invalid_names:
             raise _wrongdoings.IrisPieCritical(f"Invalid model name \"{invalid_names[0]}\"", )
         return _has_variants.unpack_singleton(
-            self._get_values("levels", qids, )[name],
+            self._get_values_as_dict("levels", qids, )[name],
             self.is_singleton,
         )
 
@@ -404,7 +405,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         #
         # Reset levels of shocks to zero
-        #
         name_to_qid = self.create_name_to_qid()
         shock_qids = _quantities.generate_qids_by_kind(
             self._invariant.quantities, _quantities.QuantityKind.ANY_SHOCK,
@@ -412,13 +412,12 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         zero_shocks = { i: 0 for i in shock_qids }
         variant.update_values_from_dict(zero_shocks, )
         #
-        # Remove changes from quantities that are not logly variables
-        #
-        nonloglies = _quantities.generate_qids_by_kind(
-            self._invariant.quantities, ~_sources.LOGLY_VARIABLE,
+        # Remove changes from quantities that are not loggable
+        non_loggables = _quantities.generate_qids_by_kind(
+            self._invariant.quantities, ~_sources.LOGGABLE_VARIABLE,
         )
-        assign_nonloglies = { qid: (..., _np.nan, ) for qid in nonloglies }
-        variant.update_values_from_dict(assign_nonloglies, )
+        assign_non_loggables = { qid: (..., _np.nan, ) for qid in non_loggables }
+        variant.update_values_from_dict(assign_non_loggables, )
 
     def systemize(
         self,
@@ -521,7 +520,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
             case "steady":
                 return self._invariant._plain_steady_equator
 
-    def _assign_default_stds(self, /, ) -> None:
+    def reset_stds(self, /, ) -> None:
         """
         Initialize standard deviations of shocks to default values
         """
@@ -545,13 +544,13 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         """
         self = klass()
-        self._invariant = Invariant(source, **kwargs, )
+        self._invariant = Invariant.from_source(source, **kwargs, )
         initial_variant = Variant.from_source(
             self._invariant.quantities,
             self._invariant._flags.is_flat,
         )
         self._variants = [ initial_variant ]
-        self._assign_default_stds()
+        self.reset_stds()
         self._enforce_assignment_rules(self._variants[0], )
         return self
 
@@ -562,6 +561,38 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
 
     def resolve_flags(self, /, **kwargs, ) -> _flags.Flags:
         return _flags.Flags.update_from_kwargs(self.get_flags(), **kwargs)
+
+    def serialize(self, /, ) -> dict[str, Any]:
+        """
+        """
+        return {
+            "_invariant": self._invariant.serialize(),
+            "_variants": [ i.serialize() for i in self._variants ],
+        }
+
+    @classmethod
+    def deserialize(klass, data: dict[str, Any], /, ) -> Self:
+        """
+        """
+        self = klass()
+        self._invariant = Invariant.deserialize(data["_invariant"], )
+        self._variants = [ Variant.deserialize(i, ) for i in data["_variants"] ]
+        return self
+
+    def __getstate__(self, /, ):
+        """
+        """
+        return {
+            "_invariant": self._invariant,
+            "_variants": self._variants,
+        }
+
+    def __setstate__(self, state, /, ):
+        """
+        """
+        self._invariant = state["_invariant"]
+        self._variants = state["_variants"]
+
     #]
 
 

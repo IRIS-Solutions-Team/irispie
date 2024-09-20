@@ -581,15 +581,13 @@ self.set_description(description, )
         indented = " " * 4
         return "\n".join((
             f"",
-            f"{self.__class__.__name__} model",
-            f"Description: \"{self.get_description()}\"",
-            f"⏐",
+            f"<{self.__class__.__name__} at {id(self):#x}>",
+            f"[Description: \"{self.get_description()}\"]",
             f"[Num variants: {self.num_variants}]",
-            f"[Num equations: {self.num_equations}]",
-            f"[Num (nonidentities, identities): ({len(self.nonidentity_index)}, {len(self.identity_index)})]",
+            f"[Num equations, nonidentities, identities: {self.num_equations}, {len(self.nonidentity_index)}, {len(self.identity_index)}]",
             f"[Num parameters: {len(self.parameter_names)}]",
             f"[Num rhs-only variables: {len(self.rhs_only_names)}]",
-            f"[Max (lag, lead): (-{abs(self.min_shift):g}, +{abs(self.max_shift):g})]",
+            f"[Max lag, lead: t{self.min_shift:+g}, t{self.max_shift:+g}]",
             f"",
         ))
 

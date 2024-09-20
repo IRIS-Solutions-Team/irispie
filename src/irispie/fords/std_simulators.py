@@ -19,9 +19,6 @@ if TYPE_CHECKING:
 #]
 
 
-_LOGGER = _wl.get_colored_logger(__name__, level=_wl.INFO, )
-
-
 class Mixin:
     """
     """
@@ -32,19 +29,15 @@ class Mixin:
         multiplier_db: Databox | None,
         std_db: Databox | None,
         span: Iterable[Period],
-        *,
         num_variants: int | None = None,
         target_db: Databox | None = None,
         #
-        logging_level: int = _wl.INFO,
         unpack_singleton: bool = True,
         return_info: bool = False,
         **kwargs,
     ) -> Databox | tuple[Databox, _Info]:
         """
         """
-        _LOGGER.set_level(logging_level, )
-
         num_variants \
             = self.resolve_num_variants_in_context(num_variants, )
 
@@ -52,20 +45,20 @@ class Mixin:
 
         std_slatable, multiplier_slatable = self.get_slatables_for_multiply_stds()
 
-        multiplier_dataslate = Dataslate.from_databox_for_slatable(
+        multiplier_ds = Dataslate.from_databox_for_slatable(
             multiplier_slatable, multiplier_db or Databox(), base_dates,
             num_variants=num_variants,
         )
 
-        std_dataslate = Dataslate.from_databox_for_slatable(
+        std_ds = Dataslate.from_databox_for_slatable(
             std_slatable, std_db or Databox(), base_dates,
             num_variants=num_variants,
         )
 
         zipped = zip(
             range(num_variants),
-            std_dataslate.iter_variants(),
-            multiplier_dataslate.iter_variants(),
+            std_ds.iter_variants(),
+            multiplier_ds.iter_variants(),
         )
 
         #=======================================================================
@@ -88,7 +81,7 @@ class Mixin:
             #
         #=======================================================================
 
-        out_db = std_dataslate.to_databox()
+        out_db = std_ds.to_databox()
 
         if target_db is not None:
             out_db = target_db | out_db
