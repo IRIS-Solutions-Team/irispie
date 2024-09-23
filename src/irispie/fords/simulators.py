@@ -486,7 +486,6 @@ def _generate_R(
 
 def _generate_period_data(
     t: int,
-
     curr_xi_exogenized: _np.ndarray | None,
     u_array: _np.ndarray,
     v_array: _np.ndarray,
@@ -499,11 +498,13 @@ def _generate_period_data(
         inx_y = ~_np.isnan(curr_xi_exogenized[:, t], )
         y = curr_xi_exogenized[inx_y, t]
     else:
+        inx_y = None
         y = _np.zeros((0, ), )
     u = u_array[:, t]
     v = v_array[:, t]
     w = w_array[:, t]
-    return y, u, v, w,
+    inx_y = inx_y.tolist() if inx_y is not None else None
+    return y, u, v, w, inx_y,
     #]
 
 

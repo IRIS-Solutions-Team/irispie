@@ -2,12 +2,13 @@
 """
 
 
-#
+#[
+
 from __future__ import annotations
 
-from typing import (Literal, Callable, )
-from collections.abc import (Iterable, )
-from numbers import (Real, )
+from typing import Literal, Callable
+from collections.abc import Iterable
+from numbers import Real
 import functools as _ft
 import json as _js
 import numpy as _np
@@ -17,13 +18,16 @@ from .. import quantities as _quantities
 from .. import sources as _sources
 from .. import dates as _dates
 from .. import has_variants as _has_variants
+from ..has_variants import unpack_singleton_decorator as _unpack_singleton
 from ..series import main as _series
 from ..incidences import main as _incidence
-from ..databoxes.main import (Databox, )
-from ..fords.solutions import (VariableStability, Solution, )
+from ..databoxes.main import Databox
+from ..fords.solutions import EigenvalueKind, Solution
 from ..fords import descriptors as _descriptors
 
+
 from . import _flags
+
 #]
 
 
@@ -42,17 +46,6 @@ def _cast_as_output_type(func: Callable, ):
         output = func(*args, **kwargs)
         output_type = kwargs.get("output_type", Databox, )
         return output_type(output, ) if output_type else output
-    return _wrapper
-    #]
-
-
-def _unpack_singleton(func: Callable, ):
-    #[
-    @_ft.wraps(func)
-    def _wrapper(self, *args, **kwargs, ):
-        unpack_singleton = kwargs.pop("unpack_singleton", True)
-        output = func(self, *args, **kwargs)
-        return self.unpack_singleton(output, unpack_singleton=unpack_singleton, )
     return _wrapper
     #]
 
@@ -485,20 +478,28 @@ steady_changes = self.get_steady_changes(
         self,
         /,
         *,
+        kind: EigenvalueKind = EigenvalueKind.ALL,
         unpack_singleton: bool = True,
     ) -> tuple[Real, ...] | list[tuple[Real, ...]]:
         """
         Eigenvalues
         """
-        return [ v.solution.eigenvalues for v in self._variants ]
+        return [
+            tuple(e for e, s in zip(v.solution.eigenvalues, v.solution.eigenvalues_stability, ) if s in kind)
+            for v in self._variants
+        ]
 
     @_unpack_singleton
     def get_eigenvalues_stability(
         self,
         *,
+        kind: EigenvalueKind = EigenvalueKind.ALL,
         unpack_singleton: bool = True,
     ):
-        return [ v.solution.eigenvalues_stability for v in self._variants ]
+        return [ 
+            tuple(i for i in v.solution.eigenvalues_stability if i in kind)
+            for v in self._variants
+        ]
 
     def _get_variable_stability_for_variant(self, variant, /, ) -> dict[str, bool]:
         """
@@ -507,12 +508,12 @@ steady_changes = self.get_steady_changes(
         qid_to_name = self.create_qid_to_name()
         return {
             qid_to_name[token.qid]: \
-                variant.solution.transition_vector_stability[index] == VariableStability.STABLE
+                variant.solution.transition_vector_stability[index] == EigenvalueKind.STABLE
             for index, token in enumerate(vec.transition_variables)
             if token.shift == 0
         } | {
             qid_to_name[token.qid]: \
-                variant.solution.measurement_vector_stability[index] == VariableStability.STABLE
+                variant.solution.measurement_vector_stability[index] == EigenvalueKind.STABLE
             for index, token in enumerate(vec.measurement_variables)
             if token.shift == 0
         }

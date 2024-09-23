@@ -127,7 +127,7 @@ _RESOLVE_HOW = {
 }
 
 
-class _Stream:
+class Stream:
     """
     """
     #[
@@ -165,7 +165,7 @@ class _Stream:
     #]
 
 
-class CriticalStream(_Stream):
+class CriticalStream(Stream):
     """
     """
     #[
@@ -185,7 +185,7 @@ class CriticalStream(_Stream):
     #]
 
 
-class ErrorStream(_Stream):
+class ErrorStream(Stream):
     """
     """
     #[
@@ -205,7 +205,7 @@ class ErrorStream(_Stream):
     #]
 
 
-class WarningStream(_Stream):
+class WarningStream(Stream):
     """
     """
     #[
@@ -225,7 +225,7 @@ class WarningStream(_Stream):
     #]
 
 
-class SilentStream(_Stream):
+class SilentStream(Stream):
     """
     """
     #[
@@ -247,7 +247,7 @@ STREAM_FACTORY = {
 }
 
 
-def create_stream(kind: str, title: str, /, when_no_stream=None, ) -> _Stream:
+def create_stream(kind: str, title: str, /, when_no_stream=None, ) -> Stream:
     """
     """
     #[

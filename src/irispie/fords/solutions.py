@@ -35,6 +35,7 @@ $$
 
 
 #[
+
 from __future__ import annotations
 
 import warnings as _wa
@@ -43,30 +44,37 @@ import numpy as _np
 import scipy as _sp
 import copy as _co
 
-from typing import (TYPE_CHECKING, )
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import (Self, Callable, )
-    from numbers import (Real, )
+    from typing import Self, Callable
+    from numbers import Real
     from ..fords import descriptors as _descriptors
     from ..fords import systems as _systems
+
 #]
+
+
+__all__ = (
+    "STABLE", "UNIT_ROOT", "UNSTABLE", "UNIT",
+)
+
+
+class UnitRootException(Exception):
+    pass
 
 
 class EigenvalueKind(_en.Flag, ):
     STABLE = _en.auto()
-    UNIT = _en.auto()
+    UNIT_ROOT = _en.auto()
     UNSTABLE = _en.auto()
+    UNIT = UNIT_ROOT
+    ALL = STABLE | UNIT_ROOT | UNSTABLE
 
 
 class SystemStabilityKind(_en.Flag, ):
     STABLE = _en.auto()
     MULTIPLE_STABLE = _en.auto()
     NO_STABLE = _en.auto()
-
-
-class VariableStability(_en.Flag, ):
-    STABLE = _en.auto()
-    UNIT_ROOT = _en.auto()
 
 
 class Solution:
@@ -127,7 +135,7 @@ class Solution:
         descriptor: _descriptors.Descriptor,
         system: _systems.System,
         *,
-        tolerance: float = 1e-12,
+        tolerance: float,
         clip_small: bool = False,
     ) -> Self:
         """
@@ -149,16 +157,20 @@ class Solution:
         # not detached yet, the system is called "preliminary"
         qz_matrixes, self.eigenvalues = \
             _solve_ordqz(system, is_alpha_beta_stable_or_unit_root, is_stable_root, is_unit_root, )
+        self._classify_eigenvalues_stability(is_stable_root, is_unit_root, )
+        #
         triangular_solution_prelim = \
             _solve_transition_equations(descriptor, system, qz_matrixes, )
         #
         # Detach unit from stable roots to create the final triangular solution
         # From the final triangular solution, calculate the square solution
-        triangular_solution = detach_stable_from_unit_roots(
+        *triangular_solution, check_num_unit_roots = detach_stable_from_unit_roots(
             triangular_solution_prelim,
             is_unit_root,
             clip=clip,
         )
+        if check_num_unit_roots != self.num_unit_roots:
+            raise UnitRootException
         #
         square_solution = _square_from_triangular(triangular_solution, )
         #
@@ -172,7 +184,6 @@ class Solution:
             self.Ua,
             clip=clip,
         )
-        self._classify_eigenvalues_stability(is_stable_root, is_unit_root, )
         self._classify_system_stability(descriptor.get_num_forwards(), )
         self._classify_transition_vector_stability(tolerance=tolerance, )
         self._classify_measurement_vector_stability(tolerance=tolerance, )
@@ -233,7 +244,7 @@ class Solution:
     @property
     def num_unit_roots(self, /, ) -> int:
         """==Number of unit roots=="""
-        return self.eigenvalues_stability.count(EigenvalueKind.UNIT)
+        return self.eigenvalues_stability.count(EigenvalueKind.UNIT_ROOT)
 
     @property
     def num_stable(self, /, ) -> int:
@@ -274,7 +285,7 @@ class Solution:
     def boolex_stable_transition_vector(self, /, ) -> tuple[int, ...]:
         """==Index of stable transition vector elements=="""
         return _np.array(tuple(
-            i == VariableStability.STABLE
+            i == EigenvalueKind.STABLE
             for i in self.transition_vector_stability
         ), dtype=bool, )
 
@@ -282,7 +293,7 @@ class Solution:
     def boolex_stable_measurement_vector(self, /, ) -> tuple[int, ...]:
         """==Index of stable measurement vector elements=="""
         return _np.array(tuple(
-            i == VariableStability.STABLE
+            i == EigenvalueKind.STABLE
             for i in self.measurement_vector_stability
         ), dtype=bool, )
 
@@ -417,7 +428,7 @@ def detach_stable_from_unit_roots(
     Ra = u.T @ Rg
     Ka = u.T @ Kg
     Xa = u.T @ Xg if Xg is not None else None
-    return Ua, Ta, Pa, Ra, Ka, Xa, J, Ru
+    return Ua, Ta, Pa, Ra, Ka, Xa, J, Ru, check_num_unit_roots
     #]
 
 
@@ -545,7 +556,7 @@ def _classify_eigenvalue_stability(
     if is_stable_root(abs_eigenvalue):
         return EigenvalueKind.STABLE
     elif is_unit_root(abs_eigenvalue):
-        return EigenvalueKind.UNIT
+        return EigenvalueKind.UNIT_ROOT
     else:
         return EigenvalueKind.UNSTABLE
     #]
@@ -563,8 +574,8 @@ def _classify_solution_vector_stability(
     test_matrix = _np.abs(transform_matrix[:, :num_unit_roots], )
     index = _np.any(test_matrix > tolerance, axis=1, )
     return tuple(
-        VariableStability.UNIT_ROOT if i
-        else VariableStability.STABLE
+        EigenvalueKind.UNIT_ROOT if i
+        else EigenvalueKind.STABLE
         for i in index
     )
     #]
@@ -599,4 +610,9 @@ def _get_solution_expansion(
     #     for k_minus_1 in range(0, forward)
     # ]
 
+
+STABLE = EigenvalueKind.STABLE
+UNIT_ROOT = EigenvalueKind.UNIT_ROOT
+UNSTABLE = EigenvalueKind.UNSTABLE
+UNIT = UNIT_ROOT
 

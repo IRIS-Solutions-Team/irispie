@@ -89,7 +89,9 @@ model based on the provided factor.
         self,
         /,
         up_to_order: int = 0,
-    ) -> tuple[_np.ndarray, ..., _namings.DimensionNames]:
+        return_dimension_names: bool = True,
+        unpack_singleton: bool = True,
+    ) -> tuple[list[_np.ndarray] | _np.ndarray, _namings.DimensionNames] | list[_np.ndarray] | _np.ndarray:
         """
         Asymptotic autocovariance of model variables
         """
@@ -97,7 +99,6 @@ model based on the provided factor.
         # Combine vectors of transition and measurement tokens, and select
         # those with zero shift only using a boolex
         system_vector, boolex_zero_shift = _get_system_vector(self, )
-        dimension_names = _get_dimension_names(self, system_vector, )
         #
         # Tuple element cov_by_variant[variant_index][order] is an N-by-N
         # covariance matrix
@@ -114,30 +115,51 @@ model based on the provided factor.
         #     stack_func(tuple(cov[order] for cov in cov_by_variant))
         #     for order in range(up_to_order + 1)
         # )
-        cov_by_variant = self.unpack_singleton(cov_by_variant, )
-        return cov_by_variant, dimension_names
+        #
+        cov_by_variant = self.unpack_singleton(
+            cov_by_variant,
+            unpack_singleton=unpack_singleton,
+        )
+        #
+        if return_dimension_names:
+            dimension_names = _get_dimension_names(self, system_vector, )
+            return cov_by_variant, dimension_names
+        else:
+            return cov_by_variant
 
     def get_acorr(
         self,
         /,
         acov: tuple[_np.ndarray, ..., tuple[str], tuple[str]] | None = None,
-        **kwargs,
-    ) -> tuple[_np.ndarray, ..., _namings.DimensionNames]:
+        up_to_order: int = 0,
+        unpack_singleton: bool = True,
+        return_dimension_names: bool = True,
+    ) -> tuple[list[_np.ndarray] | _np.ndarray, _namings.DimensionNames] | list[_np.ndarray] | _np.ndarray:
         """
         Asymptotic autocorrelation of model variables
         """
-        system_vector, boolex_zero_shift = _get_system_vector(self, )
-        dimension_names = _get_dimension_names(self, system_vector, )
         acov_by_variant = acov
         if acov_by_variant is None:
-            acov_by_variant, *_ = self.get_acov(**kwargs, )
+            acov_by_variant, *_ = self.get_acov(
+                up_to_order=up_to_order,
+                return_dimension_names=False,
+                unpack_singleton=False,
+            )
         acov_by_variant = self.repack_singleton(acov_by_variant, )
         acorr_by_variant = [
             _covariances.acorr_from_acov(i)
             for i in acov_by_variant
         ]
-        acorr_by_variant = self.unpack_singleton(acorr_by_variant, )
-        return acorr_by_variant, dimension_names
+        acorr_by_variant = self.unpack_singleton(
+            acorr_by_variant,
+            unpack_singleton=unpack_singleton,
+        )
+        if return_dimension_names:
+            system_vector, *_ = _get_system_vector(self, )
+            dimension_names = _get_dimension_names(self, system_vector, )
+            return acorr_by_variant, dimension_names,
+        else:
+            return acorr_by_variant
 
     def _getv_autocov(
         self,

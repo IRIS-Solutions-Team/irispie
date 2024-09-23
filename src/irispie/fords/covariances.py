@@ -229,3 +229,60 @@ def _remove_dim_from_singleton(
     )
     #]
 
+
+def _lyapunov(
+    T: _np.ndarray,
+    Sigma: _np.ndarray,
+) -> _np.ndarray:
+    """
+    """
+
+    def left_div(A: _np.ndarray, B: _np.ndarray) -> _np.ndarray:
+        """
+        Solve A / B
+        """
+        return _np.linalg.solve(A, B, )
+
+    def right_div(B: _np.ndarray, A: _np.ndarray) -> _np.ndarray:
+        """
+        Solve B / A
+        """
+        return _np.linalg.solve(A.T, B.T, ).T
+
+    C = _np.zeros_like(T)
+    i = T.shape[0]
+    Tt = T.T
+
+    while i >= 1:
+        if i == 1 or T[i-1, i-2] == 0:
+            # 1x1 block with a real eigenvalue.
+            C[i-1, i:] = C[i:, i-1].T
+            c = right_div(
+                Sigma[i-1, :i] + T[i-1, i-1] * C[i-1, i:] @ Tt[i:, :i] + T[i-1, i:] @ C[i:, :] @ Tt[:, :i],
+                _np.eye(i) - T[i-1, i-1] * Tt[:i, :i],
+            )
+            C[i-1, :i] = c
+            i -= 1
+        else:
+            # 2x2 block corresponding to a pair of complex eigenvalues.
+            C[i-2:i, i:] = C[i:, i-2:i].T
+            X = T[i-2:i, i-2:i] @ C[i-2:i, i:] @ Tt[i:, :i] + T[i-2:i, i:] @ C[i:, :] @ Tt[:, :i] + Sigma[i-2:i, :i]
+            # Solve
+            #     c = T(i-1:i, i-1:i)*c*Tt(1:i, 1:i)
+            # Transpose the equation first
+            #     c' = Tt'*c'*T' + X'
+            # so that the below kronecker product becomes faster to evaluate,
+            # then vectorize
+            #     vec(c') = kron(T, Tt')*vec(c') + vec(X').
+            Xt = X.T
+            U = Tt[:i, :i].T
+            k = _np.block([
+                [ T[i-2, i-2]*U, T[i-2, i]*U ],
+                [ T[i-1, i-2]*U, T[i-1, i]*U ],
+            ])
+            ct = left_div(_np.eye(2*i) - k, Xt.ravel(), )
+            C[i-2:i, :i] = ct.reshape(i, 2).T
+            i -= 2
+
+    return C
+

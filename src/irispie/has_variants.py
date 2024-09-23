@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import (Any, Self, Iterable, Iterator, TypeVar, Protocol, )
 from numbers import (Number, )
 import numpy as _np
+import functools as _ft
 
 from .conveniences import iterators as _iterators
 #]
@@ -277,4 +278,17 @@ def is_singleton(num_variants: int) -> bool:
     """
     """
     return num_variants == 1
+
+
+def unpack_singleton_decorator(func: Callable, ):
+    """
+    """
+    #[
+    @_ft.wraps(func, )
+    def _wrapper(self, *args, **kwargs, ):
+        unpack_singleton = kwargs.pop("unpack_singleton", True)
+        output = func(self, *args, **kwargs)
+        return self.unpack_singleton(output, unpack_singleton=unpack_singleton, )
+    return _wrapper
+    #]
 

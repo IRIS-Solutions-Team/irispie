@@ -57,6 +57,9 @@ __all__ = [
 ]
 
 
+_DEFAULT_SOLUTION_TOLERANCE = 1e-12
+
+
 @_dm.reference(
     path=("structural_models", "simultaneous.md", ),
     categories={
@@ -472,6 +475,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         clip_small: bool = False,
         return_info: bool = False,
         unpack_singleton: bool = True,
+        tolerance: Real = _DEFAULT_SOLUTION_TOLERANCE,
         **kwargs,
     ) -> dict[str, Any]:
         """
@@ -479,8 +483,14 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         model_flags = self.resolve_flags(**kwargs, )
         out_info = [
-            self._solve(self_v, model_flags, clip_small=clip_small, )
-            for self_v in self._variants
+            self._solve(
+                self_v,
+                vid,
+                model_flags,
+                clip_small=clip_small,
+                tolerance=tolerance,
+            )
+            for vid, self_v in enumerate(self._variants, )
         ]
         if return_info:
             out_info = _has_variants.unpack_singleton(
@@ -494,15 +504,33 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
     def _solve(
         self,
         variant: Variant,
+        vid: int,
         model_flags: flags.Flags,
         /,
         clip_small: bool,
+        tolerance: Real,
     ) -> None:
         """
         Calculate first-order solution for one variant of this model
         """
-        system = self._systemize(variant, self._invariant.dynamic_descriptor, model_flags, )
-        variant.solution = _solutions.Solution.from_system(self._invariant.dynamic_descriptor, system, clip_small=clip_small, )
+        variant_header = f"[Variant {vid}]"
+        system = self._systemize(
+            variant,
+            self._invariant.dynamic_descriptor,
+            model_flags,
+        )
+        try:
+            variant.solution = _solutions.Solution.from_system(
+                self._invariant.dynamic_descriptor,
+                system,
+                clip_small=clip_small,
+                tolerance=tolerance,
+            )
+        except _solutions.UnitRootException:
+            raise _wrongdoings.IrisPieCritical(
+                f"{variant_header} Inconsistency in classification of unit roots; "
+                "modify (increase) the tolerance level",
+            )
         info = {}
         #
         return info

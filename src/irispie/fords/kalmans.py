@@ -22,6 +22,7 @@ from .solutions import Solution, right_div, left_div
 from . import initializers as _initializers
 from . import shock_simulators as _shock_simulators
 from .descriptors import Squid
+from .. import wrongdoings as _wd
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -119,6 +120,7 @@ class Needs:
         "return_predict_mse_obs",
         "rescale_variance",
         "likelihood_contributions",
+        "output_store",
     )
 
     def __init__(
@@ -142,17 +144,11 @@ class Needs:
         self.return_predict_mse_obs = return_predict_mse_obs and "predict_mse_obs" in return_
         self.rescale_variance = rescale_variance
         self.likelihood_contributions = likelihood_contributions
-
-    @property
-    def output_store(self, /, ) -> _OutputStore:
-        """
-        """
-        return any((
+        #
+        self.output_store = any((
             self.return_predict,
             self.return_update,
             self.return_smooth,
-            self.return_predict_err,
-            self.return_predict_mse_obs,
         ))
 
     #]
@@ -557,6 +553,17 @@ class Mixin:
     """
     #[
 
+
+    @_dm.reference(category="filtering", )
+    def neg_log_likelihood(self, *args, **kwargs, ) -> Real:
+        """
+        """
+        kwargs["return_"] = ()
+        kwargs["likelihood_contributions"] = False
+        kwargs["return_info"] = True
+        _, info = self.kalman_filter(*args, **kwargs, )
+        return info["neg_log_likelihood"]
+
     @_dm.reference(category="filtering", )
     def kalman_filter(
         self,
@@ -584,6 +591,7 @@ class Mixin:
         append_terminal: bool = False,
         deviation: bool = False,
         check_singularity: bool = False,
+        when_singularity: Literal["critical", "error", "warning", "silent" ] | None = "critical",
         num_variants: int | None = None,
         #
         unpack_singleton: bool = True,
@@ -796,7 +804,7 @@ the time series data.
             measurement_names=y_names,
             needs=needs,
             name_to_log_name=name_to_log_name,
-        )
+        ) if needs.output_store else None
 
         initialize = _ft.partial(
             _initializers.initialize,
@@ -815,7 +823,13 @@ the time series data.
 
         out_info = []
 
-        for _, self_v, input_ds_v in main_iter:
+        for vid, self_v, input_ds_v in main_iter:
+
+            variant_header = f"[Variant {vid}]"
+            when_singularity = _wd.create_stream(
+                when_singularity,
+                f"Singularity in prediction MSE matrix in {variant_header}",
+            ) if check_singularity else None
 
             solution_v = self_v.get_singleton_solution(deviation=deviation, )
             data_array = input_ds_v.get_data_variant()
@@ -829,7 +843,10 @@ the time series data.
             #
             # Presimulate the impact of anticipated shocks
             #
-            all_v_impact = _simulate_anticipated_shocks(self_v, input_ds_v, frame, )
+            all_v_impact = (
+                _simulate_anticipated_shocks(self_v, input_ds_v, frame, )
+                if shocks_from_data else None
+            )
 
             #
             # Get values of observables
@@ -849,7 +866,7 @@ the time series data.
                 transform=solution_v.Ua,
                 squid=squid,
                 measurement_incidence=y1_incidence_array,
-            )
+            ) if needs.output_store else None
 
             generate_period_system = _ft.partial(
                 _generate_period_system,
@@ -869,9 +886,20 @@ the time series data.
                 w_array=data_array[squid.w_qids, :],
             )
 
-            store_predict = _ft.partial(_OutputStore.store_predict, self=output_store_v, )
-            store_update = _ft.partial(_OutputStore.store_update, self=output_store_v, )
-            store_smooth = _ft.partial(_OutputStore.store_smooth, self=output_store_v, )
+            store_predict = (
+                _ft.partial(_OutputStore.store_predict, self=output_store_v, )
+                if needs.return_predict else None
+            )
+
+            store_update = (
+                _ft.partial(_OutputStore.store_update, self=output_store_v, )
+                if needs.return_update else None
+            )
+
+            store_smooth = (
+                _ft.partial(_OutputStore.store_smooth, self=output_store_v, )
+                if needs.return_smooth else None
+            )
 
             cache = predict(
                 num_periods=input_ds_v.num_periods,
@@ -881,7 +909,11 @@ the time series data.
                 store_update=store_update,
                 store_smooth=store_smooth,
                 check_singularity=check_singularity,
+                when_singularity=when_singularity,
             )
+
+            if when_singularity is not None:
+                when_singularity._raise()
 
             if cache.needs_estimate_unknown_init:
                 estimate_unknown_init(
@@ -902,13 +934,20 @@ the time series data.
             if needs.likelihood_contributions:
                 cache.calculate_likelihood_contributions()
 
-            output_store_v.rescale_stds(cache.var_scale, )
+            if needs.output_store:
+                output_store_v.rescale_stds(cache.var_scale, )
+
             out_info_v = cache.create_out_info(span, )
 
-            output_store.extend(output_store_v, )
+            if needs.output_store:
+                output_store.extend(output_store_v, )
+
             out_info.append(out_info_v, )
 
-        out_data = output_store.create_out_data()
+        out_data = (
+            output_store.create_out_data()
+            if output_store is not None else None
+        )
         #
         if return_info:
             out_info = _has_variants.unpack_singleton(
@@ -988,11 +1027,15 @@ class Cache:
         """
         self.all_pe_Fi_pe = tuple(
             pe @ Fi @ pe if pe is not None and Fi is not None else None
-            for pe, Fi in zip(self.all_pe, self.all_Fi, )
+            for pe, Fi, in zip(self.all_pe, self.all_Fi, )
+        )
+        all_det_Fi = tuple(
+            float(_np.linalg.det(Fi)) if Fi is not None else None
+            for Fi in self.all_Fi
         )
         self.all_log_det_F = tuple(
-            -_np.log(_np.linalg.det(Fi)) if Fi is not None else None
-            for Fi in self.all_Fi
+            float(-_np.log(det_Fi)) if det_Fi is not None else None
+            for det_Fi in all_det_Fi
         )
         self.sum_num_obs = sum(i for i in self.all_num_obs if i is not None)
         self.sum_log_det_F = sum(i for i in self.all_log_det_F if i is not None)
@@ -1033,12 +1076,18 @@ class Cache:
     def create_out_info(self: Self, span: Iterable[Period], ) -> dict[str, Any]:
         """
         """
-        return {
+        out_info = {
             "neg_log_likelihood": float(self.neg_log_likelihood),
-            "neg_log_likelihood_contributions": Series(periods=span, values=self.neg_log_likelihood_contributions, ),
+            "log_det_F": Series(periods=span, values=self.all_log_det_F, ),
             "var_scale": float(self.var_scale),
             "std_scale": float(_sqrt_positive(self.var_scale)),
         }
+        if self.neg_log_likelihood_contributions is not None:
+            out_info["neg_log_likelihood_contributions"] = Series(
+                periods=span,
+                values=self.neg_log_likelihood_contributions,
+            )
+        return out_info
 
     #]
 
@@ -1051,6 +1100,7 @@ def predict(
     store_update: Callable | None = None,
     store_smooth: Callable | None = None,
     check_singularity: bool = False,
+    when_singularity: _wd.Stream | None = None,
 ) -> None:
     """
     """
@@ -1060,11 +1110,12 @@ def predict(
     needs_estimate_unknown_init = Xi_prev is not None
     cache.needs_estimate_unknown_init = needs_estimate_unknown_init
     cache.last_period_of_observations = -1
+    create_empty = _ft.partial(_np.empty, shape=(0, 0), dtype=_np.float64, )
     #
     for t in range(num_periods, ):
         #
         T, P, K, Z, H, D, cov_u, cov_w, v_impact, *_ = generate_period_system(t, )
-        y1, u0, v0, w0, *_ = generate_period_data(t, )
+        y1, u0, v0, w0, inx_y, *_ = generate_period_data(t, )
         #
         cache.all_y[t] = y1
         cache.all_num_obs[t] = y1.size
@@ -1084,18 +1135,22 @@ def predict(
         Q0 = _make_symmetric(Q0)
         H_cov_w = H @ cov_w
         #
-        F = Z @ Q0 @ Z.T + H_cov_w @ H.T \
-            if any_y else _np.zeros((0, 0), dtype=_np.float64, )
-        F = _make_symmetric(F)
+        F = (
+            Z @ Q0 @ Z.T + H_cov_w @ H.T if any_y
+            else create_empty()
+        )
+        F = _make_symmetric(F, )
         #
         # sing_values = _np.linalg.svd(F, compute_uv=False, )
         # relative_cond = sing_values[-1] / sing_values[0]
         # print(t, F.size, relative_cond, sing_values[0], )
         # TODO: Check if F singularity if requested by user
-        if check_singularity and any_y:
-            _check_singularity(F, t, )
+        inv = _INVERSE_FUNCTION["regular"]
+        if when_singularity and any_y:
+            inv = _check_singularity(F, t, inx_y, when_singularity, )
 
-        Fi = _np.linalg.inv(F) if any_y else _np.zeros((0, 0), )
+        Fi = inv(F) if any_y else create_empty()
+        Fi = _make_symmetric(Fi, )
         #
         # Median prediction step
         #
@@ -1294,7 +1349,7 @@ def _generate_period_system(
     y1_array: _np.ndarray,
     std_u_array: _np.ndarray,
     std_w_array: _np.ndarray,
-    all_v_impact: Sequence[_np.ndarray | None],
+    all_v_impact: Sequence[_np.ndarray | None] | None,
     initials: tuple[_np.ndarray, _np.ndarray, int, ],
 ) -> tuple[_np.ndarray, ...]:
     """
@@ -1312,7 +1367,7 @@ def _generate_period_system(
     D = solution_v.D[inx_y]
     cov_u = _np.diag(std_u_array[:, t]**2, )
     cov_w = _np.diag(std_w_array[:, t]**2, )
-    v_impact = all_v_impact[t]
+    v_impact = all_v_impact[t] if all_v_impact is not None else None
     return T, P, K, Z, H, D, cov_u, cov_w, v_impact,
     #]
 
@@ -1332,7 +1387,7 @@ def _generate_period_data(
     u = u_array[:, t]
     v = v_array[:, t]
     w = w_array[:, t]
-    return y, u, v, w,
+    return y, u, v, w, inx_y.tolist(),
     #]
 
 
@@ -1340,10 +1395,26 @@ def _make_symmetric(matrix, ):
     return (matrix + matrix.T) / 2
 
 
-def _check_singularity(F: _np.ndarray, t: int, ) -> None | NoReturn:
-    rank_F = _np.linalg.matrix_rank(F)
-    if rank_F < F.shape[0]:
-        svd = _np.linalg.svd(F, )
-        message = f"Singularity in prediction MSE matrix in period {t}, rank {rank_F} of {F.shape[0]}"
-        raise SingularMatrixError(message, )
+_INVERSE_FUNCTION = {
+    "regular": _np.linalg.inv,
+    "singular": _np.linalg.pinv,
+}
+
+
+def _check_singularity(
+    F: _np.ndarray,
+    t: int,
+    boolex_y: list[bool],
+    when_singularity: _wd.Stream | None,
+) -> Callable | NoReturn:
+    """
+    """
+    rank_F = _np.linalg.matrix_rank(F, )
+    if rank_F == F.shape[0]:
+        return _INVERSE_FUNCTION["regular"]
+    index_y = _np.where(boolex_y, )[0].tolist()
+    message = f"Singular prediction MSE matrix in period {t}, rank {rank_F} of {F.shape[0]}"
+    # u, s, v, = _np.linalg.svd(F, )
+    when_singularity.add(message, )
+    return _INVERSE_FUNCTION["singular"]
 
