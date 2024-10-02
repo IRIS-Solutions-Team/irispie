@@ -32,8 +32,8 @@ from .simultaneous import __all__ as simultaneous_all
 from .fords import *
 from .fords import __all__ as fords_all
 
-from .vec_autoregs import *
-from .vec_autoregs import __all__ as vec_autoregs_all
+from .vector_autoregressions import *
+from .vector_autoregressions import __all__ as vector_autoregressions_all
 
 from .quantities import *
 from .quantities import __all__ as quantities_all
@@ -93,7 +93,7 @@ __all__ = (
     *sources_all,
     *simultaneous_all,
     *fords_all,
-    *vec_autoregs_all,
+    *vector_autoregressions_all,
     *quantities_all,
     *equations_all,
     *sequentials_all,
