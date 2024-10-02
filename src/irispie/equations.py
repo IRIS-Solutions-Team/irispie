@@ -42,6 +42,12 @@ class EquationKind(_en.Flag):
 
     ENDOGENOUS_EQUATION = TRANSITION_EQUATION | MEASUREMENT_EQUATION
 
+    def to_keyword(self, /, ) -> str:
+        return "!" + self.name.lower() + "s"
+
+    def to_portable(self, /, ) -> str:
+        return self.to_keyword().replace("!", "")
+
     @property
     def human(self, /, ) -> str:
         return self.name.replace("_", " ").title()
@@ -96,35 +102,6 @@ class Equation:
         return hash(self.__repr__)
 
     has_attributes = _attributes.has_attributes
-
-    def serialize(self, /, ) -> tuple[int, str, str, str, str, int, tuple[str, ...]]:
-        """
-        """
-        return (
-            int(self.id),
-            str(self.human),
-            str(self.kind.name),
-            str(self.description) if self.description else "",
-            str(self.xtring),
-            _incidences.serialize(self.incidence, ),
-            int(self.entry) if self.entry is not None else None,
-            _attributes.serialize(self.attributes, ),
-        )
-
-    @classmethod
-    def deserialize(klass, data: Sequence[Any], /) -> Self:
-        """
-        """
-        return klass(
-            id=int(data[0]),
-            human=str(data[1]),
-            kind=EquationKind[data[2]],
-            description=str(data[3]) if data[3] is not None else None,
-            xtring=str(data[4]),
-            incidence=_incidences.deserialize(data[5], ),
-            entry=int(data[6]) if data[6] is not None else None,
-            attributes=_attributes.deserialize(data[7], ),
-        )
 
     #]
 

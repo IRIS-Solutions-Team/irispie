@@ -57,6 +57,7 @@ import numpy as _np
 from ..incidences.main import (Token, )
 from ..incidences import main as _incidence
 from .. import equations as _equations
+from ..equations import Equation, EquationKind
 from .. import quantities as _quantities
 from ..aldi.differentiators import (AtomFactoryProtocol, Context, )
 from ..aldi import maps as _maps
@@ -118,13 +119,17 @@ class Descriptor:
 
     def __init__(
         self,
-        equations: Iterable[_equations.Equation],
+        equations: Iterable[Equation],
         quantities: Iterable[_quantities.Quantity],
         context: dict[str, Any] | None,
         /,
     ) -> None:
         """
         """
+        equations = tuple(
+            i for i in equations
+            if i.kind == EquationKind.TRANSITION_EQUATION or i.kind == EquationKind.MEASUREMENT_EQUATION
+        )
         self.system_vectors = SystemVectors(equations, quantities)
         self.solution_vectors = SolutionVectors(self.system_vectors)
         self.system_map = SystemMap(self.system_vectors)
@@ -212,7 +217,7 @@ class SystemVectors:
 
     def __init__(
         self,
-        equations: Iterable[_equations.Equation],
+        equations: Iterable[Equation],
         quantities: Iterable[_quantities.Quantity],
         /,
     ) -> None:
@@ -222,9 +227,9 @@ class SystemVectors:
         qid_to_logly = _quantities.create_qid_to_logly(quantities, )
         #
         self.transition_eids \
-            = sorted([eqn.id for eqn in equations if eqn.kind in _equations.EquationKind.TRANSITION_EQUATION])
+            = sorted([eqn.id for eqn in equations if eqn.kind in EquationKind.TRANSITION_EQUATION])
         self.measurement_eids \
-            = sorted([eqn.id for eqn in equations if eqn.kind in _equations.EquationKind.MEASUREMENT_EQUATION])
+            = sorted([eqn.id for eqn in equations if eqn.kind in EquationKind.MEASUREMENT_EQUATION])
         qid_to_kind = _quantities.create_qid_to_kind(quantities, )
         #
         # Collect all tokens from equations but also add zero-shifted tokens
@@ -603,14 +608,14 @@ def _create_dynid_matrices(system_transition_vector: Iterable[Token]):
 
 def _adjust_for_measurement_equations(
     transition_variable_tokens: Iterable[_quantities.Quantity],
-    equations: Iterable[_equations.Equation],
+    equations: Iterable[Equation],
     qid_to_kind: dict[int, _quantities.QuantityKind],
     /,
 ) -> Iterable[_quantities.Quantity]:
     """
     """
     #[
-    tokens_in_measurement_equations = _it.chain.from_iterable(e.incidence for e in equations if e.kind is _equations.EquationKind.MEASUREMENT_EQUATION)
+    tokens_in_measurement_equations = _it.chain.from_iterable(e.incidence for e in equations if e.kind is EquationKind.MEASUREMENT_EQUATION)
     pretend_needed = [
         Token(t.qid, t.shift-1) for t in tokens_in_measurement_equations
         if qid_to_kind[t.qid] in _quantities.QuantityKind.TRANSITION_VARIABLE
@@ -620,10 +625,10 @@ def _adjust_for_measurement_equations(
 
 
 def _custom_order_equations_by_eids(
-    equations: Iterable[_equations.Equation],
+    equations: Iterable[Equation],
     eids: list[int],
     /,
-) -> tuple[_equations.Equation, ...]:
+) -> tuple[Equation, ...]:
     """
     """
     #[
@@ -723,7 +728,7 @@ class Squid:
 
 
 def _collect_all_tokens(
-    equations: Iterable[_equations.Equation],
+    equations: Iterable[Equation],
     quantities: Iterable[_quantities.Quantity],
     /,
 ) -> set[Token]:

@@ -1,7 +1,9 @@
 {
     "xaxis": {
+        "type": "date",
         "showticklabels": true,
-        "tickformat": null
+        "tickformat": null,
+        "ticklabelmode": "period"
     },
     "yaxis": {
         "zeroline": true,

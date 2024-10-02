@@ -1112,14 +1112,14 @@ self.replace_where(
             new._replace_data(data, )
             yield new
 
-    def iter_own_data_variants_from_until(self, from_until, /, ) -> Iterator[_np.ndarray]:
+    def iter_own_data_variants_from_until(self, from_until, ) -> Iterator[_np.ndarray]:
         """
         Iterates over the data variants from the given start date to the given end date
         """
         data_from_until = self.data if from_until == ... else self.get_data_from_until(from_until, )
         return iter(data_from_until.T, )
 
-    def iter_data_variants_from_until(self, from_until, /, ) -> Iterator[_np.ndarray]:
+    def iter_data_variants_from_until(self, from_until, ) -> Iterator[_np.ndarray]:
         """
         Iterates over the data variants from the given start date to the given end date
         """

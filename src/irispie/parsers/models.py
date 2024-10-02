@@ -26,15 +26,17 @@ def from_string(source: str, /, ) -> sources.Source:
     source = _remove_line_comments(source, )
 
     # TODO: make !variables, !shocks, !equations valid keywords
-    source = _expand_shortcut_keywords(source)
+    source = _expand_shortcut_keywords(source, )
 
-    source = _common.add_blank_lines(source)
+    source = _replace_underscores_by_hyphens(source, )
 
-    source = _translate_keywords(source)
+    source = _common.add_blank_lines(source, )
 
-    nodes = _GRAMMAR["source"].parse(source)
+    source = _translate_keywords(source, )
 
-    parsed = _Visitor().visit(nodes)
+    nodes = _GRAMMAR["source"].parse(source, )
+
+    parsed = _Visitor().visit(nodes, )
 
     parsed = _substitutions.resolve_substitutions(parsed, _WHERE_TO_APPLY_SUBSTITUTIONS, )
 
@@ -261,6 +263,13 @@ def _expand_shortcut_keywords(source_string: str, /, ) -> str:
     for short, long in _SHORTCUT_KEYWORDS:
         source_string = _re.sub(short, long, source_string)
     return source_string
+
+
+_KEYWORD_WITH_UNDERSCORE = _re.compile(r"(?<!!)(![a-z]+)_([a-z]+)", )
+
+
+def _replace_underscores_by_hyphens(source_string: str, /, ) -> str:
+    return _KEYWORD_WITH_UNDERSCORE.sub(r"\1-\2", source_string, )
 
 
 def _deblank(string: str, /, ) -> str:

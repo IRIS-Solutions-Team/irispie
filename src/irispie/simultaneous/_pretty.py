@@ -26,13 +26,13 @@ class _PrettyTable(PrettyTable, ):
     """
     #[
 
-    def to_csv(
+    def to_csv_file(
         self,
-        filename: str,
+        file_name: str,
     ) -> None:
         """
         """
-        _file_io.save_text(filename, self.get_csv_string(), )
+        _file_io.save_text(file_name, self.get_csv_string(), )
 
     #]
 
@@ -44,9 +44,9 @@ class Inlay:
 
     def create_steady_table(
         self,
-        columns: Iterable[str],
+        columns: Iterable[str] = ("name", "steady_level", "steady_change", ),
         kind: int = _quantities.ANY_VARIABLE | _quantities.PARAMETER,
-        save_to_csv: str | None = None,
+        save_to_csv_file: str | None = None,
         **kwargs,
     ) -> _PrettyTable:
         """
@@ -60,8 +60,8 @@ class Inlay:
         for constructor in column_constructors:
             for header, values, settings in constructor(self, row_names, **kwargs, ):
                 table.add_column(header, values, **settings, )
-        if save_to_csv:
-            table.to_csv(save_to_csv, )
+        if save_to_csv_file:
+            table.to_csv_file(save_to_csv_file, )
         return table
 
     #]

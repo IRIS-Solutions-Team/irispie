@@ -14,11 +14,10 @@ from ._variants import Variant
 
 
 __all__ = (
-    "VectorAutoregression",
+    "VecAutoreg",
 )
 
-
-class VectorAutoregression(
+class VecAutoreg(
     _has_invariant.HasInvariantMixin,
     _has_variants.HasVariantsMixin,
 ):
@@ -47,7 +46,7 @@ class VectorAutoregression(
         endogenous_names: Iterable[str],
         num_variants: int = 1,
         **kwargs,
-    ) -> VectorAutoregression:
+    ) -> VecAutoreg:
         """
         """
         invariant = Invariant(

@@ -23,19 +23,6 @@ class Inlay:
     """
     #[
 
-    def to_json_string(self, **kwargs, ) -> None:
-        """
-        """
-        serialized = self.serialize()
-        return _js.dumps(serialized, **kwargs, )
-
-    def to_json_file(self, file_name: str, **kwargs, ) -> None:
-        """
-        """
-        serialized = self.serialize()
-        with open(file_name, "wt", ) as file:
-            _js.dump(serialized, file, **kwargs, )
-
     def to_pickle_bytes(self, **kwargs, ) -> bytes:
         """
         """
@@ -59,21 +46,6 @@ class Inlay:
             _dl.dump(self, file, **kwargs, )
 
     @classmethod
-    def from_json_string(klass, string: str, **kwargs, ) -> Self:
-        """
-        """
-        serialized = _js.loads(string, **kwargs, )
-        return klass.deserialize(serialized, )
-
-    @classmethod
-    def from_json_file(klass, file_name: str, **kwargs, ) -> Self:
-        """
-        """
-        with open(file_name, "rt", ) as file:
-            serialized = _js.load(file, **kwargs, )
-            return klass.deserialize(serialized, )
-
-    @classmethod
     def from_pickle_file(klass, file_name: str, **kwargs, ) -> Self:
         """
         """
@@ -86,6 +58,13 @@ class Inlay:
         """
         with open(file_name, "rb", ) as file:
             return _dl.load(file, **kwargs, )
+
+    def to_portable_file(self, file_name: str, **kwargs, ) -> None:
+        """
+        """
+        portable = self._serialize_to_portable()
+        with open(file_name, "wt", ) as file:
+            _js.dump(portable, file, **kwargs, )
 
     #]
 

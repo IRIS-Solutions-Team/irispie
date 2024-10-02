@@ -139,17 +139,3 @@ def rows_and_columns_from_tokens(
     rows, columns = zip(*((t.qid, column_zero+t.shift) for t in tokens))
     return tuple(rows), tuple(columns)
 
-
-def serialize(tokens: Iterable[Token], ) -> tuple[tuple[int, int]]:
-    return (
-        tuple(tuple(i) for i in tokens)
-        if tokens is not None else None
-    )
-
-
-def deserialize(data: tuple[tuple[int, int]], ) -> tuple[Token]:
-    return (
-        tuple(Token(*i) for i in data)
-        if data is not None else None
-    )
-

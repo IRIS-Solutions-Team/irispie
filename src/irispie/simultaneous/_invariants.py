@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import copy as _cp
 import functools as _ft
+import itertools as _it
 import numpy as _np
 import re as _re
 
@@ -14,10 +15,13 @@ from ..conveniences import descriptions as _descriptions
 from ..fords import descriptors as _descriptors
 from ..equators import plain as _equators
 from .. import equations as _equations
+from ..equations import EquationKind, Equation
 from .. import quantities as _quantities
+from ..quantities import QuantityKind, Quantity
 from .. import wrongdoings as _wrongdoings
 from .. import makers as _makers
 from ..incidences.main import ZERO_SHIFT_TOKEN_PATTERN
+from .. import sources as _sources
 
 from ._flags import Flags
 
@@ -35,8 +39,8 @@ _DEFAULT_STD_NONLINEAR = 0.01
 
 
 _PLAIN_EQUATOR_EQUATION = (
-    _equations.EquationKind.TRANSITION_EQUATION
-    | _equations.EquationKind.MEASUREMENT_EQUATION
+    EquationKind.TRANSITION_EQUATION
+    | EquationKind.MEASUREMENT_EQUATION
 )
 
 
@@ -56,7 +60,6 @@ class Invariant(
         "quantities",
         "dynamic_equations",
         "steady_equations",
-        "steady_autovalues",
         "shock_qid_to_std_qid",
         "_context",
         "_default_std",
@@ -108,11 +111,11 @@ class Invariant(
         self.quantities = tuple(source.quantities)
         self.dynamic_equations = tuple(_equations.generate_equations_of_kind(
             source.dynamic_equations,
-            kind=_equations.EquationKind.ENDOGENOUS_EQUATION
+            kind=EquationKind.ENDOGENOUS_EQUATION | EquationKind.STEADY_AUTOVALUES,
         ))
         self.steady_equations = tuple(_equations.generate_equations_of_kind(
             source.steady_equations,
-            kind=_equations.EquationKind.ENDOGENOUS_EQUATION | _equations.EquationKind.STEADY_AUTOVALUES,
+            kind=EquationKind.ENDOGENOUS_EQUATION | EquationKind.STEADY_AUTOVALUES,
         ))
         #
         # Create std_ parameters for all shocks
@@ -124,21 +127,21 @@ class Invariant(
             #
             self.quantities += tuple(_generate_stds_for_shocks(
                 unanticipated_shocks,
-                _quantities.QuantityKind.UNANTICIPATED_STD,
+                QuantityKind.UNANTICIPATED_STD,
                 std_name_format,
                 std_description_format,
                 entry=len(self.quantities),
             ))
             self.quantities += tuple(_generate_stds_for_shocks(
                 anticipated_shocks,
-                _quantities.QuantityKind.ANTICIPATED_STD,
+                QuantityKind.ANTICIPATED_STD,
                 std_name_format,
                 std_description_format,
                 entry=len(self.quantities),
             ))
             self.quantities += tuple(_generate_stds_for_shocks(
                 measurement_shocks,
-                _quantities.QuantityKind.MEASUREMENT_STD,
+                QuantityKind.MEASUREMENT_STD,
                 std_name_format,
                 std_description_format,
                 entry=len(self.quantities),
@@ -165,21 +168,20 @@ class Invariant(
         _check_numbers_of_variables_equations(
             self.quantities,
             self.dynamic_equations,
-            _quantities.QuantityKind.TRANSITION_VARIABLE,
-            _equations.EquationKind.TRANSITION_EQUATION,
+            QuantityKind.TRANSITION_VARIABLE,
+            EquationKind.TRANSITION_EQUATION,
         )
         #
-        # count of measurement equations must equal count of measurement variables
+        # Number of measurement equations must equal number of measurement variables
         _check_numbers_of_variables_equations(
             self.quantities,
             self.dynamic_equations,
-            _quantities.QuantityKind.MEASUREMENT_VARIABLE,
-            _equations.EquationKind.MEASUREMENT_EQUATION,
+            QuantityKind.MEASUREMENT_VARIABLE,
+            EquationKind.MEASUREMENT_EQUATION,
         )
         #
         self.quantities = _quantities.reorder_by_kind(self.quantities, )
-        self.dynamic_equations = _equations.reorder_by_kind(self.dynamic_equations, )
-        self.steady_equations = _equations.reorder_by_kind(self.steady_equations, )
+        self.dynamic_equations, self.steady_equations = _reorder_equations_by_kind(self.dynamic_equations, self.steady_equations, )
         _quantities.stamp_id(self.quantities, )
         _equations.stamp_id(self.dynamic_equations, )
         _equations.stamp_id(self.steady_equations, )
@@ -226,7 +228,7 @@ class Invariant(
         # Steady autovalue updater
         steady_autovalues = tuple(_equations.generate_equations_of_kind(
             self.steady_equations,
-            kind=_equations.EquationKind.STEADY_AUTOVALUES,
+            kind=EquationKind.STEADY_AUTOVALUES,
         ))
         _create_steady_autovalue_updater(self, steady_autovalues, )
 
@@ -242,7 +244,7 @@ class Invariant(
         """
         return sum(
             1 for e in self.dynamic_equations
-            if e.kind is _equations.EquationKind.TRANSITION_EQUATION
+            if e.kind is EquationKind.TRANSITION_EQUATION
         )
 
     @property
@@ -251,7 +253,7 @@ class Invariant(
         """
         return sum(
             1 for e in self.dynamic_equations
-            if e.kind is _equations.EquationKind.MEASUREMENT_EQUATION
+            if e.kind is EquationKind.MEASUREMENT_EQUATION
         )
 
     def _populate_min_max_shifts(self, /, ) -> None:
@@ -264,36 +266,6 @@ class Invariant(
             self.dynamic_equations + self.steady_equations,
         )
 
-    def serialize(self, /, ) -> dict[str, Any]:
-        return {
-            "quantities": tuple(i.serialize() for i in self.quantities),
-            "dynamic_equations": tuple(i.serialize() for i in self.dynamic_equations),
-            "steady_equations": tuple(i.serialize() for i in self.steady_equations),
-            "shock_qid_to_std_qid": self.shock_qid_to_std_qid,
-            "_context": None,
-            "_default_std": self._default_std,
-            "_flags": self._flags.serialize(),
-            "_min_shift": self._min_shift,
-            "_max_shift": self._max_shift,
-            "__description__": self.__description__,
-        }
-
-    @classmethod
-    def deserialize(klass, data: dict[str, Any], /) -> Self:
-        self = klass(
-            quantities=tuple(_quantities.Quantity.deserialize(i) for i in data["quantities"]),
-            dynamic_equations=tuple(_equations.Equation.deserialize(i) for i in data["dynamic_equations"]),
-            steady_equations=tuple(_equations.Equation.deserialize(i) for i in data["steady_equations"]),
-            shock_qid_to_std_qid={ int(k): v for k, v in data["shock_qid_to_std_qid"].items() },
-            _default_std=data["_default_std"],
-            _flags=Flags.deserialize(data["_flags"], ),
-            _min_shift=data["_min_shift"],
-            _max_shift=data["_max_shift"],
-            __description__=str(data["__description__"]) if data["__description__"] is not None else None,
-        )
-        self._populate_derived_attributes()
-        return self
-
     def __getstate__(self, /, ) -> dict[str, Any]:
         return {
             k: getattr(self, k)
@@ -304,6 +276,9 @@ class Invariant(
         for k in self._serialized_slots:
             setattr(self, k, state[k])
         self._populate_derived_attributes()
+
+    def _serialize_to_portable(self, /, ) -> dict[str, Any]:
+        return _sources.serialize_to_portable(self, )
 
     #]
 
@@ -347,7 +322,7 @@ def _success_creating_lambda(equation, function_context):
 
 
 def _create_shock_qid_to_std_qid(
-    quantities: Iterable[_quantities.Quantity],
+    quantities: Iterable[Quantity],
     std_name_format: str,
     /,
 ) -> dict[int, int]:
@@ -356,7 +331,7 @@ def _create_shock_qid_to_std_qid(
     #[
     name_to_qid = _quantities.create_name_to_qid(quantities, )
     qid_to_name = _quantities.create_qid_to_name(quantities, )
-    kind = _quantities.QuantityKind.ANY_SHOCK
+    kind = QuantityKind.ANY_SHOCK
     all_shock_qids = tuple(_quantities.generate_qids_by_kind(quantities, kind))
     return {
         shock_qid: name_to_qid[std_name_format.format(qid_to_name[shock_qid], )]
@@ -366,19 +341,19 @@ def _create_shock_qid_to_std_qid(
 
 
 def _generate_stds_for_shocks(
-    shocks: Iterable[_quantities.Quantity, ...],
-    std_kind: _quantities.QuantityKind,
+    shocks: Iterable[Quantity, ...],
+    std_kind: QuantityKind,
     std_name_format: str,
     std_description_format: str,
     /,
     *,
     entry: int,
-) -> tuple[_quantities.Quantity, ...]:
+) -> tuple[Quantity, ...]:
     """
     """
     #[
     return (
-        _quantities.Quantity(
+        Quantity(
             id=None,
             human=std_name_format.format(shock.human, ),
             kind=std_kind,
@@ -391,8 +366,8 @@ def _generate_stds_for_shocks(
 
 
 def _collect_undeclared_names(
-    quantities: tuple[_quantities.Quantity, ...],
-    equations: tuple[_equations.Equation, ...],
+    quantities: tuple[Quantity, ...],
+    equations: tuple[Equation, ...],
     /,
 ) -> tuple[str, ...]:
     """
@@ -410,15 +385,15 @@ def _generate_quantities_for_undeclared_names(
     /,
     *,
     entry: int,
-) -> tuple[_quantities.Quantity, ...] | NoReturn:
+) -> tuple[Quantity, ...] | NoReturn:
     """
     """
     #[
     if not undeclared_names:
         return tuple()
-    autodeclare_kind = _quantities.QuantityKind.from_keyword(autodeclare_as, )
+    autodeclare_kind = QuantityKind.from_keyword(autodeclare_as, )
     return (
-        _quantities.Quantity(
+        Quantity(
             id=None,
             human=name,
             kind=autodeclare_kind,
@@ -432,10 +407,10 @@ def _generate_quantities_for_undeclared_names(
 
 
 def _check_numbers_of_variables_equations(
-    quantities: tuple[_quantities.Quantity, ...],
-    equations: tuple[_equations.Equation, ...],
-    quantity_kind: _quantities.QuantityKind,
-    equation_kind: _equations.EquationKind,
+    quantities: tuple[Quantity, ...],
+    equations: tuple[Equation, ...],
+    quantity_kind: QuantityKind,
+    equation_kind: EquationKind,
     /,
 ) -> None:
     """
@@ -475,7 +450,7 @@ _STEADY_AUTOVALUE_PATTERN = _re.compile(
 
 def _create_steady_autovalue_updater(
     self,
-    steady_autovalues: Iterable[_equations.Equation],
+    steady_autovalues: Iterable[Equation],
     /,
 ) -> tuple[int, str]:
     """
@@ -501,7 +476,7 @@ def _create_steady_autovalue_updater(
         joined_rhs_xtrings,
         self._context,
     )
-    num_columns = self._max_shift - self._min_shift + 1
+    num_columns = self._max_shift - self._min_shift + 1 
     shift_in_first_column = self._min_shift
     t = -self._min_shift
     qid_to_logly = _quantities.create_qid_to_logly(self.quantities, )
@@ -517,5 +492,19 @@ def _create_steady_autovalue_updater(
 
     self.update_steady_autovalues_in_variant = update_steady_autovalues
 
+    #]
+
+
+def _reorder_equations_by_kind(
+    dynamic_equations: tuple[Equation],
+    steady_equations: tuple[Equation],
+) -> tuple[tuple[Equation], tuple[Equation]]:
+    """
+    Reorder dynamic and steady equations at the same time to guarantee the same order for both
+    """
+    #[
+    zipped = zip(dynamic_equations, steady_equations)
+    zipped = sorted(zipped, key=lambda x: x[0].kind.value, )
+    return zip(*zipped)
     #]
 

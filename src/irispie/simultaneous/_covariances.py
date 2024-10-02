@@ -37,7 +37,7 @@ class Inlay:
         kind: _quantities.QuantityKind | None = None,
     ) -> None:
         """
-················································································
+................................................................................
 
 ==Rescale the standard deviations of model shocks==
 
@@ -60,13 +60,13 @@ model based on the provided factor.
     deviations.
 
 ???+ input "kind"
-    An optional parameter to narrow down the types of shocks to rescale. It 
-    can be one or a combination of the following:
-    
+    An optional parameter to narrow down the types of shocks to rescale. It
+    can be one, or a combination, of the following:
+
     * `ir.UNANTICIPATED_STD`
     * `ir.ANTICIPATED_STD`
     * `ir.MEASUREMENT_STD`
-    
+
     If `None`, the standard deviations of all shocks will be rescaled.
 
 
@@ -77,7 +77,7 @@ model based on the provided factor.
     This method does not return any value but modifies the standard deviations 
     of model shocks in-place, rescaling them.
 
-················································································
+................................................................................
         """
         if 1.0 * factor <= 0:
             raise ValueError("The scaling factor must be a real non-negative number")

@@ -894,7 +894,7 @@ where lowercase letters represent the respective time period components
     ) -> str:
         return _dt.date(*self.to_ymd(position=position, ))
 
-    to_plotly_date = _ft.partialmethod(to_iso_string, position="middle", )
+    to_plotly_date = _ft.partialmethod(to_python_date, position="middle", )
 
     def get_distance_from_origin(self) -> int:
         return self.serial - self.origin

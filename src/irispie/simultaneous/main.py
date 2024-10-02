@@ -590,23 +590,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
     def resolve_flags(self, /, **kwargs, ) -> _flags.Flags:
         return _flags.Flags.update_from_kwargs(self.get_flags(), **kwargs)
 
-    def serialize(self, /, ) -> dict[str, Any]:
-        """
-        """
-        return {
-            "_invariant": self._invariant.serialize(),
-            "_variants": [ i.serialize() for i in self._variants ],
-        }
-
-    @classmethod
-    def deserialize(klass, data: dict[str, Any], /, ) -> Self:
-        """
-        """
-        self = klass()
-        self._invariant = Invariant.deserialize(data["_invariant"], )
-        self._variants = [ Variant.deserialize(i, ) for i in data["_variants"] ]
-        return self
-
     def __getstate__(self, /, ):
         """
         """
@@ -620,6 +603,15 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         self._invariant = state["_invariant"]
         self._variants = state["_variants"]
+
+    def _serialize_to_portable(self, /, ) -> dict[str, Any]:
+        """
+        """
+        qid_to_name = self.create_qid_to_name()
+        return {
+            "source": self._invariant._serialize_to_portable(),
+            "variants": [v._serialize_to_portable(qid_to_name, ) for v in self._variants],
+        }
 
     #]
 

@@ -69,6 +69,12 @@ class QuantityKind(enum.Flag):
             .removesuffix("S")
         ]
 
+    def to_keyword(self, /, ) -> str:
+        return "!" + self.name.lower() + "s"
+
+    def to_portable(self, /, ) -> str:
+        return self.to_keyword().replace("!", "")
+
     @property
     def human(self, /, ) -> str:
         return self.name.replace("_", " ").title()
@@ -125,31 +131,6 @@ class Quantity:
         return hash(self.__repr__)
 
     has_attributes = _attributes.has_attributes
-
-    def serialize(self, /, ) -> tuple[int, str, str, bool | None, str | None, int | None, tuple[str, ...]]:
-        """
-        """
-        return (
-            int(self.id),
-            str(self.human),
-            str(self.kind.name),
-            bool(self.logly) if self.logly is not None else None,
-            str(self.description) if self.description is not None else None,
-            int(self.entry) if self.entry is not None else None,
-            _attributes.serialize(self.attributes, ),
-        )
-
-    @classmethod
-    def deserialize(klass, data: Sequence[Any], /, ) -> Self:
-        return klass(
-            id=int(data[0]),
-            human=str(data[1]),
-            kind=QuantityKind[data[2]],
-            logly=bool(data[3]) if data[3] is not None else None,
-            description=str(data[4]) if data[4] is not None else None,
-            entry=int(data[5]) if data[5] is not None else None,
-            attributes=_attributes.deserialize(data[6], ),
-        )
 
     #]
 

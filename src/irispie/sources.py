@@ -13,6 +13,7 @@ from collections.abc import Iterable
 import documark as _dm
 
 from . import equations as _equations
+from .equations import Equation, EquationKind
 from . import quantities as _quantities
 from .quantities import QuantityKind, Quantity
 from . import wrongdoings as _wd
@@ -137,7 +138,7 @@ class ModelSource:
         self._add_quantities(quantity_inputs, QuantityKind.UNANTICIPATED_SHOCK)
 
     def _add_transition_equations(self, equation_inputs: Iterable[EquationInput] | None) -> None:
-        self._add_equations(equation_inputs, _equations.EquationKind.TRANSITION_EQUATION)
+        self._add_equations(equation_inputs, EquationKind.TRANSITION_EQUATION)
 
     def _add_measurement_variables(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
         self._add_quantities(quantity_inputs, QuantityKind.MEASUREMENT_VARIABLE)
@@ -146,10 +147,10 @@ class ModelSource:
         self._add_quantities(quantity_inputs, QuantityKind.MEASUREMENT_SHOCK)
 
     def _add_measurement_equations(self, equation_inputs: Iterable[EquationInput] | None) -> None:
-        self._add_equations(equation_inputs, _equations.EquationKind.MEASUREMENT_EQUATION)
+        self._add_equations(equation_inputs, EquationKind.MEASUREMENT_EQUATION)
 
     def _add_steady_autovalues(self, equation_inputs: Iterable[EquationInput] | None) -> None:
-        self._add_equations(equation_inputs, _equations.EquationKind.STEADY_AUTOVALUES, )
+        self._add_equations(equation_inputs, EquationKind.STEADY_AUTOVALUES, )
 
     def _add_all_but(self, all_but_input: str | None) -> None:
         if not all_but_input:
@@ -180,7 +181,7 @@ class ModelSource:
             for i, q in enumerate(quantity_inputs, start=start_entry, )
         ]
 
-    def _add_equations(self, equation_inputs: Iterable[EquationInput] | None, kind: _equations.EquationKind, /, ) -> None:
+    def _add_equations(self, equation_inputs: Iterable[EquationInput] | None, kind: EquationKind, /, ) -> None:
         """
         """
         if not equation_inputs:
@@ -188,7 +189,7 @@ class ModelSource:
         #
         def _create_equations(equation_inputs, kind, start_entry, human_func):
             return [
-                _equations.Equation(
+                Equation(
                     id=None,
                     human=human_func(ein),
                     kind=kind,
@@ -326,15 +327,6 @@ class ModelSource:
         source_string = _combine_source_files_into_string(source_files, )
         return klass.from_string(source_string, **kwargs, )
 
-    def serialize(self, /, ) -> str:
-        """
-        """
-        return {
-            "quantities": [i.serialize() for i in self.quantities],
-            "dynamic_equations": [i.serialize() for i in self.dynamic_equations],
-            "steady_equations": [i.serialize() for i in self.steady_equations],
-            "context": None,
-        }
     #]
 
 
@@ -397,4 +389,109 @@ def _extract_loggable_names(quantities: Iterable[Quantity], /, ) -> set[str]:
         i.human for i in quantities
         if i.kind in LOGGABLE_VARIABLE
     )
+
+
+def serialize_to_portable(source_like, /, ) -> dict[str, Any]:
+    """
+    """
+    #[
+    portable_quantities = _serialize_quantities_to_portable(source_like.quantities, )
+    portable_equations = _serialize_equations_to_portable(source_like.dynamic_equations, source_like.steady_equations, )
+    return portable_quantities | portable_equations
+    #]
+
+
+_SERIALIZABLE_QUANTITY_KINDS = (
+    QuantityKind.TRANSITION_VARIABLE,
+    QuantityKind.MEASUREMENT_VARIABLE,
+    QuantityKind.UNANTICIPATED_SHOCK,
+    QuantityKind.ANTICIPATED_SHOCK,
+    QuantityKind.MEASUREMENT_SHOCK,
+    QuantityKind.PARAMETER,
+    QuantityKind.EXOGENOUS_VARIABLE,
+)
+
+
+def _serialize_quantities_to_portable(quantities: tuple[Quantity], ) -> tuple[Quantity]:
+    """
+    """
+    #[
+    portable_quantities = {
+        kind.to_portable(): _get_portable_quantities_of_kind(quantities, kind, )
+        for kind in _SERIALIZABLE_QUANTITY_KINDS
+    }
+    return { k: v for k, v in portable_quantities.items() if v }
+    #]
+
+
+def _get_portable_quantities_of_kind(
+    quantities: tuple[Quantity],
+    kind: QuantityKind,
+    /,
+) -> tuple[tuple, ...]:
+    """
+    """
+    return tuple(
+        _serialize_quantity_to_portable(qty, )
+        for qty in _quantities.generate_quantities_of_kind(quantities, kind, )
+    )
+
+
+def _serialize_quantity_to_portable(quantity: Quantity, /, ) -> tuple[str, bool, str, str, ]:
+    """
+    """
+    return quantity.human, quantity.logly, quantity.description, " ".join(quantity.attributes, )
+
+
+_SERIALIZABLE_EQUATION_KINDS = (
+    EquationKind.TRANSITION_EQUATION,
+    EquationKind.MEASUREMENT_EQUATION,
+    EquationKind.STEADY_AUTOVALUES,
+)
+
+
+def _serialize_equations_to_portable(
+    dynamic_equations: tuple[Equation],
+    steady_equations: tuple[Equation],
+    /,
+) -> tuple[tuple, ...]:
+    """
+    """
+    #[
+    zipped = tuple(zip(dynamic_equations, steady_equations, ))
+    portable_equations = {
+        kind.to_portable(): _get_portable_equations_of_kind(zipped, kind, )
+        for kind in _SERIALIZABLE_EQUATION_KINDS
+    }
+    return { k: v for k, v in portable_equations.items() if v }
+    #]
+
+
+def _get_portable_equations_of_kind(
+    zipped_equations: tuple[tuple[Equation, Equation], ...],
+    kind: EquationKind,
+    /,
+) -> tuple[tuple, ...]:
+    """
+    """
+    return tuple(
+        _serialize_equation_to_portable(dynamic, steady, )
+        for dynamic, steady in zipped_equations
+        if dynamic.kind == kind
+    )
+
+
+def _serialize_equation_to_portable(
+    dynamic: Equation,
+    steady: Equation,
+    /,
+) -> tuple[str, str, str, str, ]:
+    #[
+    dynamic_human = dynamic.human
+    steady_human = steady.human
+    if dynamic_human == steady_human:
+        steady_human = ""
+    return dynamic_human, steady_human, dynamic.description, " ".join(dynamic.attributes, )
+    #]
+
 

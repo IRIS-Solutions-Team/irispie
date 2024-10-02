@@ -30,23 +30,16 @@ class Variant:
     """
     #[
 
-    _serialized_slots = (
+    __slots__ = (
         "levels",
         "changes",
-    )
-
-    _derived_slots = (
         "solution",
     )
-
-    __slots__ = _serialized_slots + _derived_slots
 
     def __init__(self, **kwargs, ) -> None:
         """
         """
-        for n in self._serialized_slots:
-            setattr(self, n, kwargs.get(n, ), )
-        for n in self._derived_slots:
+        for n in self.__slots__:
             setattr(self, n, None, )
 
     @classmethod
@@ -202,30 +195,13 @@ class Variant:
         levels[inx_set_to_1] = 1
         return _np.tile(levels, (1, num_columns, ))
 
-    def serialize(self, /, ) -> dict[str, tuple[Any, ...]]:
+    def _serialize_to_portable(self, qid_to_name, /, ) -> dict[str, Any]:
         """
         """
         return {
-            "levels": tuple(i for i in self.levels.values()),
-            "changes": tuple(i for i in self.changes.values()),
+            qid_to_name[qid]: (level, self.changes[qid], )
+            for qid, level in self.levels.items()
         }
-
-    @classmethod
-    def deserialize(klass, data: dict[str, dict[str, Any]], /, ) -> Self:
-        """
-        """
-        levels = {
-            qid: (float(value) if value is not None else None)
-            for qid, value in enumerate(data["levels"], )
-        }
-        changes = {
-            qid: (float(value) if value is not None else None)
-            for qid, value in enumerate(data["changes"], )
-        }
-        self = klass(levels=levels, changes=changes, )
-        return self
-
-    #]
 
 
 def _update_from_array(
