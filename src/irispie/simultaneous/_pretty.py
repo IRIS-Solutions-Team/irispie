@@ -105,6 +105,23 @@ def _kind_column(
     #]
 
 
+def _log_status_column(
+    self,
+    row_names: tuple[str, ...],
+    **kwargs,
+) -> Iterable[str, tuple[str], dict[str, Any]]:
+    """
+    """
+    #[
+    name_to_logly = _quantities.create_name_to_logly(self._invariant.quantities, )
+    logly = tuple(
+        name_to_logly.get(name, None, )
+        for name in row_names
+    )
+    yield "LOG_STATUS", logly, {"align": "r"}
+    #]
+
+
 def _comparison_column(
     self,
     row_names: tuple[str, ...],
@@ -204,6 +221,9 @@ _COLUMN_CONSTRUCTORS = {
     "empty": _empty_column,
     "description": _description_column,
     "kind": _kind_column,
+    "log_status": _log_status_column,
+    "logly": _log_status_column,
+    "log": _log_status_column,
     "comparison": _comparison_column,
     "steady_level": _steady_level_column,
     "steady_change": _steady_change_column,
