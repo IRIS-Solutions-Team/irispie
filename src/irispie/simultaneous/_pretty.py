@@ -21,22 +21,6 @@ if TYPE_CHECKING:
 _DEFAULT_ROUND_TO = 16
 
 
-class _PrettyTable(PrettyTable, ):
-    """
-    """
-    #[
-
-    def to_csv_file(
-        self,
-        file_name: str,
-    ) -> None:
-        """
-        """
-        _file_io.save_text(file_name, self.get_csv_string(), )
-
-    #]
-
-
 class Inlay:
     """
     """
@@ -48,7 +32,7 @@ class Inlay:
         kind: int = _quantities.ANY_VARIABLE | _quantities.PARAMETER,
         save_to_csv_file: str | None = None,
         **kwargs,
-    ) -> _PrettyTable:
+    ) -> PrettyTable:
         """
         """
         column_constructors = [
@@ -56,12 +40,12 @@ class Inlay:
             for column in columns
         ]
         row_names = self.get_names(kind=kind, )
-        table = _PrettyTable()
+        table = PrettyTable()
         for constructor in column_constructors:
             for header, values, settings in constructor(self, row_names, **kwargs, ):
                 table.add_column(header, values, **settings, )
         if save_to_csv_file:
-            table.to_csv_file(save_to_csv_file, )
+            _save_pretty_table_to_csv_file(self, save_to_csv_file, )
         return table
 
     #]
@@ -200,7 +184,7 @@ def _steady_change_column(
     #[
     def _display_value(value: Real, ):
         return (
-            value if (round_to is None or value == "")
+            value if (round_to is None or not value)
             else round(value, round_to, )
         )
     iter_changes = (self.get_steady_changes()).iter_variants()
@@ -227,4 +211,12 @@ _COLUMN_CONSTRUCTORS = {
     "compare_steady_change": _ft.partial(_compare_steady_value, _steady_change_column, ),
 }
 
+
+def _save_pretty_table_to_csv_file(
+    self,
+    file_name: str,
+) -> None:
+    """
+    """
+    _file_io.save_text(file_name, self.get_csv_string(), )
 
