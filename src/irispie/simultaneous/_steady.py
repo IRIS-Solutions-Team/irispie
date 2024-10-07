@@ -10,6 +10,7 @@ import functools as _ft
 import itertools as _it
 import numpy as _np
 import scipy as _sp
+import neqs as _nq
 
 from .. import equations as _equations
 from ..incidences import blazer as _blazer
@@ -202,20 +203,39 @@ class Inlay:
                 block_equations,
                 all_quantities,
                 variant,
+                context=self._invariant._context,
                 iter_printer_settings=iter_printer_settings,
             )
-            steady_evaluator.iter_printer.custom_header = custom_header
-            root_final = _sp.optimize.root(
-               steady_evaluator.eval,
-               steady_evaluator.get_init_guess(),
-               jac=True,
-               **root_settings,
-            )
-            steady_evaluator.iter_printer.print_footer()
-            steady_evaluator.final_guess = root_final.x
+            neqs = False
+            if block_change_qids and len(block_change_qids) == len(block_level_qids) and len(block_level_qids) == len(block_equations):
+                neqs = True
+            elif (not block_change_qids) and len(block_level_qids) == len(block_equations):
+                neqs = True
+            init_guess = steady_evaluator.get_init_guess()
+
+            if True:
+                steady_evaluator.iter_printer.custom_header = custom_header
+                root_final = _sp.optimize.root(
+                    steady_evaluator.eval,
+                    init_guess,
+                    jac=True,
+                    **root_settings,
+                )
+                steady_evaluator.iter_printer.print_footer()
+                final_guess = root_final.x
+                func_norm = _sp.linalg.norm(root_final.fun, 2, )
+                success = root_final.success and func_norm < root_settings["tol"]
+
+            # else:
+            #     final_guess, exit_status = _nq.damped_newton(
+            #         eval_func=steady_evaluator.eval_func,
+            #         eval_jacob=steady_evaluator.eval_jacob,
+            #         init_guess=init_guess,
+            #     )
+            #     success = exit_status.is_success
+
+            steady_evaluator.final_guess = final_guess
             #
-            func_norm = _sp.linalg.norm(root_final.fun, 2, )
-            success = root_final.success and func_norm < root_settings["tol"]
             #
             if not success:
                 _throw_block_error(human_block, custom_header, )
@@ -444,6 +464,8 @@ def _update_variant_with_final_guess(variant, steady_evaluator, qid_to_kind, ) -
     #
     # Drop non-loggable quantities, i.e. endogenized parameters (only loggable
     # quantities can have steady-state change)
+    if not changes:
+        return
     changes, wrt_change_qids = zip(*(
         (change, qid, ) for change, qid, in zip(changes, wrt_change_qids, )
         if qid_to_kind[qid] in LOGGABLE_VARIABLE
@@ -464,6 +486,6 @@ def _throw_block_error(human_block, custom_header: str, ) -> NoReturn:
 
 _DEFAULT_ROOT_SETTINGS = {
     "method": "lm",
-    "tol": 1e-12,
+    "tol": 1e-8,
 }
 

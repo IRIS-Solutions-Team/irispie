@@ -494,7 +494,7 @@ class _Chart:
             subplot=index,
             span=self.span,
             show_figure=False,
-            freeze_span=True,
+            #freeze_span=True,
             legend=legend,
             reverse_plot_order=self.reverse_plot_order,
             chart_type=self.chart_type,

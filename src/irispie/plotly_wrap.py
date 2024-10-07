@@ -126,9 +126,9 @@ def _resolve_figure_span(
     else:
         start, end = None, None
     figure_span = figure.layout.xaxis.range
-    start = start.to_plotly_date(position="start", ) if start is not None else figure_span[0]
-    end = end.to_plotly_date(position="end", ) if end is not None else figure_span[-1]
-    return start, end
+    start = start.to_iso_string(position="start", ) if start is not None else figure_span[0]
+    end = end.to_iso_string(position="end", ) if end is not None else figure_span[-1]
+    return start, end,
     #]
 
 

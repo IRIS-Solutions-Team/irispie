@@ -249,8 +249,6 @@ _SHORTCUT_KEYWORDS = [
     ( _re.compile(_common.HUMAN_PREFIX + r"equations\b"), _common.HUMAN_PREFIX + r"transition-equations" ),
 ]
 
-# ( _re.compile(_common.HUMAN_PREFIX + r"shocks\b"), _common.HUMAN_PREFIX + r"transition-shocks" ),
-
 
 _LINE_COMMENT_PATTERN = _re.compile(r" *[%#]!.*", )
 

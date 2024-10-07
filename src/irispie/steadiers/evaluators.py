@@ -107,6 +107,7 @@ class SteadyEvaluator:
             wrt_equations,
             context=context,
         )
+        #
         self._jacobian = self._jacobian_factory(
             wrt_equations,
             self.wrt_qids,
@@ -148,6 +149,27 @@ class SteadyEvaluator:
         jacobian = jacobian[:, self._bool_index_wrt_levels + self._bool_index_wrt_changes]
         self.iter_printer.next(maybelog_guess, equator, jacobian_calculated=True, )
         return equator, jacobian
+
+    def eval_func(
+        self,
+        maybelog_guess: _np.ndarray,
+        /,
+    ) -> tuple[_np.ndarray, _np.ndarray]:
+        """
+        """
+        self._update_steady_array(maybelog_guess, )
+        return self._equator.eval(self._steady_array, self._column_offset, )
+
+    def eval_jacob(
+        self,
+        maybelog_guess: _np.ndarray,
+        /,
+    ) -> tuple[_np.ndarray, _np.ndarray]:
+        """
+        """
+        self._update_steady_array(maybelog_guess, )
+        jacobian = self._jacobian.eval(self._steady_array, self._column_offset, )
+        return jacobian[:, self._bool_index_wrt_levels + self._bool_index_wrt_changes]
 
     def _merge_levels_and_changes(
         self,

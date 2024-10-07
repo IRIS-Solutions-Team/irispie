@@ -7,7 +7,7 @@ Algorithmic differentiator
 from __future__ import annotations
 
 from typing import (Self, Callable, Protocol, )
-from numbers import (Number, )
+from numbers import Real
 from collections.abc import (Iterable, Sequence, )
 import numpy as _np
 import scipy as _sp
@@ -61,8 +61,8 @@ class Atom(ValueMixin, ):
     @classmethod
     def no_context(
         klass,
-        value: Number,
-        diff: Number,
+        value: Real,
+        diff: Real,
         /,
         logly: bool | None = False,
     ) -> Self:
@@ -79,7 +79,7 @@ class Atom(ValueMixin, ):
     def in_context(
         klass,
         /,
-        diff: _np.ndarray | Number,
+        diff: _np.ndarray | Real,
         data_index: tuple[int, slice],
         logly: bool,
     ) -> Self:
@@ -269,7 +269,7 @@ class Atom(ValueMixin, ):
 
     def maximum(
         self,
-        floor: Number = 0,
+        floor: Real | Atom = 0,
         /, 
     ) -> Self:
         """
@@ -277,31 +277,36 @@ class Atom(ValueMixin, ):
         """
         orig_value = self.value
         orig_diff = self.diff
-        if isinstance(orig_value, Number) and isinstance(orig_diff, Number):
+        if isinstance(orig_value, Real) and isinstance(orig_diff, Real):
             orig_value = _np.array(orig_value, dtype=float)
             orig_diff = _np.array(orig_diff, dtype=float)
+        floor_value = (
+            floor.value
+            if hasattr(floor, "_is_atom") and getattr(floor, "_is_atom")
+            else floor
+        )
         new_value = _np.copy(orig_value)
-        inx_floor = orig_value == floor
-        inx_below = orig_value < floor
-        inx_above = orig_value > floor
-        new_value[inx_below] = floor
+        inx_floor = orig_value == floor_value
+        inx_below = orig_value < floor_value
+        inx_above = orig_value > floor_value
+        new_value[inx_below] = floor_value
         new_diff = _np.copy(orig_diff)
         multiplier = _np.copy(orig_value)
         multiplier[inx_floor] = 0.5
         multiplier[inx_above] = 1
         multiplier[inx_below] = 0
         new_diff = orig_diff * multiplier
-        return type(self).no_context(new_value, new_diff, False)
+        return type(self).no_context(new_value, new_diff, False, )
 
     def mininum(
         self,
-        ceiling: Number = 0,
+        ceiling: Real = 0,
         /,
     ) -> Self:
         """
         Differenatiate minimum(self, ceiling)
         """
-        return (-self)._max_(-ceiling)
+        return (-self).maximum(-ceiling)
     #]
 
 
