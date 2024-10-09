@@ -416,6 +416,8 @@ creating time [`Spans`](spans.md).
     #[
 
     frequency = None
+    plotly_xaxis_type = None
+    needs_resolve = False
 
     @property
     @_dm.reference(
@@ -425,8 +427,6 @@ creating time [`Spans`](spans.md).
     def _frequency():
         """==Time frequency of the time period=="""
         raise NotImplementedError
-
-    needs_resolve = False
 
     @_dm.reference(
         category=None,
@@ -1197,6 +1197,7 @@ class IntegerPeriod(Period, ):
     #[
 
     frequency = Frequency.INTEGER
+    plotly_xaxis_type = "linear"
     needs_resolve = False
     origin = 0
     _PLOTLY_DATE_FACTORY = {
@@ -1232,6 +1233,7 @@ class DailyPeriod(Period, ):
     #[
 
     frequency: Frequency = Frequency.DAILY
+    plotly_xaxis_type = "date"
     needs_resolve = False
     origin = _dt.date(BASE_YEAR, 1, 1).toordinal()
 
@@ -1336,6 +1338,8 @@ class RegularPeriodMixin:
     """
     """
     #[
+
+    plotly_xaxis_type = "date"
 
     @classmethod
     def from_year_period(

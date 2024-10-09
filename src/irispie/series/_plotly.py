@@ -169,8 +169,11 @@ class Inlay:
 
         traces_constructor = _PLOTLY_TRACES_CONSTRUCTOR[chart_type]
 
+        traces_dates, xaxis_type = _get_traces_dates(self, )
+
         traces_iterable = _iter_traces(
             self,
+            traces_dates,
             from_until,
             traces_constructor,
             transform,
@@ -204,6 +207,9 @@ class Inlay:
         layout["barnorm"] = bar_norm
 
         xaxis["tickformat"] = date_format
+
+        if xaxis_type is not None:
+            xaxis["type" ] = xaxis_type
 
         figure.update_xaxes(xaxis, **row_column, )
         figure.update_yaxes(yaxis, **row_column, )
@@ -258,8 +264,21 @@ def _update_subplot_title(
         annotation.text = subplot_title
 
 
+def _get_traces_dates(series: Series, /, ) -> tuple[tuple[Period, ...], str]:
+    """
+    """
+    #[
+    if not series.span:
+        return (), None,
+    dates = tuple(i.to_plotly_date() for i in series.span)
+    xaxis_type = next(iter(series.span)).plotly_xaxis_type
+    return dates, xaxis_type,
+   #]
+
+
 def _iter_traces(
     series: Series,
+    traces_dates: Sequence[Period],
     from_until: tuple[Period, Period],
     traces_constructor: Callable,
     transform: Callable,
@@ -271,7 +290,6 @@ def _iter_traces(
     """
     """
     #[
-    dates = tuple(i.to_plotly_date() for i in series.span)
     zipped = zip(
         series.iter_own_data_variants_from_until(from_until=from_until, ),
         legends,
@@ -281,7 +299,7 @@ def _iter_traces(
     for data_v, legend_v, color_v, update_v in zipped:
         yield traces_constructor(
             color=color_v,
-            x=dates,
+            x=traces_dates,
             y=tuple(transform(i) for i in data_v),
             name=legend_v,
             **update_v,

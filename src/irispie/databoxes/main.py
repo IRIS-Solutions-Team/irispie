@@ -1071,9 +1071,7 @@ Get the encompassing date span for all time series with a specified frequency.
             start, end,
             deviation=deviation,
         )
-        for name, value in items:
-            self[name] = value
-        return self
+        return klass({ k: v for k, v in items })
 
     zero = _ft.partialmethod(steady, deviation=True, )
 
