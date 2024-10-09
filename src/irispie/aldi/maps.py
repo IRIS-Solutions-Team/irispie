@@ -21,7 +21,7 @@ class ArrayMap:
     """
     #[
 
-    __slots__ = ('lhs', 'rhs', )
+    __slots__ = ("lhs", "rhs", )
 
     def __init__(
         self,

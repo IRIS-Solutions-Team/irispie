@@ -15,11 +15,11 @@ import scipy as _sp
 import warnings as _wa
 
 from ..incidences import main as _incidences
-from ..incidences.main import (Token, )
+from ..incidences.main import Token
 from .. import equations as _equations
-from ..equations import (Equation, )
+from ..equations import Equation
 from . import simulators as _simulators
-from ..aldi.maps import (ArrayMap, )
+from ..aldi.maps import ArrayMap
 
 from typing import (TYPE_CHECKING, )
 if TYPE_CHECKING:
@@ -96,6 +96,7 @@ class Terminator:
         self._terminit_spots = tuple( Token(i.qid, last_simulation + i.shift, ) for i in vec.transition_variables )
         self._num_terminal_wrt_spots = len(terminal_wrt_spots)
         self.terminal_jacobian_map = None
+        self._terminal_jacobian_map_completed = False
 
     def create_terminal_jacobian_map(self, wrt_spots: Iterable[Token], ) -> None:
         """
@@ -110,7 +111,10 @@ class Terminator:
                 continue
             lhs_columns.append(index)
             rhs_columns.append(rhs_column)
-        self.terminal_jacobian_map = ArrayMap(([], lhs_columns), ([], rhs_columns), )
+        self.terminal_jacobian_map = ArrayMap(
+            lhs=([], lhs_columns),
+            rhs=([], rhs_columns),
+        )
 
     def terminate_simulation(self, data_array: _np.ndarray, /, ) -> None:
         """
@@ -136,17 +140,40 @@ class Terminator:
         """
         num_terminal_wrt_spots = len(self.terminal_wrt_spots)
         terminal_column_index = self._terminal_column_index
-        curr_TT = self._curr_TT
-        lhs_columns = self.terminal_jacobian_map.lhs[1]
-        rhs_columns = self.terminal_jacobian_map.rhs[1]
         #
         terminal_jacobian_outcome = jacobian_outcome[:, -num_terminal_wrt_spots:]
-        regular_jacobian_outcome = jacobian_outcome[:,:-num_terminal_wrt_spots]
-        add_to_regular_jacobian_outcome = terminal_jacobian_outcome @ curr_TT[terminal_column_index, :]
+        regular_jacobian_outcome = jacobian_outcome[:,:-num_terminal_wrt_spots].copy()
+
+        if not self._terminal_jacobian_map_completed:
+            coo = terminal_jacobian_outcome.tocoo()
+            nnz_rows = sorted(set(coo.row))
+            _complete_terminal_jacobian_map(self.terminal_jacobian_map, nnz_rows, )
+            self._terminal_jacobian_map_completed = True
+
+        rhs_columns = self.terminal_jacobian_map.rhs[1].flatten().tolist()
+        curr_TT = self._curr_TT[terminal_column_index, :][:, rhs_columns]
+        add_to_regular_jacobian_outcome = terminal_jacobian_outcome @ curr_TT
+
         _wa.filterwarnings("ignore", category=_sp.sparse.SparseEfficiencyWarning, )
-        regular_jacobian_outcome[:, lhs_columns] += add_to_regular_jacobian_outcome[:, rhs_columns]
+        regular_jacobian_outcome[self.terminal_jacobian_map.lhs] += add_to_regular_jacobian_outcome[self.terminal_jacobian_map.rhs]
         _wa.filterwarnings("default", category=_sp.sparse.SparseEfficiencyWarning, )
+
         return regular_jacobian_outcome
 
     #]
+
+
+def _complete_terminal_jacobian_map(
+    self: ArrayMap,
+    nnz_rows: Iterable[int],
+    /,
+) -> None:
+    """
+    """
+    lhs_columns = self.lhs[1]
+    rhs_columns = self.rhs[1]
+    lhs_grid = _np.ix_(nnz_rows, lhs_columns, )
+    rhs_grid = _np.ix_(nnz_rows, rhs_columns, )
+    self.lhs = lhs_grid
+    self.rhs = rhs_grid
 

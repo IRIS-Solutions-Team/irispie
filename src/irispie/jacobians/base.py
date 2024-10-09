@@ -86,6 +86,7 @@ class _Jacobian:
         )
         #
         self.sparse_pattern = None
+        self._matrix = None
 
     def _populate_shape(
         self,
@@ -151,6 +152,5 @@ class SparseJacobian(_Jacobian):
             ([0]*num_entries, self.sparse_pattern, ),
             shape=self._shape, dtype=float,
         )
-
     #]
 

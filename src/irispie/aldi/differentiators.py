@@ -277,25 +277,28 @@ class Atom(ValueMixin, ):
         """
         orig_value = self.value
         orig_diff = self.diff
+        floor_value = floor.value if hasattr(floor, "_is_atom") else floor
+        #
         if isinstance(orig_value, Real) and isinstance(orig_diff, Real):
-            orig_value = _np.array(orig_value, dtype=float)
-            orig_diff = _np.array(orig_diff, dtype=float)
-        floor_value = (
-            floor.value
-            if hasattr(floor, "_is_atom") and getattr(floor, "_is_atom")
-            else floor
-        )
+            orig_value = _np.array(orig_value, dtype=float, )
+            orig_diff = _np.array(orig_diff, dtype=float, )
+        #
         new_value = _np.copy(orig_value)
         inx_floor = orig_value == floor_value
         inx_below = orig_value < floor_value
         inx_above = orig_value > floor_value
-        new_value[inx_below] = floor_value
-        new_diff = _np.copy(orig_diff)
+        #
+        if isinstance(floor_value, Real):
+            new_value[inx_below] = floor_value
+        else:
+            new_value[inx_below] = floor_value[inx_below]
+        #
         multiplier = _np.copy(orig_value)
         multiplier[inx_floor] = 0.5
         multiplier[inx_above] = 1
         multiplier[inx_below] = 0
         new_diff = orig_diff * multiplier
+        #
         return type(self).no_context(new_value, new_diff, False, )
 
     def mininum(
