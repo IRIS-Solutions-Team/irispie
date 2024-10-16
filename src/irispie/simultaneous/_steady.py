@@ -206,25 +206,25 @@ class Inlay:
                 context=self._invariant._context,
                 iter_printer_settings=iter_printer_settings,
             )
-            neqs = False
-            if block_change_qids and len(block_change_qids) == len(block_level_qids) and len(block_level_qids) == len(block_equations):
-                neqs = True
-            elif (not block_change_qids) and len(block_level_qids) == len(block_equations):
-                neqs = True
+            # neqs = False
+            # if block_change_qids and len(block_change_qids) == len(block_level_qids) and len(block_level_qids) == len(block_equations):
+            #     neqs = True
+            # elif (not block_change_qids) and len(block_level_qids) == len(block_equations):
+            #     neqs = True
+
             init_guess = steady_evaluator.get_init_guess()
 
-            if True:
-                steady_evaluator.iter_printer.custom_header = custom_header
-                root_final = _sp.optimize.root(
-                    steady_evaluator.eval,
-                    init_guess,
-                    jac=True,
-                    **root_settings,
-                )
-                steady_evaluator.iter_printer.print_footer()
-                final_guess = root_final.x
-                func_norm = _sp.linalg.norm(root_final.fun, 2, )
-                success = root_final.success and func_norm < root_settings["tol"]
+            steady_evaluator.iter_printer.custom_header = custom_header
+            root_final = _sp.optimize.root(
+                steady_evaluator.eval,
+                init_guess,
+                jac=True,
+                **root_settings,
+            )
+            steady_evaluator.iter_printer.print_footer()
+            final_guess = root_final.x
+            func_norm = _sp.linalg.norm(root_final.fun, 2, )
+            success = root_final.success and func_norm < root_settings["tol"]
 
             # else:
             #     final_guess, exit_status = _nq.damped_newton(
@@ -486,6 +486,6 @@ def _throw_block_error(human_block, custom_header: str, ) -> NoReturn:
 
 _DEFAULT_ROOT_SETTINGS = {
     "method": "lm",
-    "tol": 1e-8,
+    "tol": 1e-12,
 }
 
