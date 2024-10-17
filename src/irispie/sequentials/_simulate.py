@@ -10,7 +10,6 @@ from typing import (Self, Any, )
 from numbers import (Real, )
 import numpy as _np
 import itertools as _it
-import wlogging as _wl
 import functools as _ft
 import warnings as _wa
 import documark as _dm
@@ -24,9 +23,6 @@ from ..explanatories import main as _explanatories
 from ..dataslates.main import (Dataslate, )
 
 #]
-
-
-_LOGGER = _wl.get_colored_logger(__name__, level=_wl.INFO, )
 
 
 class Inlay:
@@ -51,7 +47,6 @@ class Inlay:
         remove_terminal: bool = True,
         shocks_from_data: bool = True,
         parameters_from_data: bool = False,
-        logging_level: int = _wl.INFO,
         catch_warnings: bool = False,
         unpack_singleton: bool = True,
         return_info: bool = False,
@@ -170,7 +165,6 @@ out_db, info = self.simulate(
 
 ················································································
         """
-        _LOGGER.set_level(logging_level, )
 
         # Legacy
         if when_nonfinite is not None:
@@ -178,7 +172,6 @@ out_db, info = self.simulate(
 
         num_variants \
             = self.resolve_num_variants_in_context(num_variants, )
-        _LOGGER.debug(f"Running {num_variants} variants")
 
         base_dates = tuple(span, )
 
@@ -210,7 +203,6 @@ out_db, info = self.simulate(
         for vid, model_v, dataslate_v in zipped:
             info_v = simulate_method(
                 model_v, dataslate_v, plan, vid,
-                logger=_LOGGER,
                 when_simulates_nan=when_simulates_nan,
                 execution_order=execution_order,
                 catch_warnings=catch_warnings,
@@ -252,7 +244,6 @@ def _simulate_v(
     plan: SimulationPlan | None,
     vid: int,
     *,
-    logger: _wl.Logger,
     when_simulates_nan,
     execution_order,
     catch_warnings,
@@ -306,12 +297,6 @@ def _simulate_v(
                 f"\nDirect cause: {str(exc)}"
             )
             raise _wrongdoings.IrisPieCritical(message, ) from exc
-        #
-        logger.debug(
-            f"{simulation_func.__name__}"
-            f" {lhs_date_str}={info_eq['lhs_value']}"
-            f" {residual_date_str}={info_eq['residual_value']}"
-        )
         #
         _catch_nonfinite(
             when_nonfinite_stream,

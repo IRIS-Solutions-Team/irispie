@@ -11,7 +11,6 @@ import warnings as _wa
 import numpy as _np
 import scipy as _sp
 import itertools as _it
-import wlogging as _wl
 import neqs as _nq
 
 from ..simultaneous import main as _simultaneous
