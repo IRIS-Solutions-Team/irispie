@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "irispie"
-version = "0.54.7"
+version = "0.54.8"
 description = "Macroeconomic modeling package"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -19,4 +19,3 @@ email = "jaromir.benes@gmail.com"
 Homepage = "https://github.com/iris-solutions-team/irispie"
 Documentation = "https://iris-solutions-team.github.io/irispie-pages"
 "Bug Tracker" = "https://github.com/iris-solutions-team/irispie/issues"
-
