@@ -38,12 +38,6 @@ jobs:
           pytest ./tests/sequential -v -ra
           pytest ./tests/simultaneous -v -ra
 
-      - name: Upload test results as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Test results
-          path: ./irispie-package/tests/report.txt
-
       - name: Bump version in pyproject.toml
         if: ${{ success() }}
         run: |
@@ -60,13 +54,13 @@ jobs:
           )
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
 
-      - name: Commit and push test results and new version to develop
+      - name: Commit and push new version to develop
         if: ${{ success() }}
         run: |
           cd $GITHUB_WORKSPACE/irispie-package
           NEW_VERSION=${{ env.NEW_VERSION }}
-          git add ./pyproject.toml ./tests/report.txt
-          git commit -m "Update test results and bump version number to $NEW_VERSION"
+          git add ./pyproject.toml
+          git commit -m "Bump version number to $NEW_VERSION"
           git push origin develop
 
       - name: Merge to master, tag and push
