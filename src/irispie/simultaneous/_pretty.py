@@ -45,7 +45,7 @@ class Inlay:
             for header, values, settings in constructor(self, row_names, **kwargs, ):
                 table.add_column(header, values, **settings, )
         if save_to_csv_file:
-            _save_pretty_table_to_csv_file(self, save_to_csv_file, )
+            _save_pretty_table_to_csv_file(table, save_to_csv_file, )
         return table
 
     #]
@@ -233,10 +233,10 @@ _COLUMN_CONSTRUCTORS = {
 
 
 def _save_pretty_table_to_csv_file(
-    self,
+    table: PrettyTable,
     file_name: str,
 ) -> None:
     """
     """
-    _file_io.save_text(file_name, self.get_csv_string(), )
+    _file_io.save_text(file_name, table.get_csv_string(), )
 
