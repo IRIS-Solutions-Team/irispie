@@ -1020,6 +1020,13 @@ self.replace_where(
         """
         return self.apply(lambda data: data.__rmod__(other))
 
+    def __round__(self, *args, **kwargs, ):
+        """
+        """
+        new = self.copy()
+        new.data = round(new.data, *args, **kwargs, )
+        return new
+
     for n in ["gt", "lt", "ge", "le", "eq", "ne", ]:
         exec(f"def __{n}__(self, other): return self._binop(other, _op.{n}, )", )
 

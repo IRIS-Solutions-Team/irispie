@@ -149,7 +149,10 @@ def _steady_level_column(
     """
     #[
     def _display_value(value: Real, ):
-        return value if round_to is None else round(value, round_to, )
+        if round_to is not None and value is not None:
+            return round(value, round_to, )
+        else:
+            return value
     iter_levels = (self.get_steady_levels() | self.get_parameters()).iter_variants()
     num_variants = self.num_variants
     header = "STEADY_LEVEL_{}" if num_variants > 1 else "STEADY_LEVEL"
@@ -174,8 +177,13 @@ def _compare_steady_value(
     #[
     name_to_logly = _quantities.create_name_to_logly(self._invariant.quantities, )
     _, base_values, *_ = next(orig_value_iterator(self, row_names, **kwargs, ), )
+    def comparison_func_plain(x, y):
+        return x-y if x is not None and y is not None else None
+    def comparison_func_log(x, y):
+        return x/y if x is not None and y is not None else None
     comparison_func = {
-        name: (lambda x, y: x/y) if name_to_logly.get(name, False) else (lambda x, y: x-y)
+        name: comparison_func_plain if not name_to_logly.get(name, False)
+        else comparison_func_log
         for name in row_names
     }
     #
@@ -200,10 +208,10 @@ def _steady_change_column(
     """
     #[
     def _display_value(value: Real, ):
-        return (
-            value if (round_to is None or not value)
-            else round(value, round_to, )
-        )
+        if round_to is not None and value is not None:
+            return round(value, round_to, )
+        else:
+            return value
     iter_changes = (self.get_steady_changes()).iter_variants()
     num_variants = self.num_variants
     header = "STEADY_CHANGE_{}" if num_variants > 1 else "STEADY_CHANGE"
