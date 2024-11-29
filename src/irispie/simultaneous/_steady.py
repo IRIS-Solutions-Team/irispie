@@ -155,6 +155,7 @@ class Inlay:
         """
         """
         qid_to_kind = self.create_qid_to_kind()
+        qid_to_name = self.create_qid_to_name()
         root_settings = (
             _DEFAULT_ROOT_SETTINGS
             if root_settings is None
@@ -241,7 +242,7 @@ class Inlay:
                 _throw_block_error(human_block, custom_header, )
             #
             # Update variant with steady levels and changes
-            _update_variant_with_final_guess(variant, steady_evaluator, qid_to_kind, )
+            _update_variant_with_final_guess(variant, steady_evaluator, qid_to_kind, qid_to_name, )
             #
             info["block_success"].append(success, )
             info["block_root_final"].append(root_final, )
@@ -282,7 +283,7 @@ class Inlay:
             exogenized_names = plan.get_exogenized_names()
             endogenized_names = plan.get_endogenized_names()
             fixed_level_names = plan.get_fixed_level_names()
-            fixed_change_names = plan.get_fixed_change_names()
+            fixed_change_names = plan.get_fixed_change_names() + endogenized_names
         #
         wrt_names = (wrt_names - set(exogenized_names)) | set(endogenized_names)
         # wrt_level_names = (wrt_names - set(fixed_level_names))
@@ -292,9 +293,11 @@ class Inlay:
         name_to_qid = self.create_name_to_qid()
         # wrt_level_qids = tuple(sorted([name_to_qid[name] for name in wrt_level_names]))
         # wrt_change_qids = tuple(sorted([name_to_qid[name] for name in wrt_change_names]))
-        wrt_qids = tuple(sorted([name_to_qid[name] for name in wrt_names]))
-        wrt_fixed_level_qids = tuple(sorted([name_to_qid[name] for name in fixed_level_names]))
-        wrt_fixed_change_qids = tuple(sorted([name_to_qid[name] for name in fixed_change_names]))
+        def get_sorted_qids(names: Iterable[str], ) -> tuple[int, ...]:
+            return tuple(sorted([name_to_qid[name] for name in names]))
+        wrt_qids = get_sorted_qids(wrt_names, )
+        wrt_fixed_level_qids = get_sorted_qids(fixed_level_names, )
+        wrt_fixed_change_qids = get_sorted_qids(fixed_change_names, )
         #
         # Make order of names consistent with qids
         qid_to_name = self.create_qid_to_name()
@@ -451,7 +454,7 @@ def _resolve_split_into_blocks(
     #]
 
 
-def _update_variant_with_final_guess(variant, steady_evaluator, qid_to_kind, ) -> None:
+def _update_variant_with_final_guess(variant, steady_evaluator, qid_to_kind, qid_to_name, ) -> None:
     """
     """
     #[
@@ -462,15 +465,16 @@ def _update_variant_with_final_guess(variant, steady_evaluator, qid_to_kind, ) -
     #
     changes, wrt_change_qids = steady_evaluator.extract_changes(final_guess, )
     #
-    # Drop non-loggable quantities, i.e. endogenized parameters (only loggable
+    # Filter out non-loggable quantities, i.e. endogenized parameters (only loggable
     # quantities can have steady-state change)
-    if not changes:
-        return
-    changes, wrt_change_qids = zip(*(
-        (change, qid, ) for change, qid, in zip(changes, wrt_change_qids, )
-        if qid_to_kind[qid] in LOGGABLE_VARIABLE
-    ))
-    variant.update_changes_from_array(changes, wrt_change_qids, )
+    changes_to_update = []
+    wrt_change_qids_to_update = []
+    for change, qid in zip(changes, wrt_change_qids, ):
+        if qid_to_kind[qid] not in LOGGABLE_VARIABLE:
+            continue
+        changes_to_update.append(change)
+        wrt_change_qids_to_update.append(qid)
+    variant.update_changes_from_array(changes_to_update, wrt_change_qids_to_update, )
     #]
 
 

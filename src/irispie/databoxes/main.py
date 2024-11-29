@@ -1054,6 +1054,7 @@ Get the encompassing date span for all time series with a specified frequency.
         span: Iterable[Period],
         *,
         deviation: bool = False,
+        unpack_single: bool = True,
         prepend_initial: bool = True,
         append_terminal: bool = True,
     ) -> Self:

@@ -16,7 +16,6 @@ import numpy as _np
 from .. import equations as _equations
 from .. import quantities as _quantities
 from .. import sources as _sources
-from .. import dates as _dates
 from .. import has_variants as _has_variants
 from ..has_variants import unpack_singleton_decorator as _unpack_singleton
 from ..series import main as _series
@@ -29,12 +28,6 @@ from ..fords import descriptors as _descriptors
 from . import _flags
 
 #]
-
-
-"""
-Quantities that are time series in model databoxes
-"""
-_TIME_SERIES_QUANTITY = _quantities.QuantityKind.ANY_VARIABLE | _quantities.QuantityKind.ANY_SHOCK
 
 
 def _cast_as_output_type(func: Callable, ):
@@ -272,55 +265,6 @@ steady_changes = self.get_steady_changes(
         qid_to_logly = {} # [^1]
         return _incidence.print_tokens(initial_tokens, qid_to_name, qid_to_logly, )
         # [^1] Do not wrap initial conditions in log(...)
-
-    # REFACTOR:
-    # Create a SteadyBoxable class
-    def generate_steady_items(
-        self,
-        start_date: _dates.Dater,
-        end_date: _dates.Dater,
-        /,
-        deviation: bool = False,
-    ) -> Iterable[tuple[str, _series.Series | Real]]:
-        """
-        """
-        num_columns = int(end_date - start_date + 1)
-        shift_in_first_column = start_date.get_distance_from_origin()
-        qid_to_name = self.create_qid_to_name()
-        qid_to_description = self.create_qid_to_description()
-        #
-        array = self.create_some_array(
-            deviation=deviation,
-            num_columns=num_columns,
-            shift_in_first_column=shift_in_first_column,
-        )
-        num_rows = array.shape[0]
-        #
-        qid_to_kind = self.create_qid_to_kind()
-        remove_qids = tuple(
-            qid
-            for qid, kind in qid_to_kind.items()
-            if kind not in _TIME_SERIES_QUANTITY
-        )
-        names = (
-            qid_to_name[qid]
-            for qid in range(num_rows, )
-            if qid in remove_qids
-        )
-        descriptions = (
-            qid_to_description[qid]
-            for qid in range(num_rows, )
-            if qid in remove_qids
-        )
-        for qid in qid_to_name.keys():
-            if qid_to_kind[qid] in _TIME_SERIES_QUANTITY:
-                yield qid_to_name[qid], _series.Series(
-                    start_date=start_date,
-                    values=array[qid, :].reshape(-1, 1),
-                    description=qid_to_description[qid],
-                )
-            else:
-                yield qid_to_name[qid], array[qid, 0]
 
     def get_solution_vectors(self, /, ) -> _descriptors.HumanSolutionVectors:
         """

@@ -30,6 +30,7 @@ class Inlay:
         self,
         columns: Iterable[str] = ("name", "steady_level", "steady_change", ),
         kind: int = _quantities.ANY_VARIABLE | _quantities.PARAMETER,
+        names: tuple[str, ...] | None = None,
         save_to_csv_file: str | None = None,
         **kwargs,
     ) -> PrettyTable:
@@ -39,7 +40,7 @@ class Inlay:
             _COLUMN_CONSTRUCTORS[column.lower().strip()]
             for column in columns
         ]
-        row_names = self.get_names(kind=kind, )
+        row_names = tuple(names) if names is not None else self.get_names(kind=kind, )
         table = PrettyTable()
         for constructor in column_constructors:
             for header, values, settings in constructor(self, row_names, **kwargs, ):
@@ -149,9 +150,9 @@ def _steady_level_column(
     """
     #[
     def _display_value(value: Real, ):
-        if round_to is not None and value is not None:
+        try:
             return round(value, round_to, )
-        else:
+        except:
             return value
     iter_levels = (self.get_steady_levels() | self.get_parameters()).iter_variants()
     num_variants = self.num_variants
@@ -193,6 +194,9 @@ def _compare_steady_value(
             for name, value, base_value in zip(row_names, values, base_values, )
         )
     #
+    # Skip comparison of first variant to first variant
+    next(orig_value_iterator(self, row_names, **kwargs, ))
+    #
     for header, values, settings in orig_value_iterator(self, row_names, **kwargs, ):
         yield "COMPARE_" + header, _compare(values, ), settings
     #]
@@ -208,9 +212,9 @@ def _steady_change_column(
     """
     #[
     def _display_value(value: Real, ):
-        if round_to is not None and value is not None:
+        try:
             return round(value, round_to, )
-        else:
+        except:
             return value
     iter_changes = (self.get_steady_changes()).iter_variants()
     num_variants = self.num_variants
@@ -246,5 +250,5 @@ def _save_pretty_table_to_csv_file(
 ) -> None:
     """
     """
-    _file_io.save_text(file_name, table.get_csv_string(), )
+    _file_io.save_text(table.get_csv_string(), file_name, )
 

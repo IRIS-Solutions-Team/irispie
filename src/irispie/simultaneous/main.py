@@ -36,17 +36,18 @@ from ..fords import std_simulators as _std_simulators
 
 from ._invariants import Invariant
 from ._variants import Variant
-from . import _covariances as _covariances
-from . import _flags as _flags
-from . import _simulate as _simulate
-from . import _steady as _steady
-from . import _logly as _logly
-from . import _get as _get
-from . import _pretty as _pretty
-from . import _assigns as _assigns
-from . import _slatable_protocols as _slatable_protocols
-from . import _plannable_protocols as _plannable_protocols
-from . import _io as _io
+from . import _covariances
+from . import _flags
+from . import _simulate
+from . import _steady
+from . import _logly
+from . import _get
+from . import _pretty
+from . import _assigns
+from . import _slatable_protocols
+from . import _plannable_protocols
+from . import _steady_boxable_protocols
+from . import _io
 
 #]
 
@@ -85,6 +86,7 @@ class Simultaneous(
     _covariances.Inlay,
     _slatable_protocols.Inlay,
     _plannable_protocols.Inlay,
+    _steady_boxable_protocols.Inlay,
     _io.Inlay,
 ):
     """
@@ -369,7 +371,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
 
     def create_steady_array(
         self,
-        /,
         variant: Variant | None = None,
         **kwargs,
     ) -> _np.ndarray:
@@ -382,7 +383,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
 
     def create_zero_array(
         self,
-        /,
         variant: Variant | None = None,
         **kwargs,
     ) -> _np.ndarray:
@@ -399,9 +399,12 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         deviation: bool,
         **kwargs,
     ) -> _np.ndarray:
-        return {
-            True: self.create_zero_array, False: self.create_steady_array,
-        }[deviation](**kwargs)
+        """
+        """
+        if not deviation:
+            return self.create_steady_array(**kwargs, )
+        else:
+            return self.create_zero_array(**kwargs, )
 
     def _enforce_assignment_rules(self, variant, /, ) -> None:
         """
