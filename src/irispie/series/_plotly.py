@@ -42,6 +42,20 @@ with open(_os.path.join(_PLOTLY_STYLES_FOLDER, "plain_layout.json", ), "rt", ) a
 
 def _line_plot(color: str, **settings) -> _pg.Scatter:
     """
+    ==Create a line plot trace==
+
+    Generates a Plotly line plot trace with specified color and settings.
+
+    ### Parameters ###
+    ???+ input "color"
+        The line color for the plot.
+
+    ???+ input "**settings"
+        Additional keyword arguments to customize the line plot.
+
+    ### Returns ###
+    ???+ returns "_pg.Scatter"
+        A Scatter object configured as a line plot.
     """
     settings = {"mode": "lines+markers", } | settings
     return _pg.Scatter(line_color=color, **settings, )
@@ -49,6 +63,20 @@ def _line_plot(color: str, **settings) -> _pg.Scatter:
 
 def _bar_plot(color: str, **settings) -> _pg.Bar:
     """
+    ==Create a bar plot trace==
+
+    Generates a Plotly bar plot trace with specified color and settings.
+
+    ### Parameters ###
+    ???+ input "color"
+        The bar color for the plot.
+
+    ???+ input "**settings"
+        Additional keyword arguments to customize the bar plot.
+
+    ### Returns ###
+    ???+ returns "_pg.Bar"
+        A Bar object configured as a bar plot.
     """
     return _pg.Bar(marker_color=color, **settings, )
 
@@ -99,6 +127,10 @@ _COLOR_ORDER = [
 
 class Inlay:
     """
+    ==Inlay==
+
+    Interface to create and customize Plotly visualizations for time series data. 
+    Provides methods to generate line and bar plots with flexible configurations.
     """
     #[
 
@@ -131,6 +163,39 @@ class Inlay:
         return_info: bool = False,
     ) -> dict[str, Any]:
         """
+        ==Generate a Plotly visualization for time series data==
+
+        Creates a Plotly figure for visualizing time series data. Supports 
+        flexible configurations, including line and bar plots, subplot 
+        customization, and layout updates.
+
+        ### Parameters ###
+        ???+ input "span"
+            Specifies the time range for the plot.
+
+        ???+ input "figure"
+            An existing Plotly figure to update, or `None` to create a new one.
+
+        ???+ input "figure_title"
+            Title for the entire figure.
+
+        ???+ input "chart_type"
+            Type of chart to generate: "line", "bar_stack", or "bar_group".
+
+        ???+ input "highlight"
+            Periods to highlight in the plot.
+
+        ???+ input "round_to"
+            Rounds numerical data to the specified number of decimal places.
+
+        ???+ input "return_info"
+            If `True`, returns additional information about the figure and 
+            traces.
+
+        ### Returns ###
+        ???+ returns "dict[str, Any]"
+            A dictionary containing the figure and additional trace data if 
+            `return_info` is `True`.
         """
         if type is not None:
             _wa.warn("Use 'chart_type' instead of the deprecated 'type'", )
@@ -258,6 +323,23 @@ def _update_subplot_title(
     /,
 ) -> None:
     """
+    ==Update the title of a subplot==
+
+    Modifies the title of a specific subplot in a Plotly figure.
+
+    ### Parameters ###
+    ???+ input "figure"
+        The Plotly figure containing the subplot.
+
+    ???+ input "subplot_title"
+        The new title for the subplot.
+
+    ???+ input "index"
+        The index of the subplot to update.
+
+    ### Returns ###
+    ???+ returns "None"
+        This function updates the figure in place and does not return anything.
     """
     annotation = next(figure.select_annotations(index, ), None, )
     if annotation:
@@ -266,6 +348,17 @@ def _update_subplot_title(
 
 def _get_traces_dates(series: Series, /, ) -> tuple[tuple[Period, ...], str]:
     """
+    ==Resolve trace dates and x-axis type==
+
+    Extracts date information and determines the x-axis type for a series.
+
+    ### Parameters ###
+    ???+ input "series"
+        The time series object to extract trace dates and x-axis type.
+
+    ### Returns ###
+    ???+ returns "tuple[tuple[Period, ...], str]"
+        A tuple containing the resolved dates and the x-axis type as a string.
     """
     #[
     if not series.span:
@@ -288,6 +381,42 @@ def _iter_traces(
     **kwargs,
 ) -> Any:
     """
+    ==Generate Plotly trace objects==
+
+    Iterates through data variants in a time series and creates Plotly trace 
+    objects.
+
+    ### Parameters ###
+    ???+ input "series"
+        The time series containing the data to visualize.
+
+    ???+ input "traces_dates"
+        The dates for the x-axis of the plot.
+
+    ???+ input "from_until"
+        The time range for the plot.
+
+    ???+ input "traces_constructor"
+        A function that constructs trace objects.
+
+    ???+ input "transform"
+        A function to apply transformations to the data.
+
+    ???+ input "legends"
+        Iterable of legend labels for each trace.
+
+    ???+ input "colors"
+        Iterable of colors for each trace.
+
+    ???+ input "custom_updates"
+        Iterable of dictionaries specifying custom updates for each trace.
+
+    ???+ input "**kwargs"
+        Additional keyword arguments for the trace constructor.
+
+    ### Returns ###
+    ???+ returns "Any"
+        An iterable of Plotly trace objects.
     """
     #[
     zipped = zip(
@@ -312,6 +441,18 @@ def _create_transform_function(
     round_to: int | None = None,
 ) -> Callable[[Real], Real]:
     """
+    ==Create a data transformation function==
+
+    Generates a transformation function for the data, including optional 
+    rounding.
+
+    ### Parameters ###
+    ???+ input "round_to"
+        The number of decimal places to round to, or `None` for no rounding.
+
+    ### Returns ###
+    ???+ returns "Callable[[Real], Real]"
+        A transformation function that can be applied to numerical data.
     """
     #[
     def no_transform(x: Real, ) -> Real:

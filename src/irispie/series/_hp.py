@@ -36,13 +36,49 @@ _AUTO_SMOOTH = {
 
 def _get_default_smooth(frequency, /, ):
     """
-    Default smoothing parameter (lambda)
+    ................................................................................
+    ==Default Smoothing Parameter (Lambda)==
+
+    Returns the default smoothing parameter (lambda) for the Hodrick-Prescott filter 
+    based on the input frequency.
+
+    ### Input Arguments ###
+    ???+ input "frequency"
+        The frequency of the time series (e.g., YEARLY, QUARTERLY).
+
+    ### Returns ###
+    ???+ returns "Real"
+        The default smoothing parameter for the given frequency.
+
+    ### Example ###
+    ```python
+        smooth = _get_default_smooth(Frequency.YEARLY)
+        print(smooth)  # Output: 100
+    ```
+    ................................................................................
     """
     return _AUTO_SMOOTH.get(frequency, _AUTO_SMOOTH["default"])
 
 
 class _ConstrainedHodrickPrescottFilter:
     """
+    ................................................................................
+    ==Constrained Hodrick-Prescott Filter==
+
+    Implements the Hodrick-Prescott filter with optional level and change constraints. 
+    This class is used internally to perform trend-cycle decomposition for time series.
+
+    ### Attributes ###
+    - `num_periods`: The number of periods in the time series.
+    - `smooth`: The smoothing parameter (lambda) for the filter.
+    - `log`: Whether to apply logarithmic transformation.
+
+    ### Methods ###
+    - `filter_data`: Applies the filter and returns the trend and gap components.
+    - `_create_plain_filter_matrix`: Constructs the core HP filter matrix.
+    - `_add_level_constraints`: Adds level constraints to the filter matrix.
+    - `_add_change_constraints`: Adds change constraints to the filter matrix.
+    ................................................................................
     """
     #[
     def __init__(
@@ -54,6 +90,32 @@ class _ConstrainedHodrickPrescottFilter:
         change_where: list[int] | None = None,
         log: bool = False,
     ) -> None:
+        r"""
+        ...............................................................................
+        ==Initialize the Constrained HP Filter==
+
+        Initializes the filter matrix and applies optional level and change constraints.
+
+        ### Input Arguments ###
+        ???+ input "num_periods"
+            The number of periods in the time series.
+
+        ???+ input "smooth"
+            The smoothing parameter (lambda) for the filter.
+
+        ???+ input "level_where"
+            A list of indices specifying level constraints.
+
+        ???+ input "change_where"
+            A list of indices specifying change constraints.
+
+        ???+ input "log"
+            A boolean indicating whether to apply logarithmic transformation.
+
+        ### Returns ###
+        ???+ returns "None"
+        ...............................................................................
+        """
         self._num_periods = num_periods
         self._smooth = smooth
         self._log = log
@@ -70,6 +132,30 @@ class _ConstrainedHodrickPrescottFilter:
         change_data: _np.ndarray | None = None,
     ) -> tuple[_np.ndarray, _np.ndarray]:
         """
+            ==Filter Data Using Constrained Hodrick-Prescott Filter==
+
+    Applies the constrained Hodrick-Prescott filter to decompose the input time series 
+    into trend and gap components.
+
+    ### Input Arguments ###
+    ???+ input "values"
+        A numpy array representing the input time series data to be filtered.
+
+    ### Returns ###
+    ???+ returns "tuple[numpy.ndarray, numpy.ndarray]"
+        A tuple containing:
+        - The trend component as a numpy array.
+        - The gap component as a numpy array (difference between the input and the trend).
+
+    ### Example ###
+    ```python
+        trend, gap = hp_filter.filter_data(values)
+    ```
+
+    ### Details ###
+    - The trend is computed by solving a linear system with constraints applied.
+    - If logarithmic transformation is enabled (`self._log`), the data is exponentiated 
+      after filtering.
         """
         data = data.reshape(-1, 1)
         F = self._add_eye_for_observations(data, )
@@ -111,6 +197,56 @@ class _ConstrainedHodrickPrescottFilter:
         change_data: _np.ndarray | None,
     ) -> _np.ndarray:
         """
+         ................................................................................
+    ==Extend Data for Constrained Hodrick-Prescott Filter==
+
+    Extends the input time series data by appending values for level and change 
+    constraints. These values are used to enforce the constraints during the HP 
+    filtering process.
+
+    ### Input Arguments ###
+    ???+ input "data"
+        A numpy array representing the original time series data.
+
+    ???+ input "level_where"
+        A list of indices specifying the periods where level constraints are applied. 
+        If `None`, no level constraints are added.
+
+    ???+ input "level_values"
+        A list of values corresponding to the `level_where` indices. Each value enforces 
+        a specific level at the specified period. If `None`, no level values are added.
+
+    ???+ input "change_where"
+        A list of indices specifying the periods where change constraints are applied. 
+        If `None`, no change constraints are added.
+
+    ???+ input "change_values"
+        A list of values corresponding to the `change_where` indices. Each value enforces 
+        a specific change between consecutive periods. If `None`, no change values are 
+        added.
+
+    ### Returns ###
+    ???+ returns "numpy.ndarray"
+        A numpy array containing the extended data with additional rows for the 
+        level and change constraints.
+
+    ### Example ###
+    ```python
+        extended_data = extend_data(
+            data=_np.array([1.0, 2.0, 3.0]),
+            level_where=[0, 2],
+            level_values=[1.0, 3.0],
+            change_where=[1],
+            change_values=[1.0]
+        )
+        print(extended_data)
+    ```
+
+    ### Notes ###
+    - The extended data array includes rows appended for level and change constraints.
+    - For `level_where` and `change_where` indices, corresponding values must be provided.
+
+    ................................................................................
         """
         extended_data = data.copy() if data.ndim > 1 else data.copy().reshape(-1, 1)
         tile_dim = (1, extended_data.shape[1], )
@@ -122,6 +258,26 @@ class _ConstrainedHodrickPrescottFilter:
 
     def _create_plain_filter_matrix(self, ) -> None:
         """
+            ................................................................................
+    ==Create Base HP Filter Matrix==
+
+    Constructs the plain Hodrick-Prescott filter matrix without additional constraints. 
+    The matrix includes the smoothness penalty and structure for second differences.
+
+    ### Returns ###
+    ???+ returns "None"
+        Modifies the `_matrix` attribute in place.
+
+    ### Example ###
+    ```python
+        hp_filter._create_plain_filter_matrix()
+    ```
+
+    ### Notes ###
+    - This method is used internally and sets up the initial matrix for further 
+      constraint adjustments.
+
+    ................................................................................
         """
         K = _np.zeros((self._num_periods-2, self._num_periods), dtype=float)
         for i in range(self._num_periods-2):
@@ -348,13 +504,89 @@ class Inlay:
 
     def hpf_trend(self, /, *args, **kwargs):
         """
-        """
+    ................................................................................
+    ==Hodrick-Prescott Filter (Trend Component)==
+
+    Applies the Hodrick-Prescott filter to extract and replace the current time 
+    series with its trend component.
+
+    ................................................................................
+
+    ### Input Arguments ###
+    ???+ input "self"
+        The current time series object.
+
+    ???+ input "*args"
+        Positional arguments forwarded to the `_data_hpf` function.
+
+    ???+ input "**kwargs"
+        Keyword arguments forwarded to the `_data_hpf` function.
+
+    ### Returns ###
+    ???+ returns "None"
+        Modifies the current time series in place, replacing its data with the trend 
+        component.
+
+    ### Example ###
+    ```python
+        series.hpf_trend(span=..., smooth=1600)
+        print(series)  # Contains only the trend component
+    ```
+
+    ### Details ###
+    - The trend component is extracted using the `_data_hpf` function.
+    - The series is updated in place with the trend data.
+
+    ### Notes ###
+    - This method is destructive and replaces the original data. Use with caution if 
+      you need to preserve the original series.
+
+    ................................................................................
+    """
         start_date, trend_data, _ = _data_hpf(self, *args, **kwargs, )
         self._replace_start_and_values(start_date, trend_data, )
 
     def hpf_gap(self, /, *args, **kwargs):
         """
-        """
+    ................................................................................
+    ==Hodrick-Prescott Filter (Gap Component)==
+
+    Applies the Hodrick-Prescott filter to extract and replace the current time 
+    series with its gap component (the difference between the series and the trend).
+
+    ................................................................................
+
+    ### Input Arguments ###
+    ???+ input "self"
+        The current time series object.
+
+    ???+ input "*args"
+        Positional arguments forwarded to the `_data_hpf` function.
+
+    ???+ input "**kwargs"
+        Keyword arguments forwarded to the `_data_hpf` function.
+
+    ### Returns ###
+    ???+ returns "None"
+        Modifies the current time series in place, replacing its data with the gap 
+        component.
+
+    ### Example ###
+    ```python
+        series.hpf_gap(span=..., smooth=1600)
+        print(series)  # Contains only the gap component
+    ```
+
+    ### Details ###
+    - The gap component is extracted using the `_data_hpf` function.
+    - The series is updated in place with the gap data.
+
+    ### Notes ###
+    - This method is destructive and replaces the original data. Use with caution if 
+      you need to preserve the original series.
+
+    ................................................................................
+    """
         start_date, _, gap_data = _data_hpf(self, *args, **kwargs, )
         self._replace_start_and_values(start_date, gap_data, )
 
@@ -371,7 +603,59 @@ def _data_hpf(
     change: _series.Series | None = None,
 ) -> tuple[Period, _np.ndarray, _np.ndarray]:
     """
-    Hodrick-Prescott filter run on a multi-variant data matrix
+    ................................................................................
+    ==Perform Hodrick-Prescott Filtering on Data==
+
+    Computes the Hodrick-Prescott filter on the input time series, returning the 
+    trend and gap components.
+
+    ................................................................................
+
+    ### Input Arguments ###
+    ???+ input "self"
+        The time series object containing the data to be filtered.
+
+    ???+ input "span"
+        The time span for which the filtering is performed. Defaults to the entire 
+        span of the series.
+
+    ???+ input "smooth"
+        The smoothing parameter (lambda) for the filter. If `None`, the default value 
+        is used based on the series frequency.
+
+    ???+ input "log"
+        A boolean indicating whether to apply logarithmic transformation before 
+        filtering.
+
+    ???+ input "level"
+        A time series providing level constraints for the filter. If `None`, no level 
+        constraints are applied.
+
+    ???+ input "change"
+        A time series providing change constraints for the filter. If `None`, no change 
+        constraints are applied.
+
+    ### Returns ###
+    ???+ returns "tuple[Period, numpy.ndarray, numpy.ndarray]"
+        A tuple containing:
+        - The start date of the filtered series (`Period`).
+        - The trend component as a numpy array.
+        - The gap component as a numpy array.
+
+    ### Example ###
+    ```python
+        start_date, trend_data, gap_data = _data_hpf(
+            series, span=..., smooth=1600, log=True
+        )
+    ```
+
+    ### Notes ###
+    - The level and change constraints enhance the filter by imposing specific values 
+      or differences at certain points in the series.
+    - The log transformation ensures that the filter operates on a multiplicative 
+      scale, suitable for exponential trends.
+
+    ................................................................................
     """
     #[
     span = self._resolve_dates(span, )

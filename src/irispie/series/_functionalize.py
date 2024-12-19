@@ -1,4 +1,10 @@
 """
+Helper for functionalizing methods in time series.
+
+This module defines a template for transforming class methods into functional 
+alternatives. The main utility, `FUNC_STRING`, is used to dynamically generate 
+functions that operate on copies of the input object, ensuring immutability for 
+functional programming paradigms.
 """
 
 

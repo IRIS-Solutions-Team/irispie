@@ -28,7 +28,18 @@ __all__ = ()
 
 
 class Inlay:
-    """
+    r"""
+    ................................................................................
+    ==Inlay Class==
+
+    Provides autoregressive extrapolation capabilities for time series data. This 
+    class is designed to extend existing time `Series` objects by predicting future 
+    values using user-specified autoregressive coefficients.
+
+    The `Inlay` class supports in-place modifications as well as generation of 
+    new `Series` objects based on the autoregressive extrapolation process.
+
+    ................................................................................
     """
     #[
 
@@ -162,7 +173,50 @@ def _extrapolate(
     intercept: Real = 0,
     log: bool = False,
 ) -> None:
-    """
+    r"""
+    ................................................................................
+    ==Perform Autoregressive Extrapolation==
+
+    Performs the core computation for autoregressive extrapolation of a time series. 
+    This function uses an AR model to generate extrapolated values based on initial 
+    conditions.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "initial"
+        A numpy array containing the initial conditions for the AR process.
+
+    ???+ input "num_periods"
+        The number of periods to extrapolate.
+
+    ???+ input "ar"
+        An iterable of coefficients for the AR model. Includes AR_1, ..., AR_p.
+
+    ???+ input "intercept"
+        A constant value added to each extrapolated point. Default is `0`.
+
+    ???+ input "log"
+        A boolean flag. If `True`, the data is log-transformed before extrapolation 
+        and exponentiated after extrapolation. Default is `False`.
+
+    ### Returns ###
+    ???+ returns "numpy.ndarray"
+        A numpy array containing the extrapolated values.
+
+    ### Example ###
+    ```python
+        initial_conditions = _np.array([1.0, 0.8, 0.5])
+        extrapolated = _extrapolate(
+            initial_conditions, 
+            num_periods=12, 
+            ar=[0.7, -0.2],
+            intercept=0.5,
+            log=False
+        )
+        print(extrapolated)
+    ```
+    ................................................................................
     """
     #[
     initial = _np.flip(initial.flatten(), )

@@ -21,6 +21,16 @@ __all__ = ()
 
 class Inlay:
     """
+    ==Inlay==
+
+    Provides temporal change calculations for time series data, including 
+    differences, percentage changes, and cumulative calculations. These 
+    methods can be used to analyze trends and shifts in data over time.
+
+    ### Features ###
+    - Flexible temporal transformations such as first differences and rates of change.
+    - Methods for annualized calculations.
+    - Support for cumulative calculations.
     """
     #[
 
@@ -277,6 +287,16 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         /,
     ) -> None:
         r"""
+        ==Convert percent change to gross rate of change==
+
+        Converts the percent change in the time series to a gross rate of 
+        change using the formula:
+        \( \text{ROC} = 1 + \frac{\text{Percent Change}}{100} \).
+
+        ### Returns ###
+        ???+ returns "None"
+            Updates the time series in place, replacing percent changes with 
+            gross rates of change.
         """
         self.data = 1 + self.data/100
 
@@ -285,6 +305,16 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         /,
     ) -> None:
         r"""
+        ==Convert gross rate of change to percent change==
+
+        Converts the gross rate of change in the time series to a percent 
+        change using the formula:
+        \( \text{Percent Change} = 100 \cdot (\text{ROC} - 1) \).
+
+        ### Returns ###
+        ???+ returns "None"
+            Updates the time series in place, replacing gross rates of change 
+            with percent changes.
         """
         self.data = 100*(self.data - 1)
 
@@ -293,6 +323,18 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         /,
     ) -> None:
         r"""
+        ==Convert annualized percent change to percent change==
+
+        Converts the annualized percent change in the time series to a 
+        percent change using the formula:
+        \( \text{Percent Change} = 100 \cdot [(1 + \frac{\text{APCT}}{100})^{\frac{1}{a}} - 1] \),
+        where \( a \) is the annualization factor determined by the frequency 
+        of the time series.
+
+        ### Returns ###
+        ???+ returns "None"
+            Updates the time series in place, replacing annualized percent 
+            changes with percent changes.
         """
         factor = self.frequency.value or 1
         self.data = 100*((1 + self.data/100)**(1/factor) - 1)
@@ -302,6 +344,18 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         /,
     ) -> None:
         r"""
+        ==Convert annualized percent change to gross rate of change==
+
+        Converts the annualized percent change in the time series to a 
+        gross rate of change using the formula:
+        \( \text{ROC} = (1 + \frac{\text{APCT}}{100})^{\frac{1}{a}} \),
+        where \( a \) is the annualization factor determined by the frequency 
+        of the time series.
+
+        ### Returns ###
+        ???+ returns "None"
+            Updates the time series in place, replacing annualized percent 
+            changes with gross rates of change.
         """
         factor = self.frequency.value or 1
         self.data = (1 + self.data/100)**(1/factor)
@@ -311,6 +365,18 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         /,
     ) -> None:
         r"""
+        ==Convert annualized gross rate of change to gross rate of change==
+
+        Converts the annualized gross rate of change in the time series to a 
+        gross rate of change using the formula:
+        \( \text{ROC} = (\text{AROC})^{\frac{1}{a}} \),
+        where \( a \) is the annualization factor determined by the frequency 
+        of the time series.
+
+        ### Returns ###
+        ???+ returns "None"
+            Updates the time series in place, replacing annualized gross rates 
+            of change with gross rates of change.
         """
         factor = self.frequency.value or 1
         self.data = self.data**factor
@@ -476,7 +542,28 @@ self.cum_roc(/, shift=-1, initial=None, span=None)
             self._cumulate_backward(shift, cum_func, initial, span, )
 
     def _cumulate_forward(self, shift, cum_func, initial, span, /, ) -> None:
-        """
+        r"""
+        ==Perform forward cumulative calculation==
+
+        Computes the forward cumulative result of a temporal change function 
+        over a specified time span.
+
+        ### Parameters ###
+        ???+ input "shift"
+            The time lag for the temporal change function.
+
+        ???+ input "cum_func"
+            A callable representing the cumulative function to apply.
+
+        ???+ input "initial"
+            The initial value for the cumulative series.
+
+        ???+ input "span"
+            The time span over which the cumulative calculation is performed.
+
+        ### Returns ###
+        ???+ returns "None"
+            Updates the time series in place with the forward cumulative results.
         """
         shifted_range = tuple(t.shift(shift, ) for t in span)
         initial_range = Span(min(shifted_range), span.end_date, )
@@ -488,7 +575,28 @@ self.cum_roc(/, shift=-1, initial=None, span=None)
             self.set_data(t, new_data)
 
     def _cumulate_backward(self, shift, cum_func, initial, shifted_backward_range, /, ) -> None:
-        """
+        r"""
+        ==Perform backward cumulative calculation==
+
+        Computes the backward cumulative result of a temporal change function 
+        over a specified time span.
+
+        ### Parameters ###
+        ???+ input "shift"
+            The time lag for the temporal change function.
+
+        ???+ input "cum_func"
+            A callable representing the cumulative function to apply.
+
+        ???+ input "initial"
+            The initial value for the cumulative series.
+
+        ???+ input "shifted_backward_range"
+            The pre-calculated time span for backward cumulative calculations.
+
+        ### Returns ###
+        ???+ returns "None"
+            Updates the time series in place with the backward cumulative results.
         """
         orig_range_shifted = Span(self.start_date, self.end_date, -1, )
         orig_range_shifted.shift(shift, )
@@ -537,14 +645,44 @@ _CUMULATIVE_FACTORY = {
 
 
 def _catch_invalid_shift(shift: int | str, ):
-    """
+    r"""
+    ==Validate time shift input==
+
+    Ensures that the time shift provided is either a negative integer or a 
+    valid string. Raises a `ValueError` if the input is invalid.
+
+    ### Parameters ###
+    ???+ input "shift"
+        The time shift value to validate. Must be a negative integer or a string.
+
+    ### Returns ###
+    ???+ returns "None"
+        This function does not return any value but raises an error if the 
+        input is invalid.
+
+    ### Raises ###
+    ???+ exception "ValueError"
+        Raised if the input is neither a negative integer nor a valid string.
     """
     if not isinstance(shift, str) and (int(shift) != shift or shift >= 0):
         raise ValueError("Time shift must be a negative integer or a string")
 
 
 def _roc_from_pct(pct: Real, /, ) -> Real:
-    """
+    r"""
+    ==Convert percent change to gross rate of change==
+
+    Converts a given percentage change to a gross rate of change using the 
+    formula:
+    \( \text{ROC} = 1 + \frac{\text{Percent Change}}{100} \).
+
+    ### Parameters ###
+    ???+ input "pct"
+        The percent change value as a real number.
+
+    ### Returns ###
+    ???+ returns "Real"
+        The corresponding gross rate of change.
     """
     return 1 + pct/100
 

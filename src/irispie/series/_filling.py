@@ -1,4 +1,5 @@
 """
+Filling missing observations in time series
 """
 
 
@@ -27,7 +28,15 @@ __all__ = ()
 
 
 class Inlay:
-    """
+    r"""
+    ................................................................................
+    ==Inlay Class==
+
+    Provides methods for filling missing observations in time series using various 
+    strategies. This includes interpolation, constant values, and neighbor-based 
+    approaches. The methods can modify the series in place or return a new series.
+
+    ................................................................................
     """
     #[
 
@@ -128,7 +137,34 @@ def _fill_neighbor(
     func: Callable,
     **kwargs,
 ) -> _np.ndarray:
-    """
+    r"""
+    ................................................................................
+    ==Neighbor-Based Filling==
+
+    Fills missing values using neighbor-based methods, such as selecting the next, 
+    previous, or nearest observation.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "data"
+        The data array containing missing values.
+
+    ???+ input "method_args"
+        Additional arguments (unused for neighbor-based methods).
+
+    ???+ input "func"
+        A function that determines the neighbor index for each missing value.
+
+    ### Returns ###
+    ???+ returns "numpy.ndarray"
+        The data array with missing values filled.
+
+    ### Example ###
+    ```python
+        filled_data = _fill_neighbor(data, None, func=_next_index)
+    ```
+    ................................................................................
     """
     index_nan = _np.isnan(data)
     if _np.all(index_nan):
@@ -149,7 +185,34 @@ def _fill_interp(
     func: Callable,
     **kwargs,
 ) -> _np.ndarray:
-    """
+    r"""
+    ................................................................................
+    ==Interpolation-Based Filling==
+
+    Fills missing values in the data using interpolation methods, such as linear 
+    or log-linear interpolation.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "data"
+        The data array containing missing values.
+
+    ???+ input "method_args"
+        Additional arguments (unused for interpolation methods).
+
+    ???+ input "func"
+        A function that computes interpolated values based on neighboring observations.
+
+    ### Returns ###
+    ???+ returns "numpy.ndarray"
+        The data array with missing values filled.
+
+    ### Example ###
+    ```python
+        filled_data = _fill_interp(data, None, func=_interpolation_linear)
+    ```
+    ................................................................................
     """
     index_nan = _np.isnan(data)
     if _np.all(index_nan):
@@ -181,7 +244,40 @@ def _interpolation_linear(
     curr_index: int,
     /,
 ) -> Real:
-    """
+    r"""
+    ................................................................................
+    ==Linear Interpolation==
+
+    Computes the linear interpolation value between two points.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "previous_value"
+        The value of the previous observation.
+
+    ???+ input "next_value"
+        The value of the next observation.
+
+    ???+ input "previous_index"
+        The index of the previous observation.
+
+    ???+ input "next_index"
+        The index of the next observation.
+
+    ???+ input "curr_index"
+        The index of the current missing value.
+
+    ### Returns ###
+    ???+ returns "Real"
+        The interpolated value.
+
+    ### Example ###
+    ```python
+        interpolated = _interpolation_linear(10, 20, 0, 2, 1)
+        print(interpolated)  # Output: 15
+    ```
+    ................................................................................
     """
     diff = next_value - previous_value
     scale_diff = (curr_index - previous_index) / (next_index - previous_index)
@@ -196,7 +292,41 @@ def _interpolation_log_linear(
     curr_index: int,
     /,
 ) -> Real:
-    """
+    r"""
+    ................................................................................
+    ==Log-Linear Interpolation==
+
+    Computes the log-linear interpolation value between two points. This method is 
+    suitable for data that changes multiplicatively or exponentially.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "previous_value"
+        The value of the previous observation.
+
+    ???+ input "next_value"
+        The value of the next observation.
+
+    ???+ input "previous_index"
+        The index of the previous observation.
+
+    ???+ input "next_index"
+        The index of the next observation.
+
+    ???+ input "curr_index"
+        The index of the current missing value.
+
+    ### Returns ###
+    ???+ returns "Real"
+        The interpolated value.
+
+    ### Example ###
+    ```python
+        interpolated = _interpolation_log_linear(10, 20, 0, 2, 1)
+        print(interpolated)  # Output: 14.142135623730951
+    ```
+    ................................................................................
     """
     return _np.exp(_interpolation_linear(
         _np.log(previous_value),
@@ -212,7 +342,30 @@ def _fill_constant(
     method_args: Real,
     **kwargs,
 ) -> _np.ndarray:
-    """
+    r"""
+    ................................................................................
+    ==Constant Value Filling==
+
+    Fills missing values in the data with a constant value.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "data"
+        The data array containing missing values.
+
+    ???+ input "method_args"
+        The constant value to use for filling missing observations.
+
+    ### Returns ###
+    ???+ returns "numpy.ndarray"
+        The data array with missing values filled.
+
+    ### Example ###
+    ```python
+        filled_data = _fill_constant(data, method_args=5.0)
+    ```
+    ................................................................................
     """
     constant = method_args
     index_nan = _np.isnan(data)
@@ -225,7 +378,34 @@ def _fill_series(
     method_args: Series,
     span: Iterable[Period],
 ) -> _np.ndarray:
-    """
+    r"""
+    ................................................................................
+    ==Series-Based Filling==
+
+    Fills missing values in the data using corresponding values from another time 
+    series object.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "values"
+        The data array containing missing values.
+
+    ???+ input "method_args"
+        A `Series` object providing the fill values.
+
+    ???+ input "span"
+        The time span over which the fill values will be applied.
+
+    ### Returns ###
+    ???+ returns "numpy.ndarray"
+        The data array with missing values filled.
+
+    ### Example ###
+    ```python
+        filled_data = _fill_series(values, method_args=another_series, span=span)
+    ```
+    ................................................................................
     """
     series = method_args
     fill_values = series.get_data(span, )
@@ -235,7 +415,33 @@ def _fill_series(
 
 
 def _next_index(i: int, where_obs: _np.ndarray, /, ) -> int:
-    """
+    r"""
+    ................................................................................
+    ==Find the Next Observation Index==
+
+    Identifies the index of the next observed value in the data relative to the 
+    given index `i`.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "i"
+        The current index of the missing value.
+
+    ???+ input "where_obs"
+        A numpy array containing the indices of observed (non-missing) values.
+
+    ### Returns ###
+    ???+ returns "int or None"
+        The index of the next observed value. Returns `None` if there is no next 
+        observed value.
+
+    ### Example ###
+    ```python
+        next_idx = _next_index(5, where_obs=_np.array([0, 3, 6, 10]))
+        print(next_idx)  # Output: 6
+    ```
+    ................................................................................
     """
     #[
     where_obs_minus_i = where_obs - i
@@ -249,7 +455,33 @@ def _next_index(i: int, where_obs: _np.ndarray, /, ) -> int:
 
 
 def _previous_index(i: int, where_obs: _np.ndarray, /, ) -> int:
-    """
+    r"""
+    ................................................................................
+    ==Find the Previous Observation Index==
+
+    Identifies the index of the previous observed value in the data relative to the 
+    given index `i`.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "i"
+        The current index of the missing value.
+
+    ???+ input "where_obs"
+        A numpy array containing the indices of observed (non-missing) values.
+
+    ### Returns ###
+    ???+ returns "int or None"
+        The index of the previous observed value. Returns `None` if there is no 
+        previous observed value.
+
+    ### Example ###
+    ```python
+        prev_idx = _previous_index(5, where_obs=_np.array([0, 3, 6, 10]))
+        print(prev_idx)  # Output: 3
+    ```
+    ................................................................................
     """
     #[
     i_minus_where_obs = i - where_obs
@@ -263,7 +495,32 @@ def _previous_index(i: int, where_obs: _np.ndarray, /, ) -> int:
 
 
 def _nearest_index(i: int, where_obs: _np.ndarray, /, ) -> int:
-    """
+    r"""
+    ................................................................................
+    ==Find the Nearest Observation Index==
+
+    Identifies the index of the nearest observed value in the data relative to the 
+    given index `i`.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "i"
+        The current index of the missing value.
+
+    ???+ input "where_obs"
+        A numpy array containing the indices of observed (non-missing) values.
+
+    ### Returns ###
+    ???+ returns "int"
+        The index of the nearest observed value.
+
+    ### Example ###
+    ```python
+        nearest_idx = _nearest_index(5, where_obs=_np.array([0, 3, 6, 10]))
+        print(nearest_idx)  # Output: 6
+    ```
+    ................................................................................
     """
     #[
     i_minus_where_obs = _np.abs(i - where_obs)
@@ -282,4 +539,24 @@ _FILL_METHOD_DISPATCH = {
     "series": _fill_series,
 }
 
+"""
+................................................................................
+==Method Dispatch Table==
 
+A dictionary mapping fill methods to their corresponding implementation functions.
+
+### Keys ###
+| Key           | Description
+|---------------|--------------------------------------------------
+| "next"        | Fill using the next available observation
+| "previous"    | Fill using the previous available observation
+| "nearest"     | Fill using the nearest available observation
+| "linear"      | Fill using linear interpolation
+| "log_linear"  | Fill using log-linear interpolation
+| "constant"    | Fill with a constant value
+| "series"      | Fill using values from another series
+
+### Values ###
+Corresponding partial functions or direct references to fill implementation methods.
+................................................................................
+"""

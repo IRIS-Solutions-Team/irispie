@@ -37,7 +37,15 @@ _DEFAULT_METHOD = "mean"
 
 
 class Inlay:
-    """
+    r"""
+    ................................................................................
+    ==Inlay Class==
+
+    Provides methods for aggregating and disaggregating time series data 
+    between different frequencies. Supports multiple aggregation and 
+    interpolation methods, allowing flexible transformations of time series data.
+
+    ................................................................................
     """
     #[
 
@@ -290,7 +298,38 @@ def _aggregate_daily_to_regular(
     new_dater_class: type,
     aggregate_within_data_func: Callable,
 ) -> Self:
-    """
+    r"""
+    ................................................................................
+    ==Aggregate Daily Time Series to Regular Frequency==
+
+    Aggregates data from daily frequency to a lower regular frequency (e.g., monthly, 
+    yearly).
+
+    This function handles the specific requirements for processing daily time series.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "self"
+        The current time series object.
+
+    ???+ input "new_dater_class"
+        The date class corresponding to the target frequency.
+
+    ???+ input "aggregate_within_data_func"
+        A callable function for aggregating data within each low-frequency period.
+
+    ### Returns ###
+    ???+ returns "tuple[Dater, numpy.ndarray]"
+        A tuple containing the new start date and the aggregated data array.
+
+    ### Example ###
+    ```python
+        new_start_date, aggregated_data = _aggregate_daily_to_regular(
+            series, new_dater_class, aggregate_func
+        )
+    ```
+    ................................................................................
     """
     #[
     start_date = self.start_date.create_soy()
@@ -323,7 +362,38 @@ def _aggregate_regular_to_regular(
     aggregate_within_data_func: Callable,
     /,
 ) -> tuple[Dater, _np.ndarray]:
-    """
+    r"""
+    ................................................................................
+    ==Aggregate Regular Time Series==
+
+    Aggregates data from one regular frequency to a lower regular frequency.
+
+    This function is used internally by the `aggregate` method to process time series 
+    with regular frequencies.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "self"
+        The current time series object.
+
+    ???+ input "new_dater_class"
+        The date class corresponding to the target frequency.
+
+    ???+ input "aggregate_within_data_func"
+        A callable function for aggregating data within each low-frequency period.
+
+    ### Returns ###
+    ???+ returns "tuple[Dater, numpy.ndarray]"
+        A tuple containing the new start date and the aggregated data array.
+
+    ### Example ###
+    ```python
+        new_start_date, aggregated_data = _aggregate_regular_to_regular(
+            series, new_dater_class, aggregate_func
+        )
+    ```
+    ................................................................................
     """
     #[
     start_year = self.start_date.get_year()
@@ -353,7 +423,33 @@ def _disaggregate_flat(
     high_dater_class: type,
     /,
 ) -> tuple[Dater, _np.ndarray]:
-    """
+    r"""
+    ................................................................................
+    ==Flat Disaggregation==
+
+    Disaggregates low-frequency data into higher-frequency periods by repeating 
+    values for all high-frequency periods.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "self"
+        The current time series object.
+
+    ???+ input "high_dater_class"
+        The date class corresponding to the target high frequency.
+
+    ### Returns ###
+    ???+ returns "tuple[Dater, numpy.ndarray]"
+        A tuple containing the new start date and the disaggregated data array.
+
+    ### Example ###
+    ```python
+        new_start_date, disaggregated_data = _disaggregate_flat(
+            series, high_dater_class
+        )
+    ```
+    ................................................................................
     """
     #[
     high_freq = high_dater_class.frequency
@@ -369,7 +465,34 @@ def _disaggregate_first(
     high_dater_class: type,
     /,
 ) -> tuple[Dater, _np.ndarray]:
-    """
+    r"""
+    ................................................................................
+    ==First Value Disaggregation==
+
+    Disaggregates low-frequency data into higher-frequency periods by placing the 
+    value in the first high-frequency period of each interval, setting the remaining 
+    periods to `NaN`.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "self"
+        The current time series object.
+
+    ???+ input "high_dater_class"
+        The date class corresponding to the target high frequency.
+
+    ### Returns ###
+    ???+ returns "tuple[Dater, numpy.ndarray]"
+        A tuple containing the new start date and the disaggregated data array.
+
+    ### Example ###
+    ```python
+        new_start_date, disaggregated_data = _disaggregate_first(
+            series, high_dater_class
+        )
+    ```
+    ................................................................................
     """
     #[
     high_start_date, high_data, factor = _disaggregate_flat(self, high_dater_class, )
@@ -384,7 +507,34 @@ def _disaggregate_last(
     high_dater_class: type,
     /,
 ) -> tuple[Dater, _np.ndarray]:
-    """
+    r"""
+    ................................................................................
+    ==Last Value Disaggregation==
+
+    Disaggregates low-frequency data into higher-frequency periods by placing the 
+    value in the last high-frequency period of each interval, setting the remaining 
+    periods to `NaN`.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "self"
+        The current time series object.
+
+    ???+ input "high_dater_class"
+        The date class corresponding to the target high frequency.
+
+    ### Returns ###
+    ???+ returns "tuple[Dater, numpy.ndarray]"
+        A tuple containing the new start date and the disaggregated data array.
+
+    ### Example ###
+    ```python
+        new_start_date, disaggregated_data = _disaggregate_last(
+            series, high_dater_class
+        )
+    ```
+    ................................................................................
     """
     #[
     high_start_date, high_data, factor = _disaggregate_flat(self, high_dater_class, )
@@ -401,7 +551,46 @@ def _aggregate_within_data(
     within_data: _np.ndarray,
     /,
 ) -> _np.ndarray:
-    """
+    r"""
+    ................................................................................
+    ==Aggregate Data Within a Period==
+
+    Processes data for a single period, applying the specified aggregation method 
+    and handling missing values or specific selections.
+
+    This function is called during aggregation operations to compute aggregated values 
+    for each target frequency period.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "select"
+        An optional list of indexes to select specific high-frequency values.
+
+    ???+ input "remove_missing"
+        A boolean flag. If `True`, removes missing values before applying the 
+        aggregation method.
+
+    ???+ input "method_func"
+        The aggregation function to apply to the data (e.g., mean, sum).
+
+    ???+ input "within_data"
+        A numpy array containing the data for a single high-frequency period.
+
+    ### Returns ###
+    ???+ returns "numpy.ndarray"
+        The aggregated value for the period.
+
+    ### Example ###
+    ```python
+        aggregated_value = _aggregate_within_data(
+            select=None, 
+            remove_missing=True, 
+            method_func=_np.mean, 
+            within_data=data
+        )
+    ```
+    ................................................................................
     """
     #[
     if select is not None:
@@ -439,7 +628,35 @@ def convert_roc(
     to_freq: _dates.Frequency,
     /,
 ) -> Real:
-    """
+    r"""
+    ................................................................................
+    ==Convert Rate of Change Between Frequencies==
+
+    Converts a rate of change (`roc`) value from one frequency to another using 
+    exponential scaling.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "roc"
+        The rate of change value to be converted.
+
+    ???+ input "from_freq"
+        The frequency of the input rate of change.
+
+    ???+ input "to_freq"
+        The target frequency to which the rate of change should be converted.
+
+    ### Returns ###
+    ???+ returns "Real"
+        The rate of change value at the target frequency.
+
+    ### Example ###
+    ```python
+        converted_roc = convert_roc(1.05, _dates.Frequency.MONTHLY, _dates.Frequency.YEARLY)
+        print(converted_roc)
+    ```
+    ................................................................................
     """
     return float(roc) ** (float(from_freq) / float(to_freq))
 
@@ -450,7 +667,35 @@ def convert_pct(
     to_freq: _dates.Frequency,
     /,
 ) -> Real:
-    """
+    r"""
+    ................................................................................
+    ==Convert Percentage Change Between Frequencies==
+
+    Converts a percentage change (`pct`) value from one frequency to another using 
+    exponential scaling.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "pct"
+        The percentage change value to be converted.
+
+    ???+ input "from_freq"
+        The frequency of the input percentage change.
+
+    ???+ input "to_freq"
+        The target frequency to which the percentage change should be converted.
+
+    ### Returns ###
+    ???+ returns "Real"
+        The percentage change value at the target frequency.
+
+    ### Example ###
+    ```python
+        converted_pct = convert_pct(5.0, _dates.Frequency.MONTHLY, _dates.Frequency.YEARLY)
+        print(converted_pct)
+    ```
+    ................................................................................
     """
     return 100*(convert_roc(1 + float(pct)/100, from_freq, to_freq) - 1)
 
@@ -461,7 +706,35 @@ def convert_diff(
     to_freq: _dates.Frequency,
     /,
 ) -> Real:
-    """
+    r"""
+    ................................................................................
+    ==Convert Differences Between Frequencies==
+
+    Converts a difference (`diff`) value from one frequency to another using scaling 
+    proportional to the ratio of frequencies.
+
+    ................................................................................
+
+    ### Input arguments ###
+    ???+ input "diff"
+        The difference value to be converted.
+
+    ???+ input "from_freq"
+        The frequency of the input difference.
+
+    ???+ input "to_freq"
+        The target frequency to which the difference should be converted.
+
+    ### Returns ###
+    ???+ returns "Real"
+        The difference value at the target frequency.
+
+    ### Example ###
+    ```python
+        converted_diff = convert_diff(10, _dates.Frequency.MONTHLY, _dates.Frequency.YEARLY)
+        print(converted_diff)
+    ```
+    ................................................................................
     """
     return float(diff) * (float(from_freq) / float(to_freq))
 

@@ -24,7 +24,12 @@ __all__ = ()
 
 class Inlay:
     """
-    Time series mixin for moving sum, average, product
+    ==Inlay==
+
+    Mixin for time series analysis, providing functionality for moving 
+    calculations such as sum, average, and product. Offers methods for creating 
+    new time series objects or modifying existing data in place.
+
     """
     #[
 
