@@ -31,6 +31,19 @@ _TIME_SERIES_QUANTITY = QuantityKind.ANY_VARIABLE | QuantityKind.ANY_SHOCK
 # REFACTOR:
 # Create a SteadyBoxable class
 class Inlay:
+    r"""
+    ................................................................................
+    ==Class: Inlay==
+
+    Facilitates the generation of steady-state items for model databoxes. This class 
+    handles the creation and processing of time series and non-time-series quantities 
+    for specified periods and variants.
+
+    Attributes:
+        - `_variants`: The list of model variants managed by the instance.
+        - `is_singleton`: Indicates whether there is only a single variant.
+    ................................................................................
+    """
     def generate_steady_items(
         self,
         start: Period,
@@ -39,7 +52,36 @@ class Inlay:
         deviation: bool = False,
         unpack_singleton: bool = True,
     ) -> Iterable[tuple[str, Series | Real]]:
-        """
+        r"""
+        ................................................................................
+        ==Method: generate_steady_items==
+
+        Generates steady-state items (time series or scalar values) for each quantity 
+        in the model databox over the specified time span.
+
+        ### Input arguments ###
+        ???+ input "start: Period"
+            The start period for the steady-state data.
+        ???+ input "end: Period"
+            The end period for the steady-state data.
+        ???+ input "deviation: bool = False"
+            Whether to generate deviations from the steady-state values.
+        ???+ input "unpack_singleton: bool = True"
+            If `True`, unpacks results when there is only a single variant.
+
+        ### Returns ###
+        ???+ returns "Iterable[tuple[str, Series | Real]]"
+            An iterable of tuples, where each tuple contains:
+            - A string representing the quantity name.
+            - A `Series` object or scalar value for the quantity.
+
+        ### Example ###
+        ```python
+            steady_items = obj.generate_steady_items(start=period1, end=period10)
+            for name, value in steady_items:
+                print(f"{name}: {value}")
+        ```
+        ................................................................................
         """
         num_periods = int(end - start + 1)
         shift_in_first_column = start.get_distance_from_origin()

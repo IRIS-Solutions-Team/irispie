@@ -1,6 +1,6 @@
 """
+Handles steady-state calculations for simultaneous models.
 """
-
 
 #[
 from __future__ import annotations
@@ -49,7 +49,18 @@ _STEADY_EQUATION_SOLVED = ENDOGENOUS_EQUATION
 
 
 class Inlay:
-    """
+    r"""
+    ................................................................................
+    ==Class: Inlay==
+
+    Facilitates steady-state calculations for simultaneous models. It manages the 
+    logic for linear and nonlinear steady-state solvers, provides utilities for 
+    data validation, and ensures consistency across variants.
+
+    Attributes:
+        - `_variants`: List of model variants.
+        - `_invariant`: Model-wide configuration and constraints.
+    ................................................................................
     """
     #[
 
@@ -61,8 +72,33 @@ class Inlay:
         return_info: bool = False,
         **kwargs,
     ) -> dict | list[dict]:
-        """
-        Calculate steady state for each Variant within this model
+        r"""
+        ................................................................................
+        ==Method: steady==
+
+        Calculates the steady state for each variant within the model. Supports both 
+        linear and nonlinear solvers, automatically selecting the appropriate method.
+
+        ### Input arguments ###
+        ???+ input "unpack_singleton: bool = True"
+            If `True`, unpacks results when only a single variant is simulated.
+        ???+ input "update_steady_autovalues: bool = True"
+            Whether to update steady autovalues after calculations.
+        ???+ input "return_info: bool = False"
+            If `True`, returns detailed information about the calculation process.
+        ???+ input "**kwargs"
+            Additional arguments to configure steady-state calculations.
+
+        ### Returns ###
+        ???+ returns "dict | list[dict]"
+            A dictionary or list of dictionaries containing steady-state information 
+            for each variant.
+
+        ### Example ###
+        ```python
+            steady_info = model.steady(return_info=True)
+        ```
+        ................................................................................
         """
         model_flags = self.resolve_flags(**kwargs, )
         steady_solver = self._choose_steady_solver(model_flags.is_linear, model_flags.is_flat, )
@@ -88,7 +124,34 @@ class Inlay:
         algorithm: Callable,
         **kwargs,
     ) -> dict[str, Any]:
-        """
+        r"""
+        ................................................................................
+        ==Method: _steady_linear==
+
+        Solves steady-state equations for a linear model variant. The solver uses 
+        first-order state space to calculate steady-state levels and changes.
+
+        ### Input arguments ###
+        ???+ input "variant: Variant"
+            The model variant for which the steady state is being calculated.
+        ???+ input "model_flags: _flags.Flags"
+            Flags indicating model configuration (e.g., linearity).
+        ???+ input "vid: int"
+            The index of the variant being processed.
+        ???+ input "algorithm: Callable"
+            The algorithm used to solve the steady-state equations.
+        ???+ input "**kwargs"
+            Additional arguments passed to the solver.
+
+        ### Returns ###
+        ???+ returns "dict[str, Any]"
+            Information about the calculation process and results.
+
+        ### Example ###
+        ```python
+            info = model._steady_linear(variant, flags, vid, algorithm=custom_solver)
+        ```
+        ................................................................................
         """
         #
         # Calculate first-order system for steady equations for this variant
@@ -152,7 +215,45 @@ class Inlay:
         iter_printer_settings: dict[str, Any] | None = None,
         **kwargs,
     ) -> dict[str, Any]:
-        """
+        r"""
+        ................................................................................
+        ==Method: _steady_nonlinear==
+
+        Solves steady-state equations for a nonlinear model variant. The solver uses 
+        block-based or full-system approaches based on the model configuration and 
+        the provided plan.
+
+        ### Input arguments ###
+        ???+ input "variant: Variant"
+            The model variant for which the steady state is being calculated.
+        ???+ input "model_flags: _flags.Flags"
+            Flags indicating model configuration (e.g., linearity, flat mode).
+        ???+ input "vid: int"
+            The index of the variant being processed.
+        ???+ input "evaluator_class: type"
+            The evaluator class to use for steady-state calculations (e.g., flat or nonflat).
+        ???+ input "plan: SteadyPlan | None = None"
+            A steady-state plan specifying exogenized or fixed variables.
+        ???+ input "split_into_blocks: bool | None = None"
+            Whether to split the equations into blocks. Defaults to automatic resolution.
+        ???+ input "root_settings: dict[str, Any] | None = None"
+            Settings for the root-finding algorithm.
+        ???+ input "iter_printer_settings: dict[str, Any] | None = None"
+            Settings for iterative print logs during calculations.
+        ???+ input "**kwargs"
+            Additional arguments passed to the solver.
+
+        ### Returns ###
+        ???+ returns "dict[str, Any]"
+            Information about the calculation process and results.
+
+        ### Example ###
+        ```python
+            info = model._steady_nonlinear(
+                variant, flags, vid, evaluator_class=NonlinearEvaluator, plan=plan
+            )
+        ```
+        ................................................................................
         """
         qid_to_kind = self.create_qid_to_kind()
         qid_to_name = self.create_qid_to_name()
@@ -267,7 +368,30 @@ class Inlay:
         plan: SteadyPlan,
         is_flat: bool,
     ) -> _Wrt:
-        """
+        r"""
+        ................................................................................
+        ==Method: _resolve_steady_wrt==
+
+        Resolves the "with respect to" (WRT) variables and equations for steady-state 
+        calculations. Identifies the quantities to be considered for steady-state 
+        updates, including fixed levels and changes.
+
+        ### Input arguments ###
+        ???+ input "plan: SteadyPlan"
+            A steady-state plan specifying exogenized, fixed, and endogenized variables.
+        ???+ input "is_flat: bool"
+            Indicates whether the model operates in flat mode.
+
+        ### Returns ###
+        ???+ returns "_Wrt"
+            A named tuple containing WRT variables, equations, and their respective 
+            metadata.
+
+        ### Example ###
+        ```python
+            wrt = model._resolve_steady_wrt(plan, is_flat=True)
+        ```
+        ................................................................................
         """
         wrt_equations = self.get_steady_equations(kind=_STEADY_EQUATION_SOLVED, )
         wrt_eids = tuple(e.id for e in wrt_equations)
@@ -324,8 +448,28 @@ class Inlay:
         is_flat: bool,
         /,
     ) -> Callable:
-        """
-        Choose steady solver depending on linear and flat flags
+        r"""
+        ................................................................................
+        ==Method: _choose_steady_solver==
+
+        Selects the appropriate steady-state solver based on the model's linearity 
+        and flat mode configuration.
+
+        ### Input arguments ###
+        ???+ input "is_linear: bool"
+            Indicates whether the model is linear.
+        ???+ input "is_flat: bool"
+            Indicates whether the model operates in flat mode.
+
+        ### Returns ###
+        ???+ returns "Callable"
+            The selected steady-state solver function.
+
+        ### Example ###
+        ```python
+            solver = model._choose_steady_solver(is_linear=True, is_flat=False)
+        ```
+        ................................................................................
         """
         match (is_linear, is_flat, ):
             case (False, False, ):
@@ -346,8 +490,36 @@ class Inlay:
         return_info: bool = False,
         unpack_singleton: bool = True,
     ) -> tuple[bool, tuple[dict, ...]]:
-        """
-        Verify currently assigned steady state in dynamic or steady equations for each variant within this model
+        r"""
+        ................................................................................
+        ==Method: check_steady==
+
+        Verifies the steady-state solution for each model variant against the specified 
+        equations (steady or dynamic). Identifies discrepancies exceeding the tolerance.
+
+        ### Input arguments ###
+        ???+ input "equation_switch: Literal[...] = 'dynamic'"
+            Specifies whether to verify steady or dynamic equations.
+        ???+ input "when_fails: _wrongdoings.HOW = 'error'"
+            Determines the behavior when discrepancies are found (e.g., raise error).
+        ???+ input "tolerance: float = 1e-12"
+            The tolerance level for acceptable discrepancies.
+        ???+ input "return_info: bool = False"
+            If `True`, returns detailed information about discrepancies.
+        ???+ input "unpack_singleton: bool = True"
+            If `True`, unpacks results when only a single variant is checked.
+
+        ### Returns ###
+        ???+ returns "tuple[bool, tuple[dict, ...]]"
+            A tuple containing:
+            - A boolean indicating whether all variants passed the check.
+            - Detailed discrepancy information (if requested).
+
+        ### Example ###
+        ```python
+            status, info = model.check_steady(equation_switch="steady", return_info=True)
+        ```
+        ................................................................................
         """
         qid_to_logly = self.create_qid_to_logly()
         equations = getattr(self._invariant, f"{equation_switch}_equations", )
@@ -409,8 +581,28 @@ def _apply_delog_on_vector(
     qid_to_logly: dict[int, bool],
     /,
 ) -> None:
-    """
-    Delogarithmize the elements of numpy vector that have True log-status
+    r"""
+    ................................................................................
+    ==Function: _apply_delog_on_vector==
+
+    Applies an exponential transformation (delogarithmization) to specified elements 
+    of a numerical vector. The transformation affects only the indices specified in 
+    `logly_indexes`.
+
+    ### Input arguments ###
+    ???+ input "values: _np.ndarray"
+        A numerical vector whose elements are to be transformed.
+    ???+ input "logly_indexes: tuple[int, ...]"
+        Indices of the vector elements to transform.
+
+    ### Returns ###
+    (No return value)
+
+    ### Example ###
+    ```python
+        _apply_delog_on_vector(values, logly_indexes=(0, 2, 4))
+    ```
+    ................................................................................
     """
     #[
     #]
@@ -421,10 +613,54 @@ def _calculate_steady_incidence_matrix(
     wrt_any_qids: Iterable[int],
     /,
 ) -> _np.ndarray:
-    """
+    r"""
+    ................................................................................
+    ==Function: _calculate_steady_incidence_matrix==
+
+    Computes the incidence matrix for steady-state equations, mapping variables 
+    (quantities) to the equations in which they are involved.
+
+    ### Input arguments ###
+    ???+ input "wrt_equations: tuple[Equation, ...]"
+        The steady-state equations to analyze.
+    ???+ input "wrt_qids: tuple[int, ...]"
+        Quantity IDs (QIDs) to include in the incidence analysis.
+
+    ### Returns ###
+    ???+ returns "_np.ndarray"
+        A binary incidence matrix indicating variable-equation relationships.
+
+    ### Example ###
+    ```python
+        incidence_matrix = _calculate_steady_incidence_matrix(equations, qids)
+    ```
+    ................................................................................
     """
     qid_to_column = { qid: column for column, qid in enumerate(wrt_any_qids) }
     def token_within_quantities(tok: Token, /, ) -> bool:
+        r"""
+    ................................................................................
+    ==Function: token_within_quantities==
+
+    Checks whether a given token belongs to a specified set of quantities. Useful for 
+    validating variable usage in model equations.
+
+    ### Input arguments ###
+    ???+ input "token: _nq.Token"
+        The token to check.
+    ???+ input "quantities: tuple[Any, ...]"
+        A tuple of quantities to search within.
+
+    ### Returns ###
+    ???+ returns "bool"
+        `True` if the token is within the quantities, `False` otherwise.
+
+    ### Example ###
+    ```python
+        is_valid = token_within_quantities(token, quantities)
+    ```
+    ................................................................................
+    """
         return qid_to_column.get(tok.qid, None)
         #
     return _equations.calculate_incidence_matrix(
@@ -439,7 +675,29 @@ def _resolve_split_into_blocks(
     plan: SteadyPlan | None,
     /,
 ) -> bool:
-    """
+    r"""
+    ................................................................................
+    ==Function: _resolve_split_into_blocks==
+
+    Determines whether to split the steady-state equations into blocks for solving. 
+    Automatically resolves based on user input and the presence of a steady plan.
+
+    ### Input arguments ###
+    ???+ input "split_into_blocks: bool | None"
+        User-specified preference for splitting into blocks. If `None`, automatic 
+        resolution is used.
+    ???+ input "plan: SteadyPlan | None"
+        A steady-state plan. If provided, it affects the splitting decision.
+
+    ### Returns ###
+    ???+ returns "bool"
+        `True` if the equations should be split into blocks, `False` otherwise.
+
+    ### Example ###
+    ```python
+        should_split = _resolve_split_into_blocks(None, steady_plan)
+    ```
+    ................................................................................
     """
     #[
     if split_into_blocks is not None:
@@ -455,7 +713,31 @@ def _resolve_split_into_blocks(
 
 
 def _update_variant_with_final_guess(variant, steady_evaluator, qid_to_kind, qid_to_name, ) -> None:
-    """
+    r"""
+    ................................................................................
+    ==Function: _update_variant_with_final_guess==
+
+    Updates a model variant with the results of a steady-state calculation. Applies 
+    logarithmic transformations where necessary and updates variable values.
+
+    ### Input arguments ###
+    ???+ input "variant: Variant"
+        The model variant to update.
+    ???+ input "evaluator: Any"
+        The evaluator used for the steady-state calculation.
+    ???+ input "qid_to_kind: dict[int, _quantities.QuantityKind]"
+        Mapping from quantity IDs to their kinds.
+    ???+ input "qid_to_name: dict[int, str]"
+        Mapping from quantity IDs to their names.
+
+    ### Returns ###
+    (No return value)
+
+    ### Example ###
+    ```python
+        _update_variant_with_final_guess(variant, evaluator, qid_to_kind, qid_to_name)
+    ```
+    ................................................................................
     """
     #[
     final_guess = steady_evaluator.final_guess
@@ -479,7 +761,27 @@ def _update_variant_with_final_guess(variant, steady_evaluator, qid_to_kind, qid
 
 
 def _throw_block_error(human_block, custom_header: str, ) -> NoReturn:
-    """
+    r"""
+    ................................................................................
+    ==Function: _throw_block_error==
+
+    Raises an error when a steady-state block calculation fails. Provides details 
+    about the failing block for debugging.
+
+    ### Input arguments ###
+    ???+ input "human_block: Any"
+        Human-readable details about the block.
+    ???+ input "custom_header: str"
+        Custom header describing the block.
+
+    ### Returns ###
+    (No return value; raises an exception)
+
+    ### Example ###
+    ```python
+        _throw_block_error(human_block, "[Variant 1][Block 2]")
+    ```
+    ................................................................................
     """
     #[
     message = (f"Steady state calculations failed to converge in {custom_header}", )

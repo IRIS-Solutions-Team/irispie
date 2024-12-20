@@ -43,7 +43,17 @@ _Info = dict[str, Any] | list[dict[str, Any]]
 
 
 class Inlay:
-    """
+    r"""
+    ................................................................................
+    ==Class: Inlay==
+
+    Provides a simulation inlay for simultaneous models, handling core logic for 
+    model simulation workflows. This includes setting up data, applying simulation 
+    plans, and managing outputs.
+
+    Attributes:
+        - `_SIMULATOR_MODULE`: Maps simulation methods to corresponding modules.
+    ................................................................................
     """
     #[
 
@@ -70,7 +80,65 @@ class Inlay:
         return_info: bool = False,
         **kwargs,
     ) -> tuple[Databox, _Info]:
-        """
+        r"""
+        ................................................................................
+        ==Method: simulate==
+
+        Simulates the model over a specified span using the provided data. This method 
+        supports different simulation methods, manages input and output data, and 
+        handles failures based on user preferences.
+
+        ### Input arguments ###
+        ???+ input "in_db: Databox"
+            Input data for the simulation, encapsulated in a `Databox`.
+        ???+ input "span: Iterable[Period]"
+            The span of periods over which the simulation will run.
+        ???+ input "plan: SimulationPlan | None = None"
+            A simulation plan specifying exogenized or endogenized variables.
+        ???+ input "method: Literal[...] = 'first_order'"
+            The simulation method to use (e.g., "first_order", "stacked_time").
+        ???+ input "prepend_input: bool = True"
+            Whether to prepend the input data to the output.
+        ???+ input "target_db: Databox | None = None"
+            An optional target `Databox` to store the simulation results.
+        ???+ input "num_variants: int | None = None"
+            The number of model variants to simulate.
+        ???+ input "remove_initial: bool = True"
+            Whether to remove initial condition data from the results.
+        ???+ input "remove_terminal: bool = True"
+            Whether to remove terminal condition data from the results.
+        ???+ input "shocks_from_data: bool = True"
+            Whether to use shock data from the input.
+        ???+ input "stds_from_data: bool = True"
+            Whether to use standard deviation data from the input.
+        ???+ input "parameters_from_data: bool = False"
+            Whether to use parameter data from the input.
+        ???+ input "force_split_frames: bool = False"
+            Forces the use of split frames during simulation.
+        ???+ input "when_fails: Literal[...] = 'critical'"
+            Specifies the behavior when a simulation fails.
+        ???+ input "unpack_singleton: bool = True"
+            Unpacks the results if there is only a single variant.
+        ???+ input "return_info: bool = False"
+            If `True`, returns detailed simulation information.
+        ???+ input "**kwargs"
+            Additional arguments for the simulation process.
+
+        ### Returns ###
+        ???+ returns "tuple[Databox, _Info]"
+            A tuple containing the simulation results in a `Databox` and detailed 
+            simulation information (if requested).
+
+        ### Example ###
+        ```python
+            result, info = obj.simulate(
+                in_db=input_data,
+                span=simulation_span,
+                method="stacked_time",
+                return_info=True,
+            )
+        ```
+        ................................................................................
         """
 
         num_variants \
@@ -218,7 +286,27 @@ def _append_frame_databox(
     frame_databoxes: list[Databox],
     frame_ds: Dataslate,
 ) -> None:
-    """
+    r"""
+    ................................................................................
+    ==Function: _append_frame_databox==
+
+    Appends a `Databox` derived from a `Dataslate` object to a list of frame databoxes. 
+    This function is used to manage frame-level data during simulations.
+
+    ### Input arguments ###
+    ???+ input "frame_databoxes: list[Databox]"
+        A list to which the frame `Databox` will be appended.
+    ???+ input "frame_ds: Dataslate"
+        The `Dataslate` object containing frame data to be converted and appended.
+
+    ### Returns ###
+    (No return value)
+
+    ### Example ###
+    ```python
+        _append_frame_databox(frame_databoxes, frame_dataslate)
+    ```
+    ................................................................................
     """
     #[
     frame_db = frame_ds.to_databox(span="base", )
@@ -227,7 +315,26 @@ def _append_frame_databox(
 
 
 def _get_unanticipated_shock_qids(self, /, ) -> tuple[int, ...]:
-    """
+    r"""
+    ................................................................................
+    ==Function: _get_unanticipated_shock_qids==
+
+    Retrieves the quantity IDs for unanticipated shocks in the simulation. This is 
+    essential for managing shock data during simulations.
+
+    ### Input arguments ###
+    ???+ input "self"
+        The instance invoking the function.
+
+    ### Returns ###
+    ???+ returns "tuple[int, ...]"
+        A tuple of quantity IDs corresponding to unanticipated shocks.
+
+    ### Example ###
+    ```python
+        unanticipated_shocks = obj._get_unanticipated_shock_qids()
+    ```
+    ................................................................................
     """
     #[
     plannable = self.get_simulation_plannable()
@@ -241,7 +348,28 @@ def _create_simulation_header(
     vid: str,
     frame: Frame,
 ) -> str:
-    """
+    r"""
+    ................................................................................
+    ==Function: _create_simulation_header==
+
+    Constructs a header string summarizing the variant ID and the simulation frame's 
+    span of periods. This header is useful for logging and debugging simulation runs.
+
+    ### Input arguments ###
+    ???+ input "vid: str"
+        The variant ID for the simulation.
+    ???+ input "frame: Frame"
+        The simulation frame containing start and end period information.
+
+    ### Returns ###
+    ???+ returns "str"
+        A string summarizing the simulation variant and frame span.
+
+    ### Example ###
+    ```python
+        header = _create_simulation_header(variant_id, simulation_frame)
+    ```
+    ................................................................................
     """
     #[
     simulation_span = _dates.get_printable_span(frame.start, frame.simulation_end, )
