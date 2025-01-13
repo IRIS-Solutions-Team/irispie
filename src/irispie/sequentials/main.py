@@ -217,7 +217,7 @@ See [`Sequential.from_file`](#sequentialfrom_file) for other input arguments.
 
 ### Returns ###
 
-See [`Sequential.from_file`](sequentialfrom_file) for return values.
+See [`Sequential.from_file`](#sequentialfrom_file) for return values.
 
 ················································································
         """

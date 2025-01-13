@@ -3,6 +3,7 @@
 
 
 #[
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
     from typing import Any, Iterable
     from ..dates import Period
     _Info = dict[str, Any] | list[dict[str, Any]]
+
 #]
 
 
@@ -44,18 +46,18 @@ class Mixin:
 
         std_slatable, multiplier_slatable = self.get_slatables_for_multiply_stds()
 
-        multiplier_ds = Dataslate.from_databox_for_slatable(
-            multiplier_slatable, multiplier_db or Databox(), base_dates,
-            num_variants=num_variants,
-        )
-
         std_ds = Dataslate.from_databox_for_slatable(
             std_slatable, std_db or Databox(), base_dates,
             num_variants=num_variants,
         )
 
+        multiplier_ds = Dataslate.from_databox_for_slatable(
+            multiplier_slatable, multiplier_db or Databox(), base_dates,
+            num_variants=num_variants,
+        )
+
         zipped = zip(
-            range(num_variants),
+            range(num_variants, ),
             std_ds.iter_variants(),
             multiplier_ds.iter_variants(),
         )

@@ -66,7 +66,7 @@ class Inlay:
     #[
     @classmethod
     @_dm.reference(
-        category="import_export",
+        category="constructor",
         call_name="Databox.from_csv",
     )
     def from_csv(

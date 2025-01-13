@@ -1,7 +1,8 @@
 """
-# First-order unsolved system matrices
 
-## Unsolved system
+# First-order dynamic system with expectations unsolved
+
+## Unsolved-expectations system
 
 $$
 A E[x_t] + B E[x_{t-1}] + C + D u_t + E v_t = 0 \\
@@ -10,23 +11,25 @@ $$
 $$
 F y_t + G x_t + H + J w_t = 0
 $$
+
 """
 
 
 #[
+
 from __future__ import annotations
 
-import dataclasses as _dc
 import numpy as _np
 
 from . import descriptors as _descriptors
 from ..simultaneous import _flags as _flags
+
 #]
 
 
 class System:
     """
-    Unsolved system matrices
+    Unsolved-expectations system
     """
     #[
 

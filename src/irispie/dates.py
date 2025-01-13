@@ -75,7 +75,7 @@ and irregularities.
 
 
 The most often direct use of `Frequencies` in frequency conversion methods, such
-as `aggregate` and `disaggregate` for time [`Series`](series.md) and whenever a
+as `aggregate` and `disaggregate` for time [`Series`](time_series.md) and whenever a
 custom check of time period or time series properties is needed.
 
 ................................................................................
@@ -408,7 +408,7 @@ frequency (and hence also a certain duration); the time period
 [`Frequencies`](frequencies.md) are identified by an integer value.
 
 Time `Periods` are used to timestamp data observations in time
-[`Series`](series.md) objects, for basic calenadar time arithmetics, and for
+[`Series`](time_series.md) objects, for basic calenadar time arithmetics, and for
 creating time [`Spans`](spans.md).
 
 ......................................................................
@@ -926,10 +926,6 @@ where lowercase letters represent the respective time period components
     def __hash__(self, /, ) -> int:
         return hash((int(self.serial), hash(self.frequency), ))
 
-    @_dm.reference(
-        category="arithmetics_comparison",
-        call_name="+",
-    )
     def __add__(self, other: int, ) -> Self:
         r"""
 ................................................................................
@@ -972,10 +968,6 @@ periods (if positive) or backward (if negative).
 
     __radd__ = __add__
 
-    @_dm.reference(
-        category="arithmetics_comparison",
-        call_name="-",
-    )
     def __sub__(self, other: Self | int) -> Self | int:
         r"""
 ................................................................................
@@ -1038,10 +1030,6 @@ respective frequency to move backward or forward.
     def __index__(self):
         return self.serial
 
-    @_dm.reference(
-        category="arithmetics_comparison",
-        call_name="==",
-    )
     def __eq__(self, other: Self, /, ) -> bool:
         r"""
 ................................................................................
@@ -1055,10 +1043,6 @@ See documentation for [time period comparison](#time-period-comparison).
         _check_periods(self, other, )
         return self.serial == other.serial
 
-    @_dm.reference(
-        category="arithmetics_comparison",
-        call_name="!=",
-    )
     def __ne__(self, other: Self, /, ) -> bool:
         r"""
 ................................................................................
@@ -1072,10 +1056,6 @@ See documentation for [time period comparison](#time-period-comparison).
         _check_periods(self, other, )
         return self.serial != other.serial
 
-    @_dm.reference(
-        category="arithmetics_comparison",
-        call_name="<",
-    )
     def __lt__(self, other: Self, /, ) -> bool:
         r"""
 ................................................................................
@@ -1089,10 +1069,6 @@ See documentation for [time period comparison](#time-period-comparison).
         _check_periods(self, other, )
         return self.serial < other.serial
 
-    @_dm.reference(
-        category="arithmetics_comparison",
-        call_name="<=",
-    )
     def __le__(self, other: Self, /, ) -> bool: 
         r"""
 ................................................................................
@@ -1106,10 +1082,6 @@ See documentation for [time period comparison](#time-period-comparison).
         _check_periods(self, other, )
         return self.serial <= other.serial
 
-    @_dm.reference(
-        category="arithmetics_comparison",
-        call_name=">",
-    )
     def __gt__(self, other: Self, /, ) -> bool:
         r"""
 ................................................................................
@@ -1123,10 +1095,6 @@ See documentation for [time period comparison](#time-period-comparison).
         _check_periods(self, other, )
         return self.serial > other.serial
 
-    @_dm.reference(
-        category="arithmetics_comparison",
-        call_name=">=",
-    )
     def __ge__(self, other: Self, /, ) -> bool:
         r"""
 ................................................................................
