@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "irispie"
-version = "0.54.11"
+version = "0.54.12"
 description = "Macroeconomic modeling package"
 readme = "README.md"
 requires-python = ">=3.11"
