@@ -72,57 +72,57 @@ def _extended_span_tuple_from_base_span(
     /,
 ) -> tuple[Period, Period]:
     r"""
-    ................................................................................
-    ==Calculate Extended Span from Base Span==
+................................................................................
+==Calculate Extended Span from Base Span==
 
-    Computes an extended span tuple based on an input span of periods, applying 
-    optional shifts to the start and end periods. This function is useful for 
-    defining expanded date ranges for time series data.
+Computes an extended span tuple based on an input span of periods, applying 
+optional shifts to the start and end periods. This function is useful for 
+defining expanded date ranges for time series data.
 
-    The span is adjusted using `min_shift` and `max_shift`, which represent 
-    offsets applied to the start and end of the input span, respectively. These 
-    offsets are conditionally applied based on the `prepend_initial` and 
-    `append_terminal` flags.
+The span is adjusted using `min_shift` and `max_shift`, which represent 
+offsets applied to the start and end of the input span, respectively. These 
+offsets are conditionally applied based on the `prepend_initial` and 
+`append_terminal` flags.
 
-    ................................................................................
+................................................................................
 
-    ### Input arguments ###
-    ???+ input "input_span"
-        An iterable of `Period` objects representing the base span. The first and 
-        last elements of this iterable define the initial start and end dates.
+### Input arguments ###
+???+ input "input_span"
+    An iterable of `Period` objects representing the base span. The first and 
+    last elements of this iterable define the initial start and end dates.
 
-    ???+ input "min_shift"
-        An integer specifying the number of periods to shift the start date. A 
-        positive value moves the start date forward, and a negative value moves 
-        it backward.
+???+ input "min_shift"
+    An integer specifying the number of periods to shift the start date. A 
+    positive value moves the start date forward, and a negative value moves 
+    it backward.
 
-    ???+ input "max_shift"
-        An integer specifying the number of periods to shift the end date. A 
-        positive value moves the end date forward, and a negative value moves 
-        it backward.
+???+ input "max_shift"
+    An integer specifying the number of periods to shift the end date. A 
+    positive value moves the end date forward, and a negative value moves 
+    it backward.
 
-    ???+ input "prepend_initial"
-        A boolean flag indicating whether to apply the `min_shift` to the start 
-        date. If `False`, the start date remains unchanged.
+???+ input "prepend_initial"
+    A boolean flag indicating whether to apply the `min_shift` to the start 
+    date. If `False`, the start date remains unchanged.
 
-    ???+ input "append_terminal"
-        A boolean flag indicating whether to apply the `max_shift` to the end 
-        date. If `False`, the end date remains unchanged.
+???+ input "append_terminal"
+    A boolean flag indicating whether to apply the `max_shift` to the end 
+    date. If `False`, the end date remains unchanged.
 
-    ### Returns ###
-    ???+ returns "tuple[Period, Period]"
-        A tuple containing two `Period` objects: the adjusted start and end dates.
+### Returns ###
+???+ returns "tuple[Period, Period]"
+    A tuple containing two `Period` objects: the adjusted start and end dates.
 
-    ### Example ###
-    ```python
-        input_span = [Period("2023-01"), Period("2023-12")]
-        extended_span = _extended_span_tuple_from_base_span(
-            input_span, min_shift=-2, max_shift=3, 
-            prepend_initial=True, append_terminal=True
-        )
-        print(extended_span)  # Output: (Period("2022-11"), Period("2024-03"))
-    ```
-    ................................................................................
+### Example ###
+```python
+    input_span = [Period("2023-01"), Period("2023-12")]
+    extended_span = _extended_span_tuple_from_base_span(
+        input_span, min_shift=-2, max_shift=3, 
+        prepend_initial=True, append_terminal=True
+    )
+    print(extended_span)  # Output: (Period("2022-11"), Period("2024-03"))
+```
+................................................................................
     """
     range_list = tuple(t for t in input_span)
     start_date, end_date = range_list[0], range_list[-1]
@@ -138,6 +138,7 @@ def _extended_span_tuple_from_base_span(
         "information": "Getting information about databoxes",
         "manipulation": "Manipulating databoxes",
         "import_export": "Importing and exporting databoxes",
+        "TBD": "To be determined",
     },
 )
 class Databox(
@@ -175,26 +176,26 @@ batch processing, importing and exporting data, and more.
         **kwargs,
     ) -> None:
         r"""
-        ................................................................................
-        ==Constructor==
+................................................................................
+==Constructor==
 
-        Initializes a `Databox` object. This method sets up the internal attributes 
-        and prepares the object for data storage and manipulation.
+Initializes a `Databox` object. This method sets up the internal attributes 
+and prepares the object for data storage and manipulation.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "*args"
-            Positional arguments passed to the base dictionary.
+### Input arguments ###
+???+ input "*args"
+    Positional arguments passed to the base dictionary.
 
-        ???+ input "**kwargs"
-            Keyword arguments passed to the base dictionary.
+???+ input "**kwargs"
+    Keyword arguments passed to the base dictionary.
 
-        ### Returns ###
-        ???+ returns "None"
-            This constructor initializes the instance and does not return a value.
+### Returns ###
+???+ returns "None"
+    This constructor initializes the instance and does not return a value.
 
-        ................................................................................
+................................................................................
         """
         super().__init__(*args, **kwargs, )
         self._dotters = []
@@ -210,29 +211,29 @@ batch processing, importing and exporting data, and more.
         /,
     ) -> Self:
         r"""
-        ................................................................................
-        ==Create an Empty Databox==
+................................................................................
+==Create an Empty Databox==
 
-        Generate a new, empty `Databox` instance.
+Generate a new, empty `Databox` instance.
 
-        This class method provides a standardized way to initialize an empty 
-        `Databox` for further configuration.
+This class method provides a standardized way to initialize an empty 
+`Databox` for further configuration.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        No input arguments are required for this method.
+### Input arguments ###
+No input arguments are required for this method.
 
-        ### Returns ###
-        ???+ returns "Databox"
-            A new, empty instance of `Databox`.
+### Returns ###
+???+ returns "Databox"
+    A new, empty instance of `Databox`.
 
-        ### Example ###
-        ```python
-            empty_box = Databox.empty()
-            print(empty_box)
-        ```
-        ................................................................................
+### Example ###
+```python
+    empty_box = Databox.empty()
+    print(empty_box)
+```
+................................................................................
         """
         return klass()
 
@@ -244,31 +245,31 @@ batch processing, importing and exporting data, and more.
         /,
     ) -> Self:
         r"""
-        ................................................................................
-        ==Create a Databox from a Dictionary==
+................................................................................
+==Create a Databox from a Dictionary==
 
-        Convert a standard Python dictionary into a `Databox`.
+Convert a standard Python dictionary into a `Databox`.
 
-        This method initializes a `Databox` populated with data from the provided 
-        dictionary, preserving all key-value pairs.
+This method initializes a `Databox` populated with data from the provided 
+dictionary, preserving all key-value pairs.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "_dict"
-            A dictionary containing data to populate the new `Databox`.
+### Input arguments ###
+???+ input "_dict"
+    A dictionary containing data to populate the new `Databox`.
 
-        ### Returns ###
-        ???+ returns "Databox"
-            A new `Databox` populated with the dictionary contents.
+### Returns ###
+???+ returns "Databox"
+    A new `Databox` populated with the dictionary contents.
 
-        ### Example ###
-        ```python
-            data_dict = {"a": 1, "b": 2}
-            databox = Databox.from_dict(data_dict)
-            print(databox)
-        ```
-        ................................................................................
+### Example ###
+```python
+    data_dict = {"a": 1, "b": 2}
+    databox = Databox.from_dict(data_dict)
+    print(databox)
+```
+................................................................................
         """
         self = klass()
         for k, v in _dict.items():
@@ -369,46 +370,46 @@ of the numeric array.
         target_db: Self | None = None,
     ) -> Self:
         r"""
-        ................................................................................
-        ==Construct Databox from Array==
+................................................................................
+==Construct Databox from Array==
 
-        An internal method to build a `Databox` from a horizontally structured 
-        numpy array, using a series constructor to format the data.
+An internal method to build a `Databox` from a horizontally structured 
+numpy array, using a series constructor to format the data.
 
-        This method facilitates the `from_array` functionality by enabling 
-        detailed construction logic.
+This method facilitates the `from_array` functionality by enabling 
+detailed construction logic.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "array"
-            A numpy array containing the data to populate the `Databox`.
+### Input arguments ###
+???+ input "array"
+    A numpy array containing the data to populate the `Databox`.
 
-        ???+ input "names"
-            An iterable of strings specifying the names for the data series.
+???+ input "names"
+    An iterable of strings specifying the names for the data series.
 
-        ???+ input "series_constructor"
-            A callable used to construct each data series.
+???+ input "series_constructor"
+    A callable used to construct each data series.
 
-        ???+ input "descriptions"
-            Optional descriptions for each series.
+???+ input "descriptions"
+    Optional descriptions for each series.
 
-        ???+ input "target_db"
-            A target `Databox` instance to populate. If `None`, a new `Databox` is created.
+???+ input "target_db"
+    A target `Databox` instance to populate. If `None`, a new `Databox` is created.
 
-        ### Returns ###
-        ???+ returns "Databox"
-            A `Databox` populated with the array data.
+### Returns ###
+???+ returns "Databox"
+    A `Databox` populated with the array data.
 
-        ### Example ###
-        ```python
-            data = _np.array([[1, 2], [3, 4]])
-            db = Databox._from_horizontal_array_and_constructor(
-                data, ["series1", "series2"], lambda x: x
-            )
-            print(db)
-        ```
-        ................................................................................
+### Example ###
+```python
+    data = _np.array([[1, 2], [3, 4]])
+    db = Databox._from_horizontal_array_and_constructor(
+        data, ["series1", "series2"], lambda x: x
+    )
+    print(db)
+```
+................................................................................
         """
         self = target_db or klass()
         descriptions = (
@@ -420,6 +421,7 @@ of the numeric array.
             # self[name] = series_constructor(values=values, description=description, )
         return self
 
+    @_dm.reference(category="TBD", )
     def iter_variants(
         self,
         /,
@@ -428,38 +430,38 @@ of the numeric array.
         names: Iterable[str] | None = None,
     ) -> Iterator[dict]:
         r"""
-        ................................................................................
-        ==Iterate Over Variants==
+................................................................................
+==Iterate Over Variants==
 
-        Yields dictionaries containing variants of the `Databox` items. Variants are 
-        generated by iterating over the items using the provided or default iterators.
+Yields dictionaries containing variants of the `Databox` items. Variants are 
+generated by iterating over the items using the provided or default iterators.
 
-        This method allows traversal of various representations of the `Databox` items, 
-        making it suitable for scenarios requiring multiple transformations or 
-        permutations of the data.
+This method allows traversal of various representations of the `Databox` items, 
+making it suitable for scenarios requiring multiple transformations or 
+permutations of the data.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "item_iterator"
-            An optional iterator for processing individual items. If `None`, a 
-            default item iterator is used.
+### Input arguments ###
+???+ input "item_iterator"
+    An optional iterator for processing individual items. If `None`, a 
+    default item iterator is used.
 
-        ???+ input "names"
-            An optional iterable of item names to include in the iteration. If `None`, 
-            all item names are considered.
+???+ input "names"
+    An optional iterable of item names to include in the iteration. If `None`, 
+    all item names are considered.
 
-        ### Returns ###
-        ???+ returns "Iterator[dict]"
-            An iterator that yields dictionaries containing item variants.
+### Returns ###
+???+ returns "Iterator[dict]"
+    An iterator that yields dictionaries containing item variants.
 
-        ### Example ###
-        ```python
-            variants = databox.iter_variants(names=["a", "b"])
-            for variant in variants:
-                print(variant)
-        ```
-        ................................................................................
+### Example ###
+```python
+    variants = databox.iter_variants(names=["a", "b"])
+    for variant in variants:
+        print(variant)
+```
+................................................................................
         """
         names = names or self.keys()
         item_iterator = item_iterator or _default_item_iterator
@@ -473,61 +475,61 @@ of the numeric array.
     @_dm.reference(category="information", )
     def get_names(self, /, ) -> list[str]:
         r"""
-        ................................................................................
-        ==Retrieve Item Names==
+................................................................................
+==Retrieve Item Names==
 
-        Returns a list of all the item names (keys) present in the `Databox`.
+Returns a list of all the item names (keys) present in the `Databox`.
 
-        This method provides a straightforward way to access the names of all stored 
-        data items, aiding in operations like filtering and validation.
+This method provides a straightforward way to access the names of all stored 
+data items, aiding in operations like filtering and validation.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        No input arguments are required for this method.
+### Input arguments ###
+No input arguments are required for this method.
 
-        ### Returns ###
-        ???+ returns "list[str]"
-            A list of all item names (keys) in the `Databox`.
+### Returns ###
+???+ returns "list[str]"
+    A tuple of all item names (keys) in the `Databox`.
 
-        ### Example ###
-        ```python
-            names = databox.get_names()
-            print(names)
-        ```
-        ................................................................................
+### Example ###
+```python
+    names = databox.get_names()
+    print(names)
+```
+................................................................................
         """
         return tuple(self.keys())
 
     @_dm.reference(category="information", )
     def get_missing_names(self, names: Iterable[str], ) -> tuple[str]:
         r"""
-        ................................................................................
-        ==Identify Missing Names==
+................................................................................
+==Identify Missing Names==
 
-        Determines which names from a given list are not present in the `Databox`.
+Determines which names from a given list are not present in the `Databox`.
 
-        This method is useful for validating that required data items are available 
-        in the `Databox`.
+This method is useful for validating that required data items are available 
+in the `Databox`.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "names"
-            An iterable of strings representing the names to check against the 
-            `Databox` keys.
+### Input arguments ###
+???+ input "names"
+    An iterable of strings representing the names to check against the 
+    `Databox` keys.
 
-        ### Returns ###
-        ???+ returns "tuple[str]"
-            A tuple containing the names that are missing from the `Databox`.
+### Returns ###
+???+ returns "tuple[str]"
+    A tuple containing the names that are missing from the `Databox`.
 
-        ### Example ###
-        ```python
-            required_names = ["key1", "key2"]
-            missing = databox.get_missing_names(required_names)
-            print(missing)
-        ```
-        ................................................................................
+### Example ###
+```python
+    required_names = ["key1", "key2"]
+    missing = databox.get_missing_names(required_names)
+    print(missing)
+```
+................................................................................
         """
         return tuple(name for name in names if name not in self)
 
@@ -535,56 +537,57 @@ of the numeric array.
     @_dm.reference(category="property", )
     def num_items(self, /, ) -> int:
         r"""
-        ................................................................................
-        ==Number of Items==
+................................................................................
+==Number of Items==
 
-        A property that returns the number of items (key-value pairs) in the `Databox`.
+A property that returns the number of items (key-value pairs) in the `Databox`.
 
-        This property is helpful for quickly determining the size of the `Databox`.
+This property is helpful for quickly determining the size of the `Databox`.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        No input arguments are required for this property.
+### Input arguments ###
+No input arguments are required for this property.
 
-        ### Returns ###
-        ???+ returns "int"
-            The number of items in the `Databox`.
+### Returns ###
+???+ returns "int"
+    The number of items in the `Databox`.
 
-        ### Example ###
-        ```python
-            count = databox.num_items
-            print(count)
-        ```
-        ................................................................................
+### Example ###
+```python
+    count = databox.num_items
+    print(count)
+```
+................................................................................
         """
         return len(self.keys())
 
+    @_dm.reference(category="TBD", )
     def to_dict(self: Self) -> dict:
         r"""
-        ................................................................................
-        ==Convert to Dictionary==
+................................................................................
+==Convert to Dictionary==
 
-        Converts the `Databox` into a standard Python dictionary.
+Converts the `Databox` into a standard Python dictionary.
 
-        This method is useful for interoperability with libraries or tools that 
-        require native dictionary structures.
+This method is useful for interoperability with libraries or tools that 
+require native dictionary structures.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        No input arguments are required for this method.
+### Input arguments ###
+No input arguments are required for this method.
 
-        ### Returns ###
-        ???+ returns "dict"
-            A dictionary containing all the items from the `Databox`.
+### Returns ###
+???+ returns "dict"
+    A dictionary containing all the items from the `Databox`.
 
-        ### Example ###
-        ```python
-            native_dict = databox.to_dict()
-            print(native_dict)
-        ```
-        ................................................................................
+### Example ###
+```python
+    native_dict = databox.to_dict()
+    print(native_dict)
+```
+................................................................................
         """
         return { k: v for k, v in self.items() }
 
@@ -597,48 +600,48 @@ of the numeric array.
         strict_names: bool = False,
     ) -> Self:
         r"""
-        ................................................................................
+................................................................................
 
-        ==Create a copy of the Databox==
+==Create a copy of the Databox==
 
-        Produce a deep copy of the Databox, with options to filter and rename items 
-        during the duplication process.
-                This method is particularly useful when creating subsets or alternative 
-                versions of the data without affecting the original.
+Produce a deep copy of the Databox, with options to filter and rename items 
+during the duplication process.
+        This method is particularly useful when creating subsets or alternative 
+        versions of the data without affecting the original.
 
-            new_databox = self.copy(
-                source_names=None,
-                target_names=None,
-                strict_names=False,
-            )
-
-
-        ### Input arguments ###
+    new_databox = self.copy(
+        source_names=None,
+        target_names=None,
+        strict_names=False,
+    )
 
 
-        ???+ input "source_names"
-            Names of the items to include in the copy. Can be a list of names, a single 
-            name, a callable returning `True` for names to include, or `None` to copy 
-            all items.
-
-        ???+ input "target_names"
-            New names for the copied items, corresponding to 'source_names'. Can be a 
-            list of names, a single name, or a callable function taking a source name 
-            and returning the new target name.
-
-        ???+ input "strict_names"
-            If set to `True’, strictly adheres to the provided names, raising an error 
-            if any source name is not found in the Databox.
+### Input arguments ###
 
 
-        ### Returns ###
+???+ input "source_names"
+    Names of the items to include in the copy. Can be a list of names, a single 
+    name, a callable returning `True` for names to include, or `None` to copy 
+    all items.
+
+???+ input "target_names"
+    New names for the copied items, corresponding to 'source_names'. Can be a 
+    list of names, a single name, or a callable function taking a source name 
+    and returning the new target name.
+
+???+ input "strict_names"
+    If set to `True’, strictly adheres to the provided names, raising an error 
+    if any source name is not found in the Databox.
 
 
-        ???+ returns "new_databox"
-            A new Databox instance that is a deep copy of the current one, containing 
-            either all items or only those specified.
+### Returns ###
 
-        ................................................................................
+
+???+ returns "new_databox"
+    A new Databox instance that is a deep copy of the current one, containing 
+    either all items or only those specified.
+
+................................................................................
         """
         new_databox = _co.deepcopy(self, )
         if source_names is None and target_names is None:
@@ -650,40 +653,42 @@ of the numeric array.
         new_databox.keep(target_names, strict_names=strict_names, )
         return new_databox
 
+    @_dm.reference(category="TBD", )
     def has(
         self: Self,
         /,
         names: Iterable[str] | str,
     ) -> bool:
         r"""
-        ................................................................................
-        ==Check for Item Existence==
+................................................................................
+==Check for Item Existence==
 
-        Determines whether the `Databox` contains one or more specified items.
+Determines whether the `Databox` contains one or more specified items.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "names"
-            A single name or an iterable of names to check for existence in the 
-            `Databox`.
+### Input arguments ###
+???+ input "names"
+    A single name or an iterable of names to check for existence in the 
+    `Databox`.
 
-        ### Returns ###
-        ???+ returns "bool"
-            `True` if all specified names exist in the `Databox`, otherwise `False`.
+### Returns ###
+???+ returns "bool"
+    `True` if all specified names exist in the `Databox`, otherwise `False`.
 
-        ### Example ###
-        ```python
-            exists = databox.has(["key1", "key2"])
-            print(exists)  # True or False
-        ```
-        ................................................................................
+### Example ###
+```python
+    exists = databox.has(["key1", "key2"])
+    print(exists)  # True or False
+```
+................................................................................
         """
         return (
             names in self if isinstance(names, str)
             else not self.get_missing_names(names, )
         )
 
+    @_dm.reference(category="TBD", )
     def shallow(
         self: Self,
         /,
@@ -692,40 +697,40 @@ of the numeric array.
         strict_names: bool = False,
     ) -> Self:
         r"""
-        ................................................................................
-        ==Create a Shallow Copy of the Databox==
+................................................................................
+==Create a Shallow Copy of the Databox==
 
-        Generates a shallow copy of the `Databox`, optionally renaming items or 
-        restricting the copy to specific items.
+Generates a shallow copy of the `Databox`, optionally renaming items or 
+restricting the copy to specific items.
 
-        A shallow copy retains references to the original data objects instead of 
-        duplicating them.
+A shallow copy retains references to the original data objects instead of 
+duplicating them.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "source_names"
-            An optional list, single name, or callable function specifying the items 
-            to include in the shallow copy. Defaults to all items.
+### Input arguments ###
+???+ input "source_names"
+    An optional list, single name, or callable function specifying the items 
+    to include in the shallow copy. Defaults to all items.
 
-        ???+ input "target_names"
-            An optional list, single name, or callable function specifying new names 
-            for the copied items. Corresponds to `source_names`.
+???+ input "target_names"
+    An optional list, single name, or callable function specifying new names 
+    for the copied items. Corresponds to `source_names`.
 
-        ???+ input "strict_names"
-            A boolean flag. If `True`, raises an error for any `source_names` not found 
-            in the `Databox`.
+???+ input "strict_names"
+    A boolean flag. If `True`, raises an error for any `source_names` not found 
+    in the `Databox`.
 
-        ### Returns ###
-        ???+ returns "Databox"
-            A new `Databox` instance containing the shallow copy of items.
+### Returns ###
+???+ returns "Databox"
+    A new `Databox` instance containing the shallow copy of items.
 
-        ### Example ###
-        ```python
-            shallow_copy = databox.shallow(source_names=["a", "b"])
-            print(shallow_copy)
-        ```
-        ................................................................................
+### Example ###
+```python
+    shallow_copy = databox.shallow(source_names=["a", "b"])
+    print(shallow_copy)
+```
+................................................................................
         """
         source_names, target_names, *_ = self._resolve_source_target_names(
             source_names, target_names, strict_names,
@@ -735,35 +740,36 @@ of the numeric array.
             for s, t in zip(source_names, target_names, )
         )
 
+    @_dm.reference(category="TBD", )
     def print_contents(
         self,
         source_names: SourceNames = None,
     ) -> None:
         r"""
-        ................................................................................
-        ==Print Databox Contents==
+................................................................................
+==Print Databox Contents==
 
-        Outputs the contents of the `Databox` to the console, formatted for readability.
+Outputs the contents of the `Databox` to the console, formatted for readability.
 
-        This method is useful for debugging and inspecting specific items in the 
-        `Databox`.
+This method is useful for debugging and inspecting specific items in the 
+`Databox`.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "source_names"
-            An optional list, single name, or callable function specifying the items 
-            to display. If `None`, all items are shown.
+### Input arguments ###
+???+ input "source_names"
+    An optional list, single name, or callable function specifying the items 
+    to display. If `None`, all items are shown.
 
-        ### Returns ###
-        ???+ returns "None"
-            Prints the contents to the console. No value is returned.
+### Returns ###
+???+ returns "None"
+    Prints the contents to the console. No value is returned.
 
-        ### Example ###
-        ```python
-            databox.print_contents(source_names=["key1", "key2"])
-        ```
-        ................................................................................
+### Example ###
+```python
+    databox.print_contents(source_names=["key1", "key2"])
+```
+................................................................................
         """
         shallow = self.shallow(source_names=source_names, )
         content_view = shallow._get_content_view()
@@ -783,56 +789,56 @@ of the numeric array.
         message_when_missing: str = "Missing item",
     ) -> None | NoReturn:
         r"""
-        ................................................................................
-        ==Validate Items in the Databox==
+................................................................................
+==Validate Items in the Databox==
 
-        Validates items in the `Databox` against a set of provided validator functions. 
-        Errors or warnings are logged based on the `when_fails` setting.
+Validates items in the `Databox` against a set of provided validator functions. 
+Errors or warnings are logged based on the `when_fails` setting.
 
-        This method ensures that items meet specific criteria, facilitating data 
-        quality checks before processing.
+This method ensures that items meet specific criteria, facilitating data 
+quality checks before processing.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "validators"
-            A dictionary where keys are item names and values are callables used to 
-            validate the corresponding items.
+### Input arguments ###
+???+ input "validators"
+    A dictionary where keys are item names and values are callables used to 
+    validate the corresponding items.
 
-        ???+ input "strict_names"
-            A boolean flag. If `True`, enforces that all keys in `validators` must be 
-            present in the `Databox`.
+???+ input "strict_names"
+    A boolean flag. If `True`, enforces that all keys in `validators` must be 
+    present in the `Databox`.
 
-        ???+ input "when_fails"
-            Specifies the action to take if validation fails:
-            
-            * `"critical"`: Raises a critical error.
-            * `"error"`: Raises a standard error.
-            * `"warning"`: Logs a warning.
-            * `"silent"`: Suppresses all output.
+???+ input "when_fails"
+    Specifies the action to take if validation fails:
+    
+    * `"critical"`: Raises a critical error.
+    * `"error"`: Raises a standard error.
+    * `"warning"`: Logs a warning.
+    * `"silent"`: Suppresses all output.
 
-        ???+ input "title"
-            The title for the validation error log.
+???+ input "title"
+    The title for the validation error log.
 
-        ???+ input "message_when_fails"
-            The message to display when validation fails for an item.
+???+ input "message_when_fails"
+    The message to display when validation fails for an item.
 
-        ???+ input "message_when_missing"
-            The message to display when an item is missing.
+???+ input "message_when_missing"
+    The message to display when an item is missing.
 
-        ### Returns ###
-        ???+ returns "None or NoReturn"
-            Does not return a value. Behavior depends on `when_fails`.
+### Returns ###
+???+ returns "None or NoReturn"
+    Does not return a value. Behavior depends on `when_fails`.
 
-        ### Example ###
-        ```python
-            validators = {
-                "key1": lambda x: isinstance(x, int),
-                "key2": lambda x: x > 0
-            }
-            databox.validate(validators, when_fails="warning")
-        ```
-        ................................................................................
+### Example ###
+```python
+    validators = {
+        "key1": lambda x: isinstance(x, int),
+        "key2": lambda x: x > 0
+    }
+    databox.validate(validators, when_fails="warning")
+```
+................................................................................
         """
         if not validators:
             return
@@ -1014,7 +1020,7 @@ callable function determining which items to retain.
                 continue
             del self[n]
 
-    @_dm.reference(category="manipulation", )
+    @_dm.reference(category="manipulation", call_name="apply", )
     def apply(
         self,
         func: Callable,
@@ -1094,38 +1100,39 @@ the results.
                 when_fails_stream.add(f"{s}: {repr(e)}", )
         when_fails_stream._raise()
 
+    @_dm.reference(category="TBD", )
     def max_abs(
         self,
         other: Self,
     ) -> Self:
         r"""
-        ................................................................................
-        ==Compute Maximum Absolute Difference==
+................................................................................
+==Compute Maximum Absolute Difference==
 
-        Calculates the maximum absolute difference between corresponding items in 
-        the current `Databox` and another `Databox`. The result is stored in a new 
-        `Databox`.
+Calculates the maximum absolute difference between corresponding items in 
+the current `Databox` and another `Databox`. The result is stored in a new 
+`Databox`.
 
-        This method is designed to analyze discrepancies between two data collections, 
-        such as detecting deviations in numerical series.
+This method is designed to analyze discrepancies between two data collections, 
+such as detecting deviations in numerical series.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "other"
-            Another `Databox` instance to compare against the current instance. Must 
-            have overlapping keys with comparable numerical data.
+### Input arguments ###
+???+ input "other"
+    Another `Databox` instance to compare against the current instance. Must 
+    have overlapping keys with comparable numerical data.
 
-        ### Returns ###
-        ???+ returns "Databox"
-            A new `Databox` containing the maximum absolute differences for each key.
+### Returns ###
+???+ returns "Databox"
+    A new `Databox` containing the maximum absolute differences for each key.
 
-        ### Example ###
-        ```python
-            max_diff = databox1.max_abs(databox2)
-            print(max_diff)
-        ```
-        ................................................................................
+### Example ###
+```python
+    max_diff = databox1.max_abs(databox2)
+    print(max_diff)
+```
+................................................................................
         """
         def _max_abs(x, ):
             return _np.nanmax(abs(_np.array(x)))
@@ -1278,38 +1285,40 @@ Get the encompassing date span for all time series with a specified frequency.
         max_end_date = max(end_periods, key=_op.attrgetter("serial"), )
         return Span(min_start_date, max_end_date, )
 
+    @_dm.reference(category="TBD", )
     def to_json(self, file_name, **kwargs):
         r"""
-        ................................................................................
-        ==Export Databox to JSON==
+................................................................................
+==Export Databox to JSON==
 
-        Serializes the `Databox` to a JSON file, storing its contents in a format 
-        compatible with external tools and applications.
+Serializes the `Databox` to a JSON file, storing its contents in a format 
+compatible with external tools and applications.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "file_name"
-            The file path where the JSON representation of the `Databox` will be saved.
+### Input arguments ###
+???+ input "file_name"
+    The file path where the JSON representation of the `Databox` will be saved.
 
-        ???+ input "**kwargs"
-            Additional keyword arguments passed to the `json.dump` function for 
-            customization of the serialization process.
+???+ input "**kwargs"
+    Additional keyword arguments passed to the `json.dump` function for 
+    customization of the serialization process.
 
-        ### Returns ###
-        ???+ returns "None"
-            This method writes the serialized JSON data to a file and does not return 
-            a value.
+### Returns ###
+???+ returns "None"
+    This method writes the serialized JSON data to a file and does not return 
+    a value.
 
-        ### Example ###
-        ```python
-            databox.to_json("output.json", indent=4)
-        ```
-        ................................................................................
+### Example ###
+```python
+    databox.to_json("output.json", indent=4)
+```
+................................................................................
         """
         with open(file_name, "wt+") as f:
             return _js.dump(self, f, **kwargs)
 
+    @_dm.reference(category="TBD", )
     def overlay(
         self,
         other: Self,
@@ -1317,34 +1326,35 @@ Get the encompassing date span for all time series with a specified frequency.
         **kwargs,
     ) -> None:
         r"""
-        ................................................................................
-        ==Overlay Another Databox==
+................................................................................
+==Overlay Another Databox==
 
-        Combines the current `Databox` with another by applying an overlay operation. 
-        This method updates items in the current `Databox` using corresponding items 
-        from the `other` `Databox`.
+Combines the current `Databox` with another by applying an overlay operation. 
+This method updates items in the current `Databox` using corresponding items 
+from the `other` `Databox`.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "other"
-            Another `Databox` instance whose items will overlay the current `Databox`.
+### Input arguments ###
+???+ input "other"
+    Another `Databox` instance whose items will overlay the current `Databox`.
 
-        ???+ input "**kwargs"
-            Additional arguments passed to the overlay operation.
+???+ input "**kwargs"
+    Additional arguments passed to the overlay operation.
 
-        ### Returns ###
-        ???+ returns "None"
-            The current `Databox` is modified in place.
+### Returns ###
+???+ returns "None"
+    The current `Databox` is modified in place.
 
-        ### Example ###
-        ```python
-            databox1.overlay(databox2)
-        ```
-        ................................................................................
+### Example ###
+```python
+    databox1.overlay(databox2)
+```
+................................................................................
         """
         self._lay(other, Series.overlay, **kwargs)
 
+    @_dm.reference(category="TBD", )
     def underlay(
         self,
         other: Self,
@@ -1352,31 +1362,31 @@ Get the encompassing date span for all time series with a specified frequency.
         **kwargs,
     ) -> None:
         r"""
-        ................................................................................
-        ==Underlay Another Databox==
+................................................................................
+==Underlay Another Databox==
 
-        Combines the current `Databox` with another by applying an underlay operation. 
-        This method retains items in the current `Databox` and integrates 
-        non-conflicting items from the `other` `Databox`.
+Combines the current `Databox` with another by applying an underlay operation. 
+This method retains items in the current `Databox` and integrates 
+non-conflicting items from the `other` `Databox`.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "other"
-            Another `Databox` instance whose items will underlay the current `Databox`.
+### Input arguments ###
+???+ input "other"
+    Another `Databox` instance whose items will underlay the current `Databox`.
 
-        ???+ input "**kwargs"
-            Additional arguments passed to the underlay operation.
+???+ input "**kwargs"
+    Additional arguments passed to the underlay operation.
 
-        ### Returns ###
-        ???+ returns "None"
-            The current `Databox` is modified in place.
+### Returns ###
+???+ returns "None"
+    The current `Databox` is modified in place.
 
-        ### Example ###
-        ```python
-            databox1.underlay(databox2)
-        ```
-        ................................................................................
+### Example ###
+```python
+    databox1.underlay(databox2)
+```
+................................................................................
         """
         self._lay(other, Series.underlay, **kwargs)
 
@@ -1390,41 +1400,41 @@ Get the encompassing date span for all time series with a specified frequency.
         **kwargs,
     ) -> None:
         r"""
-        ................................................................................
-        ==Generic Layering Operation==
+................................................................................
+==Generic Layering Operation==
 
-        An internal method for layering two `Databox` instances using a specified 
-        operation. This can be used for both overlay and underlay logic.
+An internal method for layering two `Databox` instances using a specified 
+operation. This can be used for both overlay and underlay logic.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "other"
-            Another `Databox` instance to layer with the current instance.
+### Input arguments ###
+???+ input "other"
+    Another `Databox` instance to layer with the current instance.
 
-        ???+ input "func"
-            A callable function defining the layering operation to apply.
+???+ input "func"
+    A callable function defining the layering operation to apply.
 
-        ???+ input "names"
-            An optional list of item names to restrict the layering operation. If 
-            `None`, all items are considered.
+???+ input "names"
+    An optional list of item names to restrict the layering operation. If 
+    `None`, all items are considered.
 
-        ???+ input "strict_names"
-            A boolean flag. If `True`, raises an error if any `names` are not found 
-            in both `Databox` instances.
+???+ input "strict_names"
+    A boolean flag. If `True`, raises an error if any `names` are not found 
+    in both `Databox` instances.
 
-        ???+ input "**kwargs"
-            Additional arguments passed to the layering function.
+???+ input "**kwargs"
+    Additional arguments passed to the layering function.
 
-        ### Returns ###
-        ???+ returns "None"
-            Modifies the current `Databox` in place.
+### Returns ###
+???+ returns "None"
+    Modifies the current `Databox` in place.
 
-        ### Example ###
-        ```python
-            databox1._lay(databox2, Series.overlay, names=["key1", "key2"])
-        ```
-        ................................................................................
+### Example ###
+```python
+    databox1._lay(databox2, Series.overlay, names=["key1", "key2"])
+```
+................................................................................
         """
         if names is None:
             def value_test(x): return isinstance(x, Series)
@@ -1440,6 +1450,7 @@ Get the encompassing date span for all time series with a specified frequency.
                 continue
             func(self[n], other[n], **kwargs, )
 
+    @_dm.reference(category="TBD", )
     def clip(
         self,
         /,
@@ -1447,32 +1458,32 @@ Get the encompassing date span for all time series with a specified frequency.
         new_end_date: Period | None = None,
     ) -> None:
         r"""
-        ................................................................................
-        ==Clip Time Series to a Date Range==
+................................................................................
+==Clip Time Series to a Date Range==
 
-        Trims all time series in the `Databox` to fit within the specified start and 
-        end dates.
+Trims all time series in the `Databox` to fit within the specified start and 
+end dates.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "new_start_date"
-            The new start date for the time series. If `None`, the current start date 
-            is retained.
+### Input arguments ###
+???+ input "new_start_date"
+    The new start date for the time series. If `None`, the current start date 
+    is retained.
 
-        ???+ input "new_end_date"
-            The new end date for the time series. If `None`, the current end date is 
-            retained.
+???+ input "new_end_date"
+    The new end date for the time series. If `None`, the current end date is 
+    retained.
 
-        ### Returns ###
-        ???+ returns "None"
-            Modifies the time series in the `Databox` in place.
+### Returns ###
+???+ returns "None"
+    Modifies the time series in the `Databox` in place.
 
-        ### Example ###
-        ```python
-            databox.clip(new_start_date=Period("2023-01"), new_end_date=Period("2023-12"))
-        ```
-        ................................................................................
+### Example ###
+```python
+    databox.clip(new_start_date=Period("2023-01"), new_end_date=Period("2023-12"))
+```
+................................................................................
         """
         if new_start_date is None and new_end_date is None:
             return
@@ -1486,6 +1497,7 @@ Get the encompassing date span for all time series with a specified frequency.
         for n in names:
             self[n].clip(new_start_date, new_end_date, )
 
+    @_dm.reference(category="TBD", )
     def prepend(
         self,
         prepending: Self,
@@ -1493,36 +1505,37 @@ Get the encompassing date span for all time series with a specified frequency.
         /,
     ) -> Self:
         r"""
-        ................................................................................
-        ==Prepend Data to a Databox==
+................................................................................
+==Prepend Data to a Databox==
 
-        Prepends the contents of another `Databox` up to a specified end date. This 
-        operation is useful for extending a `Databox` with historical data.
+Prepends the contents of another `Databox` up to a specified end date. This 
+operation is useful for extending a `Databox` with historical data.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "prepending"
-            A `Databox` instance containing the data to prepend.
+### Input arguments ###
+???+ input "prepending"
+    A `Databox` instance containing the data to prepend.
 
-        ???+ input "end_prepending"
-            The last date from the `prepending` `Databox` to include in the operation.
+???+ input "end_prepending"
+    The last date from the `prepending` `Databox` to include in the operation.
 
-        ### Returns ###
-        ???+ returns "Databox"
-            The updated `Databox` with the prepended data.
+### Returns ###
+???+ returns "Databox"
+    The updated `Databox` with the prepended data.
 
-        ### Example ###
-        ```python
-            updated_databox = databox.prepend(prepending_databox, Period("2022-12"))
-            print(updated_databox)
-        ```
-        ................................................................................
+### Example ###
+```python
+    updated_databox = databox.prepend(prepending_databox, Period("2022-12"))
+    print(updated_databox)
+```
+................................................................................
         """
         prepending = prepending.copy()
         prepending.clip(None, end_prepending, )
         self.underlay(prepending, )
 
+    @_dm.reference(category="TBD", )
     def evaluate_expression(
         self,
         expression: str,
@@ -1530,35 +1543,35 @@ Get the encompassing date span for all time series with a specified frequency.
         context: dict[str, Any] | None = None,
     ) -> Any:
         r"""
-        ................................................................................
-        ==Evaluate an Expression==
+................................................................................
+==Evaluate an Expression==
 
-        Evaluates a string expression within the context of the `Databox` and an 
-        optional user-provided context.
+Evaluates a string expression within the context of the `Databox` and an 
+optional user-provided context.
 
-        This method supports accessing `Databox` items directly by name and performing 
-        calculations or operations involving those items.
+This method supports accessing `Databox` items directly by name and performing 
+calculations or operations involving those items.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "expression"
-            A string representing the expression to evaluate.
+### Input arguments ###
+???+ input "expression"
+    A string representing the expression to evaluate.
 
-        ???+ input "context"
-            An optional dictionary providing additional variables or functions to use 
-            during evaluation.
+???+ input "context"
+    An optional dictionary providing additional variables or functions to use 
+    during evaluation.
 
-        ### Returns ###
-        ???+ returns "Any"
-            The result of evaluating the expression.
+### Returns ###
+???+ returns "Any"
+    The result of evaluating the expression.
 
-        ### Example ###
-        ```python
-            result = databox.evaluate_expression("key1 + key2")
-            print(result)
-        ```
-        ................................................................................
+### Example ###
+```python
+    result = databox.evaluate_expression("key1 + key2")
+    print(result)
+```
+................................................................................
         """
         expression = expression.strip()
         if expression in self:
@@ -1566,6 +1579,7 @@ Get the encompassing date span for all time series with a specified frequency.
         else:
             return self.eval(expression, context, )
 
+    @_dm.reference(category="TBD", )
     def eval(
         self,
         expression: str,
@@ -1573,32 +1587,32 @@ Get the encompassing date span for all time series with a specified frequency.
         context: dict[str, Any] | None = None,
     ) -> Any:
         r"""
-        ................................................................................
-        ==Evaluate a Databox Expression==
+................................................................................
+==Evaluate a Databox Expression==
 
-        Parses and evaluates a Python expression within the `Databox`'s context. This 
-        method provides a mechanism for dynamic calculations involving `Databox` items.
+Parses and evaluates a Python expression within the `Databox`'s context. This 
+method provides a mechanism for dynamic calculations involving `Databox` items.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "expression"
-            A string containing the Python expression to evaluate.
+### Input arguments ###
+???+ input "expression"
+    A string containing the Python expression to evaluate.
 
-        ???+ input "context"
-            An optional dictionary providing additional variables or functions for use 
-            during evaluation.
+???+ input "context"
+    An optional dictionary providing additional variables or functions for use 
+    during evaluation.
 
-        ### Returns ###
-        ???+ returns "Any"
-            The result of the evaluated expression.
+### Returns ###
+???+ returns "Any"
+    The result of the evaluated expression.
 
-        ### Example ###
-        ```python
-            result = databox.eval("sum([key1, key2])")
-            print(result)
-        ```
-        ................................................................................
+### Example ###
+```python
+    result = databox.eval("sum([key1, key2])")
+    print(result)
+```
+................................................................................
         """
         expression = _reformat_eval_expression(expression, )
         context = (dict(context) if context else {}) | { k: v for k, v in self.items() }
@@ -1611,37 +1625,38 @@ Get the encompassing date span for all time series with a specified frequency.
         context: dict[str, Any] | None = None,
     ) -> Any:
         r"""
-        ................................................................................
-        ==Call Databox for Evaluation==
+................................................................................
+==Call Databox for Evaluation==
 
-        Enables the `Databox` to be directly called with an expression for evaluation. 
-        This method simplifies dynamic calculations by acting as a shorthand for the 
-        `eval` method.
+Enables the `Databox` to be directly called with an expression for evaluation. 
+This method simplifies dynamic calculations by acting as a shorthand for the 
+`eval` method.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "expression"
-            A string containing the expression to evaluate.
+### Input arguments ###
+???+ input "expression"
+    A string containing the expression to evaluate.
 
-        ???+ input "context"
-            An optional dictionary providing additional variables or functions for use 
-            during evaluation.
+???+ input "context"
+    An optional dictionary providing additional variables or functions for use 
+    during evaluation.
 
-        ### Returns ###
-        ???+ returns "Any"
-            The result of the evaluated expression.
+### Returns ###
+???+ returns "Any"
+    The result of the evaluated expression.
 
-        ### Example ###
-        ```python
-            result = databox("key1 + key2")
-            print(result)
-        ```
-        ................................................................................
+### Example ###
+```python
+    result = databox("key1 + key2")
+    print(result)
+```
+................................................................................
         """
         return self.eval(expression, context, )
 
     @classmethod
+    @_dm.reference(category="TBD", )
     def steady(
         klass,
         steady_databoxable: SteadyDataboxableProtocol,
@@ -1653,51 +1668,51 @@ Get the encompassing date span for all time series with a specified frequency.
         append_terminal: bool = True,
     ) -> Self:
         r"""
-        ................................................................................
-        ==Create a Steady Databox==
+................................................................................
+==Create a Steady Databox==
 
-        Constructs a `Databox` by generating items based on a steady protocol and a 
-        specified time span. This method provides a way to create predictive or 
-        interpolative datasets.
+Constructs a `Databox` by generating items based on a steady protocol and a 
+specified time span. This method provides a way to create predictive or 
+interpolative datasets.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "steady_databoxable"
-            An object implementing the `SteadyDataboxableProtocol` for generating 
-            steady items.
+### Input arguments ###
+???+ input "steady_databoxable"
+    An object implementing the `SteadyDataboxableProtocol` for generating 
+    steady items.
 
-        ???+ input "span"
-            An iterable of `Period` objects defining the time range.
+???+ input "span"
+    An iterable of `Period` objects defining the time range.
 
-        ???+ input "deviation"
-            A boolean indicating whether to include deviation data in the generated 
-            items. Default is `False`.
+???+ input "deviation"
+    A boolean indicating whether to include deviation data in the generated 
+    items. Default is `False`.
 
-        ???+ input "unpack_single"
-            A boolean specifying whether to unpack single-item results. Default is 
-            `True`.
+???+ input "unpack_single"
+    A boolean specifying whether to unpack single-item results. Default is 
+    `True`.
 
-        ???+ input "prepend_initial"
-            A boolean indicating whether to include initial padding in the time span. 
-            Default is `True`.
+???+ input "prepend_initial"
+    A boolean indicating whether to include initial padding in the time span. 
+    Default is `True`.
 
-        ???+ input "append_terminal"
-            A boolean indicating whether to include terminal padding in the time span. 
-            Default is `True`.
+???+ input "append_terminal"
+    A boolean indicating whether to include terminal padding in the time span. 
+    Default is `True`.
 
-        ### Returns ###
-        ???+ returns "Databox"
-            A new `Databox` populated with steady items.
+### Returns ###
+???+ returns "Databox"
+    A new `Databox` populated with steady items.
 
-        ### Example ###
-        ```python
-            steady_box = Databox.steady(
-                steady_databoxable, span, deviation=True
-            )
-            print(steady_box)
-        ```
-        ................................................................................
+### Example ###
+```python
+    steady_box = Databox.steady(
+        steady_databoxable, span, deviation=True
+    )
+    print(steady_box)
+```
+................................................................................
         """
         self = klass()
         start, end = _extended_span_tuple_from_base_span(
@@ -1715,37 +1730,38 @@ Get the encompassing date span for all time series with a specified frequency.
 
     zero = _ft.partialmethod(steady, deviation=True, )
 
+    @_dm.reference(category="TBD", )
     def minus_control(
         self,
         model,
         control: Self,
     ) -> None:
         r"""
-        ................................................................................
-        ==Subtract Control from Model Data==
+................................................................................
+==Subtract Control from Model Data==
 
-        Adjusts the `Databox` items based on a control dataset by subtracting the 
-        control values using a model-defined operation. This method is useful for 
-        comparative analysis, such as isolating effects or deviations.
+Adjusts the `Databox` items based on a control dataset by subtracting the 
+control values using a model-defined operation. This method is useful for 
+comparative analysis, such as isolating effects or deviations.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "model"
-            A model object that provides the mapping of names to subtraction functions.
+### Input arguments ###
+???+ input "model"
+    A model object that provides the mapping of names to subtraction functions.
 
-        ???+ input "control"
-            A `Databox` instance containing the control dataset to subtract.
+???+ input "control"
+    A `Databox` instance containing the control dataset to subtract.
 
-        ### Returns ###
-        ???+ returns "None"
-            Modifies the `Databox` items in place.
+### Returns ###
+???+ returns "None"
+    Modifies the `Databox` items in place.
 
-        ### Example ###
-        ```python
-            databox.minus_control(model, control_databox)
-        ```
-        ................................................................................
+### Example ###
+```python
+    databox.minus_control(model, control_databox)
+```
+................................................................................
         """
         name_to_minus_control_func = model.map_name_to_minus_control_func()
         for name, func in name_to_minus_control_func.items():
@@ -1755,29 +1771,29 @@ Get the encompassing date span for all time series with a specified frequency.
 
     def __or__(self, other) -> Self:
         r"""
-        ................................................................................
-        ==Merge Two Databoxes==
+................................................................................
+==Merge Two Databoxes==
 
-        Implements the bitwise OR operator (`|`) to merge two `Databox` instances. 
-        The resulting `Databox` contains all items from both instances, with items 
-        from `other` overriding those in the current instance in case of conflicts.
+Implements the bitwise OR operator (`|`) to merge two `Databox` instances. 
+The resulting `Databox` contains all items from both instances, with items 
+from `other` overriding those in the current instance in case of conflicts.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "other"
-            Another `Databox` instance to merge with the current instance.
+### Input arguments ###
+???+ input "other"
+    Another `Databox` instance to merge with the current instance.
 
-        ### Returns ###
-        ???+ returns "Databox"
-            A new `Databox` instance containing the merged items.
+### Returns ###
+???+ returns "Databox"
+    A new `Databox` instance containing the merged items.
 
-        ### Example ###
-        ```python
-            merged_box = databox1 | databox2
-            print(merged_box)
-        ```
-        ................................................................................
+### Example ###
+```python
+    merged_box = databox1 | databox2
+    print(merged_box)
+```
+................................................................................
         """
         new = _co.deepcopy(self)
         new.update(other, )
@@ -1791,41 +1807,41 @@ Get the encompassing date span for all time series with a specified frequency.
         strict_names: bool = False,
     ) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
         r"""
-        ................................................................................
-        ==Resolve Source and Target Names==
+................................................................................
+==Resolve Source and Target Names==
 
-        An internal utility method to resolve source and target names for operations 
-        like renaming, filtering, or mapping items in the `Databox`. Handles multiple 
-        input types such as lists, callables, or single names.
+An internal utility method to resolve source and target names for operations 
+like renaming, filtering, or mapping items in the `Databox`. Handles multiple 
+input types such as lists, callables, or single names.
 
-        ................................................................................
+................................................................................
 
-        ### Input arguments ###
-        ???+ input "source_names"
-            The source names to resolve. Can be a list, a single name, or a callable 
-            function.
+### Input arguments ###
+???+ input "source_names"
+    The source names to resolve. Can be a list, a single name, or a callable 
+    function.
 
-        ???+ input "target_names"
-            The target names to resolve. Should correspond to `source_names` in 
-            structure and order.
+???+ input "target_names"
+    The target names to resolve. Should correspond to `source_names` in 
+    structure and order.
 
-        ???+ input "strict_names"
-            A boolean flag. If `True`, enforces strict resolution and raises an error 
-            if any source name is not found in the `Databox`.
+???+ input "strict_names"
+    A boolean flag. If `True`, enforces strict resolution and raises an error 
+    if any source name is not found in the `Databox`.
 
-        ### Returns ###
-        ???+ returns "tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]"
-            A tuple containing resolved source names, target names, and the complete 
-            set of item names in the `Databox`.
+### Returns ###
+???+ returns "tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]"
+    A tuple containing resolved source names, target names, and the complete 
+    set of item names in the `Databox`.
 
-        ### Example ###
-        ```python
-            sources, targets, all_names = databox._resolve_source_target_names(
-                source_names=["key1"], target_names=["keyA"]
-            )
-            print(sources, targets, all_names)
-        ```
-        ................................................................................
+### Example ###
+```python
+    sources, targets, all_names = databox._resolve_source_target_names(
+        source_names=["key1"], target_names=["keyA"]
+    )
+    print(sources, targets, all_names)
+```
+................................................................................
         """
 
         context_names = self.get_names()
@@ -1861,34 +1877,34 @@ def _apply_to_item(
     /,
 ) -> None:
     r"""
-    ................................................................................
-    ==Apply Function to Item==
+................................................................................
+==Apply Function to Item==
 
-    Applies a provided function to the `source` item and stores the result in the 
-    `target`. This utility function is designed for item-level transformations 
-    within a `Databox`.
+Applies a provided function to the `source` item and stores the result in the 
+`target`. This utility function is designed for item-level transformations 
+within a `Databox`.
 
-    ................................................................................
+................................................................................
 
-    ### Input arguments ###
-    ???+ input "func"
-        A callable function to apply to the `source` item.
+### Input arguments ###
+???+ input "func"
+A callable function to apply to the `source` item.
 
-    ???+ input "source"
-        The input item on which the function is applied.
+???+ input "source"
+The input item on which the function is applied.
 
-    ???+ input "target"
-        The output item where the result of the function is stored.
+???+ input "target"
+The output item where the result of the function is stored.
 
-    ### Returns ###
-    ???+ returns "None"
-        Modifies the `target` in place with the result of applying the function.
+### Returns ###
+???+ returns "None"
+Modifies the `target` in place with the result of applying the function.
 
-    ### Example ###
-    ```python
-        _apply_to_item(lambda x: x * 2, 5, target_variable)
-    ```
-    ................................................................................
+### Example ###
+```python
+_apply_to_item(lambda x: x * 2, 5, target_variable)
+```
+................................................................................
     """
     target = source
     return func(target)
@@ -1896,29 +1912,29 @@ def _apply_to_item(
 
 def _reformat_eval_expression(expression: str, ) -> str:
     r"""
-    ................................................................................
-    ==Reformat Evaluation Expression==
+................................................................................
+==Reformat Evaluation Expression==
 
-    Rewrites an evaluation expression to handle specific cases, such as equality 
-    operators, in the context of the `Databox`. This function ensures compatibility 
-    with Python's `eval` function.
+Rewrites an evaluation expression to handle specific cases, such as equality 
+operators, in the context of the `Databox`. This function ensures compatibility 
+with Python's `eval` function.
 
-    ................................................................................
+................................................................................
 
-    ### Input arguments ###
-    ???+ input "expression"
-        A string representing the expression to reformat.
+### Input arguments ###
+???+ input "expression"
+A string representing the expression to reformat.
 
-    ### Returns ###
-    ???+ returns "str"
-        The reformatted expression, ready for evaluation.
+### Returns ###
+???+ returns "str"
+The reformatted expression, ready for evaluation.
 
-    ### Example ###
-    ```python
-        reformatted = _reformat_eval_expression("a = b")
-        print(reformatted)  # Outputs: (a)-(b)
-    ```
-    ................................................................................
+### Example ###
+```python
+reformatted = _reformat_eval_expression("a = b")
+print(reformatted)  # Outputs: (a)-(b)
+```
+................................................................................
     """
     #[
     if "=" in expression:
@@ -1931,29 +1947,29 @@ def _reformat_eval_expression(expression: str, ) -> str:
 
 def _default_item_iterator(value: Any, /, ) -> Iterator[Any]:
     r"""
-    ................................................................................
-    ==Default Item Iterator==
+................................................................................
+==Default Item Iterator==
 
-    Provides a default iterator for `Databox` items, ensuring compatibility with 
-    both iterable and non-iterable data types. Non-iterables are wrapped in a list.
+Provides a default iterator for `Databox` items, ensuring compatibility with 
+both iterable and non-iterable data types. Non-iterables are wrapped in a list.
 
-    ................................................................................
+................................................................................
 
-    ### Input arguments ###
-    ???+ input "value"
-        The input item to iterate over. Can be iterable or non-iterable.
+### Input arguments ###
+???+ input "value"
+The input item to iterate over. Can be iterable or non-iterable.
 
-    ### Returns ###
-    ???+ returns "Iterator[Any]"
-        An iterator over the item.
+### Returns ###
+???+ returns "Iterator[Any]"
+An iterator over the item.
 
-    ### Example ###
-    ```python
-        iterator = _default_item_iterator([1, 2, 3])
-        for item in iterator:
-            print(item)
-    ```
-    ................................................................................
+### Example ###
+```python
+iterator = _default_item_iterator([1, 2, 3])
+for item in iterator:
+    print(item)
+```
+................................................................................
     """
     #[
     is_value_iterable = (
@@ -1972,32 +1988,32 @@ def _get_series_constructor(
     /,
 ) -> Callable | None:
     r"""
-    ................................................................................
-    ==Get Series Constructor==
+................................................................................
+==Get Series Constructor==
 
-    Returns a constructor function for creating `Series` objects based on a given 
-    start date or a sequence of periods.
+Returns a constructor function for creating `Series` objects based on a given 
+start date or a sequence of periods.
 
-    ................................................................................
+................................................................................
 
-    ### Input arguments ###
-    ???+ input "start"
-        An optional `Period` object specifying the starting date for the series.
+### Input arguments ###
+???+ input "start"
+An optional `Period` object specifying the starting date for the series.
 
-    ???+ input "periods"
-        An optional iterable of `Period` objects defining the series range.
+???+ input "periods"
+An optional iterable of `Period` objects defining the series range.
 
-    ### Returns ###
-    ???+ returns "Callable | None"
-        A callable function for constructing `Series` objects, or `None` if both 
-        inputs are `None`.
+### Returns ###
+???+ returns "Callable | None"
+A callable function for constructing `Series` objects, or `None` if both 
+inputs are `None`.
 
-    ### Example ###
-    ```python
-        constructor = _get_series_constructor(start=Period("2023-01"))
-        series = constructor(values=[1, 2, 3])
-    ```
-    ................................................................................
+### Example ###
+```python
+constructor = _get_series_constructor(start=Period("2023-01"))
+series = constructor(values=[1, 2, 3])
+```
+................................................................................
     """
     #[
     if start is not None:

@@ -14,6 +14,8 @@ from ..dates import (Frequency, )
 from ..series.main import (Series, )
 
 from . import main as _databoxes
+
+import documark as _dm
 #]
 
 
@@ -34,56 +36,57 @@ _MISSING_VALUE = r"."
 
 class FredMixin:
     r"""
-    ................................................................................
-    ==FRED Mixin for Data Import==
+................................................................................
+==FRED Mixin for Data Import==
 
-    Provides methods to load and manage data from the Federal Reserve Economic 
-    Data (FRED) API. Supports automatic mapping of series names to FRED series IDs.
+Provides methods to load and manage data from the Federal Reserve Economic 
+Data (FRED) API. Supports automatic mapping of series names to FRED series IDs.
 
-    This mixin facilitates the creation of `Databox` objects containing time series 
-    data retrieved from the FRED API.
+This mixin facilitates the creation of `Databox` objects containing time series 
+data retrieved from the FRED API.
 
-    ### Example ###
-    ```python
-        class MyDataBox(FredMixin, _databoxes.Databox):
-            pass
+### Example ###
+```python
+    class MyDataBox(FredMixin, _databoxes.Databox):
+        pass
 
-        databox = MyDataBox.from_fred(["UNRATE", "GDP"])
-    ```
-    ................................................................................
+    databox = MyDataBox.from_fred(["UNRATE", "GDP"])
+```
+................................................................................
     """
     #[
 
     @classmethod
+    @_dm.reference(category="TBD", )
     def from_fred(
         klass,
         mapper: Iterable[str] | dict[str, str],
         /,
     ) -> _databoxes.Databox:
         r"""
-        ................................................................................
-        ==Create a Databox from FRED Data==
+................................................................................
+==Create a Databox from FRED Data==
 
-        Load time series data from the FRED API into a `Databox`. Accepts a list of 
-        series IDs or a mapping of custom names to series IDs.
+Load time series data from the FRED API into a `Databox`. Accepts a list of 
+series IDs or a mapping of custom names to series IDs.
 
-        ### Input arguments ###
-        ???+ input "klass"
-            The class invoking this method (typically a `Databox` subclass).
+### Input arguments ###
+???+ input "klass"
+    The class invoking this method (typically a `Databox` subclass).
 
-        ???+ input "mapper"
-            An iterable of series IDs or a dictionary mapping custom names to series IDs.
+???+ input "mapper"
+    An iterable of series IDs or a dictionary mapping custom names to series IDs.
 
-        ### Returns ###
-        ???+ returns
-            `_databoxes.Databox`: A `Databox` populated with data retrieved from FRED.
+### Returns ###
+???+ returns
+    `_databoxes.Databox`: A `Databox` populated with data retrieved from FRED.
 
-        ### Example ###
-        ```python
-            databox = MyDataBox.from_fred(["UNRATE", "CPIAUCSL"])
-            print(databox)
-        ```
-        ................................................................................
+### Example ###
+```python
+    databox = MyDataBox.from_fred(["UNRATE", "CPIAUCSL"])
+    print(databox)
+```
+................................................................................
         """
         self = klass()
         if not isinstance(mapper, dict):
@@ -97,25 +100,25 @@ class FredMixin:
 
 def _mapper_from_series_ids(series_ids: Iterable[str], /, ):
     r"""
-    ................................................................................
-    ==Generate Mapper from Series IDs==
+................................................................................
+==Generate Mapper from Series IDs==
 
-    Create a mapping of series IDs to themselves for use with `from_fred`.
+Create a mapping of series IDs to themselves for use with `from_fred`.
 
-    ### Input arguments ###
-    ???+ input "series_ids"
-        An iterable of series IDs.
+### Input arguments ###
+???+ input "series_ids"
+    An iterable of series IDs.
 
-    ### Returns ###
-    ???+ returns
-        `dict[str, str]`: A dictionary mapping each series ID to itself.
+### Returns ###
+???+ returns
+    `dict[str, str]`: A dictionary mapping each series ID to itself.
 
-    ### Example ###
-    ```python
-        mapper = _mapper_from_series_ids(["UNRATE", "GDP"])
-        print(mapper)  # Output: {"UNRATE": "UNRATE", "GDP": "GDP"}
-    ```
-    ................................................................................
+### Example ###
+```python
+    mapper = _mapper_from_series_ids(["UNRATE", "GDP"])
+    print(mapper)  # Output: {"UNRATE": "UNRATE", "GDP": "GDP"}
+```
+................................................................................
     """
     #[
     return {
@@ -126,25 +129,25 @@ def _mapper_from_series_ids(series_ids: Iterable[str], /, ):
 
 def _get_series(series_id: str, /, ):
     r"""
-    ................................................................................
-    ==Retrieve Series Data from FRED==
+................................................................................
+==Retrieve Series Data from FRED==
 
-    Fetch metadata and observations for a given series ID from the FRED API.
+Fetch metadata and observations for a given series ID from the FRED API.
 
-    ### Input arguments ###
-    ???+ input "series_id"
-        The FRED series ID to retrieve data for.
+### Input arguments ###
+???+ input "series_id"
+    The FRED series ID to retrieve data for.
 
-    ### Returns ###
-    ???+ returns
-        `Series`: A `Series` object containing the data for the given ID.
+### Returns ###
+???+ returns
+    `Series`: A `Series` object containing the data for the given ID.
 
-    ### Example ###
-    ```python
-        series = _get_series("UNRATE")
-        print(series)
-    ```
-    ................................................................................
+### Example ###
+```python
+    series = _get_series("UNRATE")
+    print(series)
+```
+................................................................................
     """
     #[
     urls = _get_series_urls(series_id, )
@@ -164,25 +167,25 @@ def _get_series(series_id: str, /, ):
 
 def _get_freq_from_meta_response(meta_response: dict, /, ):
     r"""
-    ................................................................................
-    ==Extract Frequency from Metadata==
+................................................................................
+==Extract Frequency from Metadata==
 
-    Retrieve the frequency of the series from the FRED API metadata response.
+Retrieve the frequency of the series from the FRED API metadata response.
 
-    ### Input arguments ###
-    ???+ input "meta_response"
-        The JSON metadata response from the FRED API.
+### Input arguments ###
+???+ input "meta_response"
+    The JSON metadata response from the FRED API.
 
-    ### Returns ###
-    ???+ returns
-        `Frequency`: The frequency of the series.
+### Returns ###
+???+ returns
+    `Frequency`: The frequency of the series.
 
-    ### Example ###
-    ```python
-        freq = _get_freq_from_meta_response(meta_response)
-        print(freq)  # Output: Frequency.MONTHLY
-    ```
-    ................................................................................
+### Example ###
+```python
+    freq = _get_freq_from_meta_response(meta_response)
+    print(freq)  # Output: Frequency.MONTHLY
+```
+................................................................................
     """
     #[
     freq_letter = meta_response["seriess"][0]["frequency_short"].casefold()
@@ -192,27 +195,27 @@ def _get_freq_from_meta_response(meta_response: dict, /, ):
 
 def _get_dates_and_values_from_data_response(data_response: dict, /, ):
     r"""
-    ................................................................................
-    ==Extract Dates and Values from Data Response==
+................................................................................
+==Extract Dates and Values from Data Response==
 
-    Parse the observations section of the FRED API data response to extract 
-    dates and corresponding values.
+Parse the observations section of the FRED API data response to extract 
+dates and corresponding values.
 
-    ### Input arguments ###
-    ???+ input "data_response"
-        The JSON data response from the FRED API.
+### Input arguments ###
+???+ input "data_response"
+    The JSON data response from the FRED API.
 
-    ### Returns ###
-    ???+ returns
-        `tuple[Iterable[str], Iterable[str]]`: A tuple of two iterables - 
-        one for the dates and another for the values.
+### Returns ###
+???+ returns
+    `tuple[Iterable[str], Iterable[str]]`: A tuple of two iterables - 
+    one for the dates and another for the values.
 
-    ### Example ###
-    ```python
-        dates, values = _get_dates_and_values_from_data_response(data_response)
-        print(list(dates), list(values))
-    ```
-    ................................................................................
+### Example ###
+```python
+    dates, values = _get_dates_and_values_from_data_response(data_response)
+    print(list(dates), list(values))
+```
+................................................................................
     """
     #[
     date_value_pairs = (
@@ -225,29 +228,29 @@ def _get_dates_and_values_from_data_response(data_response: dict, /, ):
 
 def _get_series_urls(series_id: str, /, ):
     r"""
-    ................................................................................
-    ==Generate URLs for FRED Series==
+................................................................................
+==Generate URLs for FRED Series==
 
-    Construct metadata and data retrieval URLs for a given series ID using 
-    the FRED API base URLs and parameters.
+Construct metadata and data retrieval URLs for a given series ID using 
+the FRED API base URLs and parameters.
 
-    ### Input arguments ###
-    ???+ input "series_id"
-        The FRED series ID for which to construct URLs.
+### Input arguments ###
+???+ input "series_id"
+    The FRED series ID for which to construct URLs.
 
-    ### Returns ###
-    ???+ returns
-        `dict[str, str]`: A dictionary containing:
-        - `meta_url`: URL to fetch metadata for the series.
-        - `data_url`: URL to fetch data observations for the series.
+### Returns ###
+???+ returns
+    `dict[str, str]`: A dictionary containing:
+    - `meta_url`: URL to fetch metadata for the series.
+    - `data_url`: URL to fetch data observations for the series.
 
-    ### Example ###
-    ```python
-        urls = _get_series_urls("UNRATE")
-        print(urls["meta_url"])  # Metadata URL
-        print(urls["data_url"])  # Data URL
-    ```
-    ................................................................................
+### Example ###
+```python
+    urls = _get_series_urls("UNRATE")
+    print(urls["meta_url"])  # Metadata URL
+    print(urls["data_url"])  # Data URL
+```
+................................................................................
     """
     #[
     parameters = _PARAMETERS.format(series_id=series_id, api_key=_API_KEY, )

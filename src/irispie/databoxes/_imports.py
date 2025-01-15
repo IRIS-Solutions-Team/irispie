@@ -28,33 +28,33 @@ _DEFAULT_PERIOD_FROM_STRING = Period.from_sdmx_string
 @_dc.dataclass
 class _ImportBlock:
     r"""
-    ................................................................................
-    ==Import Block for Parsing CSV Data==
+................................................................................
+==Import Block for Parsing CSV Data==
 
-    Represents a logical block of data within a CSV file, consisting of 
-    periods, series names, and descriptions. This class helps in organizing 
-    and iterating through columns in a structured manner.
+Represents a logical block of data within a CSV file, consisting of 
+periods, series names, and descriptions. This class helps in organizing 
+and iterating through columns in a structured manner.
 
-    ### Attributes ###
-    - `row_index`: Row indices for the data rows.
-    - `periods`: Period objects representing the time span.
-    - `column_start`: Starting column index for the block.
-    - `num_columns`: Number of columns in the block.
-    - `names`: Names of the series within the block.
-    - `descriptions`: Descriptions of the series within the block.
+### Attributes ###
+- `row_index`: Row indices for the data rows.
+- `periods`: Period objects representing the time span.
+- `column_start`: Starting column index for the block.
+- `num_columns`: Number of columns in the block.
+- `names`: Names of the series within the block.
+- `descriptions`: Descriptions of the series within the block.
 
-    ### Example ###
-    ```python
-        block = _ImportBlock(
-            row_index=[0, 1, 2],
-            periods=[Period(...), ...],
-            column_start=0,
-            num_columns=3,
-            names=["Series1", "Series2"],
-            descriptions=["Description1", "Description2"]
-        )
-    ```
-    ................................................................................
+### Example ###
+```python
+    block = _ImportBlock(
+        row_index=[0, 1, 2],
+        periods=[Period(...), ...],
+        column_start=0,
+        num_columns=3,
+        names=["Series1", "Series2"],
+        descriptions=["Description1", "Description2"]
+    )
+```
+................................................................................
     """
     #[
     row_index: Iterable[int] | None = None,
@@ -64,29 +64,30 @@ class _ImportBlock:
     names: Iterable[str] | None = None,
     descriptions: Iterable[str] | None = None,
 
+    @_dm.reference(category="TBD", )
     def column_iterator(self, /, ):
         r"""
-        ................................................................................
-        ==Iterate Through Columns in the Block==
+................................................................................
+==Iterate Through Columns in the Block==
 
-        Yields the columns, names, and descriptions of series in this block. 
-        Columns marked with `*` are considered part of the same series.
+Yields the columns, names, and descriptions of series in this block. 
+Columns marked with `*` are considered part of the same series.
 
-        ### Input arguments ###
-        ???+ input
-            None
+### Input arguments ###
+???+ input
+    None
 
-        ### Returns ###
-        ???+ returns
-            `Iterable[tuple[list[int], str, str]]`: A generator yielding a tuple 
-            with columns, series name, and description.
+### Returns ###
+???+ returns
+    `Iterable[tuple[list[int], str, str]]`: A generator yielding a tuple 
+    with columns, series name, and description.
 
-        ### Example ###
-        ```python
-            for columns, name, description in block.column_iterator():
-                print(columns, name, description)
-        ```
-        ................................................................................
+### Example ###
+```python
+    for columns, name, description in block.column_iterator():
+        print(columns, name, description)
+```
+................................................................................
         """
         status = False
         names = self.names + [""]
@@ -110,18 +111,18 @@ class _ImportBlock:
 
 class Inlay:
     r"""
-    ................................................................................
-    ==Databox Import Inlay==
+................................................................................
+==Databox Import Inlay==
 
-    Provides methods for importing `Databox` objects from various file formats, 
-    such as CSV and pickle. Includes support for handling time series data, 
-    descriptions, and transformations.
+Provides methods for importing `Databox` objects from various file formats, 
+such as CSV and pickle. Includes support for handling time series data, 
+descriptions, and transformations.
 
-    ### Example ###
-    ```python
-        databox = Inlay.from_csv("data.csv", description_row=True)
-    ```
-    ................................................................................
+### Example ###
+```python
+    databox = Inlay.from_csv("data.csv", description_row=True)
+```
+................................................................................
     """
     #[
     @classmethod
@@ -145,52 +146,61 @@ class Inlay:
         databox_settings: dict = {},
     ) -> Self:
         r"""
-        ................................................................................
-        ==Create a Databox from a CSV File==
+................................................................................
+==Create a Databox from a CSV File==
 
-        Reads time series data from a CSV file and constructs a `Databox` 
-        object. Supports parsing metadata and transforming name rows.
+Reads time series data from a CSV file and constructs a `Databox` 
+object. Supports parsing metadata and transforming name rows.
 
-        ### Input arguments ###
-        ???+ input "file_name"
-            Path to the CSV file to be read.
+### Input arguments ###
+???+ input "file_name"
+    Path to the CSV file to be read.
 
-        ???+ input "period_from_string"
-            A callable for creating date objects from string representations. 
-            Defaults to a method based on the SDMX string format.
+???+ input "period_from_string"
+    A callable for creating date objects from string representations. 
+    Defaults to a method based on the SDMX string format.
 
-        ???+ input "start_period_only"
-            If `True`, only the start date of each time series is parsed from the 
-            CSV; subsequent periods are inferred based on frequency.
+???+ input "start_period_only"
+    If `True`, only the start date of each time series is parsed from the 
+    CSV; subsequent periods are inferred based on frequency.
 
-        ???+ input "description_row"
-            Indicates if the CSV contains a row for descriptions of the time series.
+???+ input "description_row"
+    Indicates if the CSV contains a row for descriptions of the time series.
 
-        ???+ input "delimiter"
-            Character used to separate values in the CSV file.
+???+ input "delimiter"
+    Character used to separate values in the CSV file.
 
-        ???+ input "name_row_transform"
-            A function to transform names in the name row of the CSV.
+???+ input "name_row_transform"
+    A function to transform names in the name row of the CSV.
 
-        ???+ input "csv_reader_settings"
-            Additional settings for the CSV reader.
+???+ input "csv_reader_settings"
+    Additional settings for the CSV reader.
 
-        ???+ input "numpy_reader_settings"
-            Settings for reading data into numpy arrays.
+???+ input "numpy_reader_settings"
+    Settings for reading data into numpy arrays.
 
-        ???+ input "databox_settings"
-            Settings for the Databox constructor.
+???+ input "databox_settings"
+    Settings for the Databox constructor.
 
-        ### Returns ###
-        ???+ returns "self"
-            A `Databox` populated with time series from the CSV file.
+### Returns ###
+???+ returns "self"
+    A `Databox` populated with time series from the CSV file.
 
-        ### Example ###
-        ```python
-            databox = Inlay.from_csv("data.csv", description_row=True)
-            print(databox)
-        ```
-        ................................................................................
+### Example ###
+```python
+    self = Databox.from_csv(
+        file_name,
+        *,
+        period_from_string=None,
+        start_period_only=False,
+        description_row=False,
+        delimiter=",",
+        csv_reader_settings={},
+        numpy_reader_settings={},
+        name_row_transform=None,
+    )
+```
+................................................................................
         """
         self = klass(**databox_settings, )
         #
@@ -227,31 +237,33 @@ class Inlay:
         return self
 
     @classmethod
+    @_dm.reference(category="TBD", )
     def from_sheet(klass, *args, **kwargs, ):
         r"""
-        ................................................................................
-        ==Alias for `from_csv`==
+................................................................................
+==Alias for `from_csv`==
 
-        Provides an alias for the `from_csv` method, enabling consistent naming 
-        for importing from different file formats.
+Provides an alias for the `from_csv` method, enabling consistent naming 
+for importing from different file formats.
 
-        ### Input arguments ###
-        ???+ input
-            Accepts all parameters of the `from_csv` method.
+### Input arguments ###
+???+ input
+    Accepts all parameters of the `from_csv` method.
 
-        ### Returns ###
-        ???+ returns
-            Same return values as the `from_csv` method.
+### Returns ###
+???+ returns
+    Same return values as the `from_csv` method.
 
-        ### Example ###
-        ```python
-            databox = Inlay.from_sheet("data.csv", description_row=True)
-        ```
-        ................................................................................
+### Example ###
+```python
+    databox = Inlay.from_sheet("data.csv", description_row=True)
+```
+................................................................................
         """
         return klass.from_csv(*args, **kwargs, )
 
     @classmethod
+    @_dm.reference(category="TBD", )
     def from_pickle(
         klass,
         file_name: str,
@@ -259,28 +271,28 @@ class Inlay:
         **kwargs,
     ) -> Self:
         r"""
-        ................................................................................
-        ==Load a Databox from a Pickle File==
+................................................................................
+==Load a Databox from a Pickle File==
 
-        Deserialize a `Databox` object from a pickle file, restoring its state.
+Deserialize a `Databox` object from a pickle file, restoring its state.
 
-        ### Input arguments ###
-        ???+ input "file_name"
-            Path to the pickle file to load the `Databox` from.
+### Input arguments ###
+???+ input "file_name"
+    Path to the pickle file to load the `Databox` from.
 
-        ???+ input "kwargs"
-            Additional arguments passed to the `pickle.load` function.
+???+ input "kwargs"
+    Additional arguments passed to the `pickle.load` function.
 
-        ### Returns ###
-        ???+ returns
-            A `Databox` object restored from the pickle file.
+### Returns ###
+???+ returns
+    A `Databox` object restored from the pickle file.
 
-        ### Example ###
-        ```python
-            databox = Inlay.from_pickle("data.pkl")
-            print(databox)
-        ```
-        ................................................................................
+### Example ###
+```python
+    databox = Inlay.from_pickle("data.pkl")
+    print(databox)
+```
+................................................................................
         """
         with open(file_name, "rb") as fid:
             return _pickle.load(fid, **kwargs, )
@@ -290,35 +302,35 @@ class Inlay:
 
 def _read_csv(file_name, num_header_rows, /, delimiter=",", **kwargs, ):
     r"""
-    ................................................................................
-    ==Read CSV File into List of Rows==
+................................................................................
+==Read CSV File into List of Rows==
 
-    Reads a CSV file and returns its contents as a list of rows, excluding 
-    non-ASCII characters from the file header.
+Reads a CSV file and returns its contents as a list of rows, excluding 
+non-ASCII characters from the file header.
 
-    ### Input arguments ###
-    ???+ input "file_name"
-        Path to the CSV file.
+### Input arguments ###
+???+ input "file_name"
+    Path to the CSV file.
 
-    ???+ input "num_header_rows"
-        Number of header rows to include in the result.
+???+ input "num_header_rows"
+    Number of header rows to include in the result.
 
-    ???+ input "delimiter"
-        Character used to separate fields in the CSV file.
+???+ input "delimiter"
+    Character used to separate fields in the CSV file.
 
-    ???+ input "kwargs"
-        Additional arguments passed to the CSV reader.
+???+ input "kwargs"
+    Additional arguments passed to the CSV reader.
 
-    ### Returns ###
-    ???+ returns
-        `list[list[str]]`: A list of rows, where each row is a list of strings.
+### Returns ###
+???+ returns
+    `list[list[str]]`: A list of rows, where each row is a list of strings.
 
-    ### Example ###
-    ```python
-        rows = _read_csv("data.csv", 2, delimiter=",")
-        print(rows)
-    ```
-    ................................................................................
+### Example ###
+```python
+    rows = _read_csv("data.csv", 2, delimiter=",")
+    print(rows)
+```
+................................................................................
     """
     #[
     with open(file_name, "rt", encoding="utf-8-sig", ) as fid:
@@ -329,25 +341,25 @@ def _read_csv(file_name, num_header_rows, /, delimiter=",", **kwargs, ):
 
 def _remove_nonascii_from_start(string, /, ):
     r"""
-    ................................................................................
-    ==Remove Non-ASCII Characters from String Start==
+................................................................................
+==Remove Non-ASCII Characters from String Start==
 
-    Removes non-ASCII characters from the beginning of a string.
+Removes non-ASCII characters from the beginning of a string.
 
-    ### Input arguments ###
-    ???+ input "string"
-        The string to process.
+### Input arguments ###
+???+ input "string"
+    The string to process.
 
-    ### Returns ###
-    ???+ returns
-        `str`: The cleaned string with non-ASCII characters removed from the start.
+### Returns ###
+???+ returns
+    `str`: The cleaned string with non-ASCII characters removed from the start.
 
-    ### Example ###
-    ```python
-        clean_string = _remove_nonascii_from_start("©Data")
-        print(clean_string)  # Output: "Data"
-    ```
-    ................................................................................
+### Example ###
+```python
+    clean_string = _remove_nonascii_from_start("©Data")
+    print(clean_string)  # Output: "Data"
+```
+................................................................................
     """
     #[
     while string and not string[0].isascii():
@@ -365,39 +377,39 @@ def _block_iterator(
     /,
 ):
     r"""
-    ................................................................................
-    ==Iterate Through Data Blocks in a CSV==
+................................................................................
+==Iterate Through Data Blocks in a CSV==
 
-    Identify and yield blocks of data within a CSV file based on series 
-    names, descriptions, and date columns.
+Identify and yield blocks of data within a CSV file based on series 
+names, descriptions, and date columns.
 
-    ### Input arguments ###
-    ???+ input "name_row"
-        The row containing series names.
+### Input arguments ###
+???+ input "name_row"
+    The row containing series names.
 
-    ???+ input "description_row"
-        The row containing series descriptions.
+???+ input "description_row"
+    The row containing series descriptions.
 
-    ???+ input "data_rows"
-        The rows containing data values.
+???+ input "data_rows"
+    The rows containing data values.
 
-    ???+ input "period_from_string"
-        Callable to parse period strings into `Period` objects.
+???+ input "period_from_string"
+    Callable to parse period strings into `Period` objects.
 
-    ???+ input "start_period_only"
-        If `True`, only the start date of the series is processed.
+???+ input "start_period_only"
+    If `True`, only the start date of the series is processed.
 
-    ### Returns ###
-    ???+ returns
-        `Iterable[_ImportBlock]`: A generator yielding `_ImportBlock` objects 
-        for each identified data block.
+### Returns ###
+???+ returns
+    `Iterable[_ImportBlock]`: A generator yielding `_ImportBlock` objects 
+    for each identified data block.
 
-    ### Example ###
-    ```python
-        for block in _block_iterator(name_row, desc_row, data_rows, parser, False):
-            print(block)
-    ```
-    ................................................................................
+### Example ###
+```python
+    for block in _block_iterator(name_row, desc_row, data_rows, parser, False):
+        print(block)
+```
+................................................................................
     """
     #[
     def _is_end(cell, /, ) -> bool:
@@ -451,40 +463,40 @@ def _extract_periods_from_data_rows(
     /,
 ) -> tuple[tuple[int], tuple[Period]]:
     r"""
-    ................................................................................
-    ==Extract Periods from Data Rows==
+................................................................................
+==Extract Periods from Data Rows==
 
-    Parses the data rows to extract indices and periods for a specific frequency 
-    and column. Handles both complete and inferred period sequences.
+Parses the data rows to extract indices and periods for a specific frequency 
+and column. Handles both complete and inferred period sequences.
 
-    ### Input arguments ###
-    ???+ input "data_rows"
-        Rows containing the data values.
+### Input arguments ###
+???+ input "data_rows"
+    Rows containing the data values.
 
-    ???+ input "frequency"
-        Frequency of the periods (e.g., yearly, monthly).
+???+ input "frequency"
+    Frequency of the periods (e.g., yearly, monthly).
 
-    ???+ input "column"
-        Column index in the rows that contains date values.
+???+ input "column"
+    Column index in the rows that contains date values.
 
-    ???+ input "period_from_string"
-        Callable to parse date strings into `Period` objects.
+???+ input "period_from_string"
+    Callable to parse date strings into `Period` objects.
 
-    ???+ input "start_period_only"
-        If `True`, only the first date is parsed; subsequent periods are inferred.
+???+ input "start_period_only"
+    If `True`, only the first date is parsed; subsequent periods are inferred.
 
-    ### Returns ###
-    ???+ returns
-        `tuple[tuple[int], tuple[Period]]`: A tuple containing:
-        - Row indices of valid periods.
-        - Corresponding `Period` objects.
+### Returns ###
+???+ returns
+    `tuple[tuple[int], tuple[Period]]`: A tuple containing:
+    - Row indices of valid periods.
+    - Corresponding `Period` objects.
 
-    ### Example ###
-    ```python
-        indices, periods = _extract_periods_from_data_rows(data_rows, Frequency.MONTHLY, 0, parser, False)
-        print(indices, periods)
-    ```
-    ................................................................................
+### Example ###
+```python
+    indices, periods = _extract_periods_from_data_rows(data_rows, Frequency.MONTHLY, 0, parser, False)
+    print(indices, periods)
+```
+................................................................................
     """
     #[
     start_date = period_from_string(data_rows[0][column], frequency=frequency, )
@@ -503,38 +515,38 @@ def _extract_periods_from_data_rows(
 
 def _read_array_for_block(file_name, block, num_header_rows, /, delimiter=",", **kwargs, ):
     r"""
-    ................................................................................
-    ==Read Data Array for a Block==
+................................................................................
+==Read Data Array for a Block==
 
-    Reads a block of data from the CSV file into a NumPy array. Handles column 
-    selection and header skipping.
+Reads a block of data from the CSV file into a NumPy array. Handles column 
+selection and header skipping.
 
-    ### Input arguments ###
-    ???+ input "file_name"
-        Path to the CSV file.
+### Input arguments ###
+???+ input "file_name"
+    Path to the CSV file.
 
-    ???+ input "block"
-        The `_ImportBlock` object defining the data block.
+???+ input "block"
+    The `_ImportBlock` object defining the data block.
 
-    ???+ input "num_header_rows"
-        Number of header rows to skip.
+???+ input "num_header_rows"
+    Number of header rows to skip.
 
-    ???+ input "delimiter"
-        Character used to separate fields in the CSV file.
+???+ input "delimiter"
+    Character used to separate fields in the CSV file.
 
-    ???+ input "kwargs"
-        Additional arguments passed to `numpy.genfromtxt`.
+???+ input "kwargs"
+    Additional arguments passed to `numpy.genfromtxt`.
 
-    ### Returns ###
-    ???+ returns
-        `numpy.ndarray`: The data block read into a NumPy array.
+### Returns ###
+???+ returns
+    `numpy.ndarray`: The data block read into a NumPy array.
 
-    ### Example ###
-    ```python
-        array = _read_array_for_block("data.csv", block, 2, delimiter=",")
-        print(array)
-    ```
-    ................................................................................
+### Example ###
+```python
+    array = _read_array_for_block("data.csv", block, 2, delimiter=",")
+    print(array)
+```
+................................................................................
     """
     #[
     skip_header = num_header_rows
@@ -545,30 +557,30 @@ def _read_array_for_block(file_name, block, num_header_rows, /, delimiter=",", *
 
 def _add_series_for_block(self, block, array, /, ):
     r"""
-    ................................................................................
-    ==Add Series for a Data Block==
+................................................................................
+==Add Series for a Data Block==
 
-    Converts data from an array into `Series` objects and adds them to the `Databox`.
+Converts data from an array into `Series` objects and adds them to the `Databox`.
 
-    ### Input arguments ###
-    ???+ input "self"
-        The `Databox` object to which the series will be added.
+### Input arguments ###
+???+ input "self"
+    The `Databox` object to which the series will be added.
 
-    ???+ input "block"
-        The `_ImportBlock` object defining the block of data.
+???+ input "block"
+    The `_ImportBlock` object defining the block of data.
 
-    ???+ input "array"
-        The NumPy array containing the data for the block.
+???+ input "array"
+    The NumPy array containing the data for the block.
 
-    ### Returns ###
-    ???+ returns
-        None: This function updates the `Databox` in-place.
+### Returns ###
+???+ returns
+    None: This function updates the `Databox` in-place.
 
-    ### Example ###
-    ```python
-        _add_series_for_block(databox, block, array)
-    ```
-    ................................................................................
+### Example ###
+```python
+    _add_series_for_block(databox, block, array)
+```
+................................................................................
     """
     #[
     array = array[block.row_index, :]
@@ -584,28 +596,28 @@ def _apply_name_row_transform(
     /,
 ) -> list[str]:
     r"""
-    ................................................................................
-    ==Transform Name Row==
+................................................................................
+==Transform Name Row==
 
-    Applies a transformation function to each name in the name row of a CSV file.
+Applies a transformation function to each name in the name row of a CSV file.
 
-    ### Input arguments ###
-    ???+ input "name_row"
-        List of names in the name row.
+### Input arguments ###
+???+ input "name_row"
+    List of names in the name row.
 
-    ???+ input "name_row_transform"
-        Function to apply to each name.
+???+ input "name_row_transform"
+    Function to apply to each name.
 
-    ### Returns ###
-    ???+ returns
-        `list[str]`: A list of transformed names.
+### Returns ###
+???+ returns
+    `list[str]`: A list of transformed names.
 
-    ### Example ###
-    ```python
-        transformed = _apply_name_row_transform(["Name1", "Name2"], str.upper)
-        print(transformed)  # Output: ["NAME1", "NAME2"]
-    ```
-    ................................................................................
+### Example ###
+```python
+    transformed = _apply_name_row_transform(["Name1", "Name2"], str.upper)
+    print(transformed)  # Output: ["NAME1", "NAME2"]
+```
+................................................................................
     """
     return [ name_row_transform(s) for s in name_row ]
 
@@ -616,31 +628,31 @@ def _resolve_legacy_option(
     warning_message: str,
 ):
     r"""
-    ................................................................................
-    ==Resolve Legacy Option==
+................................................................................
+==Resolve Legacy Option==
 
-    Resolves and deprecates legacy options by warning users of the updated parameter.
+Resolves and deprecates legacy options by warning users of the updated parameter.
 
-    ### Input arguments ###
-    ???+ input "option"
-        The new option value.
+### Input arguments ###
+???+ input "option"
+    The new option value.
 
-    ???+ input "legacy"
-        The legacy option value.
+???+ input "legacy"
+    The legacy option value.
 
-    ???+ input "warning_message"
-        Warning message displayed if the legacy option is used.
+???+ input "warning_message"
+    Warning message displayed if the legacy option is used.
 
-    ### Returns ###
-    ???+ returns
-        The resolved option value.
+### Returns ###
+???+ returns
+    The resolved option value.
 
-    ### Example ###
-    ```python
-        resolved = _resolve_legacy_option(None, legacy_value, "Use the new option.")
-        print(resolved)
-    ```
-    ................................................................................
+### Example ###
+```python
+    resolved = _resolve_legacy_option(None, legacy_value, "Use the new option.")
+    print(resolved)
+```
+................................................................................
     """
     if (option is None) and (legacy is not None):
         _wa.warn(warning_message, FutureWarning, )
