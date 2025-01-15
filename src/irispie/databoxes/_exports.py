@@ -323,7 +323,7 @@ class Inlay:
             return
 
     def to_sheet(self, *args, **kwargs, ):
-                r"""
+        r"""
         ................................................................................
         ==Alias for `to_csv`==
 
@@ -383,7 +383,7 @@ class Inlay:
 
 
 def _get_frequency_mark(frequency, ):
-        """
+    """
     ................................................................................
     ==Retrieve Frequency Mark==
 

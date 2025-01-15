@@ -60,9 +60,6 @@ class SteadyDataboxableProtocol(Protocol):
     max_lag: int
     max_lead: int
     def generate_steady_items(self, *args) -> Any: ...
-        """
-        Generate items with steady lag and lead properties.
-        """
     #]
 
 
@@ -599,49 +596,49 @@ of the numeric array.
         target_names: TargetNames = None,
         strict_names: bool = False,
     ) -> Self:
-       r"""
-................................................................................
+        r"""
+        ................................................................................
 
-==Create a copy of the Databox==
+        ==Create a copy of the Databox==
 
-Produce a deep copy of the Databox, with options to filter and rename items 
-during the duplication process.
-        This method is particularly useful when creating subsets or alternative 
-        versions of the data without affecting the original.
+        Produce a deep copy of the Databox, with options to filter and rename items 
+        during the duplication process.
+                This method is particularly useful when creating subsets or alternative 
+                versions of the data without affecting the original.
 
-    new_databox = self.copy(
-        source_names=None,
-        target_names=None,
-        strict_names=False,
-    )
-
-
-### Input arguments ###
+            new_databox = self.copy(
+                source_names=None,
+                target_names=None,
+                strict_names=False,
+            )
 
 
-???+ input "source_names"
-    Names of the items to include in the copy. Can be a list of names, a single 
-    name, a callable returning `True` for names to include, or `None` to copy 
-    all items.
-
-???+ input "target_names"
-    New names for the copied items, corresponding to 'source_names'. Can be a 
-    list of names, a single name, or a callable function taking a source name 
-    and returning the new target name.
-
-???+ input "strict_names"
-    If set to `True’, strictly adheres to the provided names, raising an error 
-    if any source name is not found in the Databox.
+        ### Input arguments ###
 
 
-### Returns ###
+        ???+ input "source_names"
+            Names of the items to include in the copy. Can be a list of names, a single 
+            name, a callable returning `True` for names to include, or `None` to copy 
+            all items.
+
+        ???+ input "target_names"
+            New names for the copied items, corresponding to 'source_names'. Can be a 
+            list of names, a single name, or a callable function taking a source name 
+            and returning the new target name.
+
+        ???+ input "strict_names"
+            If set to `True’, strictly adheres to the provided names, raising an error 
+            if any source name is not found in the Databox.
 
 
-???+ returns "new_databox"
-    A new Databox instance that is a deep copy of the current one, containing 
-    either all items or only those specified.
+        ### Returns ###
 
-................................................................................
+
+        ???+ returns "new_databox"
+            A new Databox instance that is a deep copy of the current one, containing 
+            either all items or only those specified.
+
+        ................................................................................
         """
         new_databox = _co.deepcopy(self, )
         if source_names is None and target_names is None:
