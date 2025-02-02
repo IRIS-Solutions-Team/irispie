@@ -32,7 +32,6 @@ from .. import wrongdoings as _wrongdoings
 from . import _imports as _imports
 from . import _exports as _exports
 from . import _merge as _merge
-from . import _dotters as _dotters
 from . import _fred as _fred
 from . import _views as _views
 
@@ -82,10 +81,11 @@ def _extended_span_tuple_from_base_span(
 @_dm.reference(
     path=("data_management", "databoxes.md", ),
     categories={
-        "constructor": "Creating new databoxes",
-        "information": "Getting information about databoxes",
-        "manipulation": "Manipulating databoxes",
-        "import_export": "Importing and exporting databoxes",
+        "constructor": "Creating a new databox",
+        "information": "Getting information about a databox",
+        "manipulation": "Manipulating a databox",
+        "multiple": "Manipulating multiple databoxes",
+        "import_export": "Importing and exporting a databox",
     },
 )
 class Databox(
@@ -93,7 +93,6 @@ class Databox(
     _exports.Inlay,
     _merge.Inlay,
     _views.Inlay,
-    _dotters.DotterMixin,
     _fred.FredMixin,
     _descriptions.DescriptionMixin,
     dict,
@@ -125,7 +124,6 @@ batch processing, importing and exporting data, and more.
         """
         """
         super().__init__(*args, **kwargs, )
-        self._dotters = []
         self.__description__ = ""
 
     @classmethod

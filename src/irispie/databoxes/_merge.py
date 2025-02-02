@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import (TYPE_CHECKING, )
 import warnings as _wa
+import documark as _dm
 
 from .. import wrongdoings as _wrongdoings
 from ..series import main as _series
@@ -36,15 +37,17 @@ class Inlay:
         out.merge(databoxes, merge_strategy, )
         return out
 
+    @_dm.reference(category="multiple", )
     def merge(
         self: Self,
-        other: Iterable[Self] | Self,
+        other: Self | Iterable[Self],
         merge_strategy: MergeStrategyType = "hstack",
-        #
+        # Do not include the following in the docstring
         action = None,
         **kwargs,
     ) -> None:
-        """
+        r"""
+        To be completed
         """
         # Legacy name
         if action is not None:
@@ -138,9 +141,9 @@ _MERGE_STRATEGY = {
     "hstack": _merge_hstack,
     "replace": _merge_replace,
     "discard": _merge_discard,
-    "silent": _merge_report,
-    "warning": _merge_report,
-    "error": _merge_report,
-    "critical": _merge_report,
+    "silent": _merge_report, # Equivalent to discard
+    "warning": _merge_report, # Equivalent to discard with a warning
+    "error": _merge_report, # Throws an error for the first duplicate key
+    "critical": _merge_report, # Throws an error for the first duplicate key
 }
 

@@ -7,3 +7,4 @@ env_irispie/dist/
 dist/
 
 .ipynb*
+*.zip

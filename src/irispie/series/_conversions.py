@@ -34,6 +34,7 @@ _builtin_sum = sum
 
 
 _DEFAULT_METHOD = "mean"
+_DEFAULT_DISCARD_MISSING = False
 
 
 class Inlay:
@@ -47,8 +48,10 @@ class Inlay:
         target_freq: _dates.Frequency,
         /,
         method: Literal["mean", "sum", "first", "last", "min", "max"] | Callable | None = None,
-        remove_missing: bool = False,
+        discard_missing: bool | None = None,
         select: list[int] | None = None,
+        # Do not include the following in the docstring
+        remove_missing: bool | None = None, # Legacy
     ) -> None:
         """
 ················································································
@@ -63,7 +66,7 @@ class Inlay:
         target_freq,
         /,
         method="mean",
-        remove_missing=False,
+        discard_missing=False,
         select=None,
     )
 
@@ -74,7 +77,7 @@ class Inlay:
         target_freq,
         /,
         method="mean",
-        remove_missing=False,
+        discard_missing=False,
         select=None,
     )
 
@@ -99,7 +102,7 @@ class Inlay:
     | "min"     | Minimum of high-frequency values
     | "max"     | Maximum of high-frequency values
 
-???+ input "remove_missing"
+???+ input "discard_missing"
     Remove missing values from the high-frequency data before
     applying the aggregation `method`.
 
@@ -118,6 +121,12 @@ class Inlay:
 
 ················································································
         """
+        # Resolve legacy options
+        if remove_missing is not None and discard_missing is None:
+            discard_missing = remove_missing
+        if discard_missing is None:
+            discard_missing = _DEFAULT_DISCARD_MISSING
+        #
         method = method or _DEFAULT_METHOD
         method_func = (
             _AGGREGATION_METHOD_RESOLUTION[method]
@@ -134,7 +143,7 @@ class Inlay:
         aggregate_within_data_func = _ft.partial(
             _aggregate_within_data,
             select,
-            remove_missing,
+            discard_missing,
             method_func,
         )
         #
@@ -396,7 +405,7 @@ def _disaggregate_last(
 
 def _aggregate_within_data(
     select: list[int] | None,
-    remove_missing: bool,
+    discard_missing: bool,
     method_func: Callable,
     within_data: _np.ndarray,
     /,
@@ -407,7 +416,7 @@ def _aggregate_within_data(
     if select is not None:
         select = tuple(select)
         within_data = within_data[select]
-    if remove_missing:
+    if discard_missing:
         within_data = within_data[~_np.isnan(within_data)]
     return method_func(within_data) if within_data.size > 0 else _np.nan
     #]
