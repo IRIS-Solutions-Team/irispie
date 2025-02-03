@@ -64,10 +64,10 @@ _DEFAULT_SOLUTION_TOLERANCE = 1e-12
 @_dm.reference(
     path=("structural_models", "simultaneous.md", ),
     categories={
-        "constructor": "Creating new simultaneous models",
-        "filtering": "Applying structural filters on models",
-        "information": "Getting information about models",
-        "parameters": "Manipulating model parameters",
+        "constructor": "Creating new Simultaneous models",
+        "information": "Getting information about Simultaneous models",
+        "filtering": "Applying structural filters on Simultaneous models",
+        "parameters": "Manipulating Simultaneous model parameters",
         "property": None,
     },
 )

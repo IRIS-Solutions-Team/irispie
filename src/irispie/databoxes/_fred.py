@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import (Iterable, )
 import requests as _rq
+import documark as _dm
 
 from .. import dates as _dates
 from ..dates import (Frequency, )
@@ -31,18 +32,47 @@ _PARAMETERS = r"?series_id={series_id}&api_key={api_key}&file_type=json"
 _MISSING_VALUE = r"."
 
 
-class FredMixin:
+class Inlay:
     """
     """
     #[
 
     @classmethod
+    @_dm.reference(category="api", )
     def from_fred(
         klass,
         mapper: Iterable[str] | dict[str, str],
         /,
     ) -> _databoxes.Databox:
-        """
+        r"""
+................................................................................
+
+==Download time series from FRED (St Louis Fed Database)==
+
+This method downloads time series data from the FRED database. The data is
+downloaded using the FRED API. The method requires an API key, which is provided
+by the FRED website. The API key is stored in the `_API_KEY` variable in the
+`_fred.py` module. The method downloads the data for the specified series IDs
+and returns a `Databox` object with the downloaded series.
+
+    db = Databox.from_fred(
+        mapper,
+    )
+
+### Input arguments ###
+
+???+ input "mapper"
+    A dictionary or list of series IDs to download from FRED. If a dictionary is
+    provided, the keys are used as the FRED codes and the values are used for
+    the names of the time series in the Databox. If list of strings is provided,
+    the series IDs are used as the names of the series in the `Databox` object.
+
+### Returns ###
+
+???+ returns "db"
+    A `Databox` object containing the downloaded time series data.
+
+................................................................................
         """
         self = klass()
         if not isinstance(mapper, dict):

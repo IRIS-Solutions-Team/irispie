@@ -132,6 +132,7 @@ def _get_date_positions(dates, base, num_periods, /, ):
     categories={
         "constructor": "Constructing new time series",
         "conversion": "Converting time series frequency",
+        "information": "Getting information about time series",
         "manipulation": "Manipulating time series values",
         "homogenizing": "Homogenizing and extrapolating time series",
         "filtering": "Filtering time series",

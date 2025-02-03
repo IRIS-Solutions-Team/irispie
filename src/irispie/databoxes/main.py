@@ -16,7 +16,6 @@ import types as _ty
 import numpy as _np
 import re as _re
 import operator as _op
-import functools as _ft
 import itertools as _it
 import os as _os
 import documark as _dm
@@ -81,11 +80,14 @@ def _extended_span_tuple_from_base_span(
 @_dm.reference(
     path=("data_management", "databoxes.md", ),
     categories={
-        "constructor": "Creating a new databox",
-        "information": "Getting information about a databox",
-        "manipulation": "Manipulating a databox",
-        "multiple": "Manipulating multiple databoxes",
-        "import_export": "Importing and exporting a databox",
+        "constructor": "Creating a new Databox",
+        "copying": "Copying and converting a Databox",
+        "api": "Acquiring data via third-party APIs",
+        "information": "Getting information about a Databox",
+        "manipulation": "Manipulating a Databox",
+        "evaluation": "Evaluating a Databox",
+        "multiple": "Manipulating multiple Databoxes",
+        "import_export": "Importing and exporting a Databox",
     },
 )
 class Databox(
@@ -93,7 +95,7 @@ class Databox(
     _exports.Inlay,
     _merge.Inlay,
     _views.Inlay,
-    _fred.FredMixin,
+    _fred.Inlay,
     _descriptions.DescriptionMixin,
     dict,
 ):
@@ -389,9 +391,30 @@ yet to be added to the Databox.
         """==Number of items in the databox=="""
         return len(self.keys())
 
+    @_dm.reference(category="copying", )
     def to_dict(self: Self) -> dict:
-        """
-        Convert Databox to dict
+        r"""
+................................................................................
+
+==Convert a Databox to a plain dictionary==
+
+Convert a Databox to a standard Python dictionary, with the keys and values
+retained. This method is useful for converting a Databox to a format that can be
+used with other Python libraries or functions.
+
+    diction = self.to_dict()
+
+### Input arguments ###
+
+???+ input "self"
+    The Databox object to convert to a dictionary.
+
+### Returns ###
+
+???+ returns "diction"
+    A dictionary containing the items from the Databox.
+
+................................................................................
         """
         return { k: v for k, v in self.items() }
 
@@ -467,6 +490,7 @@ during the duplication process.
             else not self.get_missing_names(names, )
         )
 
+    @_dm.reference(category="copying", )
     def shallow(
         self: Self,
         /,
@@ -474,7 +498,47 @@ during the duplication process.
         target_names: TargetNames = None,
         strict_names: bool = False,
     ) -> Self:
-        """
+        r"""
+................................................................................
+
+==Create a shallow copy of the Databox==
+
+Generate a shallow copy of the Databox, with options to filter and rename items
+during the duplication process. A shallow copy retains the original items and
+references, but does not copy the items themselves.
+
+    shallow_databox = self.shallow(
+        source_names=None,
+        target_names=None,
+        strict_names=False,
+    )
+
+### Input arguments ###
+
+???+ input "self"
+    The Databox object to copy.
+
+???+ input "source_names"
+    Names of the items to include in the copy. Can be a list of names, a single
+    name, a callable returning `True` for names to include, or `None` to copy
+    all items.
+
+???+ input "target_names"
+    New names for the copied items, corresponding to 'source_names'. Can be a
+    list of names, a single name, or a callable function taking a source name
+    and returning the new target name.
+
+???+ input "strict_names"
+    If set to `True`, strictly adheres to the provided names, raising an error
+    if any source name is not found in the Databox.
+
+### Returns ###
+
+???+ returns "shallow_databox"
+    A new Databox instance that is a shallow copy of the current one, containing
+    either all items or only those specified.
+
+................................................................................
         """
         source_names, target_names, *_ = self._resolve_source_target_names(
             source_names, target_names, strict_names,
@@ -484,6 +548,7 @@ during the duplication process.
             for s, t in zip(source_names, target_names, )
         )
 
+    @_dm.no_reference
     def print_contents(
         self,
         source_names: SourceNames = None,
@@ -926,12 +991,43 @@ Get the encompassing date span for all time series with a specified frequency.
         max_end_date = max(end_periods, key=_op.attrgetter("serial"), )
         return Span(min_start_date, max_end_date, )
 
+    @_dm.reference(category="import_export", )
     def to_json(self, file_name, **kwargs):
-        """
+        r"""
+................................................................................
+
+==Save a Databox to a JSON file==
+
+Save a Databox to a JSON file, preserving the structure and data of the Databox
+object. This method is useful for storing Databoxes in a format that can be
+easily shared or imported into other applications.
+
+    self.to_json(
+        file_name,
+        **kwargs,
+    )
+
+### Input arguments ###
+
+???+ input "self"
+    The Databox object to save to a JSON file.
+
+???+ input "file_name"
+    Path to the JSON file where the Databox will be saved.
+
+???+ input "**kwargs"
+    Additional keyword arguments to pass to the JSON encoder.
+
+### Returns ###
+
+Returns `None`; the Databox is saved to the specified JSON file.
+
+................................................................................
         """
         with open(file_name, "wt+") as f:
             return _js.dump(self, f, **kwargs)
 
+    @_dm.reference(category="multiple", )
     def overlay(
         self,
         other: Self,
@@ -939,9 +1035,60 @@ Get the encompassing date span for all time series with a specified frequency.
         **kwargs,
     ) -> None:
         """
-        """
+................................................................................
+
+
+==Overlay another Databox time series onto the ones in the current Databox==
+
+Overlay another Databox's time series onto the corresponding time series in the
+current Databox, aligning and incorporating data series using the `overlay`
+method defined in the Series class. This operation modifies the current Databox
+in-place by applying the overlay technique to each individual series that exists
+in both Databoxes.
+
+    self.overlay(
+        other,
+        names=None,
+        strict_names=False,
+    )
+
+
+### Input arguments ###
+
+???+ input "self"
+    The Databox onto which the overlay will be applied. It contains the original
+    time series data.
+
+???+ input "other"
+    The Databox that provides the time series to overlay onto `self`. Only
+    series present in both Databoxes will be affected.
+
+???+ input "names"
+    An optional iterable of names to overlay. If `None`, the overlay operation
+    is attempted on all time series present in both Databoxes.
+
+???+ input "strict_names"
+    If `True`, the names provided in `names` are strictly adhered to, and an
+    error is raised if any name is not found in both Databoxes.
+
+
+### Returns ###
+
+This method modifies the Databox in place and returns `None`.
+
+
+### Details ###
+
+The `overlay` method ensures that corresponding time series in both the source
+Databox and the other Databox are merged based on the overlay logic determined
+by the Series class.
+
+
+................................................................................
+"""
         self._lay(other, Series.overlay, **kwargs)
 
+    @_dm.reference(category="multiple", )
     def underlay(
         self,
         other: Self,
@@ -949,6 +1096,56 @@ Get the encompassing date span for all time series with a specified frequency.
         **kwargs,
     ) -> None:
         """
+................................................................................
+
+
+==Underlay another Databox time series beneath those in the current Databox==
+
+Underlay another Databox's time series beneath the corresponding times series in
+the current Databox, aligning and incorporating data series using the `underlay`
+method defined in the Series class. This operation modifies the current Databox
+in-place by applying the underlay technique to each individual series that
+exists in both Databoxes.
+
+    self.underlay(
+        other,
+        names=None,
+        strict_names=False,
+    )
+
+
+### Input arguments ###
+
+???+ input "self"
+    The Databox beneath which the underlay will be applied. It contains the original
+    time series data.
+
+???+ input "other"
+    The Databox that provides the time series to underlay beneta `self`. Only
+    series present in both Databoxes will be affected.
+
+???+ input "names"
+    An optional iterable of names to underlay. If `None`, the underlay operation
+    is attempted on all time series present in both Databoxes.
+
+???+ input "strict_names"
+    If `True`, the names provided in `names` are strictly adhered to, and an
+    error is raised if any name is not found in both Databoxes.
+
+
+### Returns ###
+
+This method modifies the Databox in place and returns `None`.
+
+
+### Details ###
+
+The `underlay` method ensures that corresponding time series in both the source
+Databox and the other Databox are merged based on the underlay logic determined
+by the Series class.
+
+
+................................................................................
         """
         self._lay(other, Series.underlay, **kwargs)
 
@@ -977,6 +1174,7 @@ Get the encompassing date span for all time series with a specified frequency.
                 continue
             func(self[n], other[n], **kwargs, )
 
+    @_dm.reference(category="manipulation", )
     def clip(
         self,
         /,
@@ -984,6 +1182,45 @@ Get the encompassing date span for all time series with a specified frequency.
         new_end_date: Period | None = None,
     ) -> None:
         """
+................................................................................
+
+
+==Clip the span of time series in a Databox==
+
+Adjust the time series in a Databox by clipping them to a new specified start
+and/or end date. This allows for refining the data span within which the series
+operate, based on given periods.
+
+    self.clip(
+        new_start_date=None,
+        new_end_date=None,
+    )
+
+
+### Input arguments ###
+
+
+???+ input "new_start_date"
+    The new start date for clipping the series. If `None`, only `new_end_date`
+    is considered.
+
+???+ input "new_end_date"
+    The new end date for clipping the series. If `None`, only `new_start_date`
+    is considered.
+
+
+### Returns ###
+
+This method modifies the databox in place and returns `None`.
+
+
+### Details ###
+
+The `clip` method adjusts only those time series in the Databox that match the
+time frequency of the `new_start_date` and/or `new_end_date`. All other series
+are left unchanged.
+
+................................................................................
         """
         if new_start_date is None and new_end_date is None:
             return
@@ -997,18 +1234,54 @@ Get the encompassing date span for all time series with a specified frequency.
         for n in names:
             self[n].clip(new_start_date, new_end_date, )
 
+    @_dm.reference(category="multiple", )
     def prepend(
         self,
-        prepending: Self,
+        other: Self,
         end_prepending: Period,
         /,
     ) -> Self:
         """
-        """
-        prepending = prepending.copy()
-        prepending.clip(None, end_prepending, )
-        self.underlay(prepending, )
+................................................................................
 
+==Prepend time series data to a Databox==
+
+Add time series data from another Databox to the beginning of the current
+Databox, up to a specified end date.
+
+    self.prepend(
+        other,
+        end_prepending,
+    )
+
+### Input arguments ###
+
+???+ input "self"
+    The Databox to which the time series data will be added.
+
+???+ input "other"
+    The Databox containing the time series data to prepend to `self`.
+
+???+ input "end_prepending"
+    The end date up to which the time series data from the `other` Databox will
+    be added to `self`.
+
+### Returns ###
+
+This method modifies the Databox in place and returns `None`.
+
+### Details ###
+
+This method uses the `underlay` method to add the time series data from the
+`other` Databox to the beginning of the `self` Databox.
+
+................................................................................
+        """
+        other = other.copy()
+        other.clip(None, end_prepending, )
+        self.underlay(other, )
+
+    @_dm.reference(category="evaluation", )
     def evaluate_expression(
         self,
         expression: str,
@@ -1016,6 +1289,49 @@ Get the encompassing date span for all time series with a specified frequency.
         context: dict[str, Any] | None = None,
     ) -> Any:
         """
+................................................................................
+
+
+==Evaluate an expression within a Databox context==
+
+Evaluate a given string expression using the entries in the Databox as 
+contextual variables. This method first checks if the expression directly 
+matches an entry name within the Databox; if not, it attempts to evaluate the 
+expression using Python's `eval()` with the current entries as the variable 
+context.
+
+    result = self.evaluate_expression(
+        expression,
+        context=None,
+    )
+
+Shortcut syntax:
+
+    result = self(expression, context=None)
+
+
+### Input arguments ###
+
+
+???+ input "expression"
+    The string expression to evaluate. If the expression matches an item name 
+    in the Databox, the corresponding item is returned without further 
+    evaluation.
+
+???+ input "context"
+    An optional dictionary providing additional context for evaluation. Can 
+    include variables that are not present directly in the Databox.
+
+
+### Returns ###
+
+
+???+ returns "result"
+    The result of the evaluated expression, which can be any valid Python data 
+    type based on the content of the expression and available context.
+
+
+................................................................................
         """
         expression = expression.strip()
         if expression in self:
@@ -1023,6 +1339,7 @@ Get the encompassing date span for all time series with a specified frequency.
         else:
             return self.eval(expression, context, )
 
+    @_dm.no_reference
     def eval(
         self,
         expression: str,
@@ -1043,9 +1360,10 @@ Get the encompassing date span for all time series with a specified frequency.
     ) -> Any:
         """
         """
-        return self.eval(expression, context, )
+        return self.evaluate_expression(expression, context, )
 
     @classmethod
+    @_dm.reference(category="constructor", )
     def steady(
         klass,
         steady_databoxable: SteadyDataboxableProtocol,
@@ -1056,7 +1374,50 @@ Get the encompassing date span for all time series with a specified frequency.
         prepend_initial: bool = True,
         append_terminal: bool = True,
     ) -> Self:
-        """
+        r"""
+................................................................................
+
+
+==Create a steady-state Databox for a model==
+
+
+Create a Databox with steady-state values for a model, based on the provided
+model object and the time span. This method generates steady-state time series
+data for each item in the model. This constructor can be used for models that
+have well-defined steady state, i.e. Simultaneous models and
+VectorAutoregression models.
+
+
+    steady_databox = self.steady(
+        model,
+        span,
+        deviation=False,
+    )
+
+
+### Input arguments ###
+
+
+???+ input "model"
+    The model object for which to generate steady-state time series data.
+
+
+???+ input "span"
+    The time span for which to generate steady-state time series data.
+
+???+ input "deviation"
+    If `True`, the steady-state values are generated as deviations from the
+    steady state in the form depending on the log status of each variable. If
+    `False`, the steady-state values are generated in their original level form.
+
+
+### Returns ###
+
+???+ returns "steady_databox"
+    A Databox containing steady-state time series for the `model`.
+
+
+................................................................................
         """
         self = klass()
         start, end = _extended_span_tuple_from_base_span(
@@ -1072,14 +1433,66 @@ Get the encompassing date span for all time series with a specified frequency.
         )
         return klass({ k: v for k, v in items })
 
-    zero = _ft.partialmethod(steady, deviation=True, )
+    def zero(
+        klass,
+        steady_databoxable: SteadyDataboxableProtocol,
+        span: Iterable[Period],
+        /,
+        **kwargs,
+    ) -> Self:
+        r"""
+................................................................................
 
+
+==Create a zero-state Databox for a model==
+
+
+This constructor is equivalent to calling
+
+    zero_databox = self.steady(model, span, deviation=True, ...)
+
+
+See the [`Databox.steady`](#steady) method for details.
+
+
+................................................................................
+        """
+        return klass.steady(steady_databoxable, span, deviation=True, **kwargs, )
+
+    @_dm.reference(category="manipulation", )
     def minus_control(
         self,
         model,
         control: Self,
     ) -> None:
-        """
+        r"""
+................................................................................
+
+==Subtract control values from a Databox==
+
+Subtract control values (usually steady-state values or control simulation
+values) from the corresponding time series in the Databox.
+
+    self.minus_control(
+        model,
+        control_databox,
+    )
+
+### Input arguments ###
+
+???+ input "model"
+    The underlying model object based on which the `self` and `control_databox`
+    were created.
+
+???+ input "control_databox"
+    The Databox containing control values to subtract from the corresponding
+    time series in `self`.
+
+### Returns ###
+
+This method modifies the Databox in place and returns `None`.
+
+................................................................................
         """
         name_to_minus_control_func = model.map_name_to_minus_control_func()
         for name, func in name_to_minus_control_func.items():

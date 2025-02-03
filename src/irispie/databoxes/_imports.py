@@ -181,19 +181,44 @@ class Inlay:
         return self
 
     @classmethod
+    @_dm.no_reference
     def from_sheet(klass, *args, **kwargs, ):
-        """
+        r"""
         """
         return klass.from_csv(*args, **kwargs, )
 
     @classmethod
+    @_dm.reference(category="import_export", )
     def from_pickle(
         klass,
         file_name: str,
         /,
         **kwargs,
     ) -> Self:
-        """
+        r"""
+................................................................................
+
+==Read a Databox from a pickled file==
+
+    self = Databox.from_pickle(
+        file_name,
+        **kwargs,
+    )
+
+### Input arguments ###
+
+???+ input "file_name"
+    Path to the pickled file to be read.
+
+???+ input "kwargs"
+    Additional keyword arguments to pass to the `pickle.load` function.
+
+### Returns ###
+
+???+ returns "self"
+    A `Databox` object read from the pickled file.
+
+................................................................................
         """
         with open(file_name, "rb") as fid:
             return _pickle.load(fid, **kwargs, )

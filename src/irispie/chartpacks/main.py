@@ -61,6 +61,7 @@ _CHART_INPUT_STRING_PATTERN = _re.compile(
     path=("visualization_reporting", "chartpacks.md", ),
     categories={
         "constructor": "Creating new chartpacks",
+        "information": "Getting information about chartpacks",
         "property": None,
         "plot": "Plotting chartpacks",
         "add": "Adding figures and charts to chartpacks",

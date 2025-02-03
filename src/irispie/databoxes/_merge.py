@@ -1,9 +1,10 @@
 """
-Merge mixin
+Merge inlay
 """
 
 
 #[
+
 from __future__ import annotations
 
 from typing import (TYPE_CHECKING, )
@@ -16,7 +17,16 @@ from . import main as _databoxes
 
 if TYPE_CHECKING:
     from typing import (Self, Iterable, Literal, )
-    MergeStrategyType = Literal["hstack", "replace", "discard", "silent", "warning", "error", "critical", ]
+    MergeStrategyType = Literal[
+        "hstack", # Stack horizontally
+        "replace", # Replace the existing value with the new one
+        "discard", # Discard the new value and keep the existing one
+        "silent", # Exactly the same as discard
+        "warning", # Same as discard with a warning
+        "error", # Throw an error for the first duplicate key
+        "critical", # Throw a critical error for the first duplicate key
+    ]
+
 #]
 
 
@@ -44,10 +54,51 @@ class Inlay:
         merge_strategy: MergeStrategyType = "hstack",
         # Do not include the following in the docstring
         action = None,
-        **kwargs,
     ) -> None:
         r"""
-        To be completed
+................................................................................
+
+==Merge Databoxes==
+
+Combine one or more databoxes into a single databox using a specified merge
+strategy to handle potential conflicts between duplicate keys.
+
+    self.merge(
+        other,
+        merge_strategy="hstack",
+    )
+
+
+### Input arguments ###
+
+???+ input "other"
+    The databox or iterable of databoxes to merge into the current databox. If
+    merging a single databox, it should be passed directly; for multiple
+    databoxes, pass an iterable containing all.
+
+???+ input "merge_strategy"
+    Determines how to process keys that exist in more than one databox. The
+    default strategy is `"hstack"`.
+
+    * `"hstack"`: Stack values; this means combine time series into multiple
+    columns, or combine lists, or convert non-lists to lists for stacking.
+
+    * `"replace"`: Replace existing values with new values.
+
+    * `"discard"` and `"silent"`: Retain original values and ignore new values.
+
+    * `"warning"`: Behave like `"discard"` but issue a warning for each conflict.
+
+    * `"error"`: Raise an error on encountering the first duplicate key.
+
+    * `"critical"`: Raise a critical error on encountering the first duplicate key.
+
+
+### Returns ###
+
+    This method modifies the databox in place and returns `None`.
+
+................................................................................
         """
         # Legacy name
         if action is not None:
@@ -65,7 +116,7 @@ class Inlay:
         for t in other:
             for key, value in t.items():
                 if key in self:
-                    merge_strategy_func(self, key, value, stream, **kwargs, )
+                    merge_strategy_func(self, key, value, stream, )
                 else:
                     self[key] = value
         stream._raise()
@@ -78,9 +129,10 @@ def _merge_hstack(
     key: str,
     value: Any,
     /,
-    *args,
 ) -> None:
     """
+    Horizontal stack of values: time series are concatenated, lists are
+    extended, non-lists are converted to lists and extended.
     """
     #[
     if isinstance(value, _series.Series, ):
@@ -99,7 +151,6 @@ def _merge_replace(
     key: str,
     value: Any,
     /,
-    *args,
 ) -> None:
     """
     """
@@ -113,7 +164,6 @@ def _merge_discard(
     key: str,
     value: Any,
     /,
-    *args,
 ) -> None:
     """
     """
@@ -128,7 +178,6 @@ def _merge_report(
     value: Any,
     stream,
     /,
-    *args,
 ) -> None:
     """
     """
@@ -141,9 +190,9 @@ _MERGE_STRATEGY = {
     "hstack": _merge_hstack,
     "replace": _merge_replace,
     "discard": _merge_discard,
-    "silent": _merge_report, # Equivalent to discard
-    "warning": _merge_report, # Equivalent to discard with a warning
-    "error": _merge_report, # Throws an error for the first duplicate key
-    "critical": _merge_report, # Throws an error for the first duplicate key
+    "silent": _merge_report,
+    "warning": _merge_report,
+    "error": _merge_report,
+    "critical": _merge_report,
 }
 

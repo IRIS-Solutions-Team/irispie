@@ -389,7 +389,8 @@ def _period_constructor_with_ellipsis(
     categories={
         "constructor": "Creating new time periods",
         "arithmetics_comparison": "Adding, subtracting, and comparing time periods",
-        "conversion": "Converting time periods to different frequencies",
+        "refrequency": "Converting time periods to different frequencies",
+        "conversion": "Converting time periods to different representations",
         "print": "Converting time periods to strings",
     },
 )
@@ -703,7 +704,7 @@ literal.
         r"""==Period number within the calendar year=="""
         raise NotImplementedError
 
-    @_dm.reference(category="conversion", )
+    @_dm.reference(category="refrequency", )
     def refrequent(self, new_freq: Frequency, *args ,**kwargs, ) -> Self:
         r"""
 ................................................................................
@@ -887,18 +888,85 @@ where lowercase letters represent the respective time period components
         """
         raise NotImplementedError
 
+    @_dm.reference(category="conversion", )
     def to_python_date(
         self,
         /,
         position: Literal["start", "middle", "end", ] = "start",
-    ) -> str:
+    ) -> _dt.date:
+        r"""
+................................................................................
+
+
+==Convert time period to Python date object==
+
+
+Convert a time period to a Python date object. The date object is created based
+on the year, month, and day of the time period.
+
+
+    date = self.to_python_date(
+        position="middle",
+    )
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    Time period to convert to a Python date object.
+
+???+ input "position"
+    Position that determines the day of the month and the month of the year
+    of time periods with time frequency lower than daily. The position can
+    be one of the following:
+
+    * `"start"`: Start of the time period (placed on the 1st day of the
+    first month within the original period).
+
+    * `"middle"`: Middle of the time period (placed on the 15th day of the
+    middle month within the original period).
+
+    * `"end"`: End of the time period (placed on the last day of the last
+    month within the original period).
+
+
+### Returns ###
+
+
+???+ returns "date"
+    Python date object representing the time period.
+
+
+................................................................................
+        """
         return _dt.date(*self.to_ymd(position=position, ))
 
     to_plotly_date = _ft.partialmethod(to_python_date, position="middle", )
 
-    def get_distance_from_origin(self) -> int:
+    @_dm.reference(category="information", )
+    def get_distance_from_origin(self, ) -> int:
+        r"""
+................................................................................
+
+==Get distance from origin time period==
+
+Get the distance of the time period from the origin time period. The origin time
+period is currently set to the beginning of year 2020 for all calendar periods,
+and to 0 for integer periods.
+
+    distance = self.get_distance_from_origin()
+
+### Returns ###
+
+???+ returns "distance"
+    Distance of the `self` time period from the origin time period.
+
+................................................................................
+        """
         return self.serial - self.origin
 
+    @_dm.no_reference
     def resolve(self, context: ResolutionContextProtocol) -> Self:
         return self
 
@@ -2374,9 +2442,11 @@ def get_printable_span(start: Period, end: Period, ) -> str:
 
 
 class Dater(Period, ):
+
     @staticmethod
     def from_sdmx_string(frequency, sdmx_string):
         return Period.from_sdmx_string(sdmx_string, frequency=frequency, )
+
     @staticmethod
     def from_iso_string(frequency, iso_string):
         return Period.from_iso_string(iso_string, frequency=frequency, )

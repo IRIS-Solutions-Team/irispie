@@ -102,9 +102,8 @@ class Inlay:
     Databox inlay for writing databox time series to CSV file
     """
     #[
-    @_dm.reference(
-        category="import_export",
-    )
+
+    @_dm.reference(category="import_export", )
     def to_csv(
         self,
         file_name: str,
@@ -243,19 +242,46 @@ class Inlay:
         else:
             return
 
+    @_dm.no_reference
     def to_sheet(self, *args, **kwargs, ):
+        r"""
+        """
         return self.to_csv(*args, **kwargs, )
 
+    @_dm.reference(category="import_export", )
     def to_pickle(
         self,
         file_name: str,
         /,
         **kwargs,
     ) -> None:
-        """
+        r"""
+................................................................................
+
+==Write Databox to a pickle file==
+
+    self.to_pickle(
+        file_name,
+        **kwargs, 
+    )
+
+### Input arguments ###
+
+???+ input "file_name"
+    Path to the pickle file where the data will be written.
+
+???+ input "kwargs"
+    Additional keyword arguments for the pickle writer.
+
+### Returns ###
+
+This method returns `None`.
+
+................................................................................
         """
         with open(file_name, "wb+") as fid:
             _pk.dump(self, fid, **kwargs, )
+
     #]
 
 

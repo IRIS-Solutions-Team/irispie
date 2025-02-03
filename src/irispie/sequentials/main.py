@@ -47,12 +47,12 @@ __all__ = (
 @_dm.reference(
     path=("structural_models", "sequential.md", ),
     categories={
-        "constructor": "Creating new `Sequential` models",
+        "constructor": "Creating new Sequential models",
         "property": None,
-        "simulation": "Simulating `Sequential` models",
-        "parameters": "Manipulating `Sequential` model parameters",
-        "information": "Information about `Sequential` models",
-        "manipulation": "Manipulating `Sequential` models",
+        "information": "Getting information about Sequential models",
+        "simulation": "Simulating Sequential models",
+        "parameters": "Manipulating Sequential model parameters",
+        "manipulation": "Manipulating Sequential models",
     },
 )
 class Sequential(
