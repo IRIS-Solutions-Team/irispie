@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from numbers import (Real, )
 from collections.abc import (Iterable, Callable, )
-from typing import (Self, Any, TypeAlias, NoReturn, )
+from typing import (Self, Any, TypeAlias, NoReturn, Literal, )
 from types import (EllipsisType, )
 import numpy as _np
 import scipy as _sp
@@ -112,6 +112,7 @@ __all__ = (
 
 Dates: TypeAlias = Period | Iterable[Period] | Span | EllipsisType | None
 VariantsRequestType: TypeAlias = int | Iterable[int] | slice | None
+LayMethodType: TypeAlias = Literal["by_span", ]
 
 
 def _get_date_positions(dates, base, num_periods, /, ):
@@ -774,7 +775,7 @@ self = Series(
         self,
         other: Self,
         /,
-    ) -> Self:
+    ) -> None:
         self.set_data(other.range, other.data, )
         self.trim()
 
@@ -783,8 +784,8 @@ self = Series(
         self,
         other: Self,
         /,
-        method = "by_span",
-    ) -> Self:
+        method: LayMethodType = "by_span",
+    ) -> None:
         r"""
 ................................................................................
 
@@ -825,14 +826,14 @@ the values of `other` will take precedence (i.e. replace) the values of `self`.
 ................................................................................
 """
         _broadcast_variants_if_needed(self, other, )
-        self._LAY_METHOD_RESOLUTION[method]["overlay"](self, other, )
+        getattr(type(self), "overlay_" + method)(self, other, )
 
     @_dm.no_reference
     def underlay_by_span(
         self,
         other: Self,
         /,
-    ) -> Self:
+    ) -> None:
         """
         """
         new_self = other.copy()
@@ -844,8 +845,8 @@ the values of `other` will take precedence (i.e. replace) the values of `self`.
         self,
         other: Self,
         /,
-        method = "by_span",
-    ) -> Self:
+        method: LayMethodType = "by_span",
+    ) -> None:
         r"""
 ................................................................................
 
@@ -886,11 +887,7 @@ the values of `self` will take precedence (i.e. replace) the values of `other`.
 ................................................................................
         """
         _broadcast_variants_if_needed(self, other, )
-        self._LAY_METHOD_RESOLUTION[method]["underlay"](self, other, )
-
-    _LAY_METHOD_RESOLUTION = {
-        "by_span": {"overlay": overlay_by_span, "underlay": underlay_by_span},
-    }
+        getattr(type(self), "underlay_" + method)(self, other, )
 
     def redate(
         self,
