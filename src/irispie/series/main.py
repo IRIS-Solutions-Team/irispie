@@ -62,6 +62,8 @@ from ._moving import *
 from ._conversions import __all__ as _conversions__all__
 from ._conversions import *
 
+from ._categories import CATEGORIES
+
 #]
 
 
@@ -130,19 +132,7 @@ def _get_date_positions(dates, base, num_periods, /, ):
 
 @_dm.reference(
     path=("data_management", "time_series.md", ),
-    categories={
-        "constructor": "Constructing new time series",
-        "conversion": "Converting time series frequency",
-        "information": "Getting information about time series",
-        "manipulation": "Manipulating time series values",
-        "multiple": "Combining multiple time series",
-        "homogenizing": "Homogenizing and extrapolating time series",
-        "filtering": "Filtering time series",
-        "moving": "Applying moving window functions",
-        "temporal_change": "Calculating temporal change",
-        "temporal_change_conversion": "Converting measures of temporal change",
-        "temporal_cumulation": "Calculating temporal cumulation",
-    },
+    categories=CATEGORIES,
 )
 class Series(
     _indexing.Inlay,

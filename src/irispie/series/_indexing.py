@@ -10,6 +10,7 @@ from __future__ import annotations
 import documark as _dm
 
 from .. import dates as _dates
+from ._categories import CATEGORIES
 
 #]
 
@@ -19,15 +20,14 @@ class Inlay:
     """
     #[
 
-
     @_dm.reference(
         category=None,
-        call_name="Time series indexing",
+        call_name=CATEGORIES["indexing"],
         call_name_is_code=False,
         priority=30,
     )
     def indexing(self, /, ) -> None:
-        """
+        r"""
 ················································································
 
 Time `Series` objects can be indexed in four ways (note the square versus round

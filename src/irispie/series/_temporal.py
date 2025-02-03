@@ -13,6 +13,7 @@ import documark as _dm
 
 from ..dates import (Span, )
 from . import _functionalize
+from ._categories import CATEGORIES
 #]
 
 
@@ -26,7 +27,7 @@ class Inlay:
 
     @_dm.reference(
         category=None,
-        call_name="Calculate temporal changes",
+        call_name=CATEGORIES["temporal_change"],
         call_name_is_code=False,
         priority=20,
     )
@@ -125,7 +126,7 @@ self.aroc()
 
     @_dm.reference(
         category=None,
-        call_name="Convert measures of temporal change",
+        call_name=CATEGORIES["temporal_change_conversion"],
         call_name_is_code=False,
         priority=19,
     )
@@ -461,7 +462,7 @@ See documentation for [temporal cumulation calculations](#temporal-cumulation-ca
 
     @_dm.reference(
         category=None,
-        call_name="Temporal cumulation calculations",
+        call_name=CATEGORIES["temporal_cumulation"],
         call_name_is_code=False,
         priority=20,
     )
