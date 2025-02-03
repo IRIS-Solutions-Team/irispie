@@ -565,6 +565,7 @@ time [Frequency](frequencies.md).
         raise NotImplementedError
 
     @staticmethod
+    @_dm.reference(category="constructor", )
     def from_iso_string(
         iso_string: str,
         *,
@@ -610,6 +611,7 @@ integers.
         return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[frequency].from_ymd(int(year), int(month), int(day), )
 
     @staticmethod
+    @_dm.reference(category="constructor", )
     def from_sdmx_string(
         sdmx_string: str,
         *,
@@ -626,25 +628,20 @@ literal.
 
     period = Period.from_sdmx_string(
         sdmx_string,
-        *,
-        frequency=None,
+        frequency=Frequency.DAILY,
     )
 
-
 ### Input arguments ###
-
 
 ???+ input "sdmx_string"
     SDMX string representation of the time period.
 
 ???+ input "frequency"
-    Time frequency of the time period. If `None`, the frequency is determined
-    from the SDMX string itself. Supplying the frequency is useful the frequency
-    is known in advance.
-
+    Time frequency of the time period. If `None`, the frequency is inferred
+    from the SDMX string itself; supplying the frequency is more efficient
+    if it is known in advance.
 
 ### Returns ###
-
 
 ???+ returns "period"
     Time period object created from the SDMX string.
@@ -655,8 +652,43 @@ literal.
         return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[frequency].from_sdmx_string(sdmx_string, )
 
     @staticmethod
+    @_dm.reference(category="constructor", )
     def from_ymd(freq: Frequency, *args, ) -> Self:
-        """
+        r"""
+................................................................................
+
+==Create time period from year, month, and day==
+
+Create a time period from the calendar year, month, and day. The time period
+is created based on the time frequency specified.
+
+    period = Period.from_ymd(
+        freq,
+        year,
+        month=1,
+        day=1,
+    )
+
+### Input arguments ###
+
+???+ input "freq"
+    Time frequency of the time period.
+
+???+ input "year"
+    Calendar year as integer.
+
+???+ input "month"
+    Month of the year as integer.
+
+???+ input "day"
+    Day of the month as integer.
+
+### Returns ###
+
+???+ returns "period"
+    Time period object created from the year, month, and day.
+
+................................................................................
         """
         return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_ymd(*args, )
 
@@ -670,8 +702,29 @@ literal.
     dater_from_ymd = from_ymd
 
     @staticmethod
+    @_dm.reference(category="constructor", )
     def today(freq: Frequency, ) -> Self:
-        """
+        r"""
+................................................................................
+
+==Create time period for today==
+
+Create a time period for the current date. The time period is created based
+on the time frequency specified.
+
+    period = Period.today(freq)
+
+### Input arguments ###
+
+???+ input "freq"
+    Time frequency of the time period.
+
+### Returns ###
+
+???+ returns "period"
+    Time period object for the current date.
+
+................................................................................
         """
         t = _dt.date.today()
         return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_ymd(t.year, t.month, t.day, )

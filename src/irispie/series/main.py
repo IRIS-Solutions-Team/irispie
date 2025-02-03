@@ -824,7 +824,7 @@ the values of `other` will take precedence (i.e. replace) the values of `self`.
         other: Self,
         /,
     ) -> None:
-        """
+        r"""
         """
         new_self = other.copy()
         new_self.overlay(self, )
