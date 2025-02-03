@@ -134,10 +134,12 @@ def _get_date_positions(dates, base, num_periods, /, ):
         "conversion": "Converting time series frequency",
         "information": "Getting information about time series",
         "manipulation": "Manipulating time series values",
+        "multiple": "Combining multiple time series",
         "homogenizing": "Homogenizing and extrapolating time series",
         "filtering": "Filtering time series",
         "moving": "Applying moving window functions",
         "temporal_change": "Calculating temporal change",
+        "temporal_change_conversion": "Converting measures of temporal change",
         "temporal_cumulation": "Calculating temporal cumulation",
     },
 )
@@ -767,7 +769,8 @@ self = Series(
         num_variants = num_variants if num_variants is not None else self.num_variants
         self.data = _np.empty((0, num_variants), dtype=self.data_type)
 
-    def overlay_by_range(
+    @_dm.no_reference
+    def overlay_by_span(
         self,
         other: Self,
         /,
@@ -775,16 +778,57 @@ self = Series(
         self.set_data(other.range, other.data, )
         self.trim()
 
+    @_dm.reference(category="multiple", )
     def overlay(
         self,
         other: Self,
         /,
-        method = "by_range",
+        method = "by_span",
     ) -> Self:
+        r"""
+................................................................................
+
+==Overlay another time series values onto the current time series==
+
+Overlay the values of another time series onto the current time series on the
+entire span of the other time series, i.e. from the start to the end period
+regardless of missing in-sample values.
+
+    self.overlay(
+        other,
+        method="by_span",
+    )
+
+### Input arguments ###
+
+???+ input "self"
+    The current time series object.
+
+???+ input "other"
+    The time series object whose values will be overlaid onto the current time
+    series.
+
+???+ input "method"
+    The method to use for overlaying the values. The default (and currently the
+    only available) method is `"by_span"`.
+
+### Returns ###
+
+This method modifies `self` in place and returns `None`.
+
+### Details ###
+
+The span of the resulting series starts at the earliest start date of the two
+series and ends at the latest end date of the two series. Whenever overlapping,
+the values of `other` will take precedence (i.e. replace) the values of `self`.
+
+................................................................................
+"""
         _broadcast_variants_if_needed(self, other, )
         self._LAY_METHOD_RESOLUTION[method]["overlay"](self, other, )
 
-    def underlay_by_range(
+    @_dm.no_reference
+    def underlay_by_span(
         self,
         other: Self,
         /,
@@ -795,17 +839,57 @@ self = Series(
         new_self.overlay(self, )
         self._shallow_copy_data(new_self, )
 
+    @_dm.reference(category="multiple", )
     def underlay(
         self,
         other: Self,
         /,
-        method = "by_range",
+        method = "by_span",
     ) -> Self:
+        r"""
+................................................................................
+
+==Underlay another time series values beneath the current time series==
+
+Underlay the values of another time series beneath the current time series on
+the entire span of the other time series, i.e. from the start to the end period
+regardless of missing in-sample values.
+
+    self.underlay(
+        other,
+        method="by_span",
+    )
+
+### Input arguments ###
+
+???+ input "self"
+    The current time series object.
+
+???+ input "other"
+    The time series object whose values will be underlaid beneath the current
+    time series.
+
+???+ input "method"
+    The method to use for underlaying the values. The default (and currently the
+    only available) method is `"by_span"`.
+
+### Returns ###
+
+This method modifies `self` in place and returns `None`.
+
+### Details ###
+
+The span of the resulting series starts at the earliest start date of the two
+series and ends at the latest end date of the two series. Whenever overlapping,
+the values of `self` will take precedence (i.e. replace) the values of `other`.
+
+................................................................................
+        """
         _broadcast_variants_if_needed(self, other, )
         self._LAY_METHOD_RESOLUTION[method]["underlay"](self, other, )
 
     _LAY_METHOD_RESOLUTION = {
-        "by_range": {"overlay": overlay_by_range, "underlay": underlay_by_range},
+        "by_span": {"overlay": overlay_by_span, "underlay": underlay_by_span},
     }
 
     def redate(
@@ -884,7 +968,28 @@ self.replace_where(
 
     __or__ = __and__
 
-    def trim(self):
+    @_dm.reference(category="manipulation", )
+    def trim(self, /, ) -> None:
+        r"""
+................................................................................
+
+==Trim time series data==
+
+Trim leading and trailing missing values from the time series data.
+
+    self.trim()
+
+### Input arguments ###
+
+???+ input "self"
+    The time series object to trim.
+
+### Returns ###
+
+This method modifies `self` in place and returns `None`.
+
+................................................................................
+        """
         if self.data.size == 0:
             self.reset()
             return self

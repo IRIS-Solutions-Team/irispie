@@ -26,7 +26,7 @@ class Inlay:
 
     @_dm.reference(
         category=None,
-        call_name="Temporal change calculations",
+        call_name="Calculate temporal changes",
         call_name_is_code=False,
         priority=20,
     )
@@ -38,7 +38,6 @@ class Inlay:
     ) -> None:
         r"""
 ................................................................................
-
 
 Overview of temporal change functions:
 
@@ -123,6 +122,50 @@ self.aroc()
         other = self.copy()
         other.shift(shift, )
         self._binop(other, func, new=self, )
+
+    @_dm.reference(
+        category=None,
+        call_name="Convert measures of temporal change",
+        call_name_is_code=False,
+        priority=19,
+    )
+    def temporal_change_conversion(self, ):
+        r"""
+................................................................................
+
+Overview of temporal change conversions:
+
+| Function          | Description
+|-------------------|-------------
+| `roc_from_pct`    | Convert percent change to gross rate of change
+| `pct_from_roc`    | Convert gross rate of change to percent change
+| `pct_from_apct`   | Convert annualized percent change to percent change
+| `roc_from_apct`   | Convert annualized percent change to gross rate of change
+| `roc_from_aroc`   | Convert annualized gross rate of change to gross rate of change
+
+### Functional forms changing an existing Series object in-place ###
+
+```
+new = irispie.roc_from_pct(self)
+new = irispie.pct_from_roc(self)
+new = irispie.pct_from_apct(self)
+new = irispie.roc_from_apct(self)
+new = irispie.roc_from_aroc(self)
+```
+
+### Class methods changing an existing Series object in-place ###
+
+```
+self.roc_from_pct()
+self.pct_from_roc()
+self.pct_from_apct()
+self.roc_from_apct()
+self.roc_from_aroc()
+```
+
+................................................................................
+        """
+        pass
 
     @_dm.reference(category="temporal_change", )
     def diff(
@@ -272,45 +315,90 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         factor = self.frequency.value or 1
         self.temporal_change(shift, lambda x, y: 100*((x/y)**factor - 1), )
 
+    @_dm.reference(category="temporal_change_conversion", )
     def roc_from_pct(
         self,
         /,
     ) -> None:
         r"""
+................................................................................
+
+==Gross rate of change from percent change==
+
+See documentation for [converting measures of temporal
+change](#temporal-change-conversion).
+
+................................................................................
         """
         self.data = 1 + self.data/100
 
+    @_dm.reference(category="temporal_change_conversion", )
     def pct_from_roc(
         self,
         /,
     ) -> None:
         r"""
+................................................................................
+
+==Percent change from gross rate of change==
+
+See documentation for [converting measures of temporal
+change](#temporal-change-conversion).
+
+................................................................................
         """
         self.data = 100*(self.data - 1)
 
+    @_dm.reference(category="temporal_change_conversion", )
     def pct_from_apct(
         self,
         /,
     ) -> None:
         r"""
+................................................................................
+
+==Percent change from annualized percent change==
+
+See documentation for [converting measures of temporal
+change](#temporal-change-conversion).
+
+................................................................................
         """
         factor = self.frequency.value or 1
         self.data = 100*((1 + self.data/100)**(1/factor) - 1)
 
+    @_dm.reference(category="temporal_change_conversion", )
     def roc_from_apct(
         self,
         /,
     ) -> None:
         r"""
+................................................................................
+
+==Gross rate of change from annualized percent change==
+
+See documentation for [converting measures of temporal
+change](#temporal-change-conversion).
+
+................................................................................
         """
         factor = self.frequency.value or 1
         self.data = (1 + self.data/100)**(1/factor)
 
+    @_dm.reference(category="temporal_change_conversion", )
     def roc_from_aroc(
         self,
         /,
     ) -> None:
         r"""
+................................................................................
+
+==Gross rate of change from annualized gross rate of change==
+
+See documentation for [converting measures of temporal
+change](#temporal-change-conversion).
+
+................................................................................
         """
         factor = self.frequency.value or 1
         self.data = self.data**factor
