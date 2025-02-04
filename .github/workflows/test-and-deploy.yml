@@ -111,9 +111,9 @@ jobs:
       - name: Create release
         id: create_release
         env:
-            tag: ${{ env.NEW_VERSION }}
+          tag: ${{ env.NEW_VERSION }}
         run: |
-            gh release create "$tag" \
-                --title "Release $tag" \
-                --notes ""
+         gh release create "$tag" \
+           --title "Release $tag" \
+           --notes ""
 
