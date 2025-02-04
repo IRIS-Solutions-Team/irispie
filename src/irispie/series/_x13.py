@@ -334,8 +334,8 @@ def _x13_data(
     #[
     new_data = _np.full(base_variant_data.shape, _np.nan, dtype=float, )
     start_date, variant_data, output_slice = _remove_leading_trailing_nans(base_start, base_variant_data, )
-    year, period = start_date.to_year_period()
-    specs = specs.replace("$(series_start)", _X13_DATE_FORMAT_RESOLUTION[start_date.frequency].format(year=year, period=period, ), )
+    year, segment = start_date.to_year_segment()
+    specs = specs.replace("$(series_start)", _X13_DATE_FORMAT_RESOLUTION[start_date.frequency].format(year=year, segment=segment, ), )
     specs = specs.replace("$(series_data)", _print_series_data(variant_data, ), )
     specs_file_name_without_ext = _write_specs_to_file(specs, )
     system_output = _execute(specs_file_name_without_ext, )
@@ -632,8 +632,8 @@ _X11_OUTPUT_RESOLUTION = {
 }
 
 _X13_DATE_FORMAT_RESOLUTION = {
-    Frequency.MONTHLY: "{year:04d}.{period:02d}",
-    Frequency.QUARTERLY: "{year:04d}.{period:1d}",
+    Frequency.MONTHLY: "{year:04d}.{segment:02d}",
+    Frequency.QUARTERLY: "{year:04d}.{segment:1d}",
 }
 
 _X13_EXECUTABLE_FILE = {

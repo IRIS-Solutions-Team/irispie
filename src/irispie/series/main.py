@@ -112,9 +112,10 @@ __all__ = (
     + FUNCTION_ADAPTATIONS
 )
 
-Dates: TypeAlias = Period | Iterable[Period] | Span | EllipsisType | None
-VariantsRequestType: TypeAlias = int | Iterable[int] | slice | None
-LayMethodType: TypeAlias = Literal["by_span", ]
+Dates = Period | Iterable[Period] | Span | EllipsisType | None
+VariantsRequestType = int | Iterable[int] | slice | None
+LayMethodType = Literal["by_span", ]
+ShiftType = int | Literal["yoy", "soy", "eopy", "tty", ]
 
 
 def _get_date_positions(dates, base, num_periods, /, ):
@@ -218,28 +219,36 @@ self = Series(
 )
 ```
 
+```
+self = Series(
+    periods=periods,
+    func=func,
+)
+```
+
 
 ### Input arguments ###
 
-
 ???+ input "start"
-
     The time [`Period`](periods.md) of the first value in the `values`.
 
 ???+ input "periods"
-
     An iterable of time [`Periods`](periods.md) that will be used to time stamp
     the `values`. The iterable can be e.g. a tuple, a list, a time
     [`Span`](spans.md), or a single time [`Period`](periods.md).
 
 ???+ input "values"
-
     Time series values, supplied either as a single values, a tuple of values,
     or a NumPy array.
 
+???+ input "func"
+    A function that will be used to populate the time series; the function
+    should not take any input arguments, and should return a single (scalar)
+    numerical value; the function will called once for each period and each
+    variant.
+
 
 ### Returns ###
-
 
 ???+ returns "None"
     This method modifies `self` in-place and does not return a value.
@@ -640,50 +649,94 @@ self = Series(
 
     def shift(
         self,
-        by: int | str = -1,
-        /,
+        by: ShiftType = -1,
+        **kwargs,
     ) -> None:
-        match by:
-            case "yoy":
-                self._shift_by_number(-self.frequency.value, )
-            case "boy" | "soy":
-                self._shift_to_soy()
-            case "eopy":
-                self._shift_to_eopy()
-            case "tty":
-                self._shift_to_tty()
-            case _:
-                self._shift_by_number(by, )
+        r"""
+................................................................................
 
-    def _shift_by_number(self, by: int, ) -> None:
+==Shift the time series start date==
+
+Shift the start date of the time series by a number of periods or to a specific
+date.
+
+    self.shift(by=-1, )
+
+### Input arguments ###
+
+???+ input "self"
+    The current time series object that will be shifted.
+
+???+ input "by"
+    The number of periods to shift the observations by. If `by` is a string,
+    the observations are manipulated as follows:
+
+    * `"yoy"`: Shift all observations by one year back.
+
+    * `"soy"`: Shift to the start of the year.
+
+    * `"eopy"`: Shift to the end of the previous year.
+
+................................................................................
         """
+        if isinstance(by, int):
+            self._shift_by_number(by, **kwargs, )
+        else:
+            method_name = f"_shift_{by}"
+            getattr(self, method_name)(**kwargs, )
+
+    def _shift_by_number(self, by: int, **kwargs, ) -> None:
+        r"""
         Shift (lag, lead) start date by a number of periods
         """
-        self.start = (
-            self.start - by
-            if self.start else self.start
-        )
+        if self.start is None:
+            return
+        self.start -= by
 
-    def _shift_to_soy(self, ) -> None:
+    def _shift_yoy(self, /, **kwargs, ) -> None:
+        r"""
+        Shift the start date by one year back
+        """
+        self._shift_by_number(-self.frequency.value, )
+
+    def _shift_soy(self, /, **kwargs, ) -> None:
+        r"""
+        Replace each observation by the start of the year observation
+        """
         new_data = self.get_data(
             t.create_soy()
             for t in self.range
         )
         self._replace_data(new_data, )
 
-    def _shift_to_tty(self, ) -> None:
-        new_data = self.get_data(
-            t.create_tty()
-            for t in self.range
-        )
-        self._replace_data(new_data, )
-
-    def _shift_to_eopy(self, ) -> Self:
+    def _shift_eopy(self, /, **kwargs, ) -> Self:
+        r"""
+        Replace each observation by the end of the previous year observation
+        """
         new_data = self.get_data(
             t.create_eopy()
             for t in self.range
         )
         self._replace_data(new_data, )
+
+    def _shift_tty(
+        self,
+        by: Any | None = None,
+        *,
+        neutral_value: int | None = None,
+        **kwargs,
+    ) -> None:
+        r"""
+        Replace each observation by the start of the year observation except for
+        the start-of-year periods which are filled with a neutral value.
+        """
+        zipped = tuple((t, t.create_tty(), ) for t in self.span)
+        neutral_periods = tuple(t for t, tty in zipped if tty is None)
+        periods = (t for t, tty in zipped if tty is not None )
+        dty_periods = (tty for _, tty in zipped if tty is not None)
+        dty_values = self.get_data(dty_periods, )
+        self.set_data(periods, dty_values, )
+        self.set_data(neutral_periods, neutral_value, )
 
     def hstack(self, *args, ):
         """
@@ -809,9 +862,18 @@ This method modifies `self` in place and returns `None`.
 
 ### Details ###
 
-The span of the resulting series starts at the earliest start date of the two
-series and ends at the latest end date of the two series. Whenever overlapping,
-the values of `other` will take precedence (i.e. replace) the values of `self`.
+The resulting time series is determined the following way:
+
+* The span of the resulting series starts at the earliest start period of the two
+series and ends at the latest end period of the two series.
+
+* First, the observations from the `self` (current) time series used to fill the
+resulting time span.
+
+* Second, within the span of the `other` time series (from the first available
+observation to the last available observation), the observations from this
+`other` time series are superimposed on the resulting time series, including any
+in-sample missing observations.
 
 ................................................................................
 """
@@ -870,9 +932,18 @@ This method modifies `self` in place and returns `None`.
 
 ### Details ###
 
-The span of the resulting series starts at the earliest start date of the two
-series and ends at the latest end date of the two series. Whenever overlapping,
-the values of `self` will take precedence (i.e. replace) the values of `other`.
+The resulting time series is determined the following way:
+
+* The span of the resulting series starts at the earliest start period of the two
+series and ends at the latest end period of the two series.
+
+* First, the observations from the `other` time series used to fill the
+resulting time span.
+
+* Second, within the span of the `self` time series (from the first available
+observation to the last available observation), the observations from this
+`self` time series are superimposed on the resulting time series, including any
+in-sample missing observations.
 
 ................................................................................
         """

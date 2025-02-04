@@ -360,6 +360,20 @@ class _SpannableMixin:
         """
         return Span(self, end, -1) 
 
+    def __pow__(self, len_dir: int, ) -> Span:
+        r"""
+        Period ** int
+        """
+        if len_dir == 1 or len_dir == -1:
+            return self
+        if len_dir > 0:
+            return Span(self, self + len_dir - 1, 1, )
+        if len_dir < 0:
+            return Span(self, self + len_dir + 1, -1, )
+        if len_dir == 0:
+            return EmptySpan()
+        raise ValueError("Invalid span len_dir")
+
     #]
 
 
@@ -565,7 +579,10 @@ time [Frequency](frequencies.md).
         raise NotImplementedError
 
     @staticmethod
-    @_dm.reference(category="constructor", )
+    @_dm.reference(
+        category="constructor",
+        call_name="Period.from_iso_string",
+    )
     def from_iso_string(
         iso_string: str,
         *,
@@ -611,7 +628,10 @@ integers.
         return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[frequency].from_ymd(int(year), int(month), int(day), )
 
     @staticmethod
-    @_dm.reference(category="constructor", )
+    @_dm.reference(
+        category="constructor",
+        call_name="Period.from_sdmx_string",
+    )
     def from_sdmx_string(
         sdmx_string: str,
         *,
@@ -652,7 +672,10 @@ literal.
         return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[frequency].from_sdmx_string(sdmx_string, )
 
     @staticmethod
-    @_dm.reference(category="constructor", )
+    @_dm.reference(
+        category="constructor",
+        call_name="Period.from_ymd",
+    )
     def from_ymd(freq: Frequency, *args, ) -> Self:
         r"""
 ................................................................................
@@ -693,16 +716,55 @@ is created based on the time frequency specified.
         return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_ymd(*args, )
 
     @staticmethod
-    def from_year_period(freq: Frequency, *args, ) -> Self:
+    @_dm.reference(
+        category="constructor",
+        call_name="Period.from_year_segment",
+    )
+    def from_year_segment(freq: Frequency, *args, ) -> Self:
+        r"""
+................................................................................
+
+==Create time period from year and segment==
+
+Create a time period from the calendar year and a segment of the year. The
+interpretation of the segment as well as the type of the time period created
+depends on the time frequency specified.
+
+    period = Period.from_year_segment(
+        freq,
+        year,
+        segment,
+    )
+
+### Input arguments ###
+
+???+ input "freq"
+    Time frequency of the time period.
+
+???+ input "year"
+    Calendar year as integer.
+
+???+ input "segment"
+    Segment of the year as integer; the segment can be a half-year, quarter,
+    month, or day, depending on the time frequency, `freq`.
+
+### Returns ###
+
+???+ returns "period"
+    Time period object created from the year and segment.
+
+................................................................................
         """
-        """
-        return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_year_period(*args, )
+        return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[freq].from_year_segment(*args, )
 
     period_from_ymd = from_ymd
     dater_from_ymd = from_ymd
 
     @staticmethod
-    @_dm.reference(category="constructor", )
+    @_dm.reference(
+        category="constructor",
+        call_name="Period.today",
+    )
     def today(freq: Frequency, ) -> Self:
         r"""
 ................................................................................
@@ -749,13 +811,13 @@ on the time frequency specified.
     @_dm.reference(category="property", )
     def year(self, /, ) -> int:
         r"""==Calendar year of the time period=="""
-        raise NotImplementedError
+        ...
 
     @property
     @_dm.reference(category="property", )
-    def period(self, /, ) -> int:
-        r"""==Period number within the calendar year=="""
-        raise NotImplementedError
+    def segment(self, /, ) -> int:
+        r"""==Segment within the calendar year=="""
+        ...
 
     @_dm.reference(category="refrequency", )
     def refrequent(self, new_freq: Frequency, *args ,**kwargs, ) -> Self:
@@ -856,7 +918,7 @@ integers.
 
 ................................................................................
         """
-        raise NotImplementedError
+        ...
 
     @_dm.reference(category="print", )
     def to_iso_string(self, **kwargs, ) -> str:
@@ -939,7 +1001,7 @@ where lowercase letters represent the respective time period components
 
 ................................................................................
         """
-        raise NotImplementedError
+        ...
 
     @_dm.reference(category="conversion", )
     def to_python_date(
@@ -1235,7 +1297,7 @@ See documentation for [time period comparison](#time-period-comparison).
     def shift(
         self,
         by: int | str = -1,
-    ) -> None:
+    ) -> Self:
         r"""
 ................................................................................
 
@@ -1298,7 +1360,7 @@ class IntegerPeriod(Period, ):
     @classmethod
     def from_sdmx_string(klass, sdmx_string: str, ) -> IntegerPeriod:
         sdmx_string = sdmx_string.strip().removeprefix("(").removesuffix(")")
-        return klass(int(sdmx_string), )
+        return klass(int(sdmx_string))
 
     def to_sdmx_string(self, /, ) -> str:
         return f"({self.serial})"
@@ -1312,6 +1374,19 @@ class IntegerPeriod(Period, ):
         position: Literal["start", "middle", "end", ] = "middle",
     ) -> Real:
         return self._PLOTLY_DATE_FACTORY[position](self.serial, )
+
+    @classmethod
+    def from_year_segment(
+        klass,
+        year: Any,
+        segment: int = 0,
+    ) -> Self:
+        r"""
+        """
+        serial = int(segment)
+        return klass(serial)
+
+    from_year_period = from_year_segment
 
     #]
 
@@ -1332,10 +1407,18 @@ class DailyPeriod(Period, ):
         return klass(serial)
 
     @classmethod
-    def from_year_period(klass, year: int, period: int) -> Self:
+    def from_year_segment(
+        klass,
+        year: int,
+        segment: int = 1,
+    ) -> Self:
+        r"""
+        """
         boy_serial = _dt.date(year, 1, 1).toordinal()
-        serial = boy_serial + int(period) - 1
+        serial = boy_serial + int(segment) - 1
         return klass(serial)
+
+    from_year_period = from_year_segment
 
     @classmethod
     def from_sdmx_string(klass, sdmx_string: str, ) -> Self:
@@ -1362,14 +1445,18 @@ class DailyPeriod(Period, ):
         return _dt.date.fromordinal(self.serial).day
 
     @property
+    def segment(self, /, ) -> int:
+        return self.to_year_segment()[1]
+
+    @property
     def period(self, /, ) -> int:
-        return self.to_year_period()[1]
+        return self.segment
 
     def to_sdmx_string(self, /, **kwargs) -> str:
         year, month, day = self.to_ymd()
         return f"{year:04g}-{month:02g}-{day:02g}"
 
-    def to_year_period(self) -> tuple[int, int]:
+    def to_year_segment(self) -> tuple[int, int]:
         boy_serial = _dt.date(_dt.date.fromordinal(self.serial).year, 1, 1)
         per = self.serial - boy_serial + 1
         year = _dt.date.fromordinal(self.serial).year
@@ -1410,8 +1497,8 @@ class DailyPeriod(Period, ):
         return self.create_som() - 1
 
     def create_tty(self, ) -> Self | None:
-        year, per = self.to_year_period()
-        return self.from_year_period(year, 1) if per != 1 else None
+        _, seg = self.to_year_segment()
+        return self - 1 if seg > 1 else None
 
     def to_daily(self, /, **kwargs, ) -> Self:
         return self
@@ -1419,7 +1506,7 @@ class DailyPeriod(Period, ):
     #]
 
 
-def _serial_from_ypf(year: int, per: int, freq: int) -> int:
+def _serial_from_ysf(year: int, per: int, freq: int) -> int:
     return int(year)*int(freq) + int(per) - 1
 
 
@@ -1431,18 +1518,20 @@ class RegularPeriodMixin:
     plotly_xaxis_type = "date"
 
     @classmethod
-    def from_year_period(
+    def from_year_segment(
             klass: type,
             year: int,
             per: int | str = 1,
         ) -> Self:
         per = per if per != "end" else klass.frequency.value
-        new_serial = _serial_from_ypf(year, per, klass.frequency.value)
-        return klass(new_serial)
+        new_serial = _serial_from_ysf(year, per, klass.frequency.value)
+        return klass(new_serial, )
+
+    from_year_period = from_year_segment
 
     @classmethod
     def from_ymd(klass, year: int, month: int=1, day: int=1, ) -> Self:
-        return klass.from_year_period(year, klass.month_to_period(month, ), )
+        return klass.from_year_segment(year, klass.month_to_segment(month, ), )
 
     @classmethod
     def from_iso_string(klass, iso_string: str, ) -> Self:
@@ -1453,24 +1542,28 @@ class RegularPeriodMixin:
 
     @property
     def year(self, ) -> int:
-        return self.to_year_period()[0]
+        return self.to_year_segment()[0]
+
+    @property
+    def segment(self, ) -> int:
+        return self.to_year_segment()[1]
 
     @property
     def period(self, ) -> int:
-        return self.to_year_period()[1]
+        return self.segment
 
-    def to_year_period(self) -> tuple[int, int]:
+    def to_year_segment(self) -> tuple[int, int]:
         return self.serial//self.frequency.value, self.serial%self.frequency.value+1
 
     def get_year(self) -> int:
-        return self.to_year_period()[0]
+        return self.to_year_segment()[0]
 
     def to_ymd(
         self, 
         /,
         position: Literal["start", "middle", "end", ] = "start",
     ) -> tuple[int, int, int]:
-        year, per = self.to_year_period()
+        year, per = self.to_year_segment()
         month, day = self._MONTH_DAY_RESOLUTION[position][per]
         if day is None:
             _, day = _ca.monthrange(year, month)
@@ -1480,22 +1573,22 @@ class RegularPeriodMixin:
         return self.to_sdmx_string()
 
     def create_soy(self, ) -> Self:
-        year, *_ = self.to_year_period()
-        return self.from_year_period(year, 1)
+        year, *_ = self.to_year_segment()
+        return self.from_year_segment(year, 1)
 
     create_boy = create_soy
 
     def create_eoy(self, ) -> Self:
-        year, *_ = self.to_year_period()
-        return self.from_year_period(year, "end")
+        year, *_ = self.to_year_segment()
+        return self.from_year_segment(year, "end")
 
     def create_eopy(self, ) -> Self:
-        year, *_ = self.to_year_period()
-        return self.from_year_period(year-1, self.frequency.value)
+        year, *_ = self.to_year_segment()
+        return self.from_year_segment(year-1, self.frequency.value)
 
-    def create_tty(self, ) -> Self:
-        year, per = self.to_year_period()
-        return self.from_year_period(year, 1) if per != 1 else None
+    def create_tty(self, ) -> Self | None:
+        _, seg = self.to_year_segment()
+        return self - 1 if seg > 1 else None
 
     def to_daily(
         self,
@@ -1517,7 +1610,7 @@ class YearlyPeriod(RegularPeriodMixin, Period, ):
 
     frequency: Frequency = Frequency.YEARLY
     needs_resolve: bool = False
-    origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.YEARLY)
+    origin = _serial_from_ysf(BASE_YEAR, 1, Frequency.YEARLY)
     _MONTH_DAY_RESOLUTION = {
         "start": {1: (1, 1)},
         "middle": {1: (6, 30)},
@@ -1535,7 +1628,7 @@ class YearlyPeriod(RegularPeriodMixin, Period, ):
     def __repr__(self) -> str: return f"yy({self.get_year()})"
 
     @staticmethod
-    def month_to_period(month: int, ) -> int:
+    def month_to_segment(month: int, ) -> int:
         return 1
 
     #]
@@ -1545,7 +1638,7 @@ class HalfyearlyPeriod(RegularPeriodMixin, Period, ):
     #[
     frequency: Frequency = Frequency.HALFYEARLY
     needs_resolve: bool = False
-    origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.HALFYEARLY)
+    origin = _serial_from_ysf(BASE_YEAR, 1, Frequency.HALFYEARLY)
     _MONTH_DAY_RESOLUTION = {
         "start": {1: (1, 1), 2: (7, 1)},
         "middle": {1: (3, 15), 2: (9, 15)},
@@ -1555,21 +1648,21 @@ class HalfyearlyPeriod(RegularPeriodMixin, Period, ):
     @classmethod
     def from_sdmx_string(klass, sdmx_string: str, ) -> HalfyearlyPeriod:
         year, halfyear = sdmx_string.strip().split("-H")
-        return klass.from_year_period(int(year), int(halfyear))
+        return klass.from_year_segment(int(year), int(halfyear))
 
     def to_sdmx_string(self, /, ) -> str:
-        year, per = self.to_year_period()
+        year, per = self.to_year_segment()
         return f"{year:04g}-{self.frequency.letter}{per:1g}"
 
     @_remove_blanks
-    def __repr__(self) -> str: return f"hh{self.to_year_period()}"
+    def __repr__(self) -> str: return f"hh{self.to_year_segment()}"
 
     def to_ymd(
         self, 
         /,
         position: Literal["start", "middle", "end", ] = "start",
     ) -> tuple[int, int, int]:
-        year, per = self.to_year_period()
+        year, per = self.to_year_segment()
         return (
             year,
             *{"start": (1, 1), "middle": (6, 3), "end": (12, 31)}[position],
@@ -1580,11 +1673,11 @@ class HalfyearlyPeriod(RegularPeriodMixin, Period, ):
         /,
         position: Literal["start", "middle", "end", ] = "start",
     ) -> int:
-        _, per = self.to_year_period()
+        _, per = self.to_year_segment()
         return month_resolution[position][per]
 
     @staticmethod
-    def month_to_period(month: int, ) -> int:
+    def month_to_segment(month: int, ) -> int:
         return 1+((month-1)//6)
     #]
 
@@ -1596,7 +1689,7 @@ class QuarterlyPeriod(RegularPeriodMixin, Period, ):
 
     frequency: Frequency = Frequency.QUARTERLY
     needs_resolve: bool = False
-    origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.QUARTERLY)
+    origin = _serial_from_ysf(BASE_YEAR, 1, Frequency.QUARTERLY)
     _MONTH_DAY_RESOLUTION = {
         "start": {1: (1, 1), 2: (4, 1), 3: (7, 1), 4: (10, 1)},
         "middle": {1: (2, 15), 2: (5, 15), 3: (8, 15), 4: (11, 15)},
@@ -1606,17 +1699,17 @@ class QuarterlyPeriod(RegularPeriodMixin, Period, ):
     @classmethod
     def from_sdmx_string(klass, sdmx_string: str, ) -> QuarterlyPeriod:
         year, quarter = sdmx_string.strip().split("-Q")
-        return klass.from_year_period(int(year), int(quarter))
+        return klass.from_year_segment(int(year), int(quarter))
 
     def to_sdmx_string(self, /, ) -> str:
-        year, per = self.to_year_period()
+        year, per = self.to_year_segment()
         return f"{year:04g}-{self.frequency.letter}{per:1g}"
 
     @_remove_blanks
-    def __repr__(self) -> str: return f"qq{self.to_year_period()}"
+    def __repr__(self) -> str: return f"qq{self.to_year_segment()}"
 
     @staticmethod
-    def month_to_period(month: int, ) -> int:
+    def month_to_segment(month: int, ) -> int:
         return 1+((month-1)//3)
 
     #]
@@ -1626,7 +1719,7 @@ class MonthlyPeriod(RegularPeriodMixin, Period, ):
     #[
     frequency: Frequency = Frequency.MONTHLY
     needs_resolve: bool = False
-    origin = _serial_from_ypf(BASE_YEAR, 1, Frequency.MONTHLY)
+    origin = _serial_from_ysf(BASE_YEAR, 1, Frequency.MONTHLY)
     _MONTH_DAY_RESOLUTION = {
         "start": { m: (m, 1) for m in range(1, 13) },
         "middle": { m: (m, 15) for m in range(1, 13) },
@@ -1636,17 +1729,17 @@ class MonthlyPeriod(RegularPeriodMixin, Period, ):
     @classmethod
     def from_sdmx_string(klass, sdmx_string: str, ) -> MonthlyPeriod:
         year, month = sdmx_string.strip().split("-")
-        return klass.from_year_period(int(year), int(month))
+        return klass.from_year_segment(int(year), int(month))
 
     def to_sdmx_string(self, /, ) -> str:
-        year, per = self.to_year_period()
+        year, per = self.to_year_segment()
         return f"{year:04g}-{per:02g}"
 
     @_remove_blanks
-    def __repr__(self) -> str: return f"mm{self.to_year_period()}"
+    def __repr__(self) -> str: return f"mm{self.to_year_segment()}"
 
     @staticmethod
-    def month_to_period(month: int, ) -> int:
+    def month_to_segment(month: int, ) -> int:
         return month
     #]
 
@@ -1662,7 +1755,7 @@ class UnknownPeriod:
     #]
 
 
-yy = _period_constructor_with_ellipsis(YearlyPeriod.from_year_period, )
+yy = _period_constructor_with_ellipsis(YearlyPeriod.from_year_segment, )
 yy.__doc__ = r"""
 ................................................................................
 
@@ -1677,7 +1770,7 @@ yy.__name__ = "irispie.yy"
 yy = _dm.reference(category="constructor", )(yy)
 
 
-hh = _period_constructor_with_ellipsis(HalfyearlyPeriod.from_year_period, )
+hh = _period_constructor_with_ellipsis(HalfyearlyPeriod.from_year_segment, )
 hh.__doc__ = r"""
 ................................................................................
 
@@ -1692,7 +1785,7 @@ hh.__name__ = "irispie.hh"
 hh = _dm.reference(category="constructor", )(hh)
 
 
-qq = _period_constructor_with_ellipsis(QuarterlyPeriod.from_year_period)
+qq = _period_constructor_with_ellipsis(QuarterlyPeriod.from_year_segment)
 qq.__doc__ = r"""
 ................................................................................
 
@@ -1707,7 +1800,7 @@ qq.__name__ = "irispie.qq"
 qq = _dm.reference(category="constructor", )(qq)
 
 
-mm = _period_constructor_with_ellipsis(MonthlyPeriod.from_year_period)
+mm = _period_constructor_with_ellipsis(MonthlyPeriod.from_year_segment)
 mm.__doc__ = r"""
 ................................................................................
 
@@ -1753,7 +1846,7 @@ and the [`Span` constructors](spans.md).
 ................................................................................
     """
     if month is None:
-        return DailyPeriod.from_year_period(year, day)
+        return DailyPeriod.from_year_segment(year, day)
     else:
         return DailyPeriod.from_ymd(year, month, day)
 

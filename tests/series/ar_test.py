@@ -12,8 +12,8 @@ N = 100
 def random_period():
     freq = rn.choices([1, 2, 4, 12], )[0]
     year = rn.randint(2000, 2050, )
-    per = rn.randint(1, freq, )
-    return ir.Period.from_year_period(freq, year, per, )
+    seg = rn.randint(1, freq, )
+    return ir.Period.from_year_segment(freq, year, seg, )
 
 
 def random_series():

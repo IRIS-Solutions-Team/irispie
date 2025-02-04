@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  Test_and_deploy:
+  test:
      runs-on: ubuntu-latest
      steps:
       - name: Checkout master
@@ -33,10 +33,7 @@ jobs:
       - name: Run tests
         run: |
           cd $GITHUB_WORKSPACE/irispie-package
-          pytest ./tests/series -v -ra
-          pytest ./tests/dates -v -ra
-          pytest ./tests/sequential -v -ra
-          pytest ./tests/simultaneous -v -ra
+          pytest @tests/specs
 
       - name: Bump version in pyproject.toml
         if: ${{ success() }}
@@ -110,4 +107,13 @@ jobs:
         with:
           name: dist-${{ env.NEW_VERSION }}
           path: irispie-package/dist/*
+
+      - name: Create release
+        id: create_release
+        env:
+            tag: ${{ env.NEW_VERSION }}
+        run: |
+            gh release create "$tag" \
+                --title "Release $tag" \
+                --notes ""
 

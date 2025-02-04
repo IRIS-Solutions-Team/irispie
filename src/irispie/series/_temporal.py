@@ -33,43 +33,81 @@ class Inlay:
     )
     def temporal_change(
         self,
-        shift: int | str,
+        by: int | str,
         func: Callable,
         /,
+        **kwargs,
     ) -> None:
         r"""
 ................................................................................
 
-Overview of temporal change functions:
+Overview of temporal change functions with flexible time shifts:
+
 
 | Function      | Description
 |---------------|-------------
-| `diff`        | First difference, $y_t = x_t - x_{t-k}$ 
-| `diff_log`    | First difference of logs, $y_t = \log x_t - \log x_{t-k}$ 
-| `pct`         | Percent change, $y_t = 100 (x_t/x_{t-k} - 1)$ 
-| `roc`         | Gross rate of change, $y_t = x_t/x_{t-k}$ 
+| `diff`        | First difference, $y_t = x_t - x_s$ 
+| `diff_log`    | First difference of logs, $y_t = \log x_t - \log x_s$ 
+| `pct`         | Percent change, $y_t = 100 \cdot (x_t/x_s - 1)$ 
+| `roc`         | Gross rate of change, $y_t = x_t/x_s$ 
+
+
+Overview of temporal change functions with fixed time shifts:
+
+| Function      | Description
+|---------------|-------------
 | `adiff`       | Annualized first difference, $y_t = a \cdot (x_t - x_{t-1})$ 
 | `adiff_log`   | Annualized first difference of logs, $y_t = a \cdot (\log x_t - \log x_{t-1})$ 
-| `apct`        | Annualized percent change, $y_t = 100 [(x_t/x_{t-1})^a - 1]$ 
+| `apct`        | Annualized percent change, $y_t = 100 \cdot \left[ (x_t/x_{t-1})^a - 1 \right]$ 
 | `aroc`        | Annualized gross rate of change, $y_t = (x_t/x_{t-1})^a$ 
 
 where
 
-* $k$ is the time shift (time lag) with which the temporal change is
-calculated, determined by the negative value of the `shift` input argument;
+* $x_t$ is the value of the time series at $t$;
 
-* $a$ is the annualization factor, determined by the frequency of the time
-series (i.e. the number of calendar periods within a year).
+* $x_s$ is the reference value of the time series in some preceding period $s$;
+the value of $s$ depends on the (optional) input argument `shift` (whose default
+value is `shift=-1`); see the explanation below;
+
+* $a$ is an annualization factor, determined by the frequency of the time
+series (i.e. the number of segments of a give frequency within a year: 1 for
+yearly frequency, 2 for semi-annual frequency, 4 for quarterly frequency, 12 for
+monthly frequency, 365 for daily frequency).
+
+The `shift` input argument can be either a negative integer or a string to cover
+some specific temporal change calculations:
+
+* If `shift` is a negative integer, the reference period is $s := t-k$ where $k$ is
+the negative value of `shift`; positive values (leads) of `shift` are not allowed.
+
+* `shift="yoy"` means a year-on-year change, whereby the time shift is set to
+the negative of the frequency of the time series, $s := t-a$ with $a$ being
+defined above (the annualization factor).
+
+* `shift="soy"` means a change over the start of the current year; in this case,
+the reference period $s$ is set to the first segment of the current year (i.e.
+the 1st half-year, the 1st quarter, the 1st month, etc.)
+
+* `shift="eopy"` means a change over the end of the previous year; in this case,
+the reference period $s$ is set to the last segment of the previous year (i.e.
+the 2nd half-year, the 4th quarter, the 12th month, etc.).
+
+* `shift="tty"` means a change throughout the year; this is equivalent to
+`shift=-1` except for any start-of-year periods; in start-of-year periods, the
+value of the resulting series is unchanged; for instance, `diff` applied to a
+quarterly series with `shift="tty"` will return a series in which the Q1 value
+will be unchanged, the Q2 value will be the difference between Q2 and Q1, the Q3
+value will be the difference between Q3 and Q2, and the Q4 value will be the
+difference between Q4 and Q3.
 
 
 ### Functional forms creating a new Series object ###
 
-
 ```
-new = irispie.diff(self, /, shift=-1)
-new = irispie.diff_log(self, /, shift=-1)
-new = irispie.pct(self, /, shift=-1)
-new = irispie.roc(self, /, shift=-1)
+new = irispie.diff(self, shift=-1)
+new = irispie.diff_log(self, shift=-1)
+new = irispie.pct(self, shift=-1)
+new = irispie.roc(self, shift=-1)
 new = irispie.adiff(self)
 new = irispie.adiff_log(self)
 new = irispie.apct(self)
@@ -78,7 +116,6 @@ new = irispie.aroc(self)
 
 
 ### Class methods changing an existing Series object in-place ###
-
 
 ```
 self.diff(shift=-1)
@@ -95,19 +132,22 @@ self.aroc()
 
 ### Input arguments ###
 
-
 ???+ input "self"
     Time series on whose data a temporal change function is calculated (see
     the overview table above).
 
 ???+ input "shift"
-    A negative integer determining a time lag at which the temporal change
+    A negative integer or a string determining a time lag at which the temporal change
     function is calculated. If `shift=None` (or not specified), `shift` is
-    set to `-1`.
+    set to `-1`. If `shift` is a string, it must be one of the following:
+
+    * `"yoy"`: year-on-year change
+    * `"soy"`: change over the start of the current year
+    * `"eopy"`: change over the end of the previous year
+    * `"tty"`: change throughout the year
 
 
 ### Returns ###
-
 
 ???+ returns "new"
     New time series with data calculated as a temporal change function of
@@ -119,9 +159,9 @@ self.aroc()
 
 ................................................................................
         """
-        _catch_invalid_shift(shift, )
+        _catch_invalid_shift(by, )
         other = self.copy()
-        other.shift(shift, )
+        other.shift(by, **kwargs, )
         self._binop(other, func, new=self, )
 
     @_dm.reference(
@@ -184,7 +224,7 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
 
 ................................................................................
         """
-        self.temporal_change(shift, lambda x, y: x - y, )
+        self.temporal_change(shift, lambda x, y: x - y, neutral_value=0, )
 
     @_dm.reference(category="temporal_change", )
     def adiff(
@@ -203,7 +243,7 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         """
         shift = -1
         factor = self.frequency.value or 1
-        self.temporal_change(shift, lambda x, y: factor*(x - y), )
+        self.temporal_change(shift, lambda x, y: factor*(x - y), neutral_value=0, )
 
     @_dm.reference(category="temporal_change", )
     def diff_log(
@@ -221,7 +261,7 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
 
 ................................................................................
         """
-        self.temporal_change(shift, lambda x, y: _np.log(x) - _np.log(y), )
+        self.temporal_change(shift, lambda x, y: _np.log(x) - _np.log(y), neutral_value=0, )
 
     @_dm.reference(category="temporal_change", )
     def adiff_log(
@@ -240,7 +280,7 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         """
         shift = -1
         factor = self.frequency.value or 1
-        self.temporal_change(shift, lambda x, y: factor*(_np.log(x) - _np.log(y)), )
+        self.temporal_change(shift, lambda x, y: factor*(_np.log(x) - _np.log(y)), neutral_value=0, )
 
     @_dm.reference(category="temporal_change", )
     def roc(
@@ -258,7 +298,7 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
 
 ................................................................................
         """
-        self.temporal_change(shift, lambda x, y: x/y, )
+        self.temporal_change(shift, lambda x, y: x/y, neutral_value=1, )
 
     @_dm.reference(category="temporal_change", )
     def aroc(
@@ -277,7 +317,7 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         """
         shift = -1
         factor = self.frequency.value or 1
-        self.temporal_change(shift, lambda x, y: (x/y)**factor, )
+        self.temporal_change(shift, lambda x, y: (x/y)**factor, neutral_value=1, )
 
     @_dm.reference(category="temporal_change", )
     def pct(
@@ -295,7 +335,7 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
 
 ................................................................................
         """
-        self.temporal_change(shift, lambda x, y: 100*(x/y - 1), )
+        self.temporal_change(shift, lambda x, y: 100*(x/y - 1), neutral_value=None, )
 
     @_dm.reference(category="temporal_change", )
     def apct(
@@ -314,7 +354,7 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         """
         shift = -1
         factor = self.frequency.value or 1
-        self.temporal_change(shift, lambda x, y: 100*((x/y)**factor - 1), )
+        self.temporal_change(shift, lambda x, y: 100*((x/y)**factor - 1), neutral_value=None, )
 
     @_dm.reference(category="temporal_change_conversion", )
     def roc_from_pct(
@@ -487,7 +527,7 @@ Overview of temporal cumulation calculations:
 
 where
 
-* $k$ is the time shift (time lag) with which the temporal change is
+* $k$ is a time shift (time lag) with which the temporal change is
 calculated, determined by the negative value of the `shift` input argument.
 
 * $t$ is the end date of the time series.
@@ -495,28 +535,24 @@ calculated, determined by the negative value of the `shift` input argument.
 
 ### Functional forms creating new Series objects ###
 
-
 ```
-new = irispie.cum_diff(self, /, shift=-1, initial=None, span=None)
-new = irispie.cum_diff_log(self, /, shift=-1, initial=None, span=None)
-new = irispie.cum_pct(self, /, shift=-1, initial=None, span=None)
-new = irispie.cum_roc(self, /, shift=-1, initial=None, span=None)
+new = irispie.cum_diff(self, shift=-1, initial=None, span=None)
+new = irispie.cum_diff_log(self, shift=-1, initial=None, span=None)
+new = irispie.cum_pct(self, shift=-1, initial=None, span=None)
+new = irispie.cum_roc(self, shift=-1, initial=None, span=None)
 ```
 
 
 ### Class methods changing existing Series objects in-place ###
 
-
 ```
-self.cum_diff(/, shift=-1, initial=None, span=None)
-self.cum_diff_log(/, shift=-1, initial=None, span=None)
-self.cum_pct(/, shift=-1, initial=None, span=None)
-self.cum_roc(/, shift=-1, initial=None, span=None)
+self.cum_diff(shift=-1, initial=None, span=None)
+self.cum_diff_log(shift=-1, initial=None, span=None)
+self.cum_pct(shift=-1, initial=None, span=None)
+self.cum_roc(shift=-1, initial=None, span=None)
 ```
-
 
 ### Input arguments ###
-
 
 ???+ input "self"
     Time series on whose data a temporal cumulation is calculated (see the
@@ -540,7 +576,6 @@ self.cum_roc(/, shift=-1, initial=None, span=None)
 
 ### Returns ###
 
-
 ???+ returns "new"
     New time series with data calculated as temporal cumulation of the
     original data.
@@ -548,7 +583,6 @@ self.cum_roc(/, shift=-1, initial=None, span=None)
 ???+ returns "self"
     Time series with data replaced by temporal cumulation of the original
     data.
-
 
 ................................................................................
         """
@@ -567,13 +601,15 @@ self.cum_roc(/, shift=-1, initial=None, span=None)
     def _cumulate_forward(self, shift, cum_func, initial, span, /, ) -> None:
         """
         """
-        shifted_range = tuple(t.shift(shift, ) for t in span)
-        initial_range = Span(min(shifted_range), span.end_date, )
-        orig = self.copy()
+        zipped_span = tuple((t, t.shift(shift, )) for t in span)
+        zipped_span = tuple((t, sh) for t, sh in zipped_span if sh is not None)
+        min_period = min((sh for t, sh in zipped_span), default=span.start_date, )
+        initial_span = Span(min_period, span.end_date, )
+        change = self.copy()
         self.empty()
-        self.set_data(initial_range, initial)
-        for t, sh in zip(span, shifted_range):
-            new_data = cum_func(self.get_data(sh, ), orig.get_data(t, ), )
+        self.set_data(initial_span, initial)
+        for t, sh in zipped_span:
+            new_data = cum_func(self.get_data(sh, ), change.get_data(t, ), )
             self.set_data(t, new_data)
 
     def _cumulate_backward(self, shift, cum_func, initial, shifted_backward_range, /, ) -> None:
@@ -584,10 +620,10 @@ self.cum_roc(/, shift=-1, initial=None, span=None)
         shifted_backward_range = shifted_backward_range.resolve(orig_range_shifted, )
         backward_range = shifted_backward_range.copy()
         backward_range.shift(-shift, )
-        initial_range = Span(min(shifted_backward_range), backward_range.start_date, )
+        initial_span = Span(min(shifted_backward_range), backward_range.start_date, )
         orig = self.copy()
         self.empty()
-        self.set_data(initial_range, initial, )
+        self.set_data(initial_span, initial, )
         for t, sh in zip(backward_range, shifted_backward_range, ):
             new_data = cum_func(self.get_data(t, ), orig.get_data(t, ), )
             self.set_data(sh, new_data, )

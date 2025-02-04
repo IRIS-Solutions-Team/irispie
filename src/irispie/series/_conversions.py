@@ -307,8 +307,8 @@ def _aggregate_daily_to_regular(
     from_until = (start_date, end_date, )
     start_year = self.start_date.get_year()
     end_year = self.end_date.get_year()
-    new_start_date = new_dater_class.from_year_period(start_year, 1)
-    new_end_date = new_dater_class.from_year_period(end_year, "end")
+    new_start_date = new_dater_class.from_year_segment(start_year, 1)
+    new_end_date = new_dater_class.from_year_segment(end_year, "end")
     get_slice_func = lambda t: slice(
         t.to_daily(position="start", ) - start_date,
         t.to_daily(position="end", ) - start_date + 1,
@@ -338,7 +338,7 @@ def _aggregate_regular_to_regular(
     start_year = self.start_date.get_year()
     start_date = self.start_date.create_soy()
     end_date = self.end_date.create_eoy()
-    new_start_date = new_dater_class.from_year_period(start_year, 1)
+    new_start_date = new_dater_class.from_year_segment(start_year, 1)
     target_freq = new_dater_class.frequency
     self_data = self.get_data_from_until((start_date, end_date))
     factor = self.frequency.value // target_freq
