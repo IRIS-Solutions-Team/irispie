@@ -114,6 +114,7 @@ jobs:
           tag: ${{ env.NEW_VERSION }}
           GH_TOKEN: ${{ secrets.IRISPIE_CONTENTS_TOKEN }}
         run: |
+         cd $GITHUB_WORKSPACE/irispie-package
          gh release create "$tag" \
            --title "Release $tag" \
            --notes ""
