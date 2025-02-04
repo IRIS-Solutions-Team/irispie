@@ -862,18 +862,20 @@ This method modifies `self` in place and returns `None`.
 
 ### Details ###
 
-The resulting time series is determined the following way:
+???+ abstract "Algorithm"
 
-* The span of the resulting series starts at the earliest start period of the two
-series and ends at the latest end period of the two series.
+    The resulting time series is determined the following way:
 
-* First, the observations from the `self` (current) time series used to fill the
-resulting time span.
+    1. The span of the resulting series starts at the earliest start period of the two
+    series and ends at the latest end period of the two series.
 
-* Second, within the span of the `other` time series (from the first available
-observation to the last available observation), the observations from this
-`other` time series are superimposed on the resulting time series, including any
-in-sample missing observations.
+    2. The observations from the `self` (current) time series used to fill the
+    resulting time span.
+
+    3. Within the span of the `other` time series (from the first available
+    observation to the last available observation), the observations from this
+    `other` time series are superimposed on the resulting time series, including any
+    in-sample missing observations.
 
 ................................................................................
 """
@@ -932,18 +934,20 @@ This method modifies `self` in place and returns `None`.
 
 ### Details ###
 
-The resulting time series is determined the following way:
+???+ abstract "Algorithm"
 
-* The span of the resulting series starts at the earliest start period of the two
-series and ends at the latest end period of the two series.
+    The resulting time series is determined the following way:
 
-* First, the observations from the `other` time series used to fill the
-resulting time span.
+    1. The span of the resulting series starts at the earliest start period of the two
+    series and ends at the latest end period of the two series.
 
-* Second, within the span of the `self` time series (from the first available
-observation to the last available observation), the observations from this
-`self` time series are superimposed on the resulting time series, including any
-in-sample missing observations.
+    2. The observations from the `other` time series used to fill the
+    resulting time span.
+
+    3. Within the span of the `self` time series (from the first available
+    observation to the last available observation), the observations from this
+    `self` time series are superimposed on the resulting time series, including any
+    in-sample missing observations.
 
 ................................................................................
         """
