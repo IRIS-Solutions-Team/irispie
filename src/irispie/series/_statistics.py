@@ -18,8 +18,9 @@ if TYPE_CHECKING:
 #]
 
 
-__all__ = (
+_NANABLE_FUNCTIONS = (
     "sum",
+    "prod",
     "mean",
     "median",
     "std",
@@ -27,7 +28,12 @@ __all__ = (
     "max",
     "min",
     "percentile",
+    "quantile",
 )
+
+_NAN_FUNCTIONS = tuple( f"nan{n}" for n in _NANABLE_FUNCTIONS )
+
+__all__ = _NANABLE_FUNCTIONS + _NAN_FUNCTIONS
 
 
 class Inlay:
