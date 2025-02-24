@@ -40,7 +40,7 @@ def test_percentile():
     # Run the function creating a new Series object
     y22 = isf.percentile(x2, q, )
     # Run the NP function on the Series data
-    expected_data = np.percentile(x2.data, q, axis=1, ).reshape(-1, len(q), )
+    expected_data = np.percentile(x2.data, q, axis=1, ).reshape(-1, len(q), order="F", )
     #
     assert np.all(y21.data == expected_data)
     assert np.all(y22.data == expected_data)
@@ -54,7 +54,7 @@ def test_quantiles():
     # Run the function creating a new Series object
     y22 = isf.quantile(x2, q, )
     # Run the NP function on the Series data
-    expected_data = np.quantile(x2.data, q, axis=1, ).reshape(-1, len(q), )
+    expected_data = np.quantile(x2.data, q, axis=1, ).reshape(-1, len(q), order="F", )
     #
     assert np.all(y21.data == expected_data)
     assert np.all(y22.data == expected_data)
