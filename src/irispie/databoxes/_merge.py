@@ -18,7 +18,8 @@ from . import main as _databoxes
 if TYPE_CHECKING:
     from typing import (Self, Iterable, Literal, )
     MergeStrategyType = Literal[
-        "hstack", # Stack horizontally
+        "stack", # Stack values as variants
+        "hstack", # Legacy alias for stack, do not include in the docstring
         "replace", # Replace the existing value with the new one
         "discard", # Discard the new value and keep the existing one
         "silent", # Exactly the same as discard
@@ -39,7 +40,7 @@ class Inlay:
     def merged(
         klass,
         databoxes: Iterable[Self],
-        merge_strategy: MergeStrategyType = "hstack",
+        merge_strategy: MergeStrategyType = "stack",
     ) -> Self:
         """
         """
@@ -51,7 +52,7 @@ class Inlay:
     def merge(
         self: Self,
         other: Self | Iterable[Self],
-        merge_strategy: MergeStrategyType = "hstack",
+        merge_strategy: MergeStrategyType = "stack",
         # Do not include the following in the docstring
         action = None,
     ) -> None:
@@ -65,7 +66,7 @@ strategy to handle potential conflicts between duplicate keys.
 
     self.merge(
         other,
-        merge_strategy="hstack",
+        merge_strategy="stack",
     )
 
 
@@ -78,9 +79,9 @@ strategy to handle potential conflicts between duplicate keys.
 
 ???+ input "merge_strategy"
     Determines how to process keys that exist in more than one databox. The
-    default strategy is `"hstack"`.
+    default strategy is `"stack"`.
 
-    * `"hstack"`: Stack values; this means combine time series into multiple
+    * `"stack"`: Stack values; this means combine time series into multiple
     columns, or combine lists, or convert non-lists to lists for stacking.
 
     * `"replace"`: Replace existing values with new values.
@@ -105,7 +106,7 @@ strategy to handle potential conflicts between duplicate keys.
             _wa.warn("The 'action' input argument is deprecated; use 'merge_strategy' instead", )
             merge_strategy = action
         #
-        merge_strategy_func = _MERGE_STRATEGY[merge_strategy]
+        merge_strategy_func = _MERGE_STRATEGY_DISPATCH[merge_strategy]
         stream = _wrongdoings.create_stream(
             merge_strategy,
             "Duplicate keys when merging databoxes",
@@ -124,10 +125,11 @@ strategy to handle potential conflicts between duplicate keys.
     #]
 
 
-def _merge_hstack(
+def _merge_stack(
     self,
     key: str,
     value: Any,
+    stream: _wrongdoings.Stream,
     /,
 ) -> None:
     """
@@ -150,6 +152,7 @@ def _merge_replace(
     self,
     key: str,
     value: Any,
+    stream: _wrongdoings.Stream,
     /,
 ) -> None:
     """
@@ -163,6 +166,7 @@ def _merge_discard(
     self,
     key: str,
     value: Any,
+    stream: _wrongdoings.Stream,
     /,
 ) -> None:
     """
@@ -176,7 +180,7 @@ def _merge_report(
     self,
     key: str,
     value: Any,
-    stream,
+    stream: _wrongdoings.Stream,
     /,
 ) -> None:
     """
@@ -186,8 +190,9 @@ def _merge_report(
     #]
 
 
-_MERGE_STRATEGY = {
-    "hstack": _merge_hstack,
+_MERGE_STRATEGY_DISPATCH = {
+    "stack": _merge_stack,
+    "hstack": _merge_stack,
     "replace": _merge_replace,
     "discard": _merge_discard,
     "silent": _merge_report,

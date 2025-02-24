@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 #]
 
 
-DEFAULT_INIT_GUESS = 1/9
+DEFAULT_MAYBELOG_INIT_GUESS = 1/9
 
 
 @_dc.dataclass

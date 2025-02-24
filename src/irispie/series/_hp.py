@@ -17,12 +17,12 @@ import documark as _dm
 from ..dates import (Period, Frequency, )
 from .. import dates as _dates
 from . import main as _series
-from . import _functionalize
+from ._functionalize import FUNC_STRING
 
 #]
 
 
-__all__ = ("hpf", )
+__all__ = ["hpf", ]
 
 
 _AUTO_SMOOTH = {
@@ -433,8 +433,8 @@ def hpf(self, *args, **kwargs, ) -> tuple[_series.Series, _series.Series]:
 
 
 for n in ("hpf_trend", "hpf_gap", ):
-    exec(_functionalize.FUNC_STRING.format(n=n, ), globals(), locals(), )
-    __all__ += (n, )
+    exec(FUNC_STRING.format(n=n, ), globals(), locals(), )
+    __all__.append(n)
 
 
 

@@ -17,15 +17,15 @@ import documark as _dm
 
 from .. import dates as _dates
 from . import arip as _arip
-from . import _functionalize
+from ._functionalize import FUNC_STRING
 
 #]
 
 
-__all__ = (
+__all__ = [
     "convert_roc",
     "convert_pct",
-)
+]
 
 
 _builtin_min = min
@@ -289,9 +289,11 @@ class Inlay:
     #]
 
 
-for n in ("aggregate", "disaggregate", ):
-    exec(_functionalize.FUNC_STRING.format(n=n, ), globals(), locals(), )
-    __all__ += (n, )
+attributes = (n for n in dir(Inlay) if not n.startswith("_"))
+for n in attributes:
+    code = FUNC_STRING.format(n=n, )
+    exec(code, globals(), locals(), )
+    __all__.append(n)
 
 
 def _aggregate_daily_to_regular(

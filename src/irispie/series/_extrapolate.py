@@ -14,7 +14,7 @@ import scipy as _sp
 import documark as _dm
 
 from .. import dates as _dates
-from . import _functionalize
+from ._functionalize import FUNC_STRING
 
 if TYPE_CHECKING:
     from typing import (Iterable, )
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 #]
 
 
-__all__ = ()
+__all__ = []
 
 
 class Inlay:
@@ -139,9 +139,10 @@ $\rho_1,\ \rho_2,\ \dots,\ \rho_p$ given by the input argument `ar_coeff`
         initial_from_until = (start-order, start-1, )
         iter_initial_data = self.iter_own_data_variants_from_until(initial_from_until, )
         new_data = _np.hstack(tuple(
-            _extrapolate(
+            _extrapolate_data(
                 initial_data, num_periods, ar,
-                intercept=intercept, log=log,
+                intercept=intercept,
+                log=log,
             )
             for initial_data in iter_initial_data
         ))
@@ -150,15 +151,18 @@ $\rho_1,\ \rho_2,\ \dots,\ \rho_p$ given by the input argument `ar_coeff`
     #]
 
 
-for n in ("extrapolate", ):
-    exec(_functionalize.FUNC_STRING.format(n=n, ), globals(), locals(), )
-    __all__ += (n, )
+attributes = (n for n in dir(Inlay) if not n.startswith("_"))
+for n in attributes:
+    code = FUNC_STRING.format(n=n, )
+    exec(code, globals(), locals(), )
+    __all__.append(n)
 
 
-def _extrapolate(
+def _extrapolate_data(
     initial: _np.ndarray,
     num_periods: int,
     ar: Iterable[Real],
+    *,
     intercept: Real = 0,
     log: bool = False,
 ) -> None:
@@ -168,11 +172,13 @@ def _extrapolate(
     initial = _np.flip(initial.flatten(), )
     if log:
         initial = _np.log(initial)
-    intercept = _np.full((num_periods, ), intercept, dtype=_np.float64, )
+    innovation = _np.full((num_periods, ), intercept, dtype=_np.float64, )
     ma = (1, )
     zi = _sp.signal.lfiltic(ma, ar, initial, )
-    out, *_ = _sp.signal.lfilter(ma, ar, intercept, zi=zi, axis=0, )
+    out, *_ = _sp.signal.lfilter(ma, ar, innovation, zi=zi, axis=0, )
     if log:
         out = _np.exp(out)
     return out.reshape(-1, 1, )
     #]
+
+

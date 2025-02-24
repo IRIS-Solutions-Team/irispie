@@ -3,6 +3,7 @@
 
 
 #[
+
 from __future__ import annotations
 
 from collections import namedtuple
@@ -10,7 +11,7 @@ import functools as _ft
 import itertools as _it
 import numpy as _np
 import scipy as _sp
-import neqs as _nq
+import neqs as _ne
 
 from .. import equations as _equations
 from ..incidences import blazer as _blazer
@@ -18,6 +19,7 @@ from .. import has_variants as _has_variants
 from .. import wrongdoings as _wrongdoings
 from ..fords import steadiers as _fs
 from ..steadiers import evaluators as _evaluators
+from ..steadiers import solver_dispatcher as _solver_dispatcher
 from ..sources import LOGGABLE_VARIABLE
 from ..equations import ENDOGENOUS_EQUATION
 
@@ -30,6 +32,8 @@ if TYPE_CHECKING:
     from ._variants import Variant
     from collections.abc import Iterable, Callable
     from typing import Any, Literal, NoReturn
+    from ..steadiers.solver_dispatcher import SolverType
+
 #]
 
 
@@ -46,6 +50,8 @@ _Wrt = namedtuple("Wrt", (
 
 
 _STEADY_EQUATION_SOLVED = ENDOGENOUS_EQUATION
+
+_DEFAULT_SOLVER = "neqs_levenberg"
 
 
 class Inlay:
@@ -148,19 +154,17 @@ class Inlay:
         *,
         plan: SteadyPlan | None = None,
         split_into_blocks: bool | None = None,
-        root_settings: dict[str, Any] | None = None,
+        solver: SolverType = _DEFAULT_SOLVER,
+        solver_settings: dict[str, Any] | None = None,
         iter_printer_settings: dict[str, Any] | None = None,
         **kwargs,
     ) -> dict[str, Any]:
         """
         """
+        iter_printer_settings = iter_printer_settings or {}
+        #
         qid_to_kind = self.create_qid_to_kind()
         qid_to_name = self.create_qid_to_name()
-        root_settings = (
-            _DEFAULT_ROOT_SETTINGS
-            if root_settings is None
-            else _DEFAULT_ROOT_SETTINGS | root_settings
-        )
         #
         split_into_blocks = _resolve_split_into_blocks(split_into_blocks, plan, )
         wrt = self._resolve_steady_wrt(plan, is_flat=model_flags.is_flat, )
@@ -169,6 +173,7 @@ class Inlay:
             blocks = _blazer.blaze(im, wrt.eids, wrt.qids, )
         else:
             blocks = (_blazer._Block(wrt.eids, wrt.qids), )
+        num_blocks = len(blocks)
         #
         all_quantities = self.get_quantities()
         all_equations = self.get_steady_equations(kind=_STEADY_EQUATION_SOLVED, )
@@ -176,14 +181,19 @@ class Inlay:
             = _blazer.human_blocks_from_blocks \
             (blocks, all_equations, all_quantities, )
         #
-        info = {
-            "variant_success": None,
-            "blocks": human_blocks,
-            "block_success": [],
-            "block_root_final": [],
+        info_v = {
+            "success": None,
+            "blocks": [],
         }
         #=======================================================================
         for bid, (block, human_block) in enumerate(zip(blocks, human_blocks, ), ):
+            #
+            info_b = {
+                "success": None,
+                "exit_status": None,
+                "equations": human_block.equations,
+                "quantities": human_block.quantities,
+            }
             custom_header = f"[Variant {vid}][Block {bid}]"
             #
             block_level_qids = tuple(sorted(set(block.qids) - set(wrt.fixed_level_qids)))
@@ -192,9 +202,12 @@ class Inlay:
             #
             has_no_qids = (not block_level_qids) and (not block_change_qids)
             has_no_equations = not block_equations
+            #
+            solve = getattr(_solver_dispatcher, solver)
             if has_no_qids or has_no_equations:
-                info["block_success"].append(True, )
-                info["block_root_final"].append(None, )
+                info_b["success"] = True
+                info_b["exit_status"] = _ne.ExitStatus.NO_SOLVER_NEEDED
+                info_v["blocks"].append(info_b, )
                 print(f"\n-Skipping {custom_header}")
                 continue
             #
@@ -205,38 +218,16 @@ class Inlay:
                 all_quantities,
                 variant,
                 context=self._invariant._context,
-                iter_printer_settings=iter_printer_settings,
+                iter_printer_settings=iter_printer_settings | {"custom_header": custom_header},
             )
-            # neqs = False
-            # if block_change_qids and len(block_change_qids) == len(block_level_qids) and len(block_level_qids) == len(block_equations):
-            #     neqs = True
-            # elif (not block_change_qids) and len(block_level_qids) == len(block_equations):
-            #     neqs = True
-
-            init_guess = steady_evaluator.get_init_guess()
-
-            steady_evaluator.iter_printer.custom_header = custom_header
-            root_final = _sp.optimize.root(
-                steady_evaluator.eval,
-                init_guess,
-                jac=True,
-                **root_settings,
-            )
-            steady_evaluator.iter_printer.print_footer()
-            final_guess = root_final.x
-            func_norm = _sp.linalg.norm(root_final.fun, 2, )
-            success = root_final.success and func_norm < root_settings["tol"]
-
-            # else:
-            #     final_guess, exit_status = _nq.damped_newton(
-            #         eval_func=steady_evaluator.eval_func,
-            #         eval_jacob=steady_evaluator.eval_jacob,
-            #         init_guess=init_guess,
-            #     )
-            #     success = exit_status.is_success
-
-            steady_evaluator.final_guess = final_guess
             #
+            maybelog_init_guess = steady_evaluator.get_init_guess()
+            maybelog_final_guess, success, exit_status = solve(
+                steady_evaluator,
+                maybelog_init_guess,
+                solver_settings=solver_settings,
+            )
+            steady_evaluator.final_guess = maybelog_final_guess
             #
             if not success:
                 _throw_block_error(human_block, custom_header, )
@@ -244,13 +235,13 @@ class Inlay:
             # Update variant with steady levels and changes
             _update_variant_with_final_guess(variant, steady_evaluator, qid_to_kind, qid_to_name, )
             #
-            info["block_success"].append(success, )
-            info["block_root_final"].append(root_final, )
+            info_b["success"] = success
+            info_b["exit_status"] = exit_status
+            info_v["blocks"].append(info_b, )
         #=======================================================================
         #
-        info["variant_success"] = all(info["block_success"])
-        #
-        return info
+        info_v["success"] = all(i["success"] for i in info_v["blocks"])
+        return info_v
 
     _steady_nonlinear_flat = _ft.partialmethod(
         _steady_nonlinear,
@@ -387,18 +378,18 @@ class Inlay:
         fail_stream._raise()
         all_status = all(status)
         #
-        if return_info:
-            info = [
-                {"discrepancies": d, }
-                for d in discrepancies
-            ]
-            info = _has_variants.unpack_singleton(
-                info, self.is_singleton,
-                unpack_singleton=unpack_singleton,
-            )
-            return all_status, info
-        else:
+        if not return_info:
             return all_status
+        #
+        info = [
+            {"discrepancies": d, }
+            for d in discrepancies
+        ]
+        info = _has_variants.unpack_singleton(
+            info, self.is_singleton,
+            unpack_singleton=unpack_singleton,
+        )
+        return all_status, info,
 
     #]
 
@@ -482,14 +473,12 @@ def _throw_block_error(human_block, custom_header: str, ) -> NoReturn:
     """
     """
     #[
-    message = (f"Steady state calculations failed to converge in {custom_header}", )
-    message += human_block.equations
+    message = (
+        f"Steady state calculations failed to converge in {custom_header}",
+        *human_block.equations,
+        "Solved for " + " ".join(human_block.quantities, ),
+    )
     raise _wrongdoings.IrisPieError(message, )
     #]
 
-
-_DEFAULT_ROOT_SETTINGS = {
-    "method": "lm",
-    "tol": 1e-12,
-}
 

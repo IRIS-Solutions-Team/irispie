@@ -7,8 +7,9 @@ Iteration printers for dynamic period-by-period systems
 
 from __future__ import annotations
 
+from neqs import IterPrinter
+
 from .. import quantities as _quantities
-from .. import iter_printers as _iter_printers
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 #]
 
 
-class IterPrinter(_iter_printers.IterPrinter, ):
+class IterPrinter(IterPrinter, ):
     """
     """
     #[

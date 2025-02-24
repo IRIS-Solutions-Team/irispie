@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import numpy as _np
 from collections import namedtuple
+from neqs import IterPrinter
 
 from .. import equations as _equations
 from .. import quantities as _quantities
-from ._iter_printers import IterPrinter
 from ._equators import Equator
 from ._jacobians import Jacobian
 

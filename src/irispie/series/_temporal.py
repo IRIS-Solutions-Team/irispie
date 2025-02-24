@@ -12,12 +12,12 @@ import numpy as _np
 import documark as _dm
 
 from ..dates import (Span, )
-from . import _functionalize
+from ._functionalize import FUNC_STRING
 from ._categories import CATEGORIES
 #]
 
 
-__all__ = ()
+__all__ = []
 
 
 class Inlay:
@@ -633,8 +633,8 @@ self.cum_roc(shift=-1, initial=None, span=None)
 
 attributes = (n for n in dir(Inlay) if not n.startswith("_"))
 for n in attributes:
-    exec(_functionalize.FUNC_STRING.format(n=n, ), globals(), locals(), )
-    __all__ += (n, )
+    exec(FUNC_STRING.format(n=n, ), globals(), locals(), )
+    __all__.append(n)
 
 
 _CUMULATIVE_FACTORY = {

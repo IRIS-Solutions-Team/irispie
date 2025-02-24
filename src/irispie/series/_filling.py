@@ -10,7 +10,7 @@ import functools as _ft
 import numpy as _np
 import documark as _dm
 
-from . import _functionalize
+from ._functionalize import FUNC_STRING
 
 from typing import (TYPE_CHECKING, )
 if TYPE_CHECKING:
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 #]
 
 
-__all__ = ()
+__all__ = []
 
 
 class Inlay:
@@ -117,9 +117,11 @@ class Inlay:
     #]
 
 
-for n in ("fill_missing", ):
-    exec(_functionalize.FUNC_STRING.format(n=n, ), globals(), locals(), )
-    __all__ += (n, )
+attributes = (n for n in dir(Inlay) if not n.startswith("_"))
+for n in attributes:
+    code = FUNC_STRING.format(n=n, )
+    exec(code, globals(), locals(), )
+    __all__.append(n)
 
 
 def _fill_neighbor(

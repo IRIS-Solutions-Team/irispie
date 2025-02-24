@@ -17,6 +17,7 @@ import warnings as _wa
 import datetime as _dt
 
 from ..dates import Period
+from .. import dates as _dates
 from .. import plotly_wrap as _plotly_wrap
 
 from typing import TYPE_CHECKING
@@ -40,11 +41,11 @@ with open(_os.path.join(_PLOTLY_STYLES_FOLDER, "plain_layout.json", ), "rt", ) a
     _PLOTLY_STYLES["layouts"]["plain"] = _js.load(fid, )
 
 
-def _line_plot(color: str, **settings) -> _pg.Scatter:
+def _line_plot(color: str, x, y, **settings) -> _pg.Scatter:
     """
     """
     settings = {"mode": "lines+markers", } | settings
-    return _pg.Scatter(line_color=color, **settings, )
+    return _pg.Scatter(line_color=color, x=x, y=y, **settings, )
 
 
 def _bar_plot(color: str, **settings) -> _pg.Bar:
@@ -129,7 +130,7 @@ class Inlay:
         round_to: int | None = None,
         #
         return_info: bool = False,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | None:
         """
         """
         if type is not None:
@@ -169,12 +170,13 @@ class Inlay:
 
         traces_constructor = _PLOTLY_TRACES_CONSTRUCTOR[chart_type]
 
-        traces_dates, xaxis_type = _get_traces_dates(self, )
+        xaxis_type = from_until[0].plotly_xaxis_type if from_until else None
+        traces_periods = tuple(i.to_plotly_date() for i in _dates.periods_from_until(*from_until, ))
 
         traces_iterable = _iter_traces(
             self,
-            traces_dates,
             from_until,
+            traces_periods,
             traces_constructor,
             transform,
             legend,
@@ -241,12 +243,14 @@ class Inlay:
         if show_figure:
             figure.show()
 
-        if return_info:
-            out_info = {
-                "figure": figure,
-                "traces": out_traces,
-            }
-            return out_info
+        if not return_info:
+            return
+
+        out_info = {
+            "figure": figure,
+            "traces": out_traces,
+        }
+        return out_info
 
     #]
 
@@ -264,22 +268,22 @@ def _update_subplot_title(
         annotation.text = subplot_title
 
 
-def _get_traces_dates(series: Series, /, ) -> tuple[tuple[Period, ...], str]:
-    """
-    """
-    #[
-    if not series.span:
-        return (), None,
-    dates = tuple(i.to_plotly_date() for i in series.span)
-    xaxis_type = next(iter(series.span)).plotly_xaxis_type
-    return dates, xaxis_type,
-   #]
+# def _get_traces_dates(series: Series, /, ) -> tuple[tuple[Period, ...], str]:
+#     """
+#     """
+#     #[
+#     if not series.span:
+#         return (), None,
+#     dates = tuple(i.to_plotly_date() for i in series.span)
+#     xaxis_type = next(iter(series.span)).plotly_xaxis_type
+#     return dates, xaxis_type,
+#    #]
 
 
 def _iter_traces(
     series: Series,
-    traces_dates: Sequence[Period],
     from_until: tuple[Period, Period],
+    traces_period: tuple[str, ...],
     traces_constructor: Callable,
     transform: Callable,
     legends: Iterable[str] | None,
@@ -299,7 +303,7 @@ def _iter_traces(
     for data_v, legend_v, color_v, update_v in zipped:
         yield traces_constructor(
             color=color_v,
-            x=traces_dates,
+            x=traces_period,
             y=tuple(transform(i) for i in data_v),
             name=legend_v,
             **update_v,

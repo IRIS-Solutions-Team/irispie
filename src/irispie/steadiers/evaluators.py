@@ -10,7 +10,7 @@ from __future__ import annotations
 import itertools as _it
 import numpy as _np
 
-from ..evaluators.base import DEFAULT_INIT_GUESS
+from ..evaluators.base import DEFAULT_MAYBELOG_INIT_GUESS
 from .. import equations as _equations
 from .. import quantities as _quantities
 
@@ -357,7 +357,7 @@ def _fill_missing(
     maybelog_levels: _np.ndarray,
     maybelog_changes: _np.ndarray,
     /,
-    default_level: Number = DEFAULT_INIT_GUESS,
+    default_level: Number = DEFAULT_MAYBELOG_INIT_GUESS,
     default_change: Number = 0,
 ) -> tuple[_np.ndarray, _np.ndarray]:
     """

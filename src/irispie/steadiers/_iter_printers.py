@@ -7,8 +7,9 @@ Printers for iterative steady-state solvers
 
 from __future__ import annotations
 
+from neqs import IterPrinter
+
 from .. import quantities as _quantities
-from .. import iter_printers as _iter_printers
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -18,7 +19,17 @@ if TYPE_CHECKING:
 #]
 
 
-class _IterPrinter(_iter_printers.IterPrinter, ):
+_COLUMNS = (
+    "counter",
+    "func_norm",
+    "step_length",
+    "jacob_status",
+    "worst_diff_x",
+    "worst_func",
+)
+
+
+class _IterPrinterWithStrings(IterPrinter, ):
     """
     """
     #[
@@ -38,6 +49,7 @@ class _IterPrinter(_iter_printers.IterPrinter, ):
         super().__init__(
             equation_strings=equation_strings,
             quantity_strings=quantity_strings,
+            columns=_COLUMNS,
             **kwargs,
         )
 
@@ -49,12 +61,12 @@ class _IterPrinter(_iter_printers.IterPrinter, ):
         return tuple(i.human for i in equations)
 
     def _get_quantity_strings(*args, **kwargs, ) -> tuple[str, ...]:
-        raise NotImplementedError
+        ...
 
     #]
 
 
-class FlatIterPrinter(_IterPrinter, ):
+class FlatIterPrinter(_IterPrinterWithStrings, ):
     """
     """
     #[
@@ -74,7 +86,7 @@ class FlatIterPrinter(_IterPrinter, ):
     #]
 
 
-class NonflatIterPrinter(_IterPrinter, ):
+class NonflatIterPrinter(_IterPrinterWithStrings, ):
     """
     """
     #[

@@ -7,17 +7,12 @@ Main time series class definition
 
 from __future__ import annotations
 
-from numbers import (Real, )
-from collections.abc import (Iterable, Callable, )
-from typing import (Self, Any, TypeAlias, NoReturn, Literal, )
-from types import (EllipsisType, )
+from numbers import Real
+from collections.abc import Iterable, Callable
+from typing import Self, Any, TypeAlias, NoReturn, Literal
+from types import EllipsisType
 import numpy as _np
-import scipy as _sp
-import itertools as _it
-import functools as _ft
 import operator as _op
-import copy as _cp
-import textwrap as _tw
 import documark as _dm
 
 from ..conveniences import descriptions as _descriptions
@@ -28,102 +23,49 @@ from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
 from .. import has_variants as _has_variants
 
-from . import _temporal
-from . import _filling
-from . import _moving
-from . import _conversions
-from . import _hp
-from . import _ar
-from . import _x13
+from ._functionalize import FUNC_STRING
 
 from . import _indexing
 from . import _plotly
 from . import _views
-from . import _functionalize
-
-from ._temporal import __all__ as _diffs_cums__all__
-from ._temporal import *
-
-from ._filling import __all__ as _fillings__all__
-from ._filling import *
-
-from ._hp import __all__ as _hp__all__
-from ._hp import *
-
-from ._ar import __all__ as _ar__all__
-from ._ar import *
-
-from ._x13 import __all__ as _x13__all__
-from ._x13 import *
-
-from ._moving import __all__ as _moving__all__
-from ._moving import *
-
-from ._conversions import __all__ as _conversions__all__
-from ._conversions import *
+from . import _temporal
+from . import _filling
+from . import _conversions
+from . import _hp
+from . import _extrapolate
+from . import _x13
+from . import _moving
+from . import _elementwise
+from . import _statistics
 
 from ._categories import CATEGORIES
 
 #]
 
 
-_ELEMENTWISE_FUNCTIONS = {
-    "log": _np.log,
-    "exp": _np.exp,
-    "sqrt": _np.sqrt,
-    "abs": _np.abs,
-    "sign": _np.sign,
-    "sin": _np.sin,
-    "cos": _np.cos,
-    "tan": _np.tan,
-    "round": _np.round,
-    "logistic": _sp.special.expit,
-    "normal_cdf": _sp.stats.norm.cdf,
-    "normal_pdf": _sp.stats.norm.pdf,
-    "maximum": _np.maximum,
-    "minimum": _np.minimum,
-}
-
-FUNCTION_ADAPTATIONS_TIMEWISE_NUMPY = (
-    "sum",
-    "mean",
-)
+#
+# The following functions can return either a new time series object if applied
+# across variants (axis=1), or a scalar or a list of values if applied across
+# time (axis=0)
+#
 
 
-# FIXME
-FUNCTION_ADAPTATIONS_ELEMENTWISE = tuple(_ELEMENTWISE_FUNCTIONS.keys())
+__all__ = ["Series", "shift", ]
 
-FUNCTION_ADAPTATIONS_NUMPY_APPLY = () # ("maximum", "minimum", "mean", "median", "abs", )
-FUNCTION_ADAPTATIONS_BUILTINS = ("max", "min", )
-FUNCTION_ADAPTATIONS = tuple(set(
-    FUNCTION_ADAPTATIONS_ELEMENTWISE
-))
-
-
-__all__ = (
-    ("Series", "shift", "series", )
-    + _conversions__all__
-    + _diffs_cums__all__
-    + _fillings__all__
-    + _hp__all__
-    + _ar__all__
-    + _moving__all__
-    + _x13__all__
-    + FUNCTION_ADAPTATIONS
-)
 
 Dates = Period | Iterable[Period] | Span | EllipsisType | None
 VariantsRequestType = int | Iterable[int] | slice | None
 LayMethodType = Literal["by_span", ]
 ShiftType = int | Literal["yoy", "soy", "eopy", "tty", ]
+AxisType = Literal[0, 1]
 
 
 def _get_date_positions(dates, base, num_periods, /, ):
     pos = tuple(_dates.date_index(dates, base))
-    min_pos = _builtin_min((x for x in pos if x is not None), default=0)
-    max_pos = _builtin_max((x for x in pos if x is not None), default=0)
-    add_before = _builtin_max(-min_pos, 0)
-    add_after = _builtin_max(max_pos - num_periods + 1, 0)
+    min_pos = min((x for x in pos if x is not None), default=0)
+    max_pos = max((x for x in pos if x is not None), default=0)
+    add_before = max(-min_pos, 0)
+    add_after = max(max_pos - num_periods + 1, 0)
     pos_adjusted = [
         p + add_before if p is not None else None
         for p in pos
@@ -141,11 +83,13 @@ class Series(
     _temporal.Inlay,
     _filling.Inlay,
     _hp.Inlay,
-    _ar.Inlay,
+    _extrapolate.Inlay,
     _moving.Inlay,
     _x13.Inlay,
     _plotly.Inlay,
     _views.Inlay,
+    _elementwise.Inlay,
+    _statistics.Inlay,
     #
     _descriptions.DescriptionMixin,
     _copies.Mixin,
@@ -488,7 +432,7 @@ self = Series(
             data = self._create_periods_of_missing_values(num_rows=0, )[:, variants]
             return dates, pos, variants, data
         #
-        base_date = self.start or _builtin_min(dates, )
+        base_date = self.start or min(dates, )
         pos, add_before, add_after = _get_date_positions(dates, base_date, self.shape[0], )
         data = self._create_expanded_data(add_before, add_after, )
         if not isinstance(pos, Iterable):
@@ -1305,12 +1249,6 @@ This method modifies `self` in place and returns `None`.
         """
         self.data = 1 / (1 + _np.exp(-self.data))
 
-    for n in FUNCTION_ADAPTATIONS_ELEMENTWISE:
-        exec(f"def {n}(self, *args, **kwargs, ): self.data = _ELEMENTWISE_FUNCTIONS['{n}'](self.data, *args, **kwargs, )")
-
-    for n in FUNCTION_ADAPTATIONS_TIMEWISE_NUMPY:
-        exec(f"def {n}(self, *args, **kwargs, ): self.data = _np.{n}(self.data, axis=1, *args, **kwargs, ).reshape(-1, 1)")
-
     #]
 
 
@@ -1347,56 +1285,6 @@ def _create_data_variant_from_number(
     /,
 ) -> _np.ndarray:
     return _np.full((len(span), 1), number, dtype=data_type)
-
-
-class series:
-    """
-    """
-    #[
-
-    for n in FUNCTION_ADAPTATIONS_TIMEWISE_NUMPY:
-        exec(_tw.dedent(f"""
-            @staticmethod
-            def {n}(self: Series, *args, **kwargs, ) -> None:
-                new = self.copy()
-                new.{n}(*args, **kwargs, )
-                return new
-        """))
-
-    #]
-
-
-for n in FUNCTION_ADAPTATIONS_ELEMENTWISE:
-    exec(
-        f"@_ft.singledispatch\n"
-        f"def {n}(x, *args, **kwargs):\n"
-        f"    return _ELEMENTWISE_FUNCTIONS['{n}'](x, *args, **kwargs)\n"
-    )
-    exec(
-        f"@{n}.register(Series, )\n"
-        f"def _(x, *args, **kwargs):\n"
-        f"    new = x.copy()\n"
-        f"    new.{n}(*args, **kwargs)\n"
-        f"    return new\n"
-    )
-
-
-for n in FUNCTION_ADAPTATIONS_BUILTINS:
-    exec(
-        f"_builtin_{n} = {n}"
-    )
-#     exec(
-#         f"@_ft.singledispatch"
-#         f"\n"
-#         f"def {n}(x, *args, **kwargs): "
-#         f"return _builtin_{n}(x, *args, **kwargs)"
-#     )
-#     exec(
-#         f"@{n}.register(Series, )"
-#         f"\n"
-#         f"def {n}(x, *args, **kwargs): "
-#         f"return x._{n}_(*args, **kwargs)"
-#     )
 
 
 def _from_periods_and_values(
@@ -1507,20 +1395,9 @@ _SERIES_POPULATOR = {
 }
 
 
-def shift(
-    self,
-    by: int | str = -1,
-) -> _series.Series:
-    """
-    """
-    #[
-    new = self.copy()
-    new.shift(by)
-    return new
-    #]
+for n in ("shift", "redate", "underlay", "overlay", ):
+    code = FUNC_STRING.format(n=n, )
+    exec(code, globals(), locals(), )
+    __all__.append(n)
 
-
-for n in ("underlay", "overlay", "redate", ):
-    exec(_functionalize.FUNC_STRING.format(n=n, ), globals(), locals(), )
-    __all__ += (n, )
 

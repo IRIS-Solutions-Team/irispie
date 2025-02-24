@@ -14,12 +14,12 @@ import functools as _ft
 import documark as _dm
 
 from .. import dates as _dates
-from . import _functionalize
+from ._functionalize import FUNC_STRING
 
 #]
 
 
-__all__ = ()
+__all__ = []
 
 
 class Inlay:
@@ -216,7 +216,9 @@ See documentation of [moving window calculations](#moving-window-calculations) o
     #]
 
 
-for n in ("mov_sum", "mov_avg", "mov_mean", "mov_prod", ):
-    exec(_functionalize.FUNC_STRING.format(n=n, ), globals(), locals(), )
-    __all__ += (n, )
+attributes = (n for n in dir(Inlay) if not n.startswith("_"))
+for n in attributes:
+    code = FUNC_STRING.format(n=n, )
+    exec(code, globals(), locals(), )
+    __all__.append(n)
 

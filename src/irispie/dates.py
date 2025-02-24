@@ -4,6 +4,7 @@ Time periods and time spans
 
 
 #[
+
 from __future__ import annotations
 
 from typing import (Union, Self, Any, Protocol, TypeAlias, runtime_checkable, )
@@ -18,6 +19,12 @@ import documark as _dm
 
 from .conveniences import copies as _copies
 from . import wrongdoings as _wrongdoings
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Literal
+    PositionTyp = Literal["start", "middle", "end", ]
+
 #]
 
 
@@ -1007,7 +1014,7 @@ where lowercase letters represent the respective time period components
     def to_python_date(
         self,
         /,
-        position: Literal["start", "middle", "end", ] = "start",
+        position: PositionType = "start",
     ) -> _dt.date:
         r"""
 ................................................................................
@@ -1057,7 +1064,11 @@ on the year, month, and day of the time period.
         """
         return _dt.date(*self.to_ymd(position=position, ))
 
-    to_plotly_date = _ft.partialmethod(to_python_date, position="middle", )
+    def to_plotly_date(
+        self,
+        position: PositionType = "middle",
+    ) -> _dt.date:
+        return self.to_python_date(position=position, )
 
     @_dm.reference(category="information", )
     def get_distance_from_origin(self, ) -> int:
@@ -1371,7 +1382,7 @@ class IntegerPeriod(Period, ):
     def to_plotly_date(
         self,
         /,
-        position: Literal["start", "middle", "end", ] = "middle",
+        position: PositionType = "middle",
     ) -> Real:
         return self._PLOTLY_DATE_FACTORY[position](self.serial, )
 
@@ -1561,7 +1572,7 @@ class RegularPeriodMixin:
     def to_ymd(
         self, 
         /,
-        position: Literal["start", "middle", "end", ] = "start",
+        position: PositionType = "start",
     ) -> tuple[int, int, int]:
         year, per = self.to_year_segment()
         month, day = self._MONTH_DAY_RESOLUTION[position][per]
@@ -1593,7 +1604,7 @@ class RegularPeriodMixin:
     def to_daily(
         self,
         /,
-        position: Literal["start", "middle", "end", ] = "start"
+        position: PositionType = "start"
     ) -> DailyPeriod:
         try:
             return DailyPeriod.from_ymd(*self.to_ymd(position=position, ), )
@@ -1660,7 +1671,7 @@ class HalfyearlyPeriod(RegularPeriodMixin, Period, ):
     def to_ymd(
         self, 
         /,
-        position: Literal["start", "middle", "end", ] = "start",
+        position: PositionType = "start",
     ) -> tuple[int, int, int]:
         year, per = self.to_year_segment()
         return (
@@ -1671,7 +1682,7 @@ class HalfyearlyPeriod(RegularPeriodMixin, Period, ):
     def get_month(
         self,
         /,
-        position: Literal["start", "middle", "end", ] = "start",
+        position: PositionType = "start",
     ) -> int:
         _, per = self.to_year_segment()
         return month_resolution[position][per]

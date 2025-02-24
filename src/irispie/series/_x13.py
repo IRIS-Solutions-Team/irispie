@@ -21,7 +21,7 @@ from .. import wrongdoings as _wrongdoings
 from .. import has_variants as _has_variants
 from ..dates import (Period, Span, Frequency, )
 
-from . import _functionalize
+from ._functionalize import FUNC_STRING
 
 if TYPE_CHECKING:
     from typing import (Any, )
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 #]
 
 
-__all__ = ()
+__all__ = []
 
 
 Mode = Literal["mult", "add", "pseudoadd", "logadd", ]
@@ -314,9 +314,11 @@ info = self.x13(
     #]
 
 
-for n in ("x13", ):
-    exec(_functionalize.FUNC_STRING.format(n=n, ), globals(), locals(), )
-    __all__ += (n, )
+attributes = (n for n in dir(Inlay) if not n.startswith("_"))
+for n in attributes:
+    code = FUNC_STRING.format(n=n, )
+    exec(code, globals(), locals(), )
+    __all__.append(n)
 
 
 def _x13_data(

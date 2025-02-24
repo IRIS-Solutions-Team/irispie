@@ -87,10 +87,13 @@ class NonflatSteadyEquator(SteadyEquator, ):
     ) -> _np.ndarray:
         """
         """
-        return _np.hstack((
-            self._equator.eval(steady_array, column_offset, ),
-            self._equator.eval(steady_array, column_offset + self.NONFLAT_STEADY_SHIFT, ),
-        ))
+        time_zero = self._equator.eval(steady_array, column_offset, )
+        if not _np.isfinite(time_zero).all():
+            raise ValueError("Non-finite values when evaluating steady state at time zero")
+        time_k = self._equator.eval(steady_array, column_offset + self.NONFLAT_STEADY_SHIFT, )
+        if not _np.isfinite(time_k).all():
+            raise ValueError("Non-finite values when evaluating steady state at time t+k")
+        return _np.hstack((time_zero, time_k, ))
     #]
 
 
