@@ -69,7 +69,7 @@ for n in __all__:
             **kwargs,
         ) -> Real | list[Real] | Series:
             if axis == 0:
-                result = _np.{n}(self.data, *args, axis=0, **kwargs, ).tolist()
+                result = _np.{n}(self.data, *args, axis=0, **kwargs, ).T.tolist()
                 if unpack_singleton and len(result) == 1:
                     result = result[0]
                 return result
