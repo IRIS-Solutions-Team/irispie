@@ -51,7 +51,7 @@ class Inlay:
                 Function {n}
                 '''
                 num_periods = self.data.shape[0]
-                self.data = _np.{n}(self.data, *args, axis=1, **kwargs, ).reshape(num_periods, -1, order="F", )
+                self.data = _np.{n}(self.data, *args, axis=1, **kwargs, ).T.reshape(num_periods, -1, )
                 self.trim()
         """
         exec(_tw.dedent(code, ), )

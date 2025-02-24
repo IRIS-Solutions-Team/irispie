@@ -11,7 +11,7 @@ import pytest
 
 span = ir.qq(2021,1) >> ir.qq(2025,4)
 
-x = ir.Series(periods=span, num_variants=2, func=lambda: rn.uniform(1, 2))
+x = ir.Series(periods=span, num_variants=2, func=lambda: rn.uniform(0.1, 0.9))
 
 
 parameter_names = ("func_name", )
@@ -38,14 +38,14 @@ parameter_values = [ (n, ) for n in _TWO_ARGS_FUNCTION_DISPATCH.keys() ]
 @pytest.mark.parametrize(parameter_names, parameter_values, )
 def test_elementwise_two_args(func_name, ):
     y1 = x.copy()
-    getattr(y1, func_name)(1.5, )
+    getattr(y1, func_name)(1, )
     #
-    y2 = getattr(isf, func_name)(x, 1.5, )
+    y2 = getattr(isf, func_name)(x, 1, )
     #
-    y3 = getattr(ir, func_name)(x, 1.5, )
+    y3 = getattr(ir, func_name)(x, 1, )
     #
     implementation_name = _TWO_ARGS_FUNCTION_DISPATCH[func_name]
-    expected_data = eval(f"{implementation_name}(x.data, 1.5, )", )
+    expected_data = eval(f"{implementation_name}(x.data, 1, )", )
     #
     assert _np.all(y1.data == expected_data)
     assert _np.all(y2.data == expected_data)

@@ -17,20 +17,32 @@ import textwrap as _tw
 
 _ONE_ARG_FUNCTION_DISPATCH = {
     "log": "_np.log",
+    "log2": "_np.log2",
+    "log10": "_np.log10",
+    "log1p": "_np.log1p",
     "exp": "_np.exp",
+    "exp": "_np.exp2",
     "sqrt": "_np.sqrt",
     "abs": "_np.abs",
     "sign": "_np.sign",
     "sin": "_np.sin",
     "cos": "_np.cos",
     "tan": "_np.tan",
-    "round": "_np.round",
+    "asin": "_np.asin",
+    "acos": "_np.acos",
+    "atan": "_np.atan",
+    "expit": "_sp.special.expit",
     "logistic": "_sp.special.expit",
+    "erf": "_sp.special.erf",
+    "erfinv": "_sp.special.erfinv",
+    "erfc": "_sp.special.erfc",
+    "erfcinv": "_sp.special.erfcinv",
     "normal_cdf": "_sp.stats.norm.cdf",
     "normal_pdf": "_sp.stats.norm.pdf",
 }
 
 _TWO_ARGS_FUNCTION_DISPATCH = {
+    "round": "_np.round",
     "maximum": "_np.maximum",
     "minimum": "_np.minimum",
 }
