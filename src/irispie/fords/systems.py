@@ -5,7 +5,7 @@
 ## Unsolved-expectations system
 
 $$
-A E[x_t] + B E[x_{t-1}] + C + D u_t + E v_t = 0 \\
+A E[x_t] + B E[x_{t-1}] + C + D u_t + E v_t = 0
 $$
 
 $$
@@ -60,9 +60,9 @@ class System:
         smap = descriptor.system_map
         svec = descriptor.system_vectors
 
-        self.A = _np.zeros(svec.shape_A_excl_dynid, dtype=float)
+        self.A = _np.zeros(svec.shape_A_excl_dynid, dtype=float, )
         self.A[smap.A.lhs] = td[smap.A.rhs]
-        self.A = _np.vstack((self.A, smap.dynid_A))
+        self.A = _np.vstack((self.A, smap.dynid_A, ), )
 
         self.B = _np.zeros(svec.shape_B_excl_dynid, dtype=float)
         self.B[smap.B.lhs] = td[smap.B.rhs]
@@ -128,4 +128,5 @@ def _get_vector(
     x[logly] = _np.log(x[logly])
     return x
     #]
+
 

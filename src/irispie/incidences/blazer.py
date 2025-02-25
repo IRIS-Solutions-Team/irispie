@@ -111,29 +111,28 @@ def blaze(
         eids_inner, qids_inner, im_inner, *_ \
             = triangularize_inner_block(im_inner, eids=eids_inner, qids=qids_inner, )
 
-        from pyomo.contrib.incidence_analysis.dulmage_mendelsohn import dulmage_mendelsohn as dm
-        import scipy as _sp
-        im_inner = im
-        rr, cc = im_inner.nonzero()
-        z = _sp.sparse.coo_matrix((im_inner[rr, cc], (rr, cc, )), shape=im_inner.shape, )
-        row_part, col_part, = dm(z)
-        row_perm = _np.concatenate((
-            row_part.unmatched,
-            row_part.underconstrained,
-            row_part.square,
-            row_part.overconstrained
-            )).astype(int)
-        col_perm = _np.concatenate((
-            col_part.unmatched,
-            col_part.underconstrained,
-            col_part.square,
-            col_part.overconstrained
-            )).astype(int)
-        im_inner = im_inner[row_perm, :]
-        im_inner = im_inner[:, col_perm]
-        breakpoint()
-        eids_inner = tuple(_np.array(eids_inner, dtype=int)[row_perm])
-        qids_inner = tuple(_np.array(qids_inner, dtype=int)[col_perm])
+        # from pyomo.contrib.incidence_analysis.dulmage_mendelsohn import dulmage_mendelsohn as dm
+        # import scipy as _sp
+        # im_inner = im
+        # rr, cc = im_inner.nonzero()
+        # z = _sp.sparse.coo_matrix((im_inner[rr, cc], (rr, cc, )), shape=im_inner.shape, )
+        # row_part, col_part, = dm(z)
+        # row_perm = _np.concatenate((
+        #     row_part.unmatched,
+        #     row_part.underconstrained,
+        #     row_part.square,
+        #     row_part.overconstrained
+        #     )).astype(int)
+        # col_perm = _np.concatenate((
+        #     col_part.unmatched,
+        #     col_part.underconstrained,
+        #     col_part.square,
+        #     col_part.overconstrained
+        #     )).astype(int)
+        # im_inner = im_inner[row_perm, :]
+        # im_inner = im_inner[:, col_perm]
+        # eids_inner = tuple(_np.array(eids_inner, dtype=int)[row_perm])
+        # qids_inner = tuple(_np.array(qids_inner, dtype=int)[col_perm])
     #
     # Combine the results
     #
@@ -145,7 +144,6 @@ def blaze(
     #
     first_blocks = tuple(_Block((eid, ), (qid, ), ) for eid, qid in zip(eids_first, qids_first, ))
     inner_blocks = tuple(_generate_inner_blocks(im_inner, eids=eids_inner, qids=qids_inner, ))
-    breakpoint()
     last_blocks = tuple(_Block((eid, ), (qid, ), ) for eid, qid in zip(eids_last, qids_last, ))
     #
     out_blocks = first_blocks + inner_blocks + last_blocks

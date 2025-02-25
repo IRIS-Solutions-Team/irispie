@@ -31,6 +31,7 @@ if TYPE_CHECKING:
 
 class Terminator:
     """
+    First-order terminator class
     """
     #[
 
@@ -151,7 +152,7 @@ class Terminator:
             self._terminal_jacobian_map_completed = True
 
         rhs_columns = self.terminal_jacobian_map.rhs[1].flatten().tolist()
-        curr_TT = self._curr_TT[terminal_column_index, :][:, rhs_columns]
+        curr_TT = self._curr_TT[terminal_column_index, :] # [:, rhs_columns]
         add_to_regular_jacobian_outcome = terminal_jacobian_outcome @ curr_TT
 
         _wa.filterwarnings("ignore", category=_sp.sparse.SparseEfficiencyWarning, )

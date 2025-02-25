@@ -131,7 +131,7 @@ class Descriptor:
             if i.kind == EquationKind.TRANSITION_EQUATION or i.kind == EquationKind.MEASUREMENT_EQUATION
         )
         self.system_vectors = SystemVectors(equations, quantities)
-        self.solution_vectors = SolutionVectors(self.system_vectors)
+        self.solution_vectors = SolutionVectors.from_system_vectors(self.system_vectors)
         self.system_map = SystemMap(self.system_vectors)
         system_equations = _custom_order_equations_by_eids(
             equations,
@@ -324,29 +324,40 @@ class SystemVectors:
     #]
 
 
-@_dc.dataclass(slots=True, )
 class SolutionVectors:
     """
     Vectors of quantities in first-order solution matrices
     """
     #[
-    transition_variables: tuple[Token, ...] | None = None
-    true_initials: list[bool, ...] | None = None
-    unanticipated_shocks: tuple[Token, ...] | None = None
-    anticipated_shocks: tuple[Token, ...] | None = None
-    measurement_variables: tuple[Token, ...] | None = None
-    measurement_shocks: tuple[Token, ...] | None = None
 
-    def __init__(self, system_vectors: SystemVectors, /, ) -> None:
+    __slots__ = (
+        "transition_variables",
+        "true_initials",
+        "unanticipated_shocks",
+        "anticipated_shocks",
+        "measurement_variables",
+        "measurement_shocks",
+    )
+
+    def __init__(self, /, **kwargs) -> None:
+        """
+        """
+        for slot in self.__slots__:
+            setattr(self, slot, kwargs.get(slot, None, ), )
+
+    @classmethod
+    def from_system_vectors(klass, system_vectors: SystemVectors, /, ) -> None:
         """
         Construct solution vectors and initial conditions indicator
         """
+        self = klass()
         self.transition_variables, self.true_initials = \
             _solution_vector_from_system_vector(system_vectors.transition_variables, system_vectors.true_initials)
         self.unanticipated_shocks = tuple(system_vectors.unanticipated_shocks)
         self.anticipated_shocks = tuple(system_vectors.anticipated_shocks)
         self.measurement_variables = tuple(system_vectors.measurement_variables)
         self.measurement_shocks = tuple(system_vectors.measurement_shocks)
+        return self
 
     def get_initials(
         self,

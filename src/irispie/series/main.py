@@ -1136,7 +1136,7 @@ This method modifies `self` in place and returns `None`.
         """
         """
         new = self.copy()
-        new.data = round(new.data, *args, **kwargs, )
+        new.data = _np.round(new.data, *args, **kwargs, )
         return new
 
     for n in ["gt", "lt", "ge", "le", "eq", "ne", ]:
