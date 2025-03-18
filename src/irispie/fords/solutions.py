@@ -297,12 +297,17 @@ class Solution:
             for i in self.measurement_vector_stability
         ), dtype=bool, )
 
+    def unpack_square_solution(self, /, ) -> tuple[_np.ndarray, ...]:
+        """
+        """
+        return self.T, self.P, self.R, self.K, self.Z, self.H, self.D,
+
     def copy(self, ) -> Self:
         """
         """
         return _co.deepcopy(self, )
 
-    def expand_square_solution(self, forward: int, /, ) -> list[_np.ndarray]:
+    def expand_square_solution(self, forward: int, ) -> list[_np.ndarray]:
         """
         Expand R matrices of square solution for t+1...t+forward
         """
@@ -312,7 +317,7 @@ class Solution:
             forward,
         )
 
-    def expand_triangular_solution(self, forward: int, /, ) -> list[_np.ndarray]:
+    def expand_triangular_solution(self, forward: int, ) -> list[_np.ndarray]:
         """
         Expand Ra matrices of square solution for t+1...t+forward
         """

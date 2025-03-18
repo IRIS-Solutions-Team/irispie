@@ -62,9 +62,17 @@ class Inlay:
     def to_portable_file(self, file_name: str, **kwargs, ) -> None:
         """
         """
-        portable = self._serialize_to_portable()
+        portable = self.to_portable()
         with open(file_name, "wt", ) as file:
             _js.dump(portable, file, **kwargs, )
+
+    @classmethod
+    def from_portable_file(klass, file_name: str, **kwargs, ) -> Self:
+        """
+        """
+        with open(file_name, "rt", ) as file:
+            portable = _js.load(file, **kwargs, )
+        return klass.from_portable(portable, )
 
     #]
 

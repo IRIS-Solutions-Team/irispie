@@ -28,6 +28,9 @@ from .sources import __all__ as sources_all
 from .simultaneous import *
 from .simultaneous import __all__ as simultaneous_all
 
+from .stackers import *
+from .stackers import __all__ as stackers_all
+
 from .fords import *
 from .fords import __all__ as fords_all
 
@@ -91,6 +94,7 @@ __all__ = (
     *databoxes_all,
     *sources_all,
     *simultaneous_all,
+    *stackers_all,
     *fords_all,
     *vector_autoregressions_all,
     *quantities_all,

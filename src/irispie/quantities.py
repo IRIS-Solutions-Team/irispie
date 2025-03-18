@@ -7,6 +7,7 @@ Model quantities
 from __future__ import annotations
 
 from typing import Self, Any
+from typing import Protocol
 from collections.abc import Iterable, Iterator, Sequence
 import enum
 import collections as _co
@@ -21,6 +22,9 @@ from . import attributes as _attributes
 QUANTITY_OCCURRENCE_PATTERN = _re.compile(
     r"\b([a-zA-Z]\w*)\b(\[[-+\d]+\])?(?!\()"
 )
+
+
+_PortableType = tuple[str, str, bool, str, str, ]
 
 
 class QuantityKind(enum.Flag):
@@ -50,6 +54,8 @@ class QuantityKind(enum.Flag):
     ANY_STD = UNANTICIPATED_STD | ANTICIPATED_STD | MEASUREMENT_STD
     PARAMETER_OR_STD = PARAMETER | ANY_STD
     STOCHASTIC_SHOCK = UNANTICIPATED_SHOCK | MEASUREMENT_SHOCK
+    LOGGABLE_VARIABLE = TRANSITION_VARIABLE | MEASUREMENT_VARIABLE | EXOGENOUS_VARIABLE
+    LOGGABLE_VARIABLE_OR_ANY_SHOCK = LOGGABLE_VARIABLE | ANY_SHOCK
 
     @classmethod
     def from_keyword(
@@ -73,7 +79,11 @@ class QuantityKind(enum.Flag):
         return "!" + self.name.lower() + "s"
 
     def to_portable(self, /, ) -> str:
-        return self.to_keyword().replace("!", "")
+        return _PORTABLES[self]
+
+    @classmethod
+    def from_portable(klass, portable: str, /, ) -> Self:
+        return _FROM_PORTABLES[portable]
 
     @property
     def human(self, /, ) -> str:
@@ -84,6 +94,22 @@ class QuantityKind(enum.Flag):
 
 for n in QuantityKind.__members__:
     exec(f"{n} = QuantityKind.{n}")
+
+
+_PORTABLES = {
+    QuantityKind.TRANSITION_VARIABLE: "#x",
+    QuantityKind.MEASUREMENT_VARIABLE: "#y",
+    QuantityKind.UNANTICIPATED_SHOCK: "#u",
+    QuantityKind.ANTICIPATED_SHOCK: "#v",
+    QuantityKind.MEASUREMENT_SHOCK: "#w",
+    QuantityKind.PARAMETER: "#p",
+    QuantityKind.EXOGENOUS_VARIABLE: "#z",
+}
+
+
+_FROM_PORTABLES = {
+    v: k for k, v in _PORTABLES.items()
+}
 
 
 __all__ = (
@@ -131,6 +157,30 @@ class Quantity:
         return hash(self.__repr__)
 
     has_attributes = _attributes.has_attributes
+
+    def to_portable(self, /, ) -> _PortableType:
+        """
+        """
+        return (
+            self.human,
+            self.kind.to_portable(),
+            self.logly,
+            self.description,
+            " ".join(self.attributes, ),
+        )
+
+    @classmethod
+    def from_portable(klass, portable: _PortableType, /, ) -> Self:
+        """
+        """
+        human, kind, logly, description, attributes = portable
+        return klass(
+            human=human,
+            kind=QuantityKind.from_portable(kind, ),
+            logly=logly,
+            description=description,
+            attributes=set(attributes.split(" ", )),
+        )
 
     #]
 
@@ -371,4 +421,122 @@ def stamp_id(quantities: Iterable[Quantity], /) -> None:
     """
     for i, q in enumerate(quantities, ):
         q.id = i
+
+
+def to_portable(quantities: Iterable[Quantity], /, ) -> tuple[_PortableType, ...]:
+    """
+    """
+    #[
+    portable = []
+    for kind in _PORTABLES.keys():
+        portable += [ i.to_portable() for i in quantities if i.kind == kind ]
+    return tuple(portable)
+    #]
+
+
+def from_portable(portables: Iterable[_PortableType], /, ) -> tuple[Quantity, ...]:
+    """
+    """
+    return tuple( Quantity.from_portable(i) for i in portables )
+
+
+class AccessQuantitiesProtocol(Protocol):
+    """
+    """
+    #[
+
+    def _access_quantities(self, /, ) -> Iterable[Quantity, ...]: ...
+
+    #]
+
+
+class Mixin:
+    """
+    """
+    #[
+
+    def get_quantities(
+        self: AccessQuantitiesProtocol,
+        kind: QuantityKind | None = None,
+    ) -> Iterable[Quantity]:
+        """
+        """
+        quantities = self._access_quantities()
+        return tuple(
+            generate_quantities_of_kind(quantities, kind, )
+            if kind else quantities
+        )
+
+    def get_names(
+        self,
+        kind: QuantityKind | None = None,
+    ) -> tuple[str, ...]:
+        """
+        """
+        return tuple(q.human for q in self.get_quantities(kind=kind, ))
+
+    def get_log_status(
+        self,
+        **kwargs,
+    ) -> dict[str, bool]:
+        """
+        """
+        quantities = self._access_quantities()
+        return {
+            qty.human: qty.logly
+            for qty in quantities
+            if qty.kind in QuantityKind.LOGGABLE_VARIABLE
+        }
+
+    def create_name_to_qid(self, /, ) -> dict[str, int]:
+        """
+        Create a dictionary mapping quantity names to quantity ids
+        """
+        quantities = self._access_quantities()
+        return create_name_to_qid(quantities, )
+
+    def create_qid_to_name(self, /, ) -> dict[int, str]:
+        """
+        Create a dictionary mapping quantity ids to quantity names
+        """
+        quantities = self._access_quantities()
+        return create_qid_to_name(quantities, )
+
+    def create_qid_to_kind(self, /, ) -> dict[int, str]:
+        """
+        Create a dictionary mapping quantity ids to quantity kinds
+        """
+        quantities = self._access_quantities()
+        return create_qid_to_kind(quantities, )
+
+    def create_qid_to_description(self, /, ) -> dict[int, str]:
+        """
+        Create a dictionary mapping quantity ids to quantity descriptions
+        """
+        quantities = self._access_quantities()
+        return create_qid_to_description(quantities, )
+
+    def create_name_to_description(self, ) -> dict[str, str]:
+        """
+        """
+        quantities = self._access_quantities()
+        return create_name_to_description(quantities, )
+
+    def create_qid_to_logly(self, /, ) -> dict[int, bool]:
+        """
+        Create a dictionary mapping from quantity id to quantity log-status
+        """
+        quantities = self._access_quantities()
+        return create_qid_to_logly(quantities, )
+
+    def get_logly_indexes(self, /) -> tuple[int, ...]:
+        """
+        Create a tuple of indexes for logly quantities
+        """
+        quantities = self._access_quantities()
+        return tuple(generate_logly_indexes(quantities, ))
+
+    #]
+
+
 

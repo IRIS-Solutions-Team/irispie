@@ -30,6 +30,9 @@ _EVALUATOR_FORMAT = EVALUATOR_PREAMBLE + "[{joined_xtrings}]"
 _REPLACE_UKNOWN = "?"
 
 
+_PortableType = tuple[str, str | None, str, str, str]
+
+
 class EquationKind(_en.Flag):
     """
     Classification of model equations
@@ -42,17 +45,33 @@ class EquationKind(_en.Flag):
 
     ENDOGENOUS_EQUATION = TRANSITION_EQUATION | MEASUREMENT_EQUATION
 
+    @classmethod
+    def from_portable(klass, portable: str, /, ) -> Self:
+        return _FROM_PORTABLES[portable]
+
     def to_keyword(self, /, ) -> str:
         return "!" + self.name.lower() + "s"
 
     def to_portable(self, /, ) -> str:
-        return self.to_keyword().replace("!", "")
+        return _PORTABLES[self]
 
     @property
     def human(self, /, ) -> str:
         return self.name.replace("_", " ").title()
 
     #]
+
+
+_PORTABLES = {
+    EquationKind.TRANSITION_EQUATION: "#T",
+    EquationKind.MEASUREMENT_EQUATION: "#M",
+    EquationKind.STEADY_AUTOVALUES: "#S",
+}
+
+
+_FROM_PORTABLES = {
+    v: k for k, v in _PORTABLES.items()
+}
 
 
 __all__  = (
@@ -98,8 +117,36 @@ class Equation:
         """
         return type(self)(**self.__dict__, )
 
+    def to_portable(self, complement: Self, /, ) -> _PortableType:
+        """
+        """
+        return (
+            self.human,
+            complement.human if complement.human != self.human else None,
+            self.kind.to_portable(),
+            self.description,
+            " ".join(self.attributes, ),
+        )
+
+    @classmethod
+    def from_portable(klass, portable: _PortableType, /, ) -> Self:
+        human, complement_human, kind, description, attributes = portable
+        self = klass(
+            human=human,
+            kind=EquationKind.from_portable(kind),
+            description=description,
+            attributes=set(attributes),
+        )
+        complement = klass(
+            human=complement_human or human,
+            kind=EquationKind.from_portable(kind),
+            description=description,
+            attributes=set(attributes),
+        )
+        return self, complement,
+
     def __hash__(self, /, ) -> int:
-        return hash(self.__repr__)
+        return hash(self.__repr__, )
 
     has_attributes = _attributes.has_attributes
 
@@ -328,6 +375,31 @@ def stamp_id(equations: Iterable[Equation], /) -> None:
     """
     for i, e in enumerate(equations, ):
         e.id = i
+
+
+def to_portable(
+    dynamic_equations: Iterable[Equation],
+    steady_equations: Iterable[Equation],
+) -> tuple[_PortableType]:
+    """
+    """
+    #[
+    portable = []
+    for kind in _PORTABLES.keys():
+        portable += [
+            d.to_portable(s, )
+            for d, s in zip(dynamic_equations, steady_equations, )
+            if d.kind == kind
+        ]
+    return tuple(portable)
+    #]
+
+
+def from_portable(portable: tuple[_PortableType], /) -> tuple[Equation]:
+    """
+    """
+    dynamic_steady = ( Equation.from_portable(p, ) for p in portable )
+    return tuple(zip(*dynamic_steady))
 
 
 def create_human_to_description(equations: Iterable[Equation]) -> dict[str, str]:

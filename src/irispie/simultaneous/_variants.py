@@ -13,7 +13,6 @@ import operator as _op
 
 from ..conveniences import copies as _copies
 from .. import quantities as _quantities
-from ..sources import LOGGABLE_VARIABLE
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -195,7 +194,7 @@ class Variant:
         levels[inx_set_to_1] = 1
         return _np.tile(levels, (1, num_columns, ))
 
-    def _serialize_to_portable(self, qid_to_name, /, ) -> dict[str, Any]:
+    def to_portable(self, qid_to_name, /, ) -> dict[str, Any]:
         """
         """
         return {

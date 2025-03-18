@@ -73,8 +73,7 @@ class Inlay:
         """
         """
 
-        num_variants \
-            = self.resolve_num_variants_in_context(num_variants, )
+        num_variants = self.resolve_num_variants_in_context(num_variants, )
 
         base_dates = tuple(span, )
 

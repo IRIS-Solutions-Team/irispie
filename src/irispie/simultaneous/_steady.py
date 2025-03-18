@@ -20,8 +20,8 @@ from .. import wrongdoings as _wrongdoings
 from ..fords import steadiers as _fs
 from ..steadiers import evaluators as _evaluators
 from ..steadiers import solver_dispatcher as _solver_dispatcher
-from ..sources import LOGGABLE_VARIABLE
 from ..equations import ENDOGENOUS_EQUATION
+from ..quantities import QuantityKind
 
 from . import _flags
 
@@ -461,7 +461,7 @@ def _update_variant_with_final_guess(variant, steady_evaluator, qid_to_kind, qid
     changes_to_update = []
     wrt_change_qids_to_update = []
     for change, qid in zip(changes, wrt_change_qids, ):
-        if qid_to_kind[qid] not in LOGGABLE_VARIABLE:
+        if qid_to_kind[qid] not in QuantityKind.LOGGABLE_VARIABLE:
             continue
         changes_to_update.append(change)
         wrt_change_qids_to_update.append(qid)

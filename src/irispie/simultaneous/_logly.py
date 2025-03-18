@@ -17,17 +17,6 @@ class Inlay:
     """
     #[
 
-    def create_qid_to_logly(self, /, ) -> dict[int, bool]:
-        """
-        Create a dictionary mapping from quantity id to quantity log-status
-        """
-        return _quantities.create_qid_to_logly(self._invariant.quantities)
-
-    def get_logly_indexes(self, /) -> tuple[int, ...]:
-        """
-        """
-        return tuple(_quantities.generate_logly_indexes(self._invariant.quantities))
-
     def logarithmize(
         self,
         *arrays: tuple[_np.ndarray],

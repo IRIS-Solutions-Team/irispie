@@ -20,8 +20,10 @@ from .. import quantities as _quantities
 from ..quantities import QuantityKind, Quantity
 from .. import wrongdoings as _wrongdoings
 from .. import makers as _makers
+from .. import contexts as _contexts
 from ..incidences.main import ZERO_SHIFT_TOKEN_PATTERN
 from .. import sources as _sources
+from .. sources import ModelSource
 
 from ._flags import Flags
 
@@ -29,7 +31,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Self, Callable, NoReturn, Any
     from numbers import Real
-    from .. sources import ModelSource
 
 #]
 
@@ -46,6 +47,28 @@ _PLAIN_EQUATOR_EQUATION = (
 
 _DEFAULT_STD_NAME_FORMAT = "std_{}"
 _DEFAULT_STD_DESCRIPTION_FORMAT = "(Std) {}"
+
+
+_STD_PREFIX = "std_"
+_STD_DESCRIPTION_PREFIX = "(Std) "
+
+
+def is_std_name(name: str, /, ) -> bool:
+    return name.startswith(_STD_PREFIX)
+
+
+def std_name_from_shock_name(shock_name: str, /, ) -> str:
+    return f"{_STD_PREFIX}{shock_name}"
+
+
+def shock_name_from_std_name(std_name: str, /, ) -> str:
+    if not is_std_name(std_name):
+        raise ValueError(f"Invalid std name: {std_name}")
+    return std_name.removeprefix(_STD_PREFIX, )
+
+
+def std_description_from_shock_description(shock_description: str, /, ) -> str:
+    return f"{_STD_DESCRIPTION_PREFIX}{shock_description}"
 
 
 class Invariant(
@@ -93,8 +116,6 @@ class Invariant(
         source: ModelSource,
         /,
         check_syntax: bool = True,
-        std_name_format: str = _DEFAULT_STD_NAME_FORMAT,
-        std_description_format: str = _DEFAULT_STD_DESCRIPTION_FORMAT,
         autodeclare_as: str | None = None,
         default_std: Real | None = None,
         description: str | None = None,
@@ -103,7 +124,10 @@ class Invariant(
         """
         """
         self = klass()
-        self.set_description(description, )
+        self.set_description(
+            description if description is not None
+            else source.description
+        )
         self._flags = Flags.from_kwargs(**kwargs, )
         self._default_std = _resolve_default_std(default_std, self._flags, )
         self._context = (dict(source.context) or {}) | {"__builtins__": None}
@@ -125,27 +149,19 @@ class Invariant(
             anticipated_shocks = get_shocks(kind=_quantities.ANTICIPATED_SHOCK, )
             measurement_shocks = get_shocks(kind=_quantities.MEASUREMENT_SHOCK, )
             #
-            self.quantities += tuple(_generate_stds_for_shocks(
-                unanticipated_shocks,
-                QuantityKind.UNANTICIPATED_STD,
-                std_name_format,
-                std_description_format,
-                entry=len(self.quantities),
-            ))
-            self.quantities += tuple(_generate_stds_for_shocks(
-                anticipated_shocks,
-                QuantityKind.ANTICIPATED_STD,
-                std_name_format,
-                std_description_format,
-                entry=len(self.quantities),
-            ))
-            self.quantities += tuple(_generate_stds_for_shocks(
-                measurement_shocks,
-                QuantityKind.MEASUREMENT_STD,
-                std_name_format,
-                std_description_format,
-                entry=len(self.quantities),
-            ))
+            entry = len(self.quantities)
+            self.quantities += tuple(
+                _create_std_for_shock(i, QuantityKind.UNANTICIPATED_STD, entry, )
+                for i in unanticipated_shocks
+            )
+            self.quantities += tuple(
+                _create_std_for_shock(i, QuantityKind.ANTICIPATED_STD, entry, )
+                for i in anticipated_shocks
+            )
+            self.quantities += tuple(
+                _create_std_for_shock(i, QuantityKind.MEASUREMENT_STD, entry, )
+                for i in measurement_shocks
+            )
         #
         # Look up undeclared names; autodeclare these names or throw an error
         undeclared_names = _collect_undeclared_names(
@@ -188,7 +204,7 @@ class Invariant(
         #
         # For stochastic models, create a mapping from shock qid to std qid
         self.shock_qid_to_std_qid = (
-            _create_shock_qid_to_std_qid(self.quantities, std_name_format, )
+            _create_shock_qid_to_std_qid(self.quantities, )
             if not self._flags.is_deterministic else {}
         )
         #
@@ -277,8 +293,31 @@ class Invariant(
             setattr(self, k, state[k])
         self._populate_derived_attributes()
 
-    def _serialize_to_portable(self, /, ) -> dict[str, Any]:
-        return _sources.serialize_to_portable(self, )
+    def to_portable(self, /, ) -> dict[str, Any]:
+        return {
+            "description": str(self.get_description()),
+            "flags": self._flags.to_portable(),
+            "quantities": _quantities.to_portable(self.quantities, ),
+            "equations": _equations.to_portable(self.dynamic_equations, self.steady_equations, ),
+            "context": _contexts.to_portable(self._context, ),
+        }
+
+    @classmethod
+    def from_portable(klass, portable: dict[str, Any], /, ) -> Self:
+        description = str(portable["description"], )
+        flags = portable["flags"]
+        quantities = _quantities.from_portable(portable["quantities"], )
+        dynamic_equations, steady_equations = _equations.from_portable(portable["equations"], )
+        context = _contexts.from_portable(portable["context"], )
+        source = ModelSource(
+            quantities=quantities,
+            dynamic_equations=dynamic_equations,
+            steady_equations=steady_equations,
+            context=_contexts.from_portable(portable["context"], ),
+            description=description,
+            **flags,
+        )
+        return klass.from_source(source, check_syntax=False, )
 
     #]
 
@@ -323,7 +362,6 @@ def _success_creating_lambda(equation, function_context):
 
 def _create_shock_qid_to_std_qid(
     quantities: Iterable[Quantity],
-    std_name_format: str,
     /,
 ) -> dict[int, int]:
     """
@@ -334,33 +372,29 @@ def _create_shock_qid_to_std_qid(
     kind = QuantityKind.ANY_SHOCK
     all_shock_qids = tuple(_quantities.generate_qids_by_kind(quantities, kind))
     return {
-        shock_qid: name_to_qid[std_name_format.format(qid_to_name[shock_qid], )]
+        shock_qid: name_to_qid[std_name_from_shock_name(qid_to_name[shock_qid])]
         for shock_qid in all_shock_qids
     }
     #]
 
 
-def _generate_stds_for_shocks(
-    shocks: Iterable[Quantity, ...],
+def _create_std_for_shock(
+    shock: Quantity,
     std_kind: QuantityKind,
-    std_name_format: str,
-    std_description_format: str,
-    /,
-    *,
     entry: int,
-) -> tuple[Quantity, ...]:
+) -> Quantity:
     """
     """
     #[
-    return (
-        Quantity(
-            id=None,
-            human=std_name_format.format(shock.human, ),
-            kind=std_kind,
-            logly=None,
-            description=std_description_format.format(shock.description or shock.human, ),
-            entry=entry,
-        ) for shock in shocks
+    std_name = std_name_from_shock_name(shock.human, )
+    std_description = std_description_from_shock_description(shock.description or shock.human, )
+    return Quantity(
+        id=None,
+        human=std_name,
+        kind=std_kind,
+        logly=None,
+        description=std_description,
+        entry=entry,
     )
     #]
 

@@ -36,19 +36,6 @@ QuantityInput: TypeAlias = tuple[Description, Human, Attributes]
 EquationInput: TypeAlias = tuple[Description, tuple[Human, Human], Attributes]
 
 
-LOGGABLE_VARIABLE = (
-    QuantityKind.TRANSITION_VARIABLE
-    | QuantityKind.MEASUREMENT_VARIABLE
-    | QuantityKind.EXOGENOUS_VARIABLE
-)
-
-
-LOGGABLE_VARIABLE_OR_ANY_SHOCK = (
-    LOGGABLE_VARIABLE
-    | QuantityKind.ANY_SHOCK
-)
-
-
 class SourceMixinProtocol(Protocol, ):
     """
     """
@@ -106,13 +93,15 @@ class ModelSource:
         "dynamic_equations",
         "steady_equations",
         "context",
+        "description",
     )
 
-    def __init__(self, /, ) -> None:
-        self.quantities = []
-        self.dynamic_equations = []
-        self.steady_equations = []
-        self.context = None
+    def __init__(self, **kwargs, ) -> None:
+        self.quantities = kwargs.get("quantities", [])
+        self.dynamic_equations = kwargs.get("dynamic_equations", [])
+        self.steady_equations = kwargs.get("steady_equations", [])
+        self.context = kwargs.get("context", {})
+        self.description = kwargs.get("description", "")
 
     @property
     def num_quantities(self, /, ) -> int:
@@ -237,7 +226,7 @@ class ModelSource:
         def is_logly(human: str, /, ) -> bool:
             return listed_logly if human in log_variables else unlisted_logly
         for qty in self.quantities:
-            if qty.kind not in LOGGABLE_VARIABLE:
+            if qty.kind not in QuantityKind.LOGGABLE_VARIABLE:
                 continue
             qty.logly = is_logly(qty.human, )
 
@@ -387,111 +376,6 @@ def _extract_loggable_names(quantities: Iterable[Quantity], /, ) -> set[str]:
     """
     return set(
         i.human for i in quantities
-        if i.kind in LOGGABLE_VARIABLE
+        if i.kind in QuantityKind.LOGGABLE_VARIABLE
     )
-
-
-def serialize_to_portable(source_like, /, ) -> dict[str, Any]:
-    """
-    """
-    #[
-    portable_quantities = _serialize_quantities_to_portable(source_like.quantities, )
-    portable_equations = _serialize_equations_to_portable(source_like.dynamic_equations, source_like.steady_equations, )
-    return portable_quantities | portable_equations
-    #]
-
-
-_SERIALIZABLE_QUANTITY_KINDS = (
-    QuantityKind.TRANSITION_VARIABLE,
-    QuantityKind.MEASUREMENT_VARIABLE,
-    QuantityKind.UNANTICIPATED_SHOCK,
-    QuantityKind.ANTICIPATED_SHOCK,
-    QuantityKind.MEASUREMENT_SHOCK,
-    QuantityKind.PARAMETER,
-    QuantityKind.EXOGENOUS_VARIABLE,
-)
-
-
-def _serialize_quantities_to_portable(quantities: tuple[Quantity], ) -> tuple[Quantity]:
-    """
-    """
-    #[
-    portable_quantities = {
-        kind.to_portable(): _get_portable_quantities_of_kind(quantities, kind, )
-        for kind in _SERIALIZABLE_QUANTITY_KINDS
-    }
-    return { k: v for k, v in portable_quantities.items() if v }
-    #]
-
-
-def _get_portable_quantities_of_kind(
-    quantities: tuple[Quantity],
-    kind: QuantityKind,
-    /,
-) -> tuple[tuple, ...]:
-    """
-    """
-    return tuple(
-        _serialize_quantity_to_portable(qty, )
-        for qty in _quantities.generate_quantities_of_kind(quantities, kind, )
-    )
-
-
-def _serialize_quantity_to_portable(quantity: Quantity, /, ) -> tuple[str, bool, str, str, ]:
-    """
-    """
-    return quantity.human, quantity.logly, quantity.description, " ".join(quantity.attributes, )
-
-
-_SERIALIZABLE_EQUATION_KINDS = (
-    EquationKind.TRANSITION_EQUATION,
-    EquationKind.MEASUREMENT_EQUATION,
-    EquationKind.STEADY_AUTOVALUES,
-)
-
-
-def _serialize_equations_to_portable(
-    dynamic_equations: tuple[Equation],
-    steady_equations: tuple[Equation],
-    /,
-) -> tuple[tuple, ...]:
-    """
-    """
-    #[
-    zipped = tuple(zip(dynamic_equations, steady_equations, ))
-    portable_equations = {
-        kind.to_portable(): _get_portable_equations_of_kind(zipped, kind, )
-        for kind in _SERIALIZABLE_EQUATION_KINDS
-    }
-    return { k: v for k, v in portable_equations.items() if v }
-    #]
-
-
-def _get_portable_equations_of_kind(
-    zipped_equations: tuple[tuple[Equation, Equation], ...],
-    kind: EquationKind,
-    /,
-) -> tuple[tuple, ...]:
-    """
-    """
-    return tuple(
-        _serialize_equation_to_portable(dynamic, steady, )
-        for dynamic, steady in zipped_equations
-        if dynamic.kind == kind
-    )
-
-
-def _serialize_equation_to_portable(
-    dynamic: Equation,
-    steady: Equation,
-    /,
-) -> tuple[str, str, str, str, ]:
-    #[
-    dynamic_human = dynamic.human
-    steady_human = steady.human
-    if dynamic_human == steady_human:
-        steady_human = ""
-    return dynamic_human, steady_human, dynamic.description, " ".join(dynamic.attributes, )
-    #]
-
 

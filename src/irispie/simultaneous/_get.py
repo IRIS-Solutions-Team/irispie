@@ -15,7 +15,7 @@ import numpy as _np
 
 from .. import equations as _equations
 from .. import quantities as _quantities
-from .. import sources as _sources
+from ..quantities import QuantityKind
 from .. import has_variants as _has_variants
 from ..has_variants import unpack_singleton_decorator as _unpack_singleton
 from ..series import main as _series
@@ -54,7 +54,9 @@ def _unpack_singleton_in_dict(func: Callable, ):
     #]
 
 
-class Inlay:
+class Inlay(
+    _quantities.Mixin,
+):
     """
     Frontend getter methods for Simultaneous objects
     """
@@ -240,14 +242,6 @@ steady_changes = self.get_steady_changes(
         qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _quantities.QuantityKind.PARAMETER_OR_STD, )
         return self._get_values_as_dict("levels", qids, **kwargs, )
 
-    @_cast_as_output_type
-    def get_log_status(self, **kwargs, ) -> dict[str, bool]:
-        return {
-            qty.human: qty.logly
-            for qty in self._invariant.quantities
-            if qty.kind in _sources.LOGGABLE_VARIABLE
-        }
-
     def get_initials(
         self,
         /,
@@ -350,25 +344,6 @@ steady_changes = self.get_steady_changes(
             if kind else self._invariant.steady_equations
         )
 
-    def get_quantities(
-        self,
-        /,
-        *,
-        kind: _quantities.QuantityKind | None = None,
-    ) -> _quantities.Quantities:
-        return tuple(
-            _quantities.generate_quantities_of_kind(self._invariant.quantities, kind, )
-            if kind else self._invariant.quantities
-        )
-
-    def get_names(
-        self,
-        /,
-        *,
-        kind: _quantities.QuantityKind | None = None,
-    ) -> _quantities.Quantities:
-        return tuple(q.human for q in self.get_quantities(kind=kind, ))
-
     def get_flags(
         self,
         /,
@@ -406,11 +381,6 @@ steady_changes = self.get_steady_changes(
                 for v in self._variants
             ]
         return out_dict
-
-    def get_quantity_descriptions(self, ) -> dict[str, str]:
-        """
-        """
-        return _quantities.create_name_to_description(self._invariant.quantities, )
 
     def get_equation_descriptions(self, ) -> dict[str, str]:
         """
@@ -497,6 +467,10 @@ steady_changes = self.get_steady_changes(
     #]
 
 
+# Decorate methods from quantities.Mixin
+Inlay.get_log_status = _cast_as_output_type(Inlay.get_log_status, )
+
+
 def _resolve_steady_kind(
     *,
     include_shocks: bool = False,
@@ -506,8 +480,8 @@ def _resolve_steady_kind(
     """
     #[
     return (
-        _sources.LOGGABLE_VARIABLE if not include_shocks
-        else _sources.LOGGABLE_VARIABLE_OR_ANY_SHOCK
+        QuantityKind.LOGGABLE_VARIABLE if not include_shocks
+        else QuantityKind.LOGGABLE_VARIABLE_OR_ANY_SHOCK
     )
     #]
 

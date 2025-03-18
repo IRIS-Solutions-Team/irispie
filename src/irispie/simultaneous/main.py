@@ -20,6 +20,9 @@ from .. import has_invariant as _has_invariant
 from .. import has_variants as _has_variants
 from .. import equations as _equations
 from .. import quantities as _quantities
+from .. import portables as _portables
+from ..quantities import QuantityKind, Quantity
+from ..sources import ModelSource
 from .. import sources as _sources
 from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
@@ -72,8 +75,8 @@ _DEFAULT_SOLUTION_TOLERANCE = 1e-12
     },
 )
 class Simultaneous(
-    _has_invariant.HasInvariantMixin,
-    _has_variants.HasVariantsMixin,
+    _has_invariant.Mixin,
+    _has_variants.Mixin,
     _kalmans.Mixin,
     _std_simulators.Mixin,
 
@@ -263,6 +266,12 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
             f"",
         ))
 
+    def _access_quantities(self, /, ) -> Iterable[Quantity]:
+        """
+        Implement quantities.AccessQuantitiesProtocol
+        """
+        return self._invariant.quantities
+
     def get_value(
         self,
         name: str,
@@ -345,7 +354,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         return self._invariant.dynamic_descriptor.solution_vectors
 
     @property
-    def quantities(self, /, ) -> tuple[_quantities.Quantity]:
+    def quantities(self, /, ) -> tuple[Quantity]:
         """==Tuple of model quantities=="""
         return self._invariant.quantities
 
@@ -353,21 +362,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
     def shock_qid_to_std_qid(self, /, ) -> dict[int, int]:
         """==Dictionary mapping shock quantity id to standard deviation quantity id=="""
         return self._invariant.shock_qid_to_std_qid
-
-    def create_name_to_qid(self, /, ) -> dict[str, int]:
-        return _quantities.create_name_to_qid(self._invariant.quantities)
-
-    def create_qid_to_name(self, /, ) -> dict[int, str]:
-        return _quantities.create_qid_to_name(self._invariant.quantities)
-
-    def create_qid_to_kind(self, /, ) -> dict[int, str]:
-        return _quantities.create_qid_to_kind(self._invariant.quantities)
-
-    def create_qid_to_description(self, /, ) -> dict[int, str]:
-        """
-        Create a dictionary mapping from quantity id to quantity descriptor
-        """
-        return _quantities.create_qid_to_description(self._invariant.quantities)
 
     def create_steady_array(
         self,
@@ -420,7 +414,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         #
         # Remove changes from quantities that are not loggable
         non_loggables = _quantities.generate_qids_by_kind(
-            self._invariant.quantities, ~_sources.LOGGABLE_VARIABLE,
+            self._invariant.quantities, ~QuantityKind.LOGGABLE_VARIABLE,
         )
         assign_non_loggables = { qid: (..., _np.nan, ) for qid in non_loggables }
         variant.update_values_from_dict(assign_non_loggables, )
@@ -486,7 +480,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         model_flags = self.resolve_flags(**kwargs, )
         out_info = [
-            self._solve(
+            self._solve_variant(
                 self_v,
                 vid,
                 model_flags,
@@ -504,7 +498,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         else:
             return
 
-    def _solve(
+    def _solve_variant(
         self,
         variant: Variant,
         vid: int,
@@ -568,7 +562,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
     @classmethod
     def from_source(
         klass,
-        source: _sources.ModelSource,
+        source: ModelSource,
         /,
         **kwargs,
     ) -> Self:
@@ -576,6 +570,10 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         self = klass()
         self._invariant = Invariant.from_source(source, **kwargs, )
+        self._initialize_variants_from_invariant()
+        return self
+
+    def _initialize_variants_from_invariant(self, /, ) -> None:
         initial_variant = Variant.from_source(
             self._invariant.quantities,
             self._invariant._flags.is_flat,
@@ -583,7 +581,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         self._variants = [ initial_variant ]
         self.reset_stds()
         self._enforce_assignment_rules(self._variants[0], )
-        return self
 
     def get_context(self, /, ) -> dict[str, Any]:
         """
@@ -607,14 +604,30 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         self._invariant = state["_invariant"]
         self._variants = state["_variants"]
 
-    def _serialize_to_portable(self, /, ) -> dict[str, Any]:
+    def to_portable(self, /, ) -> dict[str, Any]:
         """
         """
         qid_to_name = self.create_qid_to_name()
         return {
-            "source": self._invariant._serialize_to_portable(),
-            "variants": [v._serialize_to_portable(qid_to_name, ) for v in self._variants],
+            "portable_format": _portables.CURRENT_PORTABLE_FORMAT,
+            "source": self._invariant.to_portable(),
+            "variants": [ v.to_portable(qid_to_name, ) for v in self._variants ],
         }
+
+    @classmethod
+    def from_portable(klass, portable, /, ) -> Self:
+        """
+        """
+        _portables.validate_portable_format(portable["portable_format"], )
+        #
+        self = klass()
+        self._invariant = Invariant.from_portable(portable["source"], )
+        self._initialize_variants_from_invariant()
+        num_variants = len(portable["variants"])
+        self.alter_num_variants(num_variants, )
+        for self_v, portable_v in zip(self.iter_own_variants(), portable["variants"], ):
+            self_v.assign_strict(portable_v, )
+        return self
 
     #]
 

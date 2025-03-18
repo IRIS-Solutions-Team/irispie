@@ -18,8 +18,8 @@ __all__ = (
 )
 
 class VecAutoreg(
-    _has_invariant.HasInvariantMixin,
-    _has_variants.HasVariantsMixin,
+    _has_invariant.Mixin,
+    _has_variants.Mixin,
 ):
     """
     """

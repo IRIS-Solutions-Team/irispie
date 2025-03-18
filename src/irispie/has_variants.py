@@ -28,7 +28,7 @@ class HasVariantsProtocol:
     #]
 
 
-class HasVariantsMixin:
+class Mixin:
     """
     Mixin for handling multiple alternative variants of a single model object
     """
@@ -125,7 +125,7 @@ class HasVariantsMixin:
         """
         return _iterators.exhaust_then_last(self._variants, )
 
-    def _new_with_single_variant(self: _T, variant, /, ) -> _T:
+    def _shallow_with_single_variant(self: _T, variant, /, ) -> _T:
         """
         """
         new = type(self).skeleton(self, )
@@ -140,7 +140,7 @@ class HasVariantsMixin:
         Iterate over alternative variants of this object
         """
         for v in self._variants:
-            yield self._new_with_single_variant(v, )
+            yield self._shallow_with_single_variant(v, )
 
     def __iter__(
         self,

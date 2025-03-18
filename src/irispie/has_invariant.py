@@ -7,7 +7,7 @@ from __future__ import annotations
 #]
 
 
-class HasInvariantMixin:
+class Mixin:
     """
     """
     #[

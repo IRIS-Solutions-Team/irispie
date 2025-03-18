@@ -9,8 +9,8 @@ from __future__ import annotations
 import warnings as _wa
 from typing import (TYPE_CHECKING, )
 
-from ..slatables import (Slatable, )
-from ..series.main import (Series, )
+from ..slatables import Slatable
+from ..series.main import Series
 from .. import quantities as _quantities
 
 if TYPE_CHECKING:
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 #]
 
 
-class _Slatable(Slatable):
+class _Slatable(Slatable, ):
     """
     """
     #[
@@ -44,7 +44,7 @@ class _Slatable(Slatable):
             for qid in sorted(qid_to_name)
         )
         #
-        name_to_description = model.get_quantity_descriptions()
+        name_to_description = model.create_name_to_description()
         self.descriptions = tuple(
             name_to_description.get(name, "", )
             for name in self.databox_names

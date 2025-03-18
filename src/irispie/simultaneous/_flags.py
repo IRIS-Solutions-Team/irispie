@@ -52,13 +52,26 @@ class Flags(_en.IntFlag, ):
     @classmethod
     def from_kwargs(cls: type, **kwargs, ) -> Self:
         self = cls.DEFAULT
-        if kwargs.get("linear"):
+        if kwargs.get("linear") or kwargs.get("is_linear"):
             self |= cls.LINEAR
-        if kwargs.get("flat"):
+        if kwargs.get("flat") or kwargs.get("is_flat"):
             self |= cls.FLAT
-        if kwargs.get("deterministic"):
+        if kwargs.get("deterministic") or kwargs.get("is_deterministic"):
             self |= cls.DETERMINISTIC
         return self
+
+    def to_portable(self, /, ) -> dict[str, bool]:
+        """
+        """
+        return {
+            "is_linear": self.is_linear,
+            "is_flat": self.is_flat,
+            "is_deterministic": self.is_deterministic,
+        }
+
+    @classmethod
+    def from_portable(klass, portable: dict[str, bool], ) -> Self:
+        return klass.from_kwargs(**portable, )
 
     #]
 

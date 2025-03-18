@@ -46,7 +46,7 @@ class SlatableProtocol(Protocol, ):
 
 
 class Dataslate(
-    _has_variants.HasVariantsMixin,
+    _has_variants.Mixin,
 ):
     """
     """

@@ -62,7 +62,7 @@ class Sequential(
     _slatable_protocol.Inlay,
     _plannable_protocols.Inlay,
     #
-    _has_variants.HasVariantsMixin,
+    _has_variants.Mixin,
 ):
     """
 ......................................................................
