@@ -32,7 +32,7 @@ __all__ = (
     "Frequency",
     "yy", "hh", "qq", "mm", "dd", "ii",
     "Span", "EmptySpan", "start", "end",
-    "Period", "periods_from_sdmx_strings", "periods_from_iso_strings", "periods_from_until", "periods_from_to",
+    "Period", "periods_from_sdmx_strings", "periods_from_iso_strings", "periods_from_python_dates", "periods_from_until", "periods_from_to",
     "YEARLY", "HALFYEARLY", "QUARTERLY", "MONTHLY", "WEEKLY", "DAILY",
     "PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION",
     "refrequent", "convert_to_new_freq",
@@ -619,7 +619,8 @@ integers.
     ISO-8601 string representation of the time period.
 
 ???+ input "frequency"
-    Time frequency of the time period.
+    Time frequency of the time period; if `None`, a time period of daily
+    frequency will be created.
 
 
 ### Returns ###
@@ -632,6 +633,56 @@ integers.
         """
         frequency = Frequency.DAILY if frequency is None else frequency
         year, month, day = iso_string.split("-", )
+        return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[frequency].from_ymd(int(year), int(month), int(day), )
+
+    @staticmethod
+    @_dm.reference(
+        category="constructor",
+        call_name="Period.from_python_date",
+    )
+    def from_python_date(
+        python_date: _dt.date,
+        *,
+        frequency: Frequency | None = None,
+    ) -> Self:
+        r"""
+................................................................................
+
+==Create time period from Python datetime==
+
+Create a time period from a Python `datetime` object. The time period is
+created based on the time frequency specified.
+
+    period = Period.from_python_date(
+        python_date,
+        *,
+        frequency=Frequency.DAILY,
+    )
+
+
+### Input arguments ###
+
+
+???+ input "python_date"
+    Python `datetime.datetime` or `datetime.date` object representing the time
+    period.
+
+???+ input "frequency"
+    Time frequency of the time period; if `None`, a time period of daily
+    frequency will be created.
+
+
+### Returns ###
+
+
+???+ returns "period"
+    Time period object created from the provided Python `datetime` object.
+
+................................................................................
+        """
+        if frequency is None:
+            frequency = Frequency.DAILY
+        year, month, day = python_date.year, python_date.month, python_date.day
         return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[frequency].from_ymd(int(year), int(month), int(day), )
 
     @staticmethod
@@ -2482,9 +2533,22 @@ def periods_from_iso_strings(
 ) -> tuple[Period]:
     """
     """
-    frequency = Frequency.DAILY if frequency is None else frequency
+    if frequency is None:
+        frequency = Frequency.DAILY
     period_class = PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[frequency]
     return tuple(period_class.from_iso_string(i, ) for i in iso_strings)
+
+
+def periods_from_python_dates(
+    python_dates: Iterable[_dt.date],
+    *,
+    frequency: Frequency | None = None,
+) -> tuple[Period]:
+    """
+    """
+    if frequency is None:
+        frequency = Frequency.DAILY
+    return tuple(Period.from_python_date(i, frequency=frequency, ) for i in python_dates)
 
 
 def get_encompassing_span(

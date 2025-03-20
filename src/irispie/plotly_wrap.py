@@ -9,6 +9,7 @@ from __future__ import absolute_import
 from typing import (Sequence, Iterable, )
 import plotly.graph_objects as _pg
 import plotly.subplots as _ps
+import plotly.io as _pi
 import documark as _dm
 
 from .dates import (Period, )
@@ -17,11 +18,17 @@ from .dates import (Period, )
 
 
 __all__ = (
-    "plotly",
+    "plotly", "set_default_plotly_renderer",
 )
 
 
 _EMPTY_SUBPLOT_TITLE = " "
+
+
+def set_default_plotly_renderer(renderer: str, ) -> None:
+    """
+    """
+    _pi.renderers.default = renderer
 
 
 @_dm.reference(category="arrange", )

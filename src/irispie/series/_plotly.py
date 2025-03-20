@@ -30,9 +30,6 @@ if TYPE_CHECKING:
 #]
 
 
-# _pi.renderers.default = "browser"
-
-
 _PLOTLY_STYLES_FOLDER = _os.path.join(_os.path.dirname(__file__), "plotly_styles")
 _PLOTLY_STYLES = {
     "layouts": {},
@@ -113,6 +110,7 @@ class Inlay:
         legend: Iterable[str] | None = None,
         show_figure: bool = True,
         show_legend: bool | None = None,
+        renderer: str | None = None,
         subplot: tuple[int, int] | int | None = None,
         xline = None,
         type = None,
@@ -241,7 +239,7 @@ class Inlay:
             _plotly_wrap.highlight(figure, highlight, )
 
         if show_figure:
-            figure.show()
+            figure.show(renderer=renderer, )
 
         if not return_info:
             return
