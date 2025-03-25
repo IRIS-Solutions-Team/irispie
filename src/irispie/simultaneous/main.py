@@ -656,7 +656,22 @@ portable = self.to_portable()
         }
     ```
 
-    The 'quantities` dictionary contains a list of quantities, with each
+    The meaning of the `flags` is as follows:
+
+    * `is_linear` is `True` if the model has been created with the
+    `linear=True`, and the calculation of first-order solution matrices is
+    expected to be independent of the model steady state. * `is_flat` is `True`
+
+    * `is_flat` is `True` if the model has been created with the `flat=True`,
+    and the calculation of the model steady state is done assuming that no model
+    variable is growing over time in steady state.
+
+    * `is_deterministic` is `True` if the model has been created with the
+    `deterministic=True`, and the model is expected to have no stochastic
+    shocks; all shocks are assumed to be deterministic add-factors, and there
+    are no `std` parameter created.
+
+    The `quantities` dictionary contains a list of quantities, with each
     quantitiy described as a five-element tuple:
 
     ```
@@ -690,7 +705,7 @@ portable = self.to_portable()
     | Exogenous variable | `#z` |
 
 
-    The 'equations` dictionary contains a list of equations, with each
+    The `equations` dictionary contains a list of equations, with each
     equation described as a five-tuple:
 
     ```
