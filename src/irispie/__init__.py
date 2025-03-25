@@ -58,6 +58,9 @@ from .namings import __all__ as namings_all
 from .file_io import *
 from .file_io import __all__ as file_io_all
 
+from .portables import *
+from .portables import __all__ as portables_all
+
 
 __version__ = _md.version(__name__)
 __doc__ = _md.metadata(__name__).json["description"]
@@ -104,6 +107,7 @@ __all__ = (
     *plans_all,
     *namings_all,
     *file_io_all,
+    *portables_all,
     "min_irispie_version_required",
     "__version__",
 )

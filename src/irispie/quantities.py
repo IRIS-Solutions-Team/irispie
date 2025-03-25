@@ -79,7 +79,7 @@ class QuantityKind(enum.Flag):
         return "!" + self.name.lower() + "s"
 
     def to_portable(self, /, ) -> str:
-        return _PORTABLES[self]
+        return _TO_PORTABLES[self]
 
     @classmethod
     def from_portable(klass, portable: str, /, ) -> Self:
@@ -96,7 +96,7 @@ for n in QuantityKind.__members__:
     exec(f"{n} = QuantityKind.{n}")
 
 
-_PORTABLES = {
+_TO_PORTABLES = {
     QuantityKind.TRANSITION_VARIABLE: "#x",
     QuantityKind.MEASUREMENT_VARIABLE: "#y",
     QuantityKind.UNANTICIPATED_SHOCK: "#u",
@@ -108,7 +108,7 @@ _PORTABLES = {
 
 
 _FROM_PORTABLES = {
-    v: k for k, v in _PORTABLES.items()
+    v: k for k, v in _TO_PORTABLES.items()
 }
 
 
@@ -162,8 +162,8 @@ class Quantity:
         """
         """
         return (
-            self.human,
             self.kind.to_portable(),
+            self.human,
             self.logly,
             self.description,
             " ".join(self.attributes, ),
@@ -173,7 +173,7 @@ class Quantity:
     def from_portable(klass, portable: _PortableType, /, ) -> Self:
         """
         """
-        human, kind, logly, description, attributes = portable
+        kind, human, logly, description, attributes = portable
         return klass(
             human=human,
             kind=QuantityKind.from_portable(kind, ),
@@ -428,7 +428,7 @@ def to_portable(quantities: Iterable[Quantity], /, ) -> tuple[_PortableType, ...
     """
     #[
     portable = []
-    for kind in _PORTABLES.keys():
+    for kind in _TO_PORTABLES.keys():
         portable += [ i.to_portable() for i in quantities if i.kind == kind ]
     return tuple(portable)
     #]

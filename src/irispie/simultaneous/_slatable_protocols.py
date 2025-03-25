@@ -65,7 +65,6 @@ class _Slatable(Slatable, ):
         self.fallbacks = {}
         self.overwrites = {}
         #
-        #
         parameters = model.get_parameters(unpack_singleton=True, )
         if self.parameters_from_data:
             self.fallbacks.update(parameters, )

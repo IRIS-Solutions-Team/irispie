@@ -53,7 +53,7 @@ class EquationKind(_en.Flag):
         return "!" + self.name.lower() + "s"
 
     def to_portable(self, /, ) -> str:
-        return _PORTABLES[self]
+        return _TO_PORTABLES[self]
 
     @property
     def human(self, /, ) -> str:
@@ -62,15 +62,15 @@ class EquationKind(_en.Flag):
     #]
 
 
-_PORTABLES = {
+_TO_PORTABLES = {
     EquationKind.TRANSITION_EQUATION: "#T",
     EquationKind.MEASUREMENT_EQUATION: "#M",
-    EquationKind.STEADY_AUTOVALUES: "#S",
+    EquationKind.STEADY_AUTOVALUES: "#A",
 }
 
 
 _FROM_PORTABLES = {
-    v: k for k, v in _PORTABLES.items()
+    v: k for k, v in _TO_PORTABLES.items()
 }
 
 
@@ -121,16 +121,16 @@ class Equation:
         """
         """
         return (
+            self.kind.to_portable(),
             self.human,
             complement.human if complement.human != self.human else None,
-            self.kind.to_portable(),
             self.description,
             " ".join(self.attributes, ),
         )
 
     @classmethod
     def from_portable(klass, portable: _PortableType, /, ) -> Self:
-        human, complement_human, kind, description, attributes = portable
+        kind, human, complement_human, description, attributes = portable
         self = klass(
             human=human,
             kind=EquationKind.from_portable(kind),
@@ -385,7 +385,7 @@ def to_portable(
     """
     #[
     portable = []
-    for kind in _PORTABLES.keys():
+    for kind in _TO_PORTABLES.keys():
         portable += [
             d.to_portable(s, )
             for d, s in zip(dynamic_equations, steady_equations, )

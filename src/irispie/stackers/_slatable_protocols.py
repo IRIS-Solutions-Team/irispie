@@ -65,12 +65,8 @@ class Slatable(_slatables.Slatable):
         self.fallbacks = {}
         self.overwrites = {}
         #
-        #
-        # parameters = stacker.get_parameters(unpack_singleton=True, )
-        # if self.parameters_from_data:
-        #     self.fallbacks.update(parameters, )
-        # else:
-        #     self.overwrites.update(parameters, )
+        parameters = stacker.get_parameters(unpack_singleton=True, )
+        self.overwrites.update(parameters, )
         #
         shock_names = stacker.get_names(kind=_quantities.ANY_SHOCK, )
         shock_meds = {

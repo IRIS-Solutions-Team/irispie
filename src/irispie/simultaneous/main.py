@@ -71,6 +71,7 @@ _DEFAULT_SOLUTION_TOLERANCE = 1e-12
         "information": "Getting information about Simultaneous models",
         "filtering": "Applying structural filters on Simultaneous models",
         "parameters": "Manipulating Simultaneous model parameters",
+        "serialize": "Serializing, saving and loading Simultaneous models",
         "property": None,
     },
 )
@@ -93,12 +94,13 @@ class Simultaneous(
     _io.Inlay,
 ):
     """
-················································································
+................................................................................
 
 `Simultaneous` models
 ======================
 
-················································································
+
+................................................................................
     """
     #[
 
@@ -137,6 +139,10 @@ class Simultaneous(
 
 ==Create `Simultaneous` model object from source file or files==
 
+Read and parse one or more source files specified by `file_names` (a string
+or a list of strings) with model source code, and create a `Simultaneous`
+model object.
+
 ```
 self = Simultaneous.from_file(
     file_names,
@@ -146,13 +152,8 @@ self = Simultaneous.from_file(
 )
 ```
 
-Read and parse one or more source files specified by `file_names` (a string
-or a list of strings) with model source code, and create a `Simultaneous`
-model object.
-
 
 ### Input arguments ###
-
 
 ???+ input "file_names"
     The name of the model source file from which the `Simultaneous` model object
@@ -169,9 +170,8 @@ model object.
 
 ### Returns ###
 
-
 ???+ returns "self"
-`Simultaneous` model object created from the `file_names`.
+    `Simultaneous` model object created from the `file_names`.
 
 ················································································
         """
@@ -185,6 +185,10 @@ model object.
 
 ==Create `Simultaneous` model from string==
 
+Read and parse a text `string` with a model source code, and create a
+`Simultaneous` model object. Otherwise, this function behaves the same way as
+[`Simultaneous.from_file`](#simultaneousfrom_file).
+
 ```
 self = Simultaneous.from_string(
     string,
@@ -193,10 +197,6 @@ self = Simultaneous.from_string(
     description="",
 )
 ```
-
-Read and parse a text `string` with a model source code, and create a
-`Simultaneous` model object. Otherwise, this function behaves the same way as
-[`Simultaneous.from_file`](#simultaneousfrom_file).
 
 
 ### Input arguments ###
@@ -604,8 +604,120 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         self._invariant = state["_invariant"]
         self._variants = state["_variants"]
 
+    @_dm.reference(category="serialize", )
     def to_portable(self, /, ) -> dict[str, Any]:
-        """
+        r"""
+................................................................................
+
+==Serialize `Simultaneous` model to portable dictionary==
+
+Convert a `Simultaneous` model object to a dictionary of primitive values that
+can be saved to a JSON file or transmitted over the network. The structure of
+the portable dictionary is described below.
+
+```
+portable = self.to_portable()
+```
+
+
+### Input arguments ###
+
+???+ input "self"
+    `Simultaneous` model object to be serialized.
+
+
+### Returns ###
+
+???+ returns "portable"
+    A JSON-serializable dictionary with the structure described below.
+
+
+### Details ###
+
+
+???+ abstract "Structure of the portable dictionary, format 0.3.0:"
+
+    The portable dictionary has the following structure:
+
+    ```
+        {
+            "portable_format": "0.3.0",
+            "source": {
+                "description": <str>,
+                "flags": {
+                    "is_linear: <bool>,
+                    "is_flat": <bool>,
+                    "is_deterministic": <bool>
+                },
+                "quantities": [ <QUANTITY>, ... ],
+                "equations": [ <EQUATION>, ... ],
+                "context": {},
+            "variants": [ <VARIANT>, ... ],
+        }
+    ```
+
+    The 'quantities` dictionary contains a list of quantities, with each
+    quantitiy described as a five-element tuple:
+
+    ```
+    [ <KIND>, <NAME>, <LOGLY>, <DESCRIPTION>, <ATTRIBUTES> ]
+    ```
+
+    where
+
+    * `<KIND>` is a string representing the kind of the quantity,
+
+    * `<NAME>` is a string with the name of the quantity,
+
+    * `<LOGLY>` is a boolean or `None` indicating whether the quantity is
+    declared as a log variable `None` if irrelevant for the respective kind of variables),
+
+    * `<DESCRIPTION>` is a string with the description of the quantity,
+
+    * `<ATTRIBUTES>` is a string containing all attributes separated by a white space.
+
+
+    The kinds of variables are coded as follows:
+
+    | Kind of variable | Code |
+    |-------------------|------|
+    | Transition variable | `#x` |
+    | Measurement variable | `#y` |
+    | Unanticipated shock | `#u` |
+    | Anticipated shock | `#v` |
+    | Measurement shock | `#w` |
+    | Parameter | `#p` |
+    | Exogenous variable | `#z` |
+
+
+    The 'equations` dictionary contains a list of equations, with each
+    equation described as a five-tuple:
+
+    ```
+    [ <KIND>, <DYNAMIC>, <STEADY>, <DESCRIPTION>, <ATTRIBUTES> ]
+    ```
+
+    where
+    * `<KIND>` is a string representing the kind of the equation,
+
+    * `<DYNAMIC>` is a string with the dynamic variant of the equation,
+
+    * `<STEADY>` is a string with the steady-state variant of the equation,
+
+    * `<DESCRIPTION>` is a string with the description of the equation,
+
+    * `<ATTRIBUTES>` is a string containing all attributes separated by a white space.
+
+
+    The kinds of equations are coded as follows:
+
+    | Kind of equation | Code |
+    |-------------------|------|
+    | Transition equation | `#T` |
+    | Measurement equation | `#M` |
+    | Steady autovalues | `#A` |
+
+................................................................................
         """
         qid_to_name = self.create_qid_to_name()
         return {
@@ -615,8 +727,35 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         }
 
     @classmethod
+    @_dm.reference(category="constructor", )
     def from_portable(klass, portable, /, ) -> Self:
-        """
+        r"""
+................................................................................
+
+==Create `Simultaneous` model from portable dictionary==
+
+Create a `Simultaneous` model object from a portable dictionary. See
+`Simultaneous.to_portable` for details on the structure of the portable
+dictionary.
+
+```
+self = Simultaneous.from_portable(portable)
+```
+
+
+### Input arguments ###
+
+???+ input "portable"
+    A dictionary with the structure described in the documentation of
+    `Simultaneous.to_portable`.
+
+
+### Returns ###
+
+???+ returns "self"
+    A new `Simultaneous` model object created from the portable dictionary.
+
+................................................................................
         """
         _portables.validate_portable_format(portable["portable_format"], )
         #
