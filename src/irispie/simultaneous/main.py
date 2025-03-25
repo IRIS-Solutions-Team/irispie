@@ -671,8 +671,8 @@ portable = self.to_portable()
     shocks; all shocks are assumed to be deterministic add-factors, and there
     are no `std` parameter created.
 
-    The `quantities` dictionary contains a list of quantities, with each
-    quantitiy described as a five-element tuple:
+    The `quantities` is a list of quantities, with each `<QUANTITY>` described
+    as a five-element tuple:
 
     ```
     [ <KIND>, <NAME>, <LOGLY>, <DESCRIPTION>, <ATTRIBUTES> ]
@@ -705,8 +705,8 @@ portable = self.to_portable()
     | Exogenous variable | `#z` |
 
 
-    The `equations` dictionary contains a list of equations, with each
-    equation described as a five-tuple:
+    The `equations` is a list of equations, with each `<EQUATION>` described as
+    a five-tuple:
 
     ```
     [ <KIND>, <DYNAMIC>, <STEADY>, <DESCRIPTION>, <ATTRIBUTES> ]
@@ -731,6 +731,14 @@ portable = self.to_portable()
     | Transition equation | `#T` |
     | Measurement equation | `#M` |
     | Steady autovalues | `#A` |
+
+
+    The `variants` is a list of parameter (and steady-state) variants, with each
+    `<VARIANT>` being a dictionary with its keys corresponding to the names of
+    the model quantities (including `std_` names for the standard deviations of
+    shocks), and the values being two-tuples consisting of the level and the
+    changes of the respective quantity; the change is `None` whenever irrelevant
+    for the respective kind of quantity.
 
 ................................................................................
         """
