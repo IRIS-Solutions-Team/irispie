@@ -328,31 +328,38 @@ of the numeric array.
             yield { k: next(v, ) for k, v in dict_variant_iter.items() }
 
     @_dm.reference(category="information", )
-    def get_names(self, /, ) -> list[str]:
+    def get_names(
+        self, 
+        filter: None | Callable = None,
+    ) -> list[str]:
         """
 ················································································
 
-==Get all item names from a Databox==
+==Get item names from a Databox==
 
 
-    names = self.get_names()
+    names = self.get_names(filter=None, )
 
 
 ### Input arguments ###
 
-
-No input arguments are required for this method.
+???+ input "filter"
+    A function that takes a name and returns `True` to include the name in the
+    output list, or `False` to keep the name out. If `None`, all names are
+    included.
 
 
 ### Returns ###
-
 
 ???+ returns "names"
     A tuple containing all the names of items in the Databox.
 
 ················································································
         """
-        return tuple(self.keys())
+        keys = tuple(self.keys())
+        if filter is not None:
+            keys = tuple(k for k in keys if filter(k, ))
+        return keys
 
     @_dm.reference(category="information", )
     def get_missing_names(self, names: Iterable[str], ) -> tuple[str]:
@@ -651,8 +658,8 @@ Returns `None`; `self` is modified in place.
     @_dm.reference(category="manipulation", )
     def remove(
         self: Self,
+        /,
         remove_names: SourceNames = None,
-        *,
         strict_names: bool = False,
     ) -> None:
         """
@@ -693,13 +700,10 @@ Returns `None`; `self` is modified in place.
         """
         if remove_names is None:
             return
-        context_names = self.get_names()
-        remove_names, *_ = self._resolve_source_target_names(
-            remove_names, None, strict_names,
-        )
+        remove_names, *_ \
+            = self._resolve_source_target_names(remove_names, None, strict_names, )
         for n in remove_names:
             del self[n]
-
 
     @_dm.reference(category="manipulation", )
     def keep(
@@ -746,13 +750,12 @@ callable function determining which items to retain.
         """
         if keep_names is None:
             return self
-        keep_names, _, context_names = self._resolve_source_target_names(
-            keep_names, None, strict_names,
-        )
-        for n in context_names:
-            if n in keep_names:
-                continue
+        keep_names, *_ \
+            = self._resolve_source_target_names(keep_names, None, strict_names, )
+        remove_names = set(self.keys()) - set(keep_names)
+        for n in remove_names:
             del self[n]
+
 
     @_dm.reference(category="manipulation", )
     def apply(
