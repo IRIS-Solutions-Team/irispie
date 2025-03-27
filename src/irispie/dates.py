@@ -166,6 +166,16 @@ custom check of time period or time series properties is needed.
     #]
 
 
+_COMPACT_MONTH_STRINGS = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+]
+
+
+def _get_compact_year_string(year: int, ) -> str:
+    return str(year)[-2:]
+
+
 Frequency.YEARLY.__doc__ = r"""
 ................................................................................
 
@@ -1046,6 +1056,49 @@ where lowercase letters represent the respective time period components
         """
         ...
 
+    @_dm.reference(category="print", )
+    def to_compact_string(self, /, ) -> str:
+        r"""
+................................................................................
+
+==Compact representation of time period==
+
+The compact string format is frequency specific:
+
+Time frequency | Compact format   | Example
+---------------|------------------|--------
+Yearly         | `yyY`            | `30Y`
+Half-yearly    | `yyHh`           | `30H1`
+Quarterly      | `yyQq`           | `30Q1`
+Monthly        | `yyMmm`          | `30M01`
+Weekly         | `yyWww`          | `30W01`
+Daily          | `yymmmdd`        | `30Jan01`
+Integer        | `(n)`            | `(1)`
+
+where lowercase letters represent the respective time period components
+(integer values) and uppercase letters are literals.
+
+
+    compact_string = self.to_compact_string()
+
+
+### Input arguments ###
+
+
+???+ input "self"
+    Time period to convert to a compact string.
+
+
+### Returns ###
+
+
+???+ returns "compact_string"
+    Compact string representation of the time period.
+
+................................................................................
+        """
+        ...
+
     @_dm.reference(category="conversion", )
     def to_python_date(
         self,
@@ -1412,6 +1465,8 @@ class IntegerPeriod(Period, ):
     def to_sdmx_string(self, /, ) -> str:
         return f"({self.serial})"
 
+    to_compact_string = to_sdmx_string
+
     def __repr__(self) -> str:
         return f"ii({self.serial})"
 
@@ -1502,6 +1557,12 @@ class DailyPeriod(Period, ):
     def to_sdmx_string(self, /, **kwargs) -> str:
         year, month, day = self.to_ymd()
         return f"{year:04g}-{month:02g}-{day:02g}"
+
+    def to_compact_string(self, /, **kwargs) -> str:
+        year, month, day = self.to_ymd()
+        year_string = _get_compact_year_string(year)
+        month_string = _COMPACT_MONTH_STRINGS[month-1]
+        return f"{year_string}{month_string}{day:02g}"
 
     def to_year_segment(self) -> tuple[int, int]:
         boy_serial = _dt.date(_dt.date.fromordinal(self.serial).year, 1, 1)
@@ -1671,6 +1732,10 @@ class YearlyPeriod(RegularPeriodMixin, Period, ):
     def to_sdmx_string(self, /, ) -> str:
         return f"{self.get_year():04g}"
 
+    def to_compact_string(self, /, ) -> str:
+        year_string = _get_compact_year_string(self.get_year())
+        return f"{year_string}Y"
+
     @_remove_blanks
     def __repr__(self) -> str: return f"yy({self.get_year()})"
 
@@ -1700,6 +1765,11 @@ class HalfyearlyPeriod(RegularPeriodMixin, Period, ):
     def to_sdmx_string(self, /, ) -> str:
         year, per = self.to_year_segment()
         return f"{year:04g}-{self.frequency.letter}{per:1g}"
+
+    def to_compact_string(self, /, ) -> str:
+        year, per = self.to_year_segment()
+        year_string = _get_compact_year_string(year)
+        return f"{year_string}{self.frequency.letter}{per:1g}"
 
     @_remove_blanks
     def __repr__(self) -> str: return f"hh{self.to_year_segment()}"
@@ -1752,6 +1822,11 @@ class QuarterlyPeriod(RegularPeriodMixin, Period, ):
         year, per = self.to_year_segment()
         return f"{year:04g}-{self.frequency.letter}{per:1g}"
 
+    def to_compact_string(self, /, ) -> str:
+        year, per = self.to_year_segment()
+        year_string = _get_compact_year_string(year)
+        return f"{year_string}{self.frequency.letter}{per:1g}"
+
     @_remove_blanks
     def __repr__(self) -> str: return f"qq{self.to_year_segment()}"
 
@@ -1781,6 +1856,11 @@ class MonthlyPeriod(RegularPeriodMixin, Period, ):
     def to_sdmx_string(self, /, ) -> str:
         year, per = self.to_year_segment()
         return f"{year:04g}-{per:02g}"
+
+    def to_compact_string(self, /, ) -> str:
+        year, per = self.to_year_segment()
+        year_string = _get_compact_year_string(year)
+        return f"{year_string}{self.frequency.letter}{per:02g}"
 
     @_remove_blanks
     def __repr__(self) -> str: return f"mm{self.to_year_segment()}"
