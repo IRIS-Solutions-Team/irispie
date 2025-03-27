@@ -76,11 +76,14 @@ def initialize(
     diffuse_method: Literal["approx_diffuse", "fixed_unknown", "fixed_zero", ] = "fixed_unknown",
     diffuse_scale: Real | None = None,
 ) -> tuple[np_.ndarray, np_.ndarray, int, Real ]:
-    """
+    r"""
+    Return median and MSE matrix for initial alpha, and the impact of fixed
+    unknowns on initial alpha
     """
     #[
-    diffuse_scale, unknown_init_impact \
-        = _RESOLVE_DIFFUSE[diffuse_method](solution, diffuse_scale, )
+    diffuse_func = _RESOLVE_DIFFUSE[diffuse_method]
+    diffuse_scale, unknown_init_impact = diffuse_func(solution, diffuse_scale, )
+    #
     return (
         _initialize_med(solution, ),
         _initialize_mse(solution, cov_u, diffuse_scale, ),
@@ -106,7 +109,8 @@ def _initialize_med(
     init_med = _np.zeros((num_alpha, ), dtype=float, )
     #
     T = _np.eye(num_stable, dtype=float, ) - Ta_stable
-    init_med[num_unit_roots:] = left_div(T, Ka_stable, )
+    init_med_stable = left_div(T, Ka_stable, )
+    init_med[num_unit_roots:] = init_med_stable
     return init_med
     #]
 

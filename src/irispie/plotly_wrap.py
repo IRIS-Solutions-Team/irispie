@@ -12,7 +12,7 @@ import plotly.subplots as _ps
 import plotly.io as _pi
 import documark as _dm
 
-from .dates import (Period, )
+from .dates import Period, Frequency
 
 #]
 
@@ -20,6 +20,41 @@ from .dates import (Period, )
 __all__ = (
     "plotly", "set_default_plotly_renderer",
 )
+
+
+_DATE_FORMAT_STYLES = {
+    "sdmx": {
+        Frequency.YEARLY: "%Y",
+        Frequency.HALFYEARLY: "%Y-%m",
+        Frequency.QUARTERLY: "%Y-Q%q",
+        Frequency.MONTHLY: "%Y-%m",
+        Frequency.WEEKLY: "%Y-W%W",
+        Frequency.DAILY: "%Y-%m-%d",
+        Frequency.INTEGER: None,
+    },
+    "compact": {
+        Frequency.YEARLY: "%yY",
+        Frequency.HALFYEARLY: "%yM%m",
+        Frequency.QUARTERLY: "%yQ%q",
+        Frequency.MONTHLY: "%yM%m",
+        Frequency.WEEKLY: "%yW%W",
+        Frequency.DAILY: "%y%b%d",
+        Frequency.INTEGER: None,
+    },
+}
+
+
+def resolve_date_format(
+    date_format_style: str | dict[int, str] | None,
+    frequency: Frequency,
+) -> str:
+    """
+    """
+    if not date_format_style:
+        date_format_style = "sdmx"
+    if isinstance(date_format_style, str):
+        date_format_style = _DATE_FORMAT_STYLES[date_format_style]
+    return date_format_style[frequency]
 
 
 _EMPTY_SUBPLOT_TITLE = " "

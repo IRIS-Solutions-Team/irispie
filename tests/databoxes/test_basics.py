@@ -37,3 +37,33 @@ def test_shallow_copy():
     assert db["B"] == [10, 20, 30, 40, ]
 
 
+def test_remove_single():
+    sh = db.shallow()
+    sh.remove("a")
+    assert set(sh.keys()) == set(db.keys()) - {"a", }
+
+
+def test_remove_multiple():
+    sh = db.shallow()
+    sh.remove(("b", "c"))
+    assert set(sh.keys()) == set(db.keys()) - {"b", "c", }
+
+
+def test_keep_single():
+    sh = db.shallow()
+    sh.keep("a")
+    assert set(sh.keys()) == {"a", }
+
+
+def test_keep_multiple():
+    sh = db.shallow()
+    sh.keep(("b", "c"))
+    assert set(sh.keys()) == {"b", "c", }
+
+
+def test_get_names_with_filter():
+    sh = db.shallow()
+    names = sh.get_names(filter=lambda n: n[0].isupper())
+    assert set(names) == {"A", "B", }
+
+

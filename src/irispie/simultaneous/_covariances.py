@@ -103,7 +103,7 @@ model based on the provided factor.
         # Tuple element cov_by_variant[variant_index][order] is an N-by-N
         # covariance matrix
         cov_by_variant = [
-            self._getv_autocov(v, boolex_zero_shift, up_to_order=up_to_order, )
+            self.getv_autocov(v, boolex_zero_shift, up_to_order=up_to_order, )
             for v in self._variants
         ]
         #
@@ -161,7 +161,7 @@ model based on the provided factor.
         else:
             return acorr_by_variant
 
-    def _getv_autocov(
+    def getv_autocov(
         self,
         variant: _variants.Variant,
         boolex_zero_shift: tuple[bool, ...] | Ellipsis,
@@ -177,8 +177,8 @@ model based on the provided factor.
             cov = cov[boolex_zero_shift, :]
             cov = cov[:, boolex_zero_shift]
             return cov
-        cov_u = self._getv_cov_u(variant, )
-        cov_w = self._getv_cov_w(variant, )
+        cov_u = self.getv_cov_u(variant, )
+        cov_w = self.getv_cov_w(variant, )
         cov_by_order = _covariances.get_autocov_square(variant.solution, cov_u, cov_w, up_to_order, )
         return tuple(select(cov, ) for cov in cov_by_order)
 
@@ -186,7 +186,7 @@ model based on the provided factor.
         """
         """
         std_u = [
-            self._getv_std_u(v, )
+            self.getv_std_u(v, )
             for v in self._variants
         ]
         return self.unpack_singleton(std_u, )
@@ -195,7 +195,7 @@ model based on the provided factor.
         """
         """
         std_w = [
-            self._getv_std_w(v, )
+            self.getv_std_w(v, )
             for v in self._variants
         ]
         return self.unpack_singleton(std_w, )
@@ -208,7 +208,7 @@ model based on the provided factor.
         """
         """
         cov_u = [
-            self._getv_cov_u(v, )
+            self.getv_cov_u(v, )
             for v in self._variants
         ]
         return self.unpack_singleton(cov_u, unpack_singleton=unpack_singleton, )
@@ -221,33 +221,33 @@ model based on the provided factor.
         """
         """
         cov_w = [
-            self._getv_cov_w(v, )
+            self.getv_cov_w(v, )
             for v in self._variants
         ]
         return self.unpack_singleton(cov_w, unpack_singleton=unpack_singleton, )
 
-    def _getv_std_u(self, variant, /, ):
+    def getv_std_u(self, variant, /, ):
         """
         """
         shocks = self._invariant.dynamic_descriptor.solution_vectors.unanticipated_shocks
         return _retrieve_stds(self, variant, shocks, )
 
-    def _getv_std_w(self, variant, /, ):
+    def getv_std_w(self, variant, /, ):
         """
         """
         shocks = self._invariant.dynamic_descriptor.solution_vectors.measurement_shocks
         return _retrieve_stds(self, variant, shocks, )
 
-    def _getv_cov_u(self, variant, /, ):
+    def getv_cov_u(self, variant, /, ):
         """
         """
-        stds = self._getv_std_u(variant, )
+        stds = self.getv_std_u(variant, )
         return _np.diag(stds**2, )
 
-    def _getv_cov_w(self, variant, /, ):
+    def getv_cov_w(self, variant, /, ):
         """
         """
-        stds = self._getv_std_w(variant, )
+        stds = self.getv_std_w(variant, )
         return _np.diag(stds**2, )
 
 

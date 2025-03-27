@@ -28,10 +28,17 @@ class Variant:
     """
     """
 
-    __slots__ = (
+    _system_matrices = (
         "TT", "PP", "RR", "KK",
         "AA", "BB", "CC", "DD", "HH",
     )
+
+    _initials = (
+        "init_med", "init_mse", "unknown_init_impact",
+        "cov_u", "cov_w",
+    )
+
+    __slots__ = _system_matrices + _initials
 
     def __init__(self, ) -> None:
         """
@@ -48,6 +55,7 @@ class Variant:
         """
         """
         self = klass()
+        #
         num_periods = invariant.num_periods
         T, P, _, K, Z, H, D, = solution.unpack_square_solution()
         forward = num_periods - 1
@@ -71,16 +79,8 @@ class Variant:
         H = H[index_y, :][: , index_w]
         D = D[index_y]
         #
-        TT = []
-        KK = []
-        PP = []
-        RR = []
-        #
-        AA = []
-        BB = []
-        CC = []
-        DD = []
-        HH = []
+        for n in self._system_matrices:
+            setattr(self, n, [], )
         #
         full_TT = _np.eye(num_xi, )
         full_KK = _np.zeros((num_xi, ), )
@@ -91,32 +91,29 @@ class Variant:
             full_KK = T @ full_KK + K
             full_PP = T @ full_PP + Px
             full_RR = T @ full_RR + Rx
-            TT.append(full_TT[invariant.index_xi, :])
-            KK.append(full_KK[invariant.index_xi])
-            PP.append(full_PP[invariant.index_xi, :])
-            RR.append(full_RR[invariant.index_xi, :])
             #
-            AA.append(Z @ full_TT)
-            BB.append(Z @ full_PP)
-            CC.append(Z @ full_RR)
-            DD.append(Z @ full_KK + D)
-            HH.append(H)
+            self.TT.append(full_TT[invariant.index_xi, :])
+            self.KK.append(full_KK[invariant.index_xi])
+            self.PP.append(full_PP[invariant.index_xi, :])
+            self.RR.append(full_RR[invariant.index_xi, :])
+            #
+            self.AA.append(Z @ full_TT)
+            self.BB.append(Z @ full_PP)
+            self.CC.append(Z @ full_RR)
+            self.DD.append(Z @ full_KK + D)
+            self.HH.append(H)
             #
             Px = _move_forward(Px, num_u_included)
             Rx = _move_forward(Rx, num_v_included)
             Hx = _move_forward(Hx, num_w_included)
         #
-        self.TT = _np.vstack(TT, )
-        self.PP = _np.vstack(PP, )
-        self.RR = _np.vstack(RR, )
-        self.KK = _np.hstack(KK, )
+        for n in self._system_matrices:
+            a = getattr(self, n)
+            setattr(self, n, _np.vstack(a, ), )
         #
-        self.AA = _np.vstack(AA, )
-        self.BB = _np.vstack(BB, )
-        self.CC = _np.vstack(CC, )
-        self.DD = _np.hstack(DD, )
-        self.HH = _np.vstack(HH, )
-        #
+        # self.cov_u = solution
+        # self.init_med, self.init_mse, self.unknown_init_impact = \
+        #     _initializers.initialize(solution, 
         return self
 
 

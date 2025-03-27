@@ -155,10 +155,6 @@ custom check of time period or time series properties is needed.
         return self.name[0] if self is not self.UNKNOWN else "?"
 
     @property
-    def plotly_format(self, /, ) -> str:
-        return PLOTLY_FORMATS[self]
-
-    @property
     @_dm.reference(category="property", )
     def is_regular(self, /, ) -> bool:
         r"""==True for regular time frequency=="""
@@ -254,17 +250,6 @@ QUARTERLY = Frequency.QUARTERLY
 MONTHLY = Frequency.MONTHLY
 WEEKLY = Frequency.WEEKLY
 DAILY = Frequency.DAILY
-
-
-PLOTLY_FORMATS = {
-    Frequency.YEARLY: "%Y",
-    Frequency.HALFYEARLY: "%Y-%m",
-    Frequency.QUARTERLY: "%Y-Q%q",
-    Frequency.MONTHLY: "%Y-%m",
-    Frequency.WEEKLY: "%Y-%W",
-    Frequency.DAILY: "%Y-%m-%d",
-    Frequency.INTEGER: None,
-}
 
 
 SDMX_REXP_FORMATS = {

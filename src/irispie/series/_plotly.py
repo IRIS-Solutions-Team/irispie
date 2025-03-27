@@ -117,6 +117,7 @@ class Inlay:
         chart_type: Literal["line", "bar_stack", "bar_group", ] = "line",
         highlight: Iterable[Period] | None = None,
         bar_norm: str | None = None,
+        date_format_style: str | dict[int, str] | None = None,
         #
         update_layout: dict[str, Any] | None = None,
         update_traces: tuple(dict[str, Any], ) | dict | None = None,
@@ -142,7 +143,7 @@ class Inlay:
         span = tuple(self._resolve_dates(span, ))
         from_until = (span[0], span[-1], )
         frequency = span[0].frequency
-        date_format = span[0].frequency.plotly_format
+        date_format = _plotly_wrap.resolve_date_format(date_format_style, frequency, )
 
         if figure is None:
             figure = _pg.Figure()

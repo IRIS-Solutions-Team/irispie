@@ -835,7 +835,7 @@ the time series data.
             data_array = input_ds_v.get_data_variant()
 
             #
-            # Initialize medians and stds
+            # Initialize median and MSE of the alpha state vector
             #
             init_cov_u = self_v.get_cov_unanticipated_shocks()
             init_med, init_mse, unknown_init_impact = initialize(solution_v, init_cov_u, )
