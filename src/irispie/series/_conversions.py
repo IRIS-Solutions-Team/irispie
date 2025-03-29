@@ -46,7 +46,7 @@ class Inlay:
     def aggregate(
         self,
         target_freq: _dates.Frequency,
-        /,
+        #
         method: Literal["mean", "sum", "first", "last", "min", "max"] | Callable | None = None,
         discard_missing: bool | None = None,
         select: list[int] | None = None,
@@ -64,18 +64,18 @@ class Inlay:
     new = irispie.aggregate(
         self,
         target_freq,
-        /,
+
         method="mean",
         discard_missing=False,
         select=None,
     )
 
 
-### Class method form for creating new time `Series` objects ###
+### Class method changing an existing Series object in-place ###
 
     self.aggregate(
         target_freq,
-        /,
+
         method="mean",
         discard_missing=False,
         select=None,
@@ -159,7 +159,7 @@ class Inlay:
     def disaggregate(
         self,
         target_freq: _dates.Frequency,
-        /,
+        #
         method: str = "flat",
         **kwargs,
     ) -> Self:
@@ -174,7 +174,7 @@ class Inlay:
     new = irispie.disaggregate(
         self,
         target_freq,
-        /,
+
         method="flat",
     )
 
@@ -183,7 +183,7 @@ class Inlay:
 
     self.disaggregate(
         target_freq,
-        /,
+
         method="flat",
         model=None,
     )
@@ -332,7 +332,6 @@ def _aggregate_regular_to_regular(
     self,
     new_dater_class: type,
     aggregate_within_data_func: Callable,
-    /,
 ) -> tuple[Dater, _np.ndarray]:
     """
     """
@@ -362,7 +361,6 @@ def _aggregate_regular_to_regular(
 def _disaggregate_flat(
     self,
     high_dater_class: type,
-    /,
 ) -> tuple[Dater, _np.ndarray]:
     """
     """
@@ -378,7 +376,6 @@ def _disaggregate_flat(
 def _disaggregate_first(
     self,
     high_dater_class: type,
-    /,
 ) -> tuple[Dater, _np.ndarray]:
     """
     """
@@ -393,7 +390,6 @@ def _disaggregate_first(
 def _disaggregate_last(
     self,
     high_dater_class: type,
-    /,
 ) -> tuple[Dater, _np.ndarray]:
     """
     """
@@ -410,7 +406,6 @@ def _aggregate_within_data(
     discard_missing: bool,
     method_func: Callable,
     within_data: _np.ndarray,
-    /,
 ) -> _np.ndarray:
     """
     """
@@ -448,7 +443,6 @@ def convert_roc(
     roc: Real,
     from_freq: _dates.Frequency,
     to_freq: _dates.Frequency,
-    /,
 ) -> Real:
     """
     """
@@ -459,7 +453,6 @@ def convert_pct(
     pct: Real,
     from_freq: _dates.Frequency,
     to_freq: _dates.Frequency,
-    /,
 ) -> Real:
     """
     """
@@ -470,7 +463,6 @@ def convert_diff(
     diff: Real,
     from_freq: _dates.Frequency,
     to_freq: _dates.Frequency,
-    /,
 ) -> Real:
     """
     """

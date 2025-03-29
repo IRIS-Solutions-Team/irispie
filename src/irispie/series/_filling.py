@@ -26,6 +26,9 @@ if TYPE_CHECKING:
 __all__ = []
 
 
+MethodType = Literal["next", "previous", "nearest", "linear", "log_linear", "constant", "from_series", ]
+
+
 class Inlay:
     """
     """
@@ -34,7 +37,7 @@ class Inlay:
     @_dm.reference(category="homogenizing", )
     def fill_missing(
         self,
-        method: Literal["next", "previous", "nearest", "linear", "log_linear", "constant", "series", ],
+        method: Literal["next", "previous", "nearest", "linear", "log_linear", "constant", "from_series", ],
         method_args: Any | None = None,
         span: Iterable[Period] | EllipsisType | None = None,
     ) -> None:
@@ -54,7 +57,7 @@ class Inlay:
     )
 
 
-### Class method form for changing existing time `Series` objects in-place ###
+### Class method form changing existing `Series` objects in-place ###
 
     self.fill_missing(
         method,
@@ -72,23 +75,23 @@ class Inlay:
 ???+ input "method"
     The method to be used for filling missing observations. The following methods are available:
 
-    | Method        | Description
-    |---------------|-------------
-    | "constant"    | Fill with a constant value
-    | "next"        | Next available observation
-    | "previous"    | Previous available observation
-    | "nearest"     | Nearest available observation
-    | "linear"      | Linear interpolation or extrapolation
-    | "log_linear"  | Log-linear interpolation or extrapolation
-    | "series"      | Fill with values from another time series object
+    | Method         | Description
+    |----------------|-------------
+    | "constant"     | Fill with a constant value
+    | "next"         | Next available observation
+    | "previous"     | Previous available observation
+    | "nearest"      | Nearest available observation
+    | "linear"       | Linear interpolation or extrapolation
+    | "log_linear"   | Log-linear interpolation or extrapolation
+    | "from_series"  | Fill with values from another time series object
 
 ???+ input "*args"
     Additional arguments to be passed to the filling method. The following methods require additional arguments:
 
-    | Method     | Additional argument(s)
-    |------------|-----------------------
-    | "constant" | A single constant value
-    | "series"   | A time `Series` object
+    | Method         | Additional argument(s)
+    |----------------|-----------------------
+    | "constant"     | A single constant value
+    | "from_series"  | A time `Series` object
 
 
 ???+ input "span"
@@ -222,7 +225,7 @@ def _fill_constant(
     return data
 
 
-def _fill_series(
+def fill_from_series(
     values: _np.ndarray,
     method_args: Series,
     span: Iterable[Period],
@@ -281,7 +284,10 @@ _FILL_METHOD_DISPATCH = {
     "linear": _ft.partial(_fill_interp, func=_interpolation_linear, ),
     "log_linear": _ft.partial(_fill_interp, func=_interpolation_log_linear, ),
     "constant": _fill_constant,
-    "series": _fill_series,
+    "from_series": fill_from_series,
+    #
+    # Aliases for backward compatibility
+    "series": fill_from_series,
 }
 
 

@@ -175,7 +175,7 @@ class Inlay:
 ==Constrained Hodrick-Prescott filter==
 
 
-### Functional forms creating a new time `Series` object ###
+### Functional form creating a new time `Series` object ###
 
 
     trend, gap = irispie.hpf(
@@ -189,7 +189,7 @@ class Inlay:
     )
 
 
-### Class methods changing an existing time `Series` object in-place ###
+### Class method changing an existing time `Series` objects in-place ###
 
 
     self.hpf_trend(

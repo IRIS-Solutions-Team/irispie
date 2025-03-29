@@ -60,7 +60,7 @@ class Inlay:
     )
 
 
-### Class methods changing an existing time `Series` object in-place ###
+### Class method changing an existing time `Series` object in-place ###
 
 
     self.extrapolate(

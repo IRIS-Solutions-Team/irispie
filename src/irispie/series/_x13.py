@@ -96,7 +96,7 @@ new, info = irispie.x13(
 ```
 
 
-### Class methods for changing existing Series objects in-place ###
+### Class method for changing existing time `Series` objects in-place ###
 
 
 ```
