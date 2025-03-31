@@ -2293,6 +2293,12 @@ Converts each period within the time span to a SDMX string format.
         """
         return tuple(t.to_sdmx_string(*args, **kwargs, ) for t in self)
 
+    @_dm.reference(category="print", )
+    def to_compact_strings(self, *args, **kwargs, ) -> tuple[str]:
+        r"""
+        """
+        return tuple(t.to_compact_string(*args, **kwargs, ) for t in self)
+
     def to_python_dates(self, *args, **kwargs, ) -> tuple[_dt.date]:
         return tuple(t.to_python_date(*args, **kwargs, ) for t in self)
 
