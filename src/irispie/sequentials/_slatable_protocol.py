@@ -15,6 +15,9 @@ if TYPE_CHECKING:
 #]
 
 
+_DEFAULT_RESIDUAL_VALUE = 0.0
+
+
 class _Slatable(Slatable):
     """
     """
@@ -37,26 +40,26 @@ class _Slatable(Slatable):
         self.descriptions = None
         self.databox_validators = None
         #
-        residual_names = tuple(sequential._invariant.residual_names)
-        residuals = { name: 0 for name in residual_names }
-        #
-        #
         #
         self.fallbacks = {}
         self.overwrites = {}
         #
         #
-        parameters = sequential.get_parameters(unpack_singleton=True, )
+        parameter_name_to_value = sequential.get_parameters(unpack_singleton=True, )
         if self.parameters_from_data:
-            self.fallbacks.update(parameters, )
+            self.fallbacks.update(parameter_name_to_value, )
         else:
-            self.overwrites.update(parameters, )
+            self.overwrites.update(parameter_name_to_value, )
         #
         #
+        residual_name_to_value = {
+            name: _DEFAULT_RESIDUAL_VALUE
+            for name in sequential.residual_names
+        }
         if self.shocks_from_data:
-            self.fallbacks.update(residuals, )
+            self.fallbacks.update(residual_name_to_value, )
         else:
-            self.overwrites.update(residuals, )
+            self.overwrites.update(residual_name_to_value, )
         #
         #
         self.qid_to_logly = {}

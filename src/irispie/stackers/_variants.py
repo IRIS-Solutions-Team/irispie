@@ -14,9 +14,15 @@ from __future__ import annotations
 
 import numpy as _np
 
+from ..fords import initializers as _initializers
 from ..fords.solutions import Solution
 
 from ._invariants import Invariant
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Self
+    from numbers import Real
 
 #]
 
@@ -28,17 +34,20 @@ class Variant:
     """
     """
 
-    _system_matrices = (
+    _system_matrix_slots = (
         "TT", "PP", "RR", "KK",
         "AA", "BB", "CC", "DD", "HH",
     )
 
-    _initials = (
+    _initial_slots = (
         "init_med", "init_mse", "unknown_init_impact",
-        "cov_u", "cov_w",
     )
 
-    __slots__ = _system_matrices + _initials
+    _std_slots = (
+        "std_name_to_value",
+    )
+
+    __slots__ = _system_matrix_slots + _initial_slots + _std_slots
 
     def __init__(self, ) -> None:
         """
@@ -47,19 +56,21 @@ class Variant:
             setattr(self, n, None, )
 
     @classmethod
-    def from_solution(
+    def from_solution_and_stds(
         klass,
         invariant: Invariant,
         solution: Solution,
+        std_name_to_value: dict[str, Real],
+        cov_u: _np.ndarray,
     ) -> Self:
         """
         """
         self = klass()
         #
         num_periods = invariant.num_periods
-        T, P, _, K, Z, H, D, = solution.unpack_square_solution()
         forward = num_periods - 1
-        R = solution.expand_square_solution(forward=forward, )
+        T, P, _, K, Z, H, D, U = solution.unpack_triangular_solution()
+        R = solution.expand_triangular_solution(forward=forward, )
         index_xi = invariant.index_xi
         index_u = invariant.index_u
         index_v = invariant.index_v
@@ -79,7 +90,7 @@ class Variant:
         H = H[index_y, :][: , index_w]
         D = D[index_y]
         #
-        for n in self._system_matrices:
+        for n in self._system_matrix_slots:
             setattr(self, n, [], )
         #
         full_TT = _np.eye(num_xi, )
@@ -107,13 +118,15 @@ class Variant:
             Rx = _move_forward(Rx, num_v_included)
             Hx = _move_forward(Hx, num_w_included)
         #
-        for n in self._system_matrices:
+        for n in self._system_matrix_slots:
             a = getattr(self, n)
             setattr(self, n, _np.vstack(a, ), )
         #
-        # self.cov_u = solution
-        # self.init_med, self.init_mse, self.unknown_init_impact = \
-        #     _initializers.initialize(solution, 
+        self.std_name_to_value = std_name_to_value
+        #
+        self.init_med, self.init_mse, self.unknown_init_impact = \
+            _initializers.initialize(solution, cov_u, )
+        #
         return self
 
 

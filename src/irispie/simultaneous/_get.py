@@ -274,18 +274,24 @@ steady_changes = self.get_steady_changes(
 
     def get_solution(
         self,
-        /,
+        #
         unpack_singleton: bool = True,
     ) -> Solution | list[Solution]:
         """
         """
-        solution_matrices = [ v.solution for v in self._variants ]
+        solution_matrices = [ i for i in self.iter_solution() ]
         return self.unpack_singleton(solution_matrices, unpack_singleton=unpack_singleton, )
+
+    def iter_solution(self, /, ) -> Iterable[Solution]:
+        """
+        """
+        for v in self._variants:
+            yield v.solution
 
     def get_singleton_solution(
         self,
         deviation: bool = False,
-        *,
+        #
         vid: int = 0,
     ) -> Solution:
         """
@@ -295,6 +301,18 @@ steady_changes = self.get_steady_changes(
             solution if not deviation
             else Solution.deviation_solution(solution, )
         )
+
+    def iter_std_name_to_value(self, /, ) -> Iterable[dict[str, Real]]:
+        """
+        """
+        qid_to_name = self.create_qid_to_name()
+        std_qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _quantities.QuantityKind.ANY_STD, )
+        for v in self._variants:
+            std_qid_to_value = v.retrieve_levels_as_dict(std_qids, )
+            yield {
+                qid_to_name[qid]: value
+                for qid, value in std_qid_to_value.items()
+            }
 
     def get_dynamic_equations(
         self,

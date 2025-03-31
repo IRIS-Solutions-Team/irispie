@@ -21,8 +21,11 @@ if TYPE_CHECKING:
 #]
 
 
+_DEFAULT_SHOCK_VALUE = 0.0
+
+
 class Slatable(_slatables.Slatable):
-    """
+    r"""
     """
     #[
 
@@ -31,8 +34,11 @@ class Slatable(_slatables.Slatable):
         stacker: Stacker,
         **kwargs,
     ) -> Self:
+        r"""
         """
-        """
+        #
+        if stacker.num_variants != 1:
+            raise ValueError("Not implemented for multiple variants")
         #
         super().__init__(**kwargs, )
         self.max_lag = stacker.max_lag
@@ -65,24 +71,21 @@ class Slatable(_slatables.Slatable):
         self.fallbacks = {}
         self.overwrites = {}
         #
-        parameters = stacker.get_parameters(unpack_singleton=True, )
-        self.overwrites.update(parameters, )
-        #
         shock_names = stacker.get_names(kind=_quantities.ANY_SHOCK, )
-        shock_meds = {
-            name: [float(0), ]*stacker.num_variants
+        shock_name_to_value = {
+            name: [_DEFAULT_SHOCK_VALUE, ]*stacker.num_variants
             for name in shock_names
         }
         if self.shocks_from_data:
-            self.fallbacks.update(shock_meds, )
+            self.fallbacks.update(shock_name_to_value, )
         else:
-            self.overwrites.update(shock_meds, )
+            self.overwrites.update(shock_name_to_value, )
         #
-        # shock_stds = stacker.get_stds(unpack_singleton=False, )
-        # if self.stds_from_data:
-        #     self.fallbacks.update(shock_stds, )
-        # else:
-        #     self.overwrites.update(shock_stds, )
+        stds = stacker._variants[0].std_name_to_value
+        if self.stds_from_data:
+            self.fallbacks.update(stds, )
+        else:
+            self.overwrites.update(stds, )
         #
         self.qid_to_logly = stacker.create_qid_to_logly()
 

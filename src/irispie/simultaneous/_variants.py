@@ -60,12 +60,12 @@ class Variant:
         return self
 
     @property
-    def _all_qids(self, /, ) -> Iterable[int]:
+    def _all_qids(self, ) -> Iterable[int]:
         """
         """
         return self.levels.keys()
 
-    def copy(self, /, ) -> Self:
+    def copy(self, ) -> Self:
         """
         """
         new = type(self)()
@@ -75,7 +75,7 @@ class Variant:
                 setattr(new, i, attr.copy(), )
         return new
 
-    def _initilize_values(self, qid_range, /, ) -> None:
+    def _initilize_values(self, qid_range, ) -> None:
         """
         """
         self.levels = { qid: None for qid in qid_range }
@@ -114,11 +114,27 @@ class Variant:
         for qid in qids:
             values[qid] *= factor if values[qid] is not None else None
 
+    def retrieve_levels_as_dict(
+        self,
+        qids: Iterable[int],
+    ) -> dict[int, Real | None]:
+        r"""
+        """
+        return { i: self.levels[i] for i in qids }
+
+    def retrieve_changes_as_dict(
+        self,
+        qids: Iterable[int],
+    ) -> dict[int, Real | None]:
+        r"""
+        """
+        return { i: self.changes[i] for i in qids }
+
     def retrieve_maybelog_values_for_qids(
         self,
         qids: Iterable[int],
         qid_to_logly: dict[int, bool],
-    ) -> tuple[_np.ndarray, ..., ]:
+    ) -> tuple[_np.ndarray, _np.ndarray, ]:
         """
         """
         #
@@ -181,7 +197,7 @@ class Variant:
     def create_zero_array(
         self,
         qid_to_logly: dict[int, bool],
-        /,
+        #
         num_columns: int = 1,
         shift_in_first_column: int = 0,
     ) -> _np.ndarray:
@@ -194,7 +210,7 @@ class Variant:
         levels[inx_set_to_1] = 1
         return _np.tile(levels, (1, num_columns, ))
 
-    def to_portable(self, qid_to_name, /, ) -> dict[str, Any]:
+    def to_portable(self, qid_to_name, ) -> dict[str, Any]:
         """
         """
         return {
@@ -221,7 +237,7 @@ def _update_from_array(
     #]
 
 
-def _is_nan(x: Real | None, /, ) -> bool:
+def _is_nan(x: Real | None, ) -> bool:
     return x != x
 
 
@@ -230,7 +246,6 @@ def _update_from_dict(
     update: dict[int, Real | tuple[Real]],
     when_tuple: Callable,
     when_not_tuple: Callable,
-    /,
 ) -> _np.ndarray:
     """
     Update levels or changes from a dictionary

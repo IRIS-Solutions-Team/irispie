@@ -19,14 +19,13 @@ from .. import namings as _namings
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from numbers import Real
+    from collections.abc import Iterable
 
 #]
 
 
-
-
 class Inlay:
-    """
+    r"""
     """
 
     @_dm.reference(category="parameters", )
@@ -36,7 +35,7 @@ class Inlay:
         *,
         kind: _quantities.QuantityKind | None = None,
     ) -> None:
-        """
+        r"""
 ................................................................................
 
 ==Rescale the standard deviations of model shocks==
@@ -87,12 +86,12 @@ model based on the provided factor.
 
     def get_acov(
         self,
-        /,
+        #
         up_to_order: int = 0,
         return_dimension_names: bool = True,
         unpack_singleton: bool = True,
     ) -> tuple[list[_np.ndarray] | _np.ndarray, _namings.DimensionNames] | list[_np.ndarray] | _np.ndarray:
-        """
+        r"""
         Asymptotic autocovariance of model variables
         """
         #
@@ -129,13 +128,13 @@ model based on the provided factor.
 
     def get_acorr(
         self,
-        /,
+        #
         acov: tuple[_np.ndarray, ..., tuple[str], tuple[str]] | None = None,
         up_to_order: int = 0,
         unpack_singleton: bool = True,
         return_dimension_names: bool = True,
     ) -> tuple[list[_np.ndarray] | _np.ndarray, _namings.DimensionNames] | list[_np.ndarray] | _np.ndarray:
-        """
+        r"""
         Asymptotic autocorrelation of model variables
         """
         acov_by_variant = acov
@@ -165,12 +164,12 @@ model based on the provided factor.
         self,
         variant: _variants.Variant,
         boolex_zero_shift: tuple[bool, ...] | Ellipsis,
-        /,
+        #
         up_to_order: int = 0,
     ) -> _np.ndarray:
+        r"""
         """
-        """
-        def select(cov: _np.ndarray, /, ) -> _np.ndarray:
+        def select(cov: _np.ndarray, ) -> _np.ndarray:
             """
             Select elements of solution vectors with zero shift only
             """
@@ -182,30 +181,48 @@ model based on the provided factor.
         cov_by_order = _covariances.get_autocov_square(variant.solution, cov_u, cov_w, up_to_order, )
         return tuple(select(cov, ) for cov in cov_by_order)
 
-    def get_stdvec_unanticipated_shocks(self, /, ):
+    def get_stdvec_unanticipated_shocks(self, ):
+        r"""
         """
-        """
-        std_u = [
-            self.getv_std_u(v, )
-            for v in self._variants
-        ]
+        std_u = [ std_u for std_u in self.iter_std_u() ]
         return self.unpack_singleton(std_u, )
 
-    def get_stdvec_measurement_shocks(self, /, ):
+    def iter_std_u(self, ) -> Iterable[_np.ndarray, ...]:
+        r"""
         """
+        for v in self._variants:
+            yield self.getv_std_u(v, )
+
+    def iter_cov_u(self, ) -> Iterable[_np.ndarray, ...]:
+        r"""
         """
-        std_w = [
-            self.getv_std_w(v, )
-            for v in self._variants
-        ]
+        for v in self._variants:
+            yield self.getv_cov_u(v, )
+
+    def get_stdvec_measurement_shocks(self, ):
+        r"""
+        """
+        std_w = [ std_w for std_w in self.iter_std_w() ]
         return self.unpack_singleton(std_w, )
+
+    def iter_std_w(self, ) -> Iterable[_np.ndarray, ...]:
+        r"""
+        """
+        for v in self._variants:
+            yield self.getv_std_w(v, )
+
+    def iter_std_w(self, ) -> Iterable[_np.ndarray, ...]:
+        r"""
+        """
+        for v in self._variants:
+            yield self.getv_std_w(v, )
 
     def get_cov_unanticipated_shocks(
         self,
-        /,
+        #
         unpack_singleton: bool = True,
     ):
-        """
+        r"""
         """
         cov_u = [
             self.getv_cov_u(v, )
@@ -215,10 +232,10 @@ model based on the provided factor.
 
     def get_cov_measurement_shocks(
         self,
-        /,
+        #
         unpack_singleton: bool = True,
     ):
-        """
+        r"""
         """
         cov_w = [
             self.getv_cov_w(v, )
@@ -226,36 +243,36 @@ model based on the provided factor.
         ]
         return self.unpack_singleton(cov_w, unpack_singleton=unpack_singleton, )
 
-    def getv_std_u(self, variant, /, ):
-        """
+    def getv_std_u(self, variant, ):
+        r"""
         """
         shocks = self._invariant.dynamic_descriptor.solution_vectors.unanticipated_shocks
         return _retrieve_stds(self, variant, shocks, )
 
-    def getv_std_w(self, variant, /, ):
-        """
+    def getv_std_w(self, variant, ):
+        r"""
         """
         shocks = self._invariant.dynamic_descriptor.solution_vectors.measurement_shocks
         return _retrieve_stds(self, variant, shocks, )
 
-    def getv_cov_u(self, variant, /, ):
-        """
+    def getv_cov_u(self, variant, ):
+        r"""
         """
         stds = self.getv_std_u(variant, )
         return _np.diag(stds**2, )
 
-    def getv_cov_w(self, variant, /, ):
-        """
+    def getv_cov_w(self, variant, ):
+        r"""
         """
         stds = self.getv_std_w(variant, )
         return _np.diag(stds**2, )
 
 
-def _stack_singleton(x: tuple[_np.ndarray], /, ) -> _np.ndarray:
+def _stack_singleton(x: tuple[_np.ndarray], ) -> _np.ndarray:
     return x[0]
 
 
-def _stack_nonsingleton(x: tuple[_np.ndarray], /, ) -> _np.ndarray:
+def _stack_nonsingleton(x: tuple[_np.ndarray], ) -> _np.ndarray:
     return _np.dstack(x)
 
 
@@ -269,7 +286,7 @@ def _get_dimension_names(
     self,
     system_vector: tuple[_incidences.Token, ...],
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    """
+    r"""
     """
     qid_to_name = self.create_qid_to_name()
     qid_to_logly = self.create_qid_to_logly()
@@ -280,11 +297,8 @@ def _get_dimension_names(
     return _namings.DimensionNames(rows=names, columns=names, )
 
 
-def _get_system_vector(
-    self,
-    /,
-) -> tuple[tuple[_incidences.Token, ...], tuple[bool, ...]]:
-    """
+def _get_system_vector(self, ) -> tuple[tuple[_incidences.Token, ...], tuple[bool, ...]]:
+    r"""
     """
     system_vector = \
         self._invariant.dynamic_descriptor.solution_vectors.transition_variables \
@@ -295,7 +309,7 @@ def _get_system_vector(
 
 
 def _retrieve_stds(self, variant, shocks, ) -> _np.ndarray:
-    """
+    r"""
     """
     #[
     std_qids = tuple(

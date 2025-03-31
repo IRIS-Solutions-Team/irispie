@@ -311,18 +311,19 @@ of the numeric array.
 
     def iter_variants(
         self,
-        /,
-        *,
+        #
         item_iterator: Iterator[Any] | None = None,
-        names: Iterable[str] | None = None,
+        keys: Iterable[Any] | None = None,
     ) -> Iterator[dict]:
         """
         """
-        names = names or self.keys()
-        item_iterator = item_iterator or _default_item_iterator
+        if item_iterator is None:
+            item_iterator = _default_item_iterator
+        if keys is None:
+            keys = self.keys()
         dict_variant_iter = {
             k: item_iterator(self[k], )
-            for k in names if k in self
+            for k in keys if k in self
         }
         while True:
             yield { k: next(v, ) for k, v in dict_variant_iter.items() }
@@ -1540,20 +1541,8 @@ This method modifies the Databox in place and returns `None`.
     #]
 
 
+# Alias for backward compatibility
 Databank = Databox
-
-
-def _apply_to_item(
-    func: Callable,
-    source: Any,
-    target: Any,
-    /,
-) -> None:
-    """
-    Apply function to source, capture result in target
-    """
-    target = source
-    return func(target)
 
 
 def _reformat_eval_expression(expression: str, ) -> str:
@@ -1568,7 +1557,7 @@ def _reformat_eval_expression(expression: str, ) -> str:
     #]
 
 
-def _default_item_iterator(value: Any, /, ) -> Iterator[Any]:
+def _default_item_iterator(value: Any, ) -> Iterator[Any]:
     """
     """
     #[

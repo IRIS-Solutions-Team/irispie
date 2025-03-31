@@ -38,7 +38,7 @@ class Slatable:
         parameters_from_data: bool = False,
         **kwargs,
     ) -> None:
-        """
+        r"""
         """
         self.shocks_from_data = shocks_from_data
         self.stds_from_data = stds_from_data

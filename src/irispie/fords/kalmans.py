@@ -1344,7 +1344,7 @@ def one_step_back(
 
 def _generate_period_system(
     t: int,
-
+    #
     solution_v: Solution,
     y1_array: _np.ndarray,
     std_u_array: _np.ndarray,

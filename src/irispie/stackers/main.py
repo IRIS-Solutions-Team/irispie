@@ -55,11 +55,19 @@ class Stacker(
         """
         """
         self = klass()
+        #
         self._invariant = Invariant.from_simultaneous(model, num_periods, **kwargs, )
+        #
+        zipped_iters = zip(
+            model.iter_solution(),
+            model.iter_std_name_to_value(),
+            model.iter_cov_u(),
+        )
         self._variants = [
-            Variant.from_solution(self._invariant, solution, )
-            for solution in model.get_solution(unpack_singleton=False, )
+            Variant.from_solution_and_stds(self._invariant, solution, std_name_to_value, cov_u, )
+            for solution, std_name_to_value, cov_u in zipped_iters
         ]
+        #
         return self
 
     def _access_quantities(self, /, ) -> list[Quantity]:
@@ -85,10 +93,9 @@ class Stacker(
         start: Period,
         num_variants: int | None = None,
         shocks_from_data: bool = False,
-        # stds_from_data: bool = False,
-        # parameters_from_data: bool = False,
+        stds_from_data: bool = False,
     ) -> Dataslate:
-        """
+        r"""
         """
         num_variants = self.resolve_num_variants_in_context(num_variants, )
         base_periods = self.get_base_periods(start, )
@@ -96,6 +103,7 @@ class Stacker(
         slatable = Slatable(
             self,
             shocks_from_data=shocks_from_data,
+            stds_from_data=stds_from_data,
         )
         #
         dataslate = Dataslate.from_databox_for_slatable(

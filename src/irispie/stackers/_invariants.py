@@ -115,7 +115,13 @@ class Invariant:
     #]
 
 
-def _create_index(source_vector, stacked_vector, /, ) -> list[int]:
-    return [ source_vector.index(tok) for tok in stacked_vector ]
-
+def _create_index(source_vector, stacked_vector, /, ) -> list[int, ...]:
+    r"""
+    Return index of positions in source_vector for each token in stacked_vector.
+    Needs to be a list, not a tuple, because it is used for indexing in numpy.
+    """
+    return [
+        source_vector.index(tok)
+        for tok in stacked_vector
+    ]
 

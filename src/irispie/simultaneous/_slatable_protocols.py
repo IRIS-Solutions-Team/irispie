@@ -19,6 +19,9 @@ if TYPE_CHECKING:
 #]
 
 
+_DEFAULT_SHOCK_VALUE = 0.0
+
+
 class _Slatable(Slatable, ):
     """
     """
@@ -31,7 +34,7 @@ class _Slatable(Slatable, ):
         output_kind: _quantities.Quantity,
         **kwargs,
     ) -> Self:
-        """
+        r"""
         """
         #
         self = klass(**kwargs, )
@@ -65,27 +68,27 @@ class _Slatable(Slatable, ):
         self.fallbacks = {}
         self.overwrites = {}
         #
-        parameters = model.get_parameters(unpack_singleton=True, )
+        parameter_name_to_value = model.get_parameters(unpack_singleton=True, )
         if self.parameters_from_data:
-            self.fallbacks.update(parameters, )
+            self.fallbacks.update(parameter_name_to_value, )
         else:
-            self.overwrites.update(parameters, )
+            self.overwrites.update(parameter_name_to_value, )
         #
         shock_names = model.get_names(kind=_quantities.ANY_SHOCK, )
-        shock_meds = {
-            name: [float(0), ]*model.num_variants
+        shock_name_to_value = {
+            name: [_DEFAULT_SHOCK_VALUE, ]*model.num_variants
             for name in shock_names
         }
         if self.shocks_from_data:
-            self.fallbacks.update(shock_meds, )
+            self.fallbacks.update(shock_name_to_value, )
         else:
-            self.overwrites.update(shock_meds, )
+            self.overwrites.update(shock_name_to_value, )
         #
-        shock_stds = model.get_stds(unpack_singleton=False, )
+        std_name_to_value = model.get_stds(unpack_singleton=False, )
         if self.stds_from_data:
-            self.fallbacks.update(shock_stds, )
+            self.fallbacks.update(std_name_to_value, )
         else:
-            self.overwrites.update(shock_stds, )
+            self.overwrites.update(std_name_to_value, )
         #
         self.qid_to_logly = model.create_qid_to_logly()
         self.output_names = model.get_names(kind=output_kind, )
@@ -96,10 +99,10 @@ class _Slatable(Slatable, ):
     def for_multiply_stds(
         klass,
         model,
-        fallbacks: dict[str, list[Real]] | None,
+        fallback_name_to_value: dict[str, list[Real]] | None,
         **kwargs,
     ) -> None:
-        """
+        r"""
         """
         #
         self = klass(**kwargs, )
@@ -123,7 +126,7 @@ class _Slatable(Slatable, ):
         self.databox_validators = None
         #
         # Fallbacks and overwrites
-        self.fallbacks = fallbacks
+        self.fallbacks = fallback_qid_to_value
         self.overwrites = None
         #
         self.qid_to_logly = None
@@ -135,12 +138,12 @@ class _Slatable(Slatable, ):
 
 
 class Inlay:
-    """
+    r"""
     """
     #[
 
     def get_slatable_for_simulate(self, **kwargs, ) -> _Slatable:
-        """
+        r"""
         """
         output_kind = (
             _quantities.ANY_VARIABLE
@@ -155,7 +158,7 @@ class Inlay:
         return slatable
 
     def get_slatable_for_kalman_filter(self, **kwargs, ) -> _Slatable:
-        """
+        r"""
         """
         output_kind = (
             _quantities.ANY_VARIABLE
@@ -172,13 +175,21 @@ class Inlay:
         return slatable
 
     def get_slatables_for_multiply_stds(self, **kwargs, ) -> tuple[_Slatable, _Slatable]:
+        r"""
         """
-        """
-        std_fallbacks = self.get_stds(unpack_singleton=False, )
-        std_slatable = _Slatable.for_multiply_stds(self, fallbacks=std_fallbacks, **kwargs, )
+        std_name_to_value = self.get_stds(unpack_singleton=False, )
+        std_slatable = _Slatable.for_multiply_stds(
+            self,
+            fallback_name_to_value=std_name_to_value,
+            **kwargs,
+        )
         #
-        multiplier_fallbacks = { name: 1 for name in std_fallbacks }
-        multiplier_slatable = _Slatable.for_multiply_stds(self, fallbacks=multiplier_fallbacks, **kwargs, )
+        multiplier_name_to_value = { name: 1 for name in std_name_to_value.keys() }
+        multiplier_slatable = _Slatable.for_multiply_stds(
+            self,
+            fallback_name_to_value=multiplier_name_to_value,
+            **kwargs,
+        )
         #
         return std_slatable, multiplier_slatable
 

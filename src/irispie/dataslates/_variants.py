@@ -127,12 +127,13 @@ class Variant:
     def retrieve_record(
         self,
         record_id: int,
-        /,
+        #
         columns: slice | Iterable[int] | None = None,
     ) -> _np.ndarray:
         """
         """
-        columns = columns if columns is not None else ...
+        if columns is None:
+            columns = ...
         return self.data[record_id, columns]
 
     def iter_data(self, /, ) -> _np.ndarray:
@@ -156,7 +157,7 @@ class Variant:
 
     def _apply_fallbacks(
         self,
-        fallbacks: dict[str, Real] | None,
+        fallbacks: dict[int, Real] | None,
         invariant: _invariants.Invariant,
         /,
     ) -> None:
@@ -165,11 +166,12 @@ class Variant:
         if not fallbacks:
             return
         for record_id, name in enumerate(invariant.names, ):
-            if name in fallbacks:
-                values = self.retrieve_record(record_id, )
-                index_nan = _np.isnan(values)
-                values[index_nan] = _np.float64(fallbacks[name])
-                self.store_record(values, record_id, )
+            if name not in fallbacks:
+                continue
+            values = self.retrieve_record(record_id, )
+            index_nan = _np.isnan(values)
+            values[index_nan] = _np.float64(fallbacks[name])
+            self.store_record(values, record_id, )
 
     def _apply_overwrites(
         self,
@@ -182,26 +184,29 @@ class Variant:
         if not overwrites:
             return
         for record_id, name in enumerate(invariant.names, ):
-            if name in overwrites:
-                values = self.retrieve_record(record_id, )
-                values[:] = _np.float64(overwrites[name])
-                self.store_record(values, record_id, )
+            if name not in overwrites:
+                continue
+            values = self.retrieve_record(record_id, )
+            values[:] = _np.float64(overwrites[name])
+            self.store_record(values, record_id, )
 
     def logarithmize(self, logly_indexes: tuple[int], /, ) -> None:
-        """
+        r"""
+        Logarithmize data flagged as logarithmic
         """
         if logly_indexes:
             self.data[logly_indexes, :] = _np.log(self.data[logly_indexes, :])
 
-    def delogarithmize(self, logly_indexes: tuple[int], /, ) -> None:
-        """
+    def delogarithmize(self, logly_indexes: tuple[int], ) -> None:
+        r"""
+        Delogarithmize data flagged as logarithmic
         """
         if logly_indexes:
             self.data[logly_indexes, :] = _np.exp(self.data[logly_indexes, :])
 
     def rescale_data(self, factor: Real, /, ) -> None:
-        """
-        Rescale data by a factor
+        r"""
+        Rescale data by a common factor
         """
         self.data *= factor
 

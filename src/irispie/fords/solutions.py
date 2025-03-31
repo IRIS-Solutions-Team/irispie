@@ -283,7 +283,7 @@ class Solution:
 
     @property
     def boolex_stable_transition_vector(self, /, ) -> tuple[int, ...]:
-        """==Index of stable transition vector elements=="""
+        r"""==Index of stable transition vector elements=="""
         return _np.array(tuple(
             i == EigenvalueKind.STABLE
             for i in self.transition_vector_stability
@@ -291,24 +291,43 @@ class Solution:
 
     @property
     def boolex_stable_measurement_vector(self, /, ) -> tuple[int, ...]:
-        """==Index of stable measurement vector elements=="""
+        r"""==Index of stable measurement vector elements=="""
         return _np.array(tuple(
             i == EigenvalueKind.STABLE
             for i in self.measurement_vector_stability
         ), dtype=bool, )
 
-    def unpack_square_solution(self, /, ) -> tuple[_np.ndarray, ...]:
+    def unpack_square_solution(
+        self, 
+        forward: int = 0,
+    ) -> tuple[_np.ndarray, ...]:
+        r"""
+        Return square solution matrices in the following order:
+        T, P, R, K, Z, H, D, None
+        where R is expanded until t+forward
         """
+        R = self.expand_square_solution(forward, )
+        return self.T, self.P, R, self.K, self.Z, self.H, self.D, None,
+
+    def unpack_triangular_solution(
+        self,
+        forward: int = 0,
+    ) -> tuple[_np.ndarray, ...]:
+        r"""
+        Return triangular solution matrices in the following order:
+        Ta, Pa, Ra, Ka, Za, H, D, Ua
+        where Ra is expanded until t+forward
         """
-        return self.T, self.P, self.R, self.K, self.Z, self.H, self.D,
+        Ra = self.expand_triangular_solution(forward=0, )
+        return self.Ta, self.Pa, Ra, self.Ka, self.Za, self.H, self.D, self.Ua,
 
     def copy(self, ) -> Self:
-        """
+        r"""
         """
         return _co.deepcopy(self, )
 
     def expand_square_solution(self, forward: int, ) -> list[_np.ndarray]:
-        """
+        r"""
         Expand R matrices of square solution for t+1...t+forward
         """
         return _get_solution_expansion(

@@ -116,7 +116,7 @@ class Dataslate(
     def from_databox(
         klass,
         databox: Databox | dict,
-        names: Iterable[str],
+        names: Iterable[str] | None,
         periods: Iterable[Period] | string,
         /,
         num_variants: int = 1,
@@ -128,7 +128,9 @@ class Dataslate(
     ) -> Self:
         """
         """
-        names = tuple(names or databox.keys())
+        if names is None:
+            names = databox.keys()
+        names = tuple(names)
         periods = _dates.ensure_period_tuple(periods, )
         #
         if validators:
@@ -139,15 +141,15 @@ class Dataslate(
             _ft.partial(_slate_value_variant_iterator, from_until=from_until, )
         #
         databox_variant_iterator = \
-            Databox.iter_variants(databox, item_iterator=item_iterator, names=names, )
+            Databox.iter_variants(databox, item_iterator=item_iterator, keys=names, )
         #
         fallbacks_variant_iterator = (
-            Databox.iter_variants(fallbacks, item_iterator=item_iterator, names=names, )
+            Databox.iter_variants(fallbacks, item_iterator=item_iterator, )
             if fallbacks else _it.repeat(None, )
         )
         #
         overwrites_variant_iterator = (
-            Databox.iter_variants(overwrites, item_iterator=item_iterator, names=names, )
+            Databox.iter_variants(overwrites, item_iterator=item_iterator, )
             if overwrites else _it.repeat(None, )
         )
         #
