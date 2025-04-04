@@ -203,6 +203,7 @@ class Inlay:
     |-----------|-------------
     | "flat"    | Repeat the high-frequency values
     | "first"   | Place the low-frequency value in the first high-frequency period
+    | "middle"  | Place the low-frequency value in the middle high-frequency period
     | "last"    | Place the low-frequency value in the last high-frequency period
     | "arip"    | Interpolate using a smooth autoregressive process
 
@@ -380,10 +381,24 @@ def _disaggregate_first(
     """
     """
     #[
-    high_start_date, high_data, factor = _disaggregate_flat(self, high_dater_class, )
-    for i in range(1, factor, ):
-        high_data[i::factor, :] = _np.nan
-    return high_start_date, high_data
+    high_start_date, flat_high_data, factor = _disaggregate_flat(self, high_dater_class, )
+    high_data = _np.full(flat_high_data.shape, None, dtype=self.data_type, )
+    high_data[::factor, :] = flat_high_data[::factor, :]
+    return high_start_date, high_data, factor
+    #]
+
+
+def _disaggregate_middle(
+    self,
+    high_dater_class: type,
+) -> tuple[Dater, _np.ndarray]:
+    """
+    """
+    #[
+    high_start_date, flat_high_data, factor = _disaggregate_flat(self, high_dater_class, )
+    high_data = _np.full(flat_high_data.shape, None, dtype=self.data_type, )
+    high_data[factor//2::factor, :] = flat_high_data[factor//2::factor, :]
+    return high_start_date, high_data, factor,
     #]
 
 
@@ -394,9 +409,9 @@ def _disaggregate_last(
     """
     """
     #[
-    high_start_date, high_data, factor = _disaggregate_flat(self, high_dater_class, )
-    for i in range(0, factor-1, ):
-        high_data[i::factor, :] = _np.nan
+    high_start_date, flat_high_data, factor = _disaggregate_flat(self, high_dater_class, )
+    high_data = _np.full(flat_high_data.shape, None, dtype=self.data_type, )
+    high_data[factor-1::factor, :] = flat_high_data[factor-1::factor, :]
     return high_start_date, high_data, factor
     #]
 
@@ -434,6 +449,7 @@ _AGGREGATION_METHOD_RESOLUTION = {
 _CHOOSE_DISAGGREGATION_METHOD = {
     "flat": _disaggregate_flat,
     "first": _disaggregate_first,
+    "middle": _disaggregate_middle,
     "last": _disaggregate_last,
     "arip": _arip.disaggregate_arip,
 }
