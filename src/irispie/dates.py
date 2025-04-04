@@ -1668,7 +1668,6 @@ class RegularPeriodMixin:
 
     def to_ymd(
         self, 
-        /,
         position: PositionType = "start",
     ) -> tuple[int, int, int]:
         year, per = self.to_year_segment()
@@ -1773,17 +1772,6 @@ class HalfyearlyPeriod(RegularPeriodMixin, Period, ):
 
     @_remove_blanks
     def __repr__(self) -> str: return f"hh{self.to_year_segment()}"
-
-    def to_ymd(
-        self, 
-        /,
-        position: PositionType = "start",
-    ) -> tuple[int, int, int]:
-        year, per = self.to_year_segment()
-        return (
-            year,
-            *{"start": (1, 1), "middle": (6, 3), "end": (12, 31)}[position],
-        )
 
     def get_month(
         self,
@@ -2648,12 +2636,12 @@ def _get_period(something, attr_name, select_func, ) -> Period | None:
 def periods_from_until(
     start_per: Period,
     end_per: Period,
-    /,
+    step: int = 1,
 ) -> tuple[Period]:
     """
     """
     _check_periods(start_per, end_per, )
-    serials = range(start_per.serial, end_per.serial + 1, )
+    serials = range(start_per.serial, end_per.serial + 1, step, )
     period_class = type(start_per)
     return tuple(period_class(x) for x in serials)
 
