@@ -33,9 +33,7 @@ jobs:
       - name: Run tests
         run: |
           cd $GITHUB_WORKSPACE/irispie-package
-          pytest ./tests/series -v -ra
-          pytest ./tests/dates -v -ra
-          xxxxxxxxxx
+          pytest @tests/specs
 
       - name: Bump version in pyproject.toml
         if: ${{ success() }}
