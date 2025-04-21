@@ -41,8 +41,8 @@ class Slatable(_slatables.Slatable):
             raise ValueError("Not implemented for multiple variants")
         #
         super().__init__(**kwargs, )
-        self.max_lag = stacker.max_lag
-        self.max_lead = stacker.max_lead
+        self.max_lag = 0 # stacker.max_lag
+        self.max_lead = 0 # stacker.max_lead
         #
         qid_to_name = stacker.create_qid_to_name()
         self.databox_names = tuple(

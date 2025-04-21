@@ -128,7 +128,7 @@ $\rho_1,\ \rho_2,\ \dots,\ \rho_p$ given by the input argument `ar_coeff`
         """
         if self.start is None:
             return
-        span = self._resolve_dates(span, )
+        span = self.resolve_periods(span, )
         if not span:
             return
         num_periods = len(span)

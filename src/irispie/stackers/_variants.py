@@ -35,19 +35,25 @@ class Variant:
     """
 
     _system_matrix_slots = (
-        "TT", "PP", "RR", "KK",
-        "AA", "BB", "CC", "DD", "HH",
+        "TT", "PP", "RR",
+        "AA", "BB", "CC", "HH",
     )
 
-    _initial_slots = (
-        "init_med", "init_mse", "unknown_init_impact",
+    _system_intercept_slots = (
+        "KK", "DD",
     )
 
-    _std_slots = (
+    __slots__ = (
+        *_system_matrix_slots,
+        *_system_intercept_slots,
+        "init_med",
+        "init_mse",
+        "Xi",
+        "MM",
         "std_name_to_value",
+        "U",
+        "has_unknown_initial",
     )
-
-    __slots__ = _system_matrix_slots + _initial_slots + _std_slots
 
     def __init__(self, ) -> None:
         """
@@ -86,11 +92,13 @@ class Variant:
         Px = _np.hstack([P[:, index_u], _np.zeros((num_xi, num_u_included*(num_periods-1)))], )
         Rx = _np.hstack([r[:, index_v] for r in R])
         Hx = _np.hstack([H[index_y, :][:, index_w], _np.zeros((num_y_included, num_w_included*(num_periods-1)))], )
+        U = U[index_xi, :]
         Z = Z[index_y, :]
-        H = H[index_y, :][: , index_w]
         D = D[index_y]
         #
         for n in self._system_matrix_slots:
+            setattr(self, n, [], )
+        for n in self._system_intercept_slots:
             setattr(self, n, [], )
         #
         full_TT = _np.eye(num_xi, )
@@ -103,16 +111,16 @@ class Variant:
             full_PP = T @ full_PP + Px
             full_RR = T @ full_RR + Rx
             #
-            self.TT.append(full_TT[invariant.index_xi, :])
-            self.KK.append(full_KK[invariant.index_xi])
-            self.PP.append(full_PP[invariant.index_xi, :])
-            self.RR.append(full_RR[invariant.index_xi, :])
+            self.TT.append(U @ full_TT)
+            self.KK.append(U @ full_KK)
+            self.PP.append(U @ full_PP)
+            self.RR.append(U @ full_RR)
             #
             self.AA.append(Z @ full_TT)
             self.BB.append(Z @ full_PP)
             self.CC.append(Z @ full_RR)
             self.DD.append(Z @ full_KK + D)
-            self.HH.append(H)
+            self.HH.append(Hx)
             #
             Px = _move_forward(Px, num_u_included)
             Rx = _move_forward(Rx, num_v_included)
@@ -121,11 +129,20 @@ class Variant:
         for n in self._system_matrix_slots:
             a = getattr(self, n)
             setattr(self, n, _np.vstack(a, ), )
+        for n in self._system_intercept_slots:
+            a = getattr(self, n)
+            setattr(self, n, _np.hstack(a, ), )
+        self.U = U
         #
         self.std_name_to_value = std_name_to_value
         #
-        self.init_med, self.init_mse, self.unknown_init_impact = \
+        self.init_med, self.init_mse, Xi = \
             _initializers.initialize(solution, cov_u, )
+        #
+        self.has_unknown_initial = Xi is not None
+        if self.has_unknown_initial:
+            self.Xi = Xi
+            self.MM = self.AA @ Xi
         #
         return self
 

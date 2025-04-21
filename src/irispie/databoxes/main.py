@@ -87,6 +87,7 @@ def _extended_span_tuple_from_base_span(
         "manipulation": "Manipulating a Databox",
         "evaluation": "Evaluating a Databox",
         "multiple": "Manipulating multiple Databoxes",
+        "retrieval": "Extracting data from a Databox",
         "import_export": "Importing and exporting a Databox",
     },
 )
@@ -308,6 +309,64 @@ of the numeric array.
             print(name, type(values), description, )
             # self[name] = series_constructor(values=values, description=description, )
         return self
+
+    @_dm.reference(category="retrieval", )
+    def array_from_series(
+        self,
+        names: Iterable[str],
+        periods: Iterable[Period],
+        variant: int = 0,
+    ) -> _np.ndarray:
+        r"""
+................................................................................
+
+==Retrieve time series data into a numpy array==
+
+Retrieve the values of specified time series in the Databox into a numpy array.
+The values are extracted for the specified periods and variant. This method is
+useful for transforming time series data into a format suitable for numerical
+analysis.
+
+```
+    array = self.array_from_series(
+        names,
+        periods,
+
+
+        variant=0,
+    )
+```
+
+
+### Input arguments ###
+
+???+ input "names"
+    A list of names of the time series to be converted to a numpy array.
+    Each name should correspond to a time series item in the Databox.
+
+???+ input "periods"
+    A list of periods for which the values of the time series will be
+    extracted.
+
+???+ input "variant"
+    The variant (column) of the time series to be extracted. This is typically an
+    integer representing a specific variant of the time series data.
+
+
+### Returns ###
+
+???+ returns "array"
+    A numpy array containing the values of the specified time series for the
+    specified periods and variant. The array is structured such that each row
+    corresponds to a time series, and each column corresponds to a period. The
+    values are extracted in the order specified by the `names` and `periods`
+    arguments. The array is of shape `(len(names), len(periods))`.
+
+................................................................................
+        """
+        def retrieve_values(name: str, ) -> _np.ndarray:
+            return self[name].get_values(periods, variant, )
+        return _np.vstack([ retrieve_values(n, ) for n in names ])
 
     def iter_variants(
         self,
@@ -1377,6 +1436,7 @@ Shortcut syntax:
         unpack_single: bool = True,
         prepend_initial: bool = True,
         append_terminal: bool = True,
+        **kwargs,
     ) -> Self:
         r"""
 ................................................................................
@@ -1434,14 +1494,18 @@ VectorAutoregression models.
         items = steady_databoxable.generate_steady_items(
             start, end,
             deviation=deviation,
+            **kwargs,
         )
         return klass({ k: v for k, v in items })
 
+    @classmethod
+    @_dm.reference(category="constructor", )
     def zero(
         klass,
         steady_databoxable: SteadyDataboxableProtocol,
         span: Iterable[Period],
         /,
+        deviation: None = None,
         **kwargs,
     ) -> Self:
         r"""
@@ -1450,10 +1514,9 @@ VectorAutoregression models.
 
 ==Create a zero-state Databox for a model==
 
-
 This constructor is equivalent to calling
 
-    zero_databox = self.steady(model, span, deviation=True, ...)
+    zero_databox = Databox.steady(model, span, deviation=True, ...)
 
 
 See the [`Databox.steady`](#steady) method for details.
@@ -1461,6 +1524,8 @@ See the [`Databox.steady`](#steady) method for details.
 
 ................................................................................
         """
+        if deviation is not None:
+            raise ValueError("The 'deviation' argument is not allowed for the Databox.zero method")
         return klass.steady(steady_databoxable, span, deviation=True, **kwargs, )
 
     @_dm.reference(category="manipulation", )

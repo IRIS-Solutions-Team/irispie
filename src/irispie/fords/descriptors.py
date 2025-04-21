@@ -122,7 +122,6 @@ class Descriptor:
         equations: Iterable[Equation],
         quantities: Iterable[_quantities.Quantity],
         context: dict[str, Any] | None,
-        /,
     ) -> None:
         """
         """
@@ -204,6 +203,8 @@ class SystemVectors:
     measurement_variables: Iterable[Token] | None = None
     measurement_variables_are_logly: list[bool] | None = None
     measurement_shocks: tuple[Token, ...] | None = None
+    std_unanticipated_shocks: tuple[Token, ...] | None = None
+    std_measurement_shocks: tuple[Token, ...] | None = None
     #
     shape_A_excl_dynid: tuple[int, int] | None = None
     shape_B_excl_dynid: tuple[int, int] | None = None
@@ -219,7 +220,6 @@ class SystemVectors:
         self,
         equations: Iterable[Equation],
         quantities: Iterable[_quantities.Quantity],
-        /,
     ) -> None:
         """
         Construct system vectors from a list of equations and a list of quantities
@@ -257,7 +257,7 @@ class SystemVectors:
             = [ qid_to_logly[tok.qid] for tok in self.transition_variables ]
         self.populate_true_initials(actual_transition_variable_tokens, )
         #
-        # Unanticipated shocks
+        # Unanticipated shocks and stds
         #
         self.unanticipated_shocks \
             = tuple(_incidence.sort_tokens(_incidence.generate_tokens_of_kinds(
@@ -280,7 +280,7 @@ class SystemVectors:
         self.measurement_variables_are_logly \
             = [ qid_to_logly[tok.qid] for tok in self.measurement_variables ]
         #
-        # Measurement shocks
+        # Measurement shocks and stds
         #
         self.measurement_shocks \
             = tuple(_incidence.sort_tokens(_incidence.generate_tokens_of_kinds(
@@ -339,14 +339,17 @@ class SolutionVectors:
         "measurement_shocks",
     )
 
-    def __init__(self, /, **kwargs) -> None:
+    def __init__(self, **kwargs, ) -> None:
         """
         """
         for slot in self.__slots__:
             setattr(self, slot, kwargs.get(slot, None, ), )
 
     @classmethod
-    def from_system_vectors(klass, system_vectors: SystemVectors, /, ) -> None:
+    def from_system_vectors(
+        klass,
+        system_vectors: SystemVectors,
+    ) -> None:
         """
         Construct solution vectors and initial conditions indicator
         """
@@ -359,19 +362,13 @@ class SolutionVectors:
         self.measurement_shocks = tuple(system_vectors.measurement_shocks)
         return self
 
-    def get_initials(
-        self,
-        /,
-    ) -> list[Token]:
+    def get_initials(self, ) -> list[Token]:
         """
         Get tokens representing required initial conditions
         """
         return list(_it.compress(self.transition_variables, self.true_initials))
 
-    def get_curr_transition_indexes(
-        self,
-        /,
-    ) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    def get_curr_transition_indexes(self, ) -> tuple[tuple[int, ...], tuple[int, ...]]:
         """
         """
         lhs_rhs_tuples = [
@@ -401,7 +398,6 @@ class HumanSolutionVectors:
         solution_vectors: SolutionVectors,
         qid_to_name: dict[int, str],
         qid_to_logly: dict[int, bool],
-        /,
     ) -> None:
         """
         """
@@ -414,7 +410,6 @@ class HumanSolutionVectors:
 
 def _create_system_transition_vector(
     transition_variable_tokens: Iterable[Token],
-    /,
 ) -> Iterable[Token]:
     """
     From tokens of transition variables, create vector of transition variables
@@ -435,7 +430,6 @@ def _create_system_transition_vector(
 def _solution_vector_from_system_vector(
     system_transition_vector: Iterable[Token],
     true_initials: Iterable[bool],
-    /,
 ) -> Iterable[Token]:
     """
     From sorted system vector, get vector of transition variables in solved
@@ -621,7 +615,6 @@ def _adjust_for_measurement_equations(
     transition_variable_tokens: Iterable[_quantities.Quantity],
     equations: Iterable[Equation],
     qid_to_kind: dict[int, _quantities.QuantityKind],
-    /,
 ) -> Iterable[_quantities.Quantity]:
     """
     """
@@ -638,7 +631,6 @@ def _adjust_for_measurement_equations(
 def _custom_order_equations_by_eids(
     equations: Iterable[Equation],
     eids: list[int],
-    /,
 ) -> tuple[Equation, ...]:
     """
     """
@@ -679,13 +671,12 @@ class Squid:
 
     def __init__(
         self,
-        model: SquidableProtocol,
-        /,
+        solution_vectors: SolutionVectors,
+        shock_qid_to_std_qid: dict[int, int] | None = None,
     ) -> None:
         """
         """
-        vec = model.solution_vectors
-        shock_qid_to_std_qid = model.shock_qid_to_std_qid
+        vec = solution_vectors
         #
         self.num_xi = len(vec.transition_variables)
         self.curr_xi_qids, self.curr_xi_indexes = vec.get_curr_transition_indexes()
@@ -701,7 +692,7 @@ class Squid:
         self.std_v_qids = None
         self.std_w_qids = None
         #
-        if not model.is_deterministic:
+        if shock_qid_to_std_qid:
             self.std_u_qids = tuple(
                 shock_qid_to_std_qid[t.qid]
                 for t in vec.unanticipated_shocks
@@ -714,6 +705,17 @@ class Squid:
                 shock_qid_to_std_qid[t.qid]
                 for t in vec.measurement_shocks
             )
+
+    @classmethod
+    def from_squidable(
+        klass,
+        squidable: SquidableProtocol,
+    ) -> Self:
+        """
+        """
+        solution_vectors = squidable.solution_vectors
+        shock_qid_to_std_qid = squidable.shock_qid_to_std_qid if squidable.shock_qid_to_std_qid else None
+        return klass(solution_vectors, shock_qid_to_std_qid, )
 
     @property
     def num_curr_xi(self) -> int:
@@ -741,7 +743,6 @@ class Squid:
 def _collect_all_tokens(
     equations: Iterable[Equation],
     quantities: Iterable[_quantities.Quantity],
-    /,
 ) -> set[Token]:
     """
     Combine all tokens from equations and zero-shifted tokens created from

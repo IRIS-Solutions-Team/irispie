@@ -1,15 +1,30 @@
-"""
+r"""
 """
 
 
 #[
+
 from __future__ import annotations
 
 import numpy as _np
 import scipy as _sp
+from typing import Callable
+from numbers import Real
 
 from . import solutions as _solutions
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    pass
+
 #]
+
+
+__all__ = (
+    "std_from_cov",
+    "cov_from_std",
+    "CovarianceSimulator",
+)
 
 
 def get_autocov_square(
@@ -17,7 +32,6 @@ def get_autocov_square(
     cov_u: _np.ndarray,
     cov_w: _np.ndarray,
     order: int,
-    /,
 ) -> _np.ndarray:
     """
     Autocovariance of [xi; y] with nans for unstable elements
@@ -27,7 +41,7 @@ def get_autocov_square(
         solution.boolex_stable_transition_vector,
         solution.boolex_stable_measurement_vector,
     ))
-    def fill_nans(cov: _np.ndarray, /, ) -> _np.ndarray:
+    def fill_nans(cov: _np.ndarray, ) -> _np.ndarray:
         cov[~boolex_stable, :] = _np.nan
         cov[:, ~boolex_stable] = _np.nan
         return cov
@@ -43,7 +57,6 @@ def get_autocov_square_00(
     cov_u: _np.ndarray,
     cov_w: _np.ndarray,
     order: int,
-    /,
 ) -> tuple[_np.ndarray, ...]:
     """
     Autocovariance (up to order) of [xi; y] based on stable alpha and a zero cov assumption for unstable alpha
@@ -52,7 +65,7 @@ def get_autocov_square_00(
     num_alpha = solution.num_alpha
     Ua = solution.Ua
     #
-    def _transform_cov_triangular_to_square(cov: _np.ndarray, /, ) -> _np.ndarray:
+    def _transform_cov_triangular_to_square(cov: _np.ndarray, ) -> _np.ndarray:
         cov[:num_alpha, :] = Ua @ cov[:num_alpha, :]
         cov[:, :num_alpha] = cov[:, :num_alpha] @ Ua.T
         return cov
@@ -69,7 +82,6 @@ def get_autocov_triangular_00(
     cov_u: _np.ndarray,
     cov_w: _np.ndarray,
     order: int,
-    /,
 ) -> tuple[_np.ndarray, ...]:
     """
     Autocovariance (up to order) of [alpha; y] based on stable alpha
@@ -101,7 +113,6 @@ def get_cov_triangular_00(
     solution: _solutions.Solution,
     cov_u: _np.ndarray,
     cov_w: _np.ndarray,
-    /,
 ) -> _np.ndarray:
     """
     Covariance of [alpha; y] based on stable alpha
@@ -137,7 +148,6 @@ def get_cov_triangular_00(
 def get_cov_alpha_00(
     solution: _solutions.Solution,
     cov_u: _np.ndarray,
-    /,
 ) -> _np.ndarray:
     """
     Covariance of stable alpha, and full alpha based on stable alpha
@@ -156,7 +166,6 @@ def get_cov_alpha_00(
 
 def acorr_from_acov(
     acov_by_order: tuple[_np.ndarray, ...],
-    /,
 ) -> tuple[_np.ndarray, ...]:
     """
     """
@@ -179,7 +188,6 @@ def acorr_from_acov(
 
 def _get_scale_matrix(
     cov: _np.ndarray,
-    /,
     tolerance: float = 1e-12,
 ) -> _np.ndarray:
     """
@@ -195,7 +203,6 @@ def _get_scale_matrix(
 
 def _is_singleton(
     array: _np.ndarray,
-    /,
 ) -> bool:
     """
     """
@@ -204,7 +211,6 @@ def _is_singleton(
 
 def _add_dim_to_singleton(
     array_by_order: tuple[_np.ndarray, ...],
-    /,
 ) -> tuple[_np.ndarray, ...]:
     """
     """
@@ -218,7 +224,6 @@ def _add_dim_to_singleton(
 
 def _remove_dim_from_singleton(
     array_by_order: tuple[_np.ndarray, ...],
-    /,
 ) -> tuple[_np.ndarray, ...]:
     """
     """
@@ -285,4 +290,101 @@ def _lyapunov(
             i -= 2
 
     return C
+
+
+def symmetrize(X: _np.ndarray, ) -> _np.ndarray:
+    """
+    """
+    return (X + X.T) / 2
+
+
+def std_from_cov(
+    cov: _np.ndarray,
+    trim_negative: bool = True,
+) -> _np.ndarray:
+    r"""
+    """
+    #[
+    diag = _np.diag(cov, )
+    if trim_negative:
+        diag = _np.maximum(diag, 0)
+    return _np.sqrt(diag, )
+    #]
+
+
+def cov_from_std(
+    std: _np.ndarray,
+    trim_negative: bool = True,
+) -> _np.ndarray:
+    r"""
+    """
+    #[
+    if trim_negative:
+        std = _np.maximum(std, 0)
+    return _np.diag(std**2, )
+    #]
+
+
+_DEFAULT_NUMPY_RNG = _np.random.default_rng()
+_DEFAULT_GENERATOR = _DEFAULT_NUMPY_RNG.standard_normal
+
+
+class CovarianceSimulator:
+    r"""
+    """
+    #[
+
+    def __init__(
+        self,
+        cov: _np.ndarray,
+        mean: _np.ndarray | Real | None = None,
+        #
+        generator: Callable | None = None,
+        make_symmetric: bool = True,
+        trim_negative: bool = True,
+    ) -> None:
+        r"""
+        """
+        if make_symmetric:
+            cov = symmetrize(cov, )
+        eig_values, eig_vectors = _np.linalg.eigh(cov, )
+        if trim_negative:
+            eig_values = _np.maximum(eig_values, 0)
+        std_devs = _np.sqrt(eig_values, )
+        self.factor = eig_vectors @ _np.diag(std_devs, )
+        self._populate_mean(mean, )
+        self.generator = generator if generator is not None else _DEFAULT_GENERATOR
+
+    def _populate_mean(
+        self,
+        mean: _np.ndarray | Real | None,
+    ) -> None:
+        r"""
+        """
+        shape = (self.num_variables, 1, )
+        if mean is None:
+            mean = 0
+        if isinstance(mean, Real):
+            mean = _np.full(shape, mean, dtype=float, )
+        self.mean = mean.reshape(shape, order="F", )
+
+    @property
+    def num_variables(self, /, ) -> int:
+        r"""
+        """
+        return self.factor.shape[0]
+
+    def simulate(
+        self,
+        num_draws: int,
+    ) -> _np.ndarray:
+        r"""
+        """
+        shape = self.num_variables, num_draws,
+        x = self.factor @ self.generator(shape, )
+        if self.mean is not None:
+            x += self.mean
+        return x
+
+    #]
 

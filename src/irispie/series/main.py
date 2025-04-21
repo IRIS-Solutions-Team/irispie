@@ -61,7 +61,7 @@ AxisType = Literal[0, 1]
 
 
 def _get_date_positions(dates, base, num_periods, /, ):
-    pos = tuple(_dates.date_index(dates, base))
+    pos = tuple(_dates.period_indexes(dates, base, ))
     min_pos = min((x for x in pos if x is not None), default=0)
     max_pos = max((x for x in pos if x is not None), default=0)
     add_before = max(-min_pos, 0)
@@ -222,6 +222,22 @@ self = Series(
             )
 
     @classmethod
+    def as_empty(
+        klass,
+        num_variants: int = 1,
+        data_type: type = _np.float64,
+        description: str = "",
+    ) -> Self:
+        r"""
+        """
+        return klass(
+            num_variants=num_variants,
+            data_type=data_type,
+            description=description,
+            populate=False,
+        )
+
+    @classmethod
     def _guaranteed(
         klass,
         start: Period,
@@ -375,7 +391,7 @@ self = Series(
     ) -> None:
         """
         """
-        dates = self._resolve_dates(dates, )
+        dates = self.resolve_periods(dates, )
         is_data_ndarray = isinstance(data, _np.ndarray)
         is_empty_data = (
             data is None
@@ -424,7 +440,7 @@ self = Series(
     ) -> tuple[Iterable[Period], Iterable[int], Iterable[int], _np.ndarray]:
         """
         """
-        dates = [ t for t in self._resolve_dates(dates, ) ]
+        dates = self.resolve_periods(dates, )
         variants = self._resolve_variants(variants)
         if not dates:
             dates = ()
@@ -482,7 +498,7 @@ self = Series(
         *args,
         unpack_singleton: bool = True,
         **kwargs,
-    ) -> _np.ndarray:
+    ) -> list[tuple[Real, ...]] | tuple[Real, ...]:
         """
         """
         data = self.get_data(*args, **kwargs, )
@@ -556,23 +572,23 @@ self = Series(
         self.start = new_start
         return self
 
-    def _resolve_dates(self, dates, ) -> tuple[Period]:
+    def resolve_periods(self, periods, ) -> tuple[Period]:
         """
         """
-        if dates is None:
-            # dates = []
-            dates = ...
-        if isinstance(dates, slice) and dates == slice(None, ):
-            dates = ...
-        if dates is ... and self.start is not None:
-            dates = Span(None, None, )
-        if dates is ... and self.start is None:
-            dates = EmptyRanger()
-        if hasattr(dates, "needs_resolve") and dates.needs_resolve:
-            dates = dates.resolve(self, )
+        if periods is None:
+            # periods = []
+            periods = ...
+        if isinstance(periods, slice) and periods == slice(None, ):
+            periods = ...
+        if periods is ... and self.start is not None:
+            periods = Span(None, None, )
+        if periods is ... and self.start is None:
+            periods = EmptyRanger()
+        if hasattr(periods, "needs_resolve") and periods.needs_resolve:
+            periods = periods.resolve(self, )
         return tuple(
             d.resolve(self) if hasattr(d, "needs_resolve") and d.needs_resolve else d
-            for d in dates
+            for d in periods
         )
 
     def _resolve_variants(
@@ -1132,12 +1148,28 @@ This method modifies `self` in place and returns `None`.
         """
         return self.apply(lambda data: data.__rmod__(other))
 
-    def __round__(self, *args, **kwargs, ):
+    def __abs__(self, *args, **kwargs, ) -> Self:
         """
+        abs(self)
         """
         new = self.copy()
-        new.data = _np.round(new.data, *args, **kwargs, )
+        new.abs(*args, **kwargs, )
         return new
+
+    def abs(self, *args, **kwargs, ) -> None:
+        r"""
+        """
+        self.data = _np.abs(self.data, *args, **kwargs, )
+
+    def __round__(self, *args, **kwargs, ) -> Self:
+        r"""
+        """
+        new = self.copy()
+        new.round(*args, **kwargs, )
+        return new
+
+    def round(self, *args, **kwargs, ) -> None:
+        self.data = _np.round(self.data, *args, **kwargs, )
 
     for n in ["gt", "lt", "ge", "le", "eq", "ne", ]:
         exec(f"def __{n}__(self, other): return self._binop(other, _op.{n}, )", )
@@ -1207,7 +1239,7 @@ This method modifies `self` in place and returns `None`.
         self.start = new_start
         self._replace_data(new_values, )
 
-    def iter_dates_values(self, /, unpack_singleton=True, ):
+    def iter_dates_values(self, unpack_singleton=True, ):
         """
         Default iterator is line by line, yielding a tuple of (date, values)
         """
@@ -1223,7 +1255,7 @@ This method modifies `self` in place and returns `None`.
         for date, data_row in zip(self.range, self.data, ):
             yield date, data_row_func(data_row.tolist(), )
 
-    def iter_variants(self, /, ) -> Iterator[Self]:
+    def iter_variants(self, ) -> Iterator[Self]:
         """
         """
         for data in self.iter_data_variants_from_until(..., ):
@@ -1235,7 +1267,10 @@ This method modifies `self` in place and returns `None`.
         """
         Iterates over the data variants from the given start date to the given end date
         """
-        data_from_until = self.data if from_until == ... else self.get_data_from_until(from_until, )
+        if from_until == ...:
+            data_from_until = self.data
+        else:
+            data_from_until = self.get_data_from_until(from_until, )
         return iter(data_from_until.T, )
 
     def iter_data_variants_from_until(self, from_until, ) -> Iterator[_np.ndarray]:
@@ -1339,9 +1374,9 @@ def _from_start_and_values(
         values = _reshape_numpy_array(values, )
     else:
         values = _has_variants.iter_variants(values, )
-        values = _np.column_stack(tuple(
+        values = _np.column_stack([
             v for v, _ in zip(values, range(self.num_variants), )
-        ))
+        ])
     values = values.astype(self.data_type, )
     self.data = values
     self.trim()

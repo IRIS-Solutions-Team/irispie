@@ -257,7 +257,7 @@ info = self.x13(
 
 ................................................................................
         """
-        span = tuple(self._resolve_dates(span))
+        span = self.resolve_periods(span)
         base_start, base_end = span[0], span[-1]
         self.clip(base_start, base_end, )
         #

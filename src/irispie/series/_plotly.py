@@ -16,9 +16,9 @@ import itertools as _it
 import warnings as _wa
 import datetime as _dt
 
-from ..dates import Period
+from ..dates import Period, PositionType
 from .. import dates as _dates
-from .. import plotly_wrap as _plotly_wrap
+from .. import ez_plotly as _ez_plotly
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from numbers import Real
     from types import EllipsisType
     from .main import Series
+    from ..ez_plotly import PlotlyDateAxisModeType
 
 #]
 
@@ -113,10 +114,12 @@ class Inlay:
         renderer: str | None = None,
         subplot: tuple[int, int] | int | None = None,
         xline = None,
+        vline = None,
         type = None,
         chart_type: Literal["line", "bar_stack", "bar_group", ] = "line",
         highlight: Iterable[Period] | None = None,
         bar_norm: str | None = None,
+        date_axis_mode: PlotlyDateAxisModeType = "period",
         date_format_style: str | dict[int, str] | None = None,
         #
         update_layout: dict[str, Any] | None = None,
@@ -140,23 +143,25 @@ class Inlay:
             _wa.warn("Use 'round_to' instead of the deprecated 'round'", )
             round_to = round if round_to is None else round_to
 
-        span = tuple(self._resolve_dates(span, ))
+        span = tuple(self.resolve_periods(span, ))
         from_until = (span[0], span[-1], )
         frequency = span[0].frequency
-        date_format = _plotly_wrap.resolve_date_format(date_format_style, frequency, )
+        date_format = _ez_plotly.resolve_date_format(date_format_style, frequency, )
 
         if figure is None:
             figure = _pg.Figure()
 
         # Subplot resolution
-        row_column, index = _plotly_wrap.resolve_subplot(figure, subplot, )
+        row_column, index = _ez_plotly.resolve_subplot_reference(figure, subplot, )
 
         if show_legend is None:
             show_legend = legend is not None
 
         color_cycle = _it.cycle(_COLOR_ORDER)
 
-        update_traces = (update_traces, ) if isinstance(update_traces, dict) else update_traces
+        if isinstance(update_traces, dict):
+            update_traces = (update_traces, )
+
         update_traces_cycle = (
             _it.cycle(update_traces) if update_traces
             else _it.repeat({}, )
@@ -170,7 +175,11 @@ class Inlay:
         traces_constructor = _PLOTLY_TRACES_CONSTRUCTOR[chart_type]
 
         xaxis_type = from_until[0].plotly_xaxis_type if from_until else None
-        traces_periods = tuple(i.to_plotly_date() for i in _dates.periods_from_until(*from_until, ))
+
+        traces_periods = tuple(
+            i.to_plotly_date(mode=date_axis_mode, )
+            for i in _dates.periods_from_until(*from_until, )
+        )
 
         traces_iterable = _iter_traces(
             self,
@@ -208,6 +217,7 @@ class Inlay:
         layout["barnorm"] = bar_norm
 
         xaxis["tickformat"] = date_format
+        xaxis["ticklabelmode"] = date_axis_mode
 
         if xaxis_type is not None:
             xaxis["type" ] = xaxis_type
@@ -217,7 +227,7 @@ class Inlay:
         figure.update_layout(layout or {}, )
 
         if freeze_span:
-            _plotly_wrap.freeze_span(figure, span, subplot, )
+            _ez_plotly.freeze_span(figure, span, subplot, )
 
         if figure_title is not None:
             figure.update_layout({"title.text": figure_title, }, )
@@ -226,18 +236,16 @@ class Inlay:
             figure.update_layout(update_layout, )
 
         if subplot_title:
-            _update_subplot_title(figure, subplot_title, index, )
+            _ez_plotly.update_subplot_title(figure, index, subplot_title, )
 
-        if xline:
-            xline = (
-                xline.to_plotly_date()
-                if hasattr(xline, "to_plotly_date")
-                else xline
-            )
-            figure.add_vline(xline, )
+        if xline is not None and vline is None:
+            vline = xline
+
+        if vline is not None:
+            _ez_plotly.vline(figure, vline, )
 
         if highlight is not None:
-            _plotly_wrap.highlight(figure, highlight, )
+            _ez_plotly.highlight(figure, highlight, )
 
         if show_figure:
             figure.show(renderer=renderer, )
@@ -252,19 +260,6 @@ class Inlay:
         return out_info
 
     #]
-
-
-def _update_subplot_title(
-    figure: _pg.Figure,
-    subplot_title: str,
-    index: int,
-    /,
-) -> None:
-    """
-    """
-    annotation = next(figure.select_annotations(index, ), None, )
-    if annotation:
-        annotation.text = subplot_title
 
 
 # def _get_traces_dates(series: Series, /, ) -> tuple[tuple[Period, ...], str]:
@@ -300,14 +295,15 @@ def _iter_traces(
         custom_updates,
     )
     for data_v, legend_v, color_v, update_v in zipped:
-        yield traces_constructor(
+        traces = traces_constructor(
             color=color_v,
             x=traces_period,
             y=tuple(transform(i) for i in data_v),
             name=legend_v,
-            **update_v,
             **kwargs,
         )
+        traces.update(update_v, )
+        yield traces
     #]
 
 

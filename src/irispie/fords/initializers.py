@@ -20,7 +20,6 @@ _DEFAULT_DIFFUSE_SCALE = 1e8
 def _approx_diffuse(
         solution: Solution,
         custom_diffuse_scale: Real | None = None,
-        /,
 ) -> tuple[Real, _np.ndarray | None]:
     """
     """
@@ -34,7 +33,6 @@ def _approx_diffuse(
 def _fixed_unknown(
         solution: Solution,
         custom_diffuse_scale: Real | None = None,
-        /,
 ) -> tuple[Real, _np.ndarray | None]:
     """
     """
@@ -44,21 +42,20 @@ def _fixed_unknown(
         _np.eye(solution.num_xi, solution.num_unit_roots, )
         if solution.num_unit_roots else None
     )
-    return diffuse_scale, unknown_init_impact
+    return diffuse_scale, unknown_init_impact,
     #]
 
 
 def _fixed_zero(
         solution: Solution,
         custom_diffuse_scale: Real | None = None,
-        /,
 ) -> tuple[Real, _np.ndarray | None]:
     """
     """
     #[
     diffuse_scale = 0
     unknown_init_impact = None
-    return diffuse_scale, unknown_init_impact
+    return diffuse_scale, unknown_init_impact,
     #]
 
 
@@ -75,7 +72,7 @@ def initialize(
     *,
     diffuse_method: Literal["approx_diffuse", "fixed_unknown", "fixed_zero", ] = "fixed_unknown",
     diffuse_scale: Real | None = None,
-) -> tuple[np_.ndarray, np_.ndarray, int, Real ]:
+) -> tuple[np_.ndarray, np_.ndarray, _np.ndarray, ]:
     r"""
     Return median and MSE matrix for initial alpha, and the impact of fixed
     unknowns on initial alpha
@@ -83,19 +80,13 @@ def initialize(
     #[
     diffuse_func = _RESOLVE_DIFFUSE[diffuse_method]
     diffuse_scale, unknown_init_impact = diffuse_func(solution, diffuse_scale, )
-    #
-    return (
-        _initialize_med(solution, ),
-        _initialize_mse(solution, cov_u, diffuse_scale, ),
-        unknown_init_impact,
-    )
+    init_med = _initialize_med(solution, )
+    init_mse = _initialize_mse(solution, cov_u, diffuse_scale, )
+    return init_med, init_mse, unknown_init_impact,
     #]
 
 
-def _initialize_med(
-    solution: Solution,
-    /,
-) -> _np.ndarray:
+def _initialize_med(solution: Solution, ) -> _np.ndarray:
     """
     Solve alpha_stable = Ta_stable @ alpha_stable + Ka_stable for alpha_stable
     and return alpha with 0s for unstable elements
@@ -119,7 +110,6 @@ def _initialize_mse(
     solution: Solution,
     cov_u: _np.ndarray,
     diffuse_scale: Real | None = None,
-    /,
 ) -> _np.ndarray:
     """
     """
@@ -129,6 +119,7 @@ def _initialize_mse(
         num_unit_roots = solution.num_unit_roots
         init_mse[:num_unit_roots, :num_unit_roots] = \
             _initialize_mse_unstable_approx_diffuse(solution, cov_u, init_mse, diffuse_scale, )
+    init_mse = _covariances.symmetrize(init_mse, )
     return init_mse
     #]
 
@@ -138,7 +129,6 @@ def _initialize_mse_unstable_approx_diffuse(
     cov_u: _np.ndarray,
     init_mse: _np.ndarray,
     diffuse_scale: Real | None = None,
-    /,
 ) -> _np.ndarray:
     """
     """
@@ -154,10 +144,7 @@ def _initialize_mse_unstable_approx_diffuse(
     #]
 
 
-def _mean_of_diag(
-    x: _np.ndarray,
-    /,
-) -> Real:
+def _mean_of_diag(x: _np.ndarray, ) -> Real:
     """
     """
     return _np.mean(_np.diag(x, ), )

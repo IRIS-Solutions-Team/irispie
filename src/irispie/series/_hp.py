@@ -374,7 +374,7 @@ def _data_hpf(
     Hodrick-Prescott filter run on a multi-variant data matrix
     """
     #[
-    span = self._resolve_dates(span, )
+    span = self.resolve_periods(span, )
     encompassing_span, *from_until = _dates.get_encompassing_span(self, level, change, span, )
     num_periods = len(encompassing_span, )
     level_data, level_where = _prepare_constraints(level, from_until, )

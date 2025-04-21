@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from typing import Protocol
+from typing import Literal
 import functools as _ft
 import numpy as _np
 import documark as _dm
@@ -21,12 +22,13 @@ from .solutions import Solution, right_div, left_div
 
 from . import initializers as _initializers
 from . import shock_simulators as _shock_simulators
+from . import covariances as _covariances
 from .descriptors import Squid
 from .. import wrongdoings as _wd
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import Any, Iterable, Sequence, Literal, Self, NoReturn
+    from typing import Any, Iterable, Sequence, Self, NoReturn
     from types import EllipsisType
     from numbers import Real
     from ..dates import Period
@@ -39,6 +41,13 @@ _simulate_anticipated_shocks \
 
 
 _DEFAULT_DELTA_TOLERANCE = 1e-12
+
+
+DiffuseMethodType = Literal[
+    "approx_diffuse",
+    "fixed_unknown",
+    "fixed_zero",
+]
 
 
 class SingularMatrixError(ValueError, ):
@@ -387,7 +396,7 @@ class _OutputStore:
                 getattr(self, s).extend(getattr(other, s), )
 
     def rescale_stds(self, var_scale, /, ) -> None:
-        """
+        r"""
         """
         if var_scale == 1 or var_scale is None:
             return
@@ -400,18 +409,17 @@ class _OutputStore:
                 v.rescale_data(std_scale)
 
     def create_out_data(self: Self, /, ) -> Databox:
-        """
+        r"""
         """
         out_data = Databox()
         for name in self._OUT_NAMES:
             attr = getattr(self, name, )
             if attr is None:
                 continue
-            out_data[name] = (
-                attr.to_output_arg()
-                if hasattr(attr, "to_output_arg", )
-                else attr
-            )
+            if hasattr(attr, "to_output_arg", ):
+                out_data[name] = attr.to_output_arg()
+            else:
+                out_data[name] = attr
         return out_data
 
     def store_predict(
@@ -428,7 +436,7 @@ class _OutputStore:
         cov_u0: _np.ndarray | None = None,
         cov_w0: _np.ndarray | None = None,
     ) -> None:
-        """
+        r"""
         """
         if self.predict_med is not None:
             curr_xi_qids = self.squid.curr_xi_qids
@@ -572,7 +580,7 @@ class Mixin:
         span: Iterable[Period],
         #
         diffuse_scale: Real | None = None,
-        diffuse_method: Literal["approx_diffuse", "fixed_unknown", "fixed_zero", ] = "fixed_unknown",
+        diffuse_method: DiffuseMethodType = "fixed_unknown",
         #
         return_: Iterable[str, ...] = ("predict", "update", "smooth", "predict_err", "predict_mse_obs", ),
         return_predict: bool = True,
@@ -782,7 +790,7 @@ the time series data.
             likelihood_contributions=likelihood_contributions,
         )
 
-        squid = Squid(self, )
+        squid = Squid.from_squidable(self, )
         qid_to_logly = self.create_qid_to_logly()
 
         logly_within_y = tuple(
@@ -1114,7 +1122,7 @@ def predict(
     #
     for t in range(num_periods, ):
         #
-        T, P, K, Z, H, D, cov_u, cov_w, v_impact, *_ = generate_period_system(t, )
+        T, P, K, Z, H, D, cov_u, cov_w, v_impact, U, *_ = generate_period_system(t, )
         y1, u0, v0, w0, inx_y, *_ = generate_period_data(t, )
         #
         cache.all_y[t] = y1
@@ -1132,14 +1140,14 @@ def predict(
         #
         P_cov_u = P @ cov_u
         Q0 = T @ Q1_prev @ T.T + P_cov_u @ P.T
-        Q0 = _make_symmetric(Q0)
+        Q0 = _covariances.symmetrize(Q0)
         H_cov_w = H @ cov_w
         #
         F = (
             Z @ Q0 @ Z.T + H_cov_w @ H.T if any_y
             else create_empty()
         )
-        F = _make_symmetric(F, )
+        F = _covariances.symmetrize(F, )
         #
         # sing_values = _np.linalg.svd(F, compute_uv=False, )
         # relative_cond = sing_values[-1] / sing_values[0]
@@ -1150,7 +1158,7 @@ def predict(
             inv = _check_singularity(F, t, inx_y, when_singularity, )
 
         Fi = inv(F) if any_y else create_empty()
-        Fi = _make_symmetric(Fi, )
+        Fi = _covariances.symmetrize(Fi, )
         #
         # Median prediction step
         #
@@ -1165,7 +1173,7 @@ def predict(
         Zt_Fi = Z.T @ Fi
         G = Q0 @ Zt_Fi
         Q1 = Q0 - G @ Z @ Q0
-        Q1 = _make_symmetric(Q1)
+        Q1 = _covariances.symmetrize(Q1)
         if store_update:
             store_update(t=t, Q=Q1, )
         #
@@ -1173,6 +1181,7 @@ def predict(
         #
         pe = y1 - y0
         a1 = a0 + G @ pe
+        x1 = U @ a1
         #
         cache.all_a0[t] = a0
         cache.all_y0[t] = y0
@@ -1228,7 +1237,7 @@ def estimate_unknown_init(
         for Mt_Fi, pe in zip(all_Mt_Fi, cache.all_pe, )
     )
     #
-    sum_Mt_Fi_M = _make_symmetric(sum_Mt_Fi_M)
+    sum_Mt_Fi_M = _covariances.symmetrize(sum_Mt_Fi_M)
     sum_Mt_Fi_M[_np.abs(sum_Mt_Fi_M) < delta_tolerance] = 0
     #
     delta, *_ = _np.linalg.lstsq(sum_Mt_Fi_M, sum_Mt_Fi_pe, rcond=None, )
@@ -1326,7 +1335,7 @@ def one_step_back(
         else:
             N = Zt_Fi_Z + L.T @ N @ L
         Qk = Qk - Q0 @ N @ Q0
-        Qk = _make_symmetric(Qk)
+        Qk = _covariances.symmetrize(Qk)
         #
         if r is None:
             wk = wk + H_cov_w.T @ Fi_pe
@@ -1365,10 +1374,11 @@ def _generate_period_system(
     Z = solution_v.Za[inx_y, :]
     H = solution_v.H[inx_y, :]
     D = solution_v.D[inx_y]
+    U = solution_v.Ua
     cov_u = _np.diag(std_u_array[:, t]**2, )
     cov_w = _np.diag(std_w_array[:, t]**2, )
     v_impact = all_v_impact[t] if all_v_impact is not None else None
-    return T, P, K, Z, H, D, cov_u, cov_w, v_impact,
+    return T, P, K, Z, H, D, cov_u, cov_w, v_impact, U
     #]
 
 
@@ -1389,10 +1399,6 @@ def _generate_period_data(
     w = w_array[:, t]
     return y, u, v, w, inx_y.tolist(),
     #]
-
-
-def _make_symmetric(matrix, ):
-    return (matrix + matrix.T) / 2
 
 
 _INVERSE_FUNCTION = {

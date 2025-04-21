@@ -3,6 +3,7 @@
 ./tests/databoxes
 ./tests/sequential
 ./tests/simultaneous
+./tests/plotly
 -v
 -ra
 

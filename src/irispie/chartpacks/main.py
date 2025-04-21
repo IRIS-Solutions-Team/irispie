@@ -12,18 +12,19 @@ import re as _re
 import math as _ma
 import documark as _dm
 import plotly.graph_objects as _pg
+from collections.abc import Sequence
 
 from ..conveniences import descriptions as _descriptions
 from ..conveniences import copies as _copies
-from .. import plotly_wrap as _plotly_wrap
+from .. import ez_plotly as _ez_plotly
 from .. import dates as _dates
 from ..databoxes import main as _databoxes
 
-from typing import (TYPE_CHECKING, )
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import (Self, Callable, )
-    from collections.abc import (Iterator, Iterable, Sequence, )
-    from types import (EllipsisType, )
+    from typing import Self, Callable
+    from collections.abc import Iterator, Iterable
+    from types import EllipsisType
 
 #]
 
@@ -38,6 +39,8 @@ _FIGURE_SETTINGS = {
     "highlight": None,
     "tiles": None,
     "shared_xaxes": False,
+    "figure_height": None,
+    "vertical_spacing": None,
 }
 _FIGURE_SETTINGS_KEYS = tuple(_FIGURE_SETTINGS.keys(), )
 
@@ -48,6 +51,7 @@ _CHART_SETTINGS = {
     "reverse_plot_order": False,
     "span": ...,
     "chart_type": "line",
+    "update_traces": None,
 }
 _CHART_SETTINGS_KEYS = tuple(_CHART_SETTINGS.keys(), )
 
@@ -343,18 +347,18 @@ class _Figure:
     def plot(
         self,
         input_db: _databoxes.Databox,
-        /,
         shared_xaxes: bool = False,
         **kwargs,
-    ) -> None:
-        """
+    ) -> _pg.Figure:
+        r"""
         """
         tiles = _resolve_tiles(self.tiles, self.num_charts, )
-        figure = _plotly_wrap.make_subplots(
-            rows=tiles[0],
-            columns=tiles[1],
+        figure = _ez_plotly.make_subplots(
+            rows_columns=(tiles[0], tiles[1], ),
             subplot_titles=tuple(chart.caption for chart in self),
             shared_xaxes=self.shared_xaxes,
+            figure_height=self.figure_height,
+            vertical_spacing=self.vertical_spacing,
         )
         for i, chart in enumerate(self, ):
             chart.plot(
@@ -362,7 +366,7 @@ class _Figure:
                 legend=self.legend if i == 0 else None,
             )
             if self.highlight is not None:
-                _plotly_wrap.highlight(figure, self.highlight, subplot=i, )
+                _ez_plotly.highlight(figure, self.highlight, subplot=i, )
         #
         figure.update_layout(title={"text": self.title, }, )
         return figure
@@ -500,6 +504,7 @@ class _Chart:
             legend=legend,
             reverse_plot_order=self.reverse_plot_order,
             chart_type=self.chart_type,
+            update_traces=self.update_traces,
         )
 
     def _apply_transform(self, x, ):
@@ -526,7 +531,7 @@ class _Chart:
     def _one_liner(self, /, ) -> str:
         return f"Chart({self.title!r}, {self.expression!r}, {self.transform!r}, )"
 
-    def __iter__(self, ) -> NoReturn:
+    def __iter__(self, ) -> Iterable:
         yield from ()
 
     #]

@@ -7,8 +7,8 @@ Time periods and time spans
 
 from __future__ import annotations
 
-from typing import (Union, Self, Any, Protocol, TypeAlias, runtime_checkable, )
-from collections.abc import (Iterable, Callable, Iterator, )
+from typing import Union, Self, Any, Protocol, TypeAlias, Literal, runtime_checkable
+from collections.abc import Iterable, Callable, Iterator
 from numbers import (Real, )
 import re as _re
 import enum as _en
@@ -22,8 +22,7 @@ from . import wrongdoings as _wrongdoings
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import Literal
-    PositionTyp = Literal["start", "middle", "end", ]
+    from .ez_plotly import PlotlyDateAxisModeType
 
 #]
 
@@ -33,6 +32,7 @@ __all__ = (
     "yy", "hh", "qq", "mm", "dd", "ii",
     "Span", "EmptySpan", "start", "end",
     "Period", "periods_from_sdmx_strings", "periods_from_iso_strings", "periods_from_python_dates", "periods_from_until", "periods_from_to",
+    "period_indexes",
     "YEARLY", "HALFYEARLY", "QUARTERLY", "MONTHLY", "WEEKLY", "DAILY",
     "PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION",
     "refrequent", "convert_to_new_freq",
@@ -42,6 +42,9 @@ __all__ = (
     "Dater", "Ranger", "EmptyRanger",
     "DATER_CLASS_FROM_FREQUENCY_RESOLUTION",
 )
+
+
+PositionType = Literal["start", "middle", "end", ]
 
 
 @_dm.reference(
@@ -164,6 +167,7 @@ custom check of time period or time series properties is needed.
         return self.name
 
     #]
+
 
 
 _COMPACT_MONTH_STRINGS = [
@@ -435,6 +439,10 @@ creating time [`Spans`](spans.md).
     frequency = None
     plotly_xaxis_type = None
     needs_resolve = False
+    _POSITION_FROM_PLOTLY_MODE = {
+        "instant": "start",
+        "period": "middle",
+    }
 
     @property
     @_dm.reference(
@@ -1155,9 +1163,32 @@ on the year, month, and day of the time period.
 
     def to_plotly_date(
         self,
-        position: PositionType = "middle",
+        mode: PlotlyDateAxisModeType = "period",
     ) -> _dt.date:
+        position = self._POSITION_FROM_PLOTLY_MODE[mode]
         return self.to_python_date(position=position, )
+
+    def to_plotly_edge_before(
+        self,
+        mode: PlotlyDateAxisModeType = "period",
+    ) -> _dt.date:
+        r"""
+        """
+        return {
+            "period": self.to_python_date(position="start", ),
+            "instant": (self - 1).to_python_date(position="middle", ),
+        }[mode]
+
+    def to_plotly_edge_after(
+        self,
+        mode: PlotlyDateAxisModeType = "period",
+    ) -> _dt.date:
+        r"""
+        """
+        return {
+            "period": self.to_python_date(position="end", ),
+            "instant": self.to_python_date(position="middle", ),
+        }[mode]
 
     @_dm.reference(category="information", )
     def get_distance_from_origin(self, ) -> int:
@@ -1450,12 +1481,8 @@ class IntegerPeriod(Period, ):
     frequency = Frequency.INTEGER
     plotly_xaxis_type = "linear"
     needs_resolve = False
+    half_period = 0.5
     origin = 0
-    _PLOTLY_DATE_FACTORY = {
-        "start": lambda x: x - 0.5,
-        "middle": lambda x: x,
-        "end": lambda x: x + 0.5,
-    }
 
     @classmethod
     def from_sdmx_string(klass, sdmx_string: str, ) -> IntegerPeriod:
@@ -1470,12 +1497,14 @@ class IntegerPeriod(Period, ):
     def __repr__(self) -> str:
         return f"ii({self.serial})"
 
-    def to_plotly_date(
-        self,
-        /,
-        position: PositionType = "middle",
-    ) -> Real:
-        return self._PLOTLY_DATE_FACTORY[position](self.serial, )
+    def to_plotly_date(self, *args, **kwargs, ) -> Real:
+        return self.serial
+
+    def to_plotly_edge_before(self, *args, **kwargs, ) -> Real:
+        return self.serial - self.half_period
+
+    def to_plotly_edge_after(self, *args, **kwargs, ) -> Real:
+        return self.serial + self.half_period
 
     @classmethod
     def from_year_segment(
@@ -2123,19 +2152,15 @@ The time span is reversed in place.
 
 ................................................................................
         """
-        #[
         self._start, self._end = self._end, self._start
         self._step = -self._step
-        #]
 
     def reversed(self, ) -> Self:
         """
         """
-        #[
         new = self.copy()
         new.reverse()
         return new
-        #]
 
     @_dm.reference(category="manipulation", )
     def shift_end(
@@ -2343,6 +2368,26 @@ earlier or later than the original.
 
     __radd__ = __add__
 
+    def __rshift__(
+        self,
+        step: int,
+    ) -> Self:
+        r"""
+        """
+        if step < 0:
+            raise ValueError("Step must be positive when using the >> operator.")
+        return type(self)(self._start, self._end, step, )
+
+    def __lshift__(
+        self,
+        step: int,
+    ) -> Self:
+        r"""
+        """
+        if step > 0:
+            raise ValueError("Step must be negative when using the << operator.")
+        return type(self)(self._start, self._end, step, )
+
     @_dm.reference(
         category="arithmetics",
         call_name="-",
@@ -2500,7 +2545,7 @@ def _sign(x: Real, ) -> int:
     return 1 if x>0 else (0 if x==0 else -1)
 
 
-def date_index(periods: Iterable[Period | None], base: Period) -> Iterable[int]:
+def period_indexes(periods: Iterable[Period | None], base: Period) -> Iterable[int]:
     """
     """
     return (

@@ -137,7 +137,7 @@ def simulate_frame(
     if is_plan_empty:
         simulate_transition = simulate_flat
     else:
-        squid = Squid(model_v, )
+        squid = Squid.from_squidable(model_v, )
         plan_registers = plan.get_registers_as_bool_arrays(
             periods=frame_ds.periods,
             register_names=_RELEVANT_REGISTER_NAMES,
@@ -228,7 +228,7 @@ def _simulate_conditional(
     vec = model_v.solution_vectors
     periods = frame_ds.periods
     num_periods = frame_ds.num_periods
-    squid = Squid(model_v, )
+    squid = Squid.from_squidable(model_v, )
     #
     frame_ds.logarithmize()
     data_array = frame_ds.get_data_variant()

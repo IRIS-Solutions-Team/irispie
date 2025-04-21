@@ -34,6 +34,9 @@ from ._statistics import *
 from ._elementwise import __all__ as __all__elementwise
 from ._elementwise import *
 
+from ._ell_one import __all__ as __all__ell_one
+from ._ell_one import *
+
 #]
 
 
@@ -47,5 +50,6 @@ __all__.extend(__all__x13)
 __all__.extend(__all__moving)
 __all__.extend(__all__statistics)
 __all__.extend(__all__elementwise)
+__all__.extend(__all__ell_one)
 
 

@@ -508,7 +508,7 @@ def _get_extended_span(
     max_base_date = max(base_span)
     start_date = min_base_date + min_shift
     end_date = max_base_date + max_shift
-    base_columns = tuple(_dates.date_index(base_span, start_date))
+    base_columns = tuple(_dates.period_indexes(base_span, start_date, ))
     extended_dates = tuple(Span(start_date, end_date))
     return extended_dates, base_columns, min_shift, max_shift
 
