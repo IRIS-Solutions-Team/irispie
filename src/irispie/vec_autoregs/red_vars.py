@@ -1,5 +1,5 @@
 r"""
-Vector autoregressive models
+Reduced-form vector autoregression models
 """
 
 
@@ -22,14 +22,14 @@ if TYPE_CHECKING:
 
 
 __all__ = (
-    "VecAutoreg",
+    "RedVar",
 )
 
-class VecAutoreg(
+class RedVar(
     _has_invariant.Mixin,
     _has_variants.Mixin,
 ):
-    """
+    r"""
     """
     #[
 

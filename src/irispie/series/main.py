@@ -504,7 +504,7 @@ self = Series(
         data = self.get_data(*args, **kwargs, )
         values = [ tuple(data_column.tolist()) for data_column in data.T ]
         return _has_variants.unpack_singleton(
-            values, self.is_singleton,
+            values,
             unpack_singleton=unpack_singleton,
         )
 

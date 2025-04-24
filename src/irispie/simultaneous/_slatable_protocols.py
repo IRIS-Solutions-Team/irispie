@@ -96,7 +96,7 @@ class _Slatable(Slatable, ):
         return self
 
     @classmethod
-    def for_multiply_stds(
+    def for_vary_stds(
         klass,
         model,
         fallback_name_to_value: dict[str, list[Real]] | None,
@@ -126,7 +126,7 @@ class _Slatable(Slatable, ):
         self.databox_validators = None
         #
         # Fallbacks and overwrites
-        self.fallbacks = fallback_qid_to_value
+        self.fallbacks = fallback_name_to_value
         self.overwrites = None
         #
         self.qid_to_logly = None
@@ -174,18 +174,18 @@ class Inlay:
         #
         return slatable
 
-    def get_slatables_for_multiply_stds(self, **kwargs, ) -> tuple[_Slatable, _Slatable]:
+    def get_slatables_for_vary_stds(self, **kwargs, ) -> tuple[_Slatable, _Slatable]:
         r"""
         """
         std_name_to_value = self.get_stds(unpack_singleton=False, )
-        std_slatable = _Slatable.for_multiply_stds(
+        std_slatable = _Slatable.for_vary_stds(
             self,
             fallback_name_to_value=std_name_to_value,
             **kwargs,
         )
         #
         multiplier_name_to_value = { name: 1 for name in std_name_to_value.keys() }
-        multiplier_slatable = _Slatable.for_multiply_stds(
+        multiplier_slatable = _Slatable.for_vary_stds(
             self,
             fallback_name_to_value=multiplier_name_to_value,
             **kwargs,

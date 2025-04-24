@@ -21,15 +21,16 @@ if TYPE_CHECKING:
 
 
 class Mixin:
-    """
+    r"""
     """
     #[
 
     def vary_stds(
         self,
         multiplier_db: Databox | None,
-        std_db: Databox | None,
+        overwrite_db: Databox | None,
         span: Iterable[Period],
+        #
         num_variants: int | None = None,
         target_db: Databox | None = None,
         #
@@ -44,10 +45,10 @@ class Mixin:
 
         base_dates = tuple(span, )
 
-        std_slatable, multiplier_slatable = self.get_slatables_for_multiply_stds()
+        std_slatable, multiplier_slatable = self.get_slatables_for_vary_stds()
 
-        std_ds = Dataslate.from_databox_for_slatable(
-            std_slatable, std_db or Databox(), base_dates,
+        final_ds = Dataslate.from_databox_for_slatable(
+            std_slatable, overwrite_db or Databox(), base_dates,
             num_variants=num_variants,
         )
 
@@ -58,7 +59,7 @@ class Mixin:
 
         zipped = zip(
             range(num_variants, ),
-            std_ds.iter_variants(),
+            final_ds.iter_variants(),
             multiplier_ds.iter_variants(),
         )
 
@@ -66,12 +67,12 @@ class Mixin:
         # Main loop over variants
         #
         out_info = []
-        for vid, std_ds_v, multiplier_ds_v in zipped:
+        for vid, final_ds_v, multiplier_ds_v in zipped:
             out_info_v = {}
             #
-            std_array = std_ds_v.get_data_variant()
+            std_array = final_ds_v.get_data_variant()
             multiplier_array = multiplier_ds_v.get_data_variant()
-            names = std_ds_v._invariant.names
+            names = final_ds_v._invariant.names
             #
             zipped = zip(names, std_array, multiplier_array)
             #
@@ -82,7 +83,7 @@ class Mixin:
             #
         #=======================================================================
 
-        out_db = std_ds.to_databox()
+        out_db = final_ds.to_databox()
 
         if target_db is not None:
             out_db = target_db | out_db

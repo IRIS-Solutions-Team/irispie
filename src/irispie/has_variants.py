@@ -241,17 +241,16 @@ def repack_singleton(anything: _T, is_singleton: bool, ) -> list[_T]:
 
 def unpack_singleton(
     anything: list[_T],
-    is_singleton: bool = True,
-    /,
+    is_singleton: bool | None = True,
     unpack_singleton: bool = True,
 ) -> _T | list[_T]:
     """
     """
-    return (
-        anything[0]
-        if is_singleton and unpack_singleton
-        else anything
-    )
+    if not unpack_singleton:
+        return anything
+    if is_singleton is None:
+        is_singleton = len(anything) == 1
+    return anything[0] if is_singleton else anything
 
 
 shadow_unpack_singleton = unpack_singleton

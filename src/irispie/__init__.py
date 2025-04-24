@@ -34,8 +34,8 @@ from .stackers import __all__ as stackers_all
 from .fords import *
 from .fords import __all__ as fords_all
 
-from .vector_autoregressions import *
-from .vector_autoregressions import __all__ as vector_autoregressions_all
+from .vec_autoregs import *
+from .vec_autoregs import __all__ as vec_autoregs_all
 
 from .quantities import *
 from .quantities import __all__ as quantities_all
@@ -99,7 +99,7 @@ __all__ = (
     *simultaneous_all,
     *stackers_all,
     *fords_all,
-    *vector_autoregressions_all,
+    *vec_autoregs_all,
     *quantities_all,
     *equations_all,
     *sequentials_all,
