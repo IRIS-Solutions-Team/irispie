@@ -18,30 +18,29 @@ if TYPE_CHECKING:
 class Invariant(
     _descriptions.DescriptionMixin,
 ):
-    """
+    r"""
     """
     #[
 
     __slots__ = (
         "quantities",
         "order",
-        "has_constant",
+        "has_intercept",
     )
 
     def __init__(
         self,
         endogenous_names: Iterable[str],
-        *,
         exogenous_names: Iterable[str] | None = None,
         order: int = 1,
-        constant: bool = True,
+        intercept: bool = True,
     ) -> None:
         """
         """
         exogenous_names = exogenous_names or ()
         self.quantities = _create_quantities(endogenous_names, exogenous_names, )
         self.order = int(order)
-        self.has_constant = bool(constant)
+        self.has_intercept = bool(intercept)
 
     #]
 

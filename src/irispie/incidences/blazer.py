@@ -27,7 +27,7 @@ class HumanBlock:
 
     def __init__(
         self,
-        block: _Block,
+        block: Block,
         equations: Iterable[Equation],
         quantities: Iterable[Quantity],
     ) -> None:
@@ -37,10 +37,27 @@ class HumanBlock:
         self.equations = tuple(equations[eid].human for eid in sorted(block.eids))
         self.quantities = tuple(quantities[qid].human for qid in sorted(block.qids))
 
+    @property
+    def num_equations(self, ) -> int:
+        r"""
+        """
+        return len(self.equations)
+
+    @property
+    def num_quantities(self, ) -> int:
+        r"""
+        """
+        return len(self.quantities)
+
+    def __repr__(self) -> str:
+        """
+        """
+        return f"HumanBlock[{self.num_equations}×{self.num_quantities}]"
+
     #]
 
 
-class _Block:
+class Block:
     """
     """
     #[
@@ -85,7 +102,7 @@ def blaze(
     qids: Iterable[int] = None,
     #
     return_info: bool = False,
-) -> tuple[tuple[_Block, ...], dict[str, Any]]:
+) -> tuple[Block, ...] | tuple[tuple[Block, ...], dict[str, Any]]:
     """
     Complete sequential block analysis of incidence matrix
     """
@@ -142,9 +159,9 @@ def blaze(
     # Step 3: Create a tuple with a Block object for each block of
     # equations and equantities
     #
-    first_blocks = tuple(_Block((eid, ), (qid, ), ) for eid, qid in zip(eids_first, qids_first, ))
+    first_blocks = tuple(Block((eid, ), (qid, ), ) for eid, qid in zip(eids_first, qids_first, ))
     inner_blocks = tuple(_generate_inner_blocks(im_inner, eids=eids_inner, qids=qids_inner, ))
-    last_blocks = tuple(_Block((eid, ), (qid, ), ) for eid, qid in zip(eids_last, qids_last, ))
+    last_blocks = tuple(Block((eid, ), (qid, ), ) for eid, qid in zip(eids_last, qids_last, ))
     #
     out_blocks = first_blocks + inner_blocks + last_blocks
     if return_info:
@@ -167,7 +184,7 @@ def _generate_inner_blocks(
     im: _np.ndarray,
     eids: Iterable[int],
     qids: Iterable[int],
-) -> Generator[_Block]:
+) -> Generator[Block]:
     """
     """
     #[
@@ -175,7 +192,7 @@ def _generate_inner_blocks(
     qids = tuple(qids)
     while im.size:
         block_size = next(i for i in range(1, im.shape[0] + 1) if not im[:i, i:].any())
-        yield _Block(eids[:block_size], qids[:block_size], )
+        yield Block(eids[:block_size], qids[:block_size], )
         eids = eids[block_size:]
         qids = qids[block_size:]
         im = im[block_size:, block_size:]
@@ -383,11 +400,14 @@ def is_sequential(
 
 
 def human_blocks_from_blocks(
-    blocks: Iterable[_Block],
+    blocks: Iterable[Block],
     equations: Iterable[Equation],
     quantities: Iterable[Quantity],
 ) -> tuple[HumanBlock, ...]:
     """
     """
-    return tuple(HumanBlock(block, equations, quantities) for block in blocks)
+    return tuple(
+        HumanBlock(block, equations, quantities)
+        for block in blocks
+    )
 

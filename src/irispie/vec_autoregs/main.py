@@ -1,8 +1,10 @@
-"""
+r"""
+Vector autoregressive models
 """
 
 
 #[
+
 from __future__ import annotations
 
 from .. import has_invariant as _has_invariant
@@ -10,6 +12,12 @@ from .. import has_variants as _has_variants
 
 from ._invariants import Invariant
 from ._variants import Variant
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Self
+    from collections.abc import Iterable
+
 #]
 
 
@@ -43,20 +51,17 @@ class VecAutoreg(
     @classmethod
     def from_names(
         klass,
-        endogenous_names: Iterable[str],
         num_variants: int = 1,
+        *args,
         **kwargs,
-    ) -> VecAutoreg:
+    ) -> Self:
         """
         """
-        invariant = Invariant(
-            endogenous_names=endogenous_names,
-            **kwargs,
-        )
+        invariant = Invariant(*args, **kwargs, )
         variants = [
             Variant(
                 order=invariant.order,
-                constant=invariant.has_constant,
+                intercept=invariant.has_intercept,
             )
             for _ in range(num_variants)
         ]

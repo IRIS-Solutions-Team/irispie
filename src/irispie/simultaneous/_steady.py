@@ -15,6 +15,7 @@ import neqs as _ne
 
 from .. import equations as _equations
 from ..incidences import blazer as _blazer
+from ..incidences.blazer import Block, HumanBlock
 from .. import has_variants as _has_variants
 from .. import wrongdoings as _wrongdoings
 from ..fords import steadiers as _fs
@@ -172,7 +173,7 @@ class Inlay:
             im = _calculate_steady_incidence_matrix(wrt.equations, wrt.qids, )
             blocks = _blazer.blaze(im, wrt.eids, wrt.qids, )
         else:
-            blocks = (_blazer._Block(wrt.eids, wrt.qids), )
+            blocks = (_blazer.Block(wrt.eids, wrt.qids), )
         num_blocks = len(blocks)
         #
         all_quantities = self.get_quantities()
@@ -390,6 +391,25 @@ class Inlay:
             unpack_singleton=unpack_singleton,
         )
         return all_status, info,
+
+
+    def split_into_blocks(
+        self,
+        plan: SteadyPlan,
+        **kwargs,
+    ) -> tuple[HumanBlock, ...]:
+        r"""
+        """
+        model_flags = self.resolve_flags(**kwargs, )
+        wrt = self._resolve_steady_wrt(plan, is_flat=model_flags.is_flat, )
+        im = _calculate_steady_incidence_matrix(wrt.equations, wrt.qids, )
+        blocks = _blazer.blaze(im, wrt.eids, wrt.qids, )
+        equations = self._invariant.steady_equations
+        quantities = self._invariant.quantities
+        return tuple(
+            HumanBlock(i, equations, quantities, )
+            for i in blocks
+        )
 
     #]
 
