@@ -2,7 +2,6 @@
 First-order systems, solutions, and estimators
 """
 
-
 from .solutions import *
 from .solutions import __all__ as solutions_all
 
