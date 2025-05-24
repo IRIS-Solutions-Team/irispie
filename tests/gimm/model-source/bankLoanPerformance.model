@@ -1,0 +1,184 @@
+%% MESSr module: Loan portfolio and loan performance
+
+
+%% Aggregate
+
+!variables
+
+    "Gross loans" l
+    "Gross loans, Opening after new info" l0
+    "Nonperforming loans, Opening after new info" ln0
+    "Nonperforming loans recognized, Opening after new info" ln0_rec
+    "Nonperforming loans" ln
+    "Nonperforming loans recognized" ln_rec
+    "Performing loans" lp
+    "Performing loans recognized" lp_rec
+    "Write-offs" woff
+    "Nonperforming loans to gross loans ratio" ln_to_l
+    "Nonperforming loans recognized to gross loans ratio" ln_rec_to_l
+
+
+!log-variables !all-but
+
+    ln_to_l, ln_rec_to_l
+
+
+!equations
+
+    l = !for <segments> !do + l_? !end;
+    l0 = !for <segments> !do + l0_? !end;
+    ln = !for <segments> !do + ln_? !end;
+    ln0 = !for <segments> !do + ln0_? !end;
+    lp = !for <segments> !do + lp_? !end;
+    lp_rec = !for <segments> !do + lp_rec_? !end;
+    ln_rec = !for <segments> !do + ln_rec_? !end;
+    ln0_rec = !for <segments> !do + ln0_rec_? !end;
+    woff = !for <segments> !do + woff_? !end;
+    ln_to_l = ln / l;
+    ln_rec_to_l = ln_rec / l;
+
+
+%% Loan portfolio segments
+
+!for
+    ? = <segments>
+!do
+    !variables
+        "Gross loans, ?" l_?
+        "Gross loans, Opening after new info, ?" l0_?
+        "Performing loans, ?" lp_?
+        "Performing loans, Opening after new information, ?" lp0_?
+        "Performing loans recognized, Opening after new info, ?" lp0_rec_?
+        "Performing loans recognized, ?" lp_rec_?
+        "Inflow of newly nonperforming loans" new_ln_?
+        "Inflow of newly nonperforming loans, Recovery buffer" new_lnc_?
+        "Inflow of newly nonperforming loans, Write-off buffer" new_lnw_?
+        "Nonperforming loans, ?" ln_?
+        "Nonperforming loans recognized, ?" ln_rec_?
+        "Nonperforming loans recognized to nonperforming loans ratio, ?" ln_to_ln_rec_?
+        "Nonperforming loans, Opening after new info, ?" ln0_?
+        "Nonperforming loans recognized, Opening after new info, ?" ln0_rec_?
+        "Nonperforming loans, Recovery Buffer, ?" lnc_?
+        "Nonperforming loans, Recovery Buffer, Opening after new information, ?" lnc0_?
+        "Nonperforming loans, Write-off buffer, ?" lnw_?
+        "Nonperforming loans, Write-off buffer, Opening after new information, ?" lnw0_?
+        "Recovery buffer to nonperforming loans ratio, ?" lnc_to_ln_?
+        "Write-offs, ?" woff_?
+        "Write-offs to gross loans ratio, ?" woff_to_l_?
+        "Nonperforming loans to gross loans ratio, ?" ln_to_l_?
+        "Nonperforming loans recognized to gross loans ratio, ?" ln_rec_to_l_?
+        "Exchange Rate Valuation, ?" j_?
+        "Exchange rate exposure switch, ?" sigma_?
+
+    !log-variables !all-but
+
+        ln_to_l_?, ln_rec_to_l_?, lnc_to_ln_?, ln_to_ln_rec_?, sigma_?
+        woff_to_l_?
+
+
+    !parameters
+
+        "Paydown factor, ?" theta_lp_?
+        "Recovery factor, ?" theta_ln_?
+        "Loss given nonperformance, ?" lambda_?
+        "Write-off rate, ?" omega_?
+        "Autoregression in Exchange rate exposure switch, ?" c0_sigma_?
+        "S/S Exchange rate exposure switch, ?" ss_sigma_?
+        "Exchange rate exposure switch for new loans, ?" new_sigma_?
+
+    !shocks
+
+        "Shock to Exchange rate exposure switch, ?" shock_sigma_?
+        "Shock to write-off(Privat effect), ?" shock_woff_?
+
+    !equations
+
+        "Gross loans, ?"
+        l_? = lp_? + ln_?;
+
+        "Gross loans, Opening after new info, ?"
+        l0_? = lp0_? + ln0_?;
+
+
+    % Performing loans
+
+        "Performing loans, Opening after new information, ?"
+        lp0_? = j_? * lp_?{-1} - new_ln_?;
+
+        "Performing loans, Closing, ?"
+        lp_? = (1 - theta_lp_?)*lp0_? + new_l_?;
+
+
+    % Nonperforming loans and write-offs
+
+        "Inflow of newly nonperforming loans"
+        new_ln_? = j_? * q_? * lp_?{-1};
+        new_lnc_? = (1 - lambda_?) * new_ln_?;
+        new_lnw_? = lambda_? * new_ln_?;
+
+        "Nonperforming loans, ?"
+        ln_? = lnc_? + lnw_?;
+
+        "Nonperforming loans, Opening after new info, ?"
+        ln0_? = lnc0_? + lnw0_?;
+
+        "Nonperforming loans, Recovery buffer, Opening after new information, ?"
+        lnc0_? = j_? * lnc_?{-1} + new_lnc_?;
+
+        "Nonperforming loans, Recovery Buffer, Closing, ?"
+        lnc_? = (1 - theta_ln_?) * lnc0_?;
+
+        "Nonperforming loans, Write-off buffer, Opening after new information, ?"
+        lnw0_? = j_? * lnw_?{-1} + new_lnw_?;
+
+        "Nonperforming loans, Write-off buffer, Closing, ?"
+        lnw_? = lnw0_? - woff_?;
+
+        "Write-offs"
+        woff_? = (omega_? * (lnw0_? - new_lnw_?)) * (1+ shock_woff_?);
+
+
+    % Performing and nonperforming loans recognized
+
+        "Performing loans recognized, Opening after new info, ?"
+        lp0_rec_? = lp0_? + new_ln_?;
+
+        "Performing loans recognized, Closing, ?"
+        lp_rec_? = lp_? + new_ln_?;
+
+        "Nonperforming loans recognized, Opening after new info, ?"
+        ln0_rec_? = l0_? - lp0_rec_?;
+
+        "Nonperforming loans recognized, Closing, ?"
+        ln_rec_? = l_? - lp_rec_?;
+
+        "Nonperforming loans to nonperforming loans recognized ratio, ?"
+        ln_to_ln_rec_? = ln_? / ln_rec_?;
+
+
+    % Exchange rate valuation
+
+        "Exchange rate valuation, ?"
+        j_? = 1 + sigma_? * (roc_e - 1);
+
+        sigma_? = c0_sigma_? * sigma_?{-1} + ...
+            (1-c0_sigma_?) * ss_sigma_? + shock_sigma_?
+        !! sigma_? = ss_sigma_?;
+
+
+    % Calibration ratios
+
+        "Nonperforming loans to gross loans ratio, ?"
+        ln_to_l_? = ln_? / l_?;
+
+        "Nonperforming loans recognized to gross loans ratio, ?"
+        ln_rec_to_l_? = ln_rec_? / l_?;
+
+        "Recovery buffer to nonperforming loans ratio, ?"
+        lnc_to_ln_? = lnc_? / ln_?;
+
+        "Writeoffs to gross loans ratio"
+        woff_to_l_? = woff / l;
+
+!end
+

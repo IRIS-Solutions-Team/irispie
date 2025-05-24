@@ -1,0 +1,8 @@
+
+    !parameters
+        "Long-run growth" alpha
+        "Discount factor" beta
+        "Capital depreciation rate" delta
+        "Share of capital in production function" gamma
+        "A/R Productivity" rho
+

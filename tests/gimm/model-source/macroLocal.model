@@ -1,0 +1,335 @@
+%% MESSr: Macro module
+
+
+!variables(:macro)
+
+    "Stress scenario factor" x
+
+    "Real GDP" y
+    "Nominal GDP" ny
+    "GDP deflator" py
+    "Real GDP, Rate of change" roc_y
+    "Real GDP,  Four-quarter rate of change" roc4_y
+
+    "Nominal GDP, Rate of change" roc_ny
+    "GDP deflator, Rate of change" roc_py
+    "GDP gap" y_gap
+    "GDP trend (potential)" y_tnd
+    "GDP trend (potential), Rate of change" roc_y_tnd
+
+    "CPI" cpi
+    "CPI, Rate of change" roc_cpi
+    "CPI, Four-quarter rate of change" roc4_cpi
+
+    "Inflation expectations" roc_cpi_exp
+
+    "Short-term cash rate" r
+    "Real short-term rate" rr
+    "Real short-term rate gap" rr_gap
+    "Real short-term rate trend" rr_tnd
+    "Short-term cash rate trend" r_tnd
+
+    "Nominal exchange rate" e
+    "Nominal exchange rate, Rate of change" roc_e
+    "Nominal exchange rate expectations" e_exp
+    "Real exchange rate" re
+    "Real exchange rate trend" re_tnd
+    "Real exchange rate trend" roc_re_tnd
+    "Real exchange rate gap" re_gap
+    "Real exchange rate gap, Rate of change" roc_re_gap
+    "Nominal exchange rate depreciation gap" roc_e_gap
+    "Interest disparity" prem
+    "Interest disparity trend" prem_tnd
+    "Interest disparity gap" prem_gap
+    "Short-term cash rate, unconstrained" r_uc
+
+
+
+!log-variables !all-but
+
+    x, r, r_uc, rr, r_tnd, rr_tnd, rr_gap
+    prem, prem_tnd, prem_gap
+
+
+!parameters(:stress)
+
+    cx_y_gap, cx_roc_y_tnd, 
+    cx_roc_cpi, cx_roc_cpi_exp, cx_e
+
+
+!parameters(:macro)
+
+    % Directly calibrated steady-state properties
+    "S/S Real GDP, Rate of change" ss_roc_y
+    "S/S CPI, Rate of change" ss_roc_cpi
+    "S/S Real short-term rate" ss_rr
+    "S/S Real exchange rate, Rate of change"  ss_roc_re
+
+    % Dynamic parameters
+    "A/R GDP Gap" c0_y_gap
+    "GDP gap to future income proxy" c1_y_gap
+    "GDP gap to real short-term rate" c2_y_gap
+    "GDP gap to real exchange rate gap" c4_y_gap
+    "GDP gap to foreign demand" c5_y_gap
+
+    "A/R Real GDP trend" c0_roc_y_tnd
+    "Hysteresis in real GDP trend" c1_roc_y_tnd
+
+    "A/R CPI inflation" c0_roc_cpi
+    "CPI inflation to GDP gap" c1_roc_cpi
+    "CPI inflation to RER gap" c2_roc_cpi
+    "CPI inflation to RER gap change" c3_roc_cpi
+
+    "Weight on model-consistent expectations in inflation expectations" c1_roc_cpi_exp
+
+    "A/R Short-term rate" c0_r
+    "Short-term rate to inflation" c1_r
+    "Short-term rate to GDP gap" c2_r
+    "Short-term rate to FX gap" c3_r
+    "Slope of interest floor function" floor_slope
+
+    "A/R Real short-term rate trend" c0_rr_tnd
+
+    "Weight on model-consistent expectations in exchange rate expectations" c1_e_exp
+    "A/R Autonomous cyclical component in interest disparity" c0_prem_gap
+
+    "A/R Real exchange rate trend" c0_roc_re_tnd
+    "Response in real exchange rate trend to real exchange rate gap" c1_roc_re_tnd
+
+    "A/R Stress scenario factor" c0_x
+
+    "Floor for the policy rate" r_floor
+
+
+!parameters(:macro :feedback)
+
+    "GDP gap to new lending conditions" c3_y_gap
+    "Response in interest disparity to lending conditions" c1_prem
+
+
+!shocks(:macro)
+
+
+    "Tunes on GDP gap" tune_y_gap
+    "Tune on GDP trend growth" tune_roc_y_tnd
+    "Tune on CPI" tune_roc_cpi
+    "Tune on short term cash rate, LCY" tune_r
+    "Tune on autonomous cyclical component in interest disparity" tune_prem_gap
+    "Tune on real short-term rate trend" tune_rr_tnd
+
+
+    "Shock to GDP gap" shock_y_gap
+    "Shock to GDP trend growth" shock_roc_y_tnd
+    "Shock to GDP trend level" shock_y_tnd
+    "Shock to GDP deflator" shock_roc_py
+    "Shock to CPI" shock_roc_cpi
+    "Shock to short term cash rate, LCY" shock_r
+    "Shock to exchange rate" shock_e
+    "Shock to real exchange rate trend" shock_roc_re_tnd
+    "Shock to autonomous cyclical component in interest disparity" shock_prem_gap
+    "Shock to real short-term rate trend" shock_rr_tnd
+
+
+!shocks(:stress)
+
+    "Shock to stress scenario factor" shock_x
+    "Shock to A/R stress scenario factor" shock_c0_x
+
+
+!substitutions
+
+    ss_prem := ((1 + ss_rr) / (1 + ss_rrw) / ss_roc_re - 1);
+    ss_roc_e := (ss_roc_re * ss_roc_cpi / ss_roc_cpiw);
+
+
+!equations(:macro)
+
+
+% GDP
+
+    "GDP trend-gap decomposition"
+    y = y_tnd * y_gap;
+
+    "Aggregate demand equation"
+    log(y_gap) ...
+        = c0_y_gap * log(y_gap{-1}) ...
+        + c1_y_gap * log(fwy/y) ...
+        - c2_y_gap * 4*rr_gap ...
+        - c3_y_gap * 4*new_rl_full_spread_gap ...
+        + c4_y_gap * log(re_gap{-1}) ...
+        + c5_y_gap * log(yw_gap) ...
+        + c2_y_gap * (r_uc-r) ...
+        + shock_y_gap ...
+        + tune_y_gap ...
+        - cx_y_gap * x ...
+    !! y_gap = 1;
+
+    "GDP trend (potential GDP) assumptions"
+    log(roc_y_tnd) ...
+        = c0_roc_y_tnd * log(roc_y_tnd{-1}) ...
+        + (1 - c0_roc_y_tnd) * log(ss_roc_y) ...
+        + c1_roc_y_tnd * log(y_gap) ...
+        + shock_roc_y_tnd ...
+        + tune_roc_y_tnd ...
+        - cx_roc_y_tnd * x ...
+    !! roc_y_tnd = ss_roc_y;
+
+
+% Nominal GDP
+
+    "GDP deflator assumptions"
+    log(roc_py) = ...
+        + log(roc_cpi) ...
+        + shock_roc_py ...
+    !! roc_py = roc_cpi;
+
+    "Nominal GDP identity"
+    ny = py * y;
+
+
+% Consumer prices
+
+    "Phillips curve"
+    log(roc_cpi) ...
+        = c0_roc_cpi * log(roc_cpi{-1}) ...
+        + (1 - c0_roc_cpi) * log(roc_cpi_exp) ...
+        + c1_roc_cpi/4 * log(y_gap) ...
+        + c2_roc_cpi/4 * log(re_gap) ...
+        + c3_roc_cpi * log(roc_re_gap) ...
+        + shock_roc_cpi ...
+        + tune_roc_cpi ...
+        + cx_roc_cpi * x ...
+    !! roc_cpi = ss_roc_cpi;
+
+
+    "Inflation expectations"
+    log(roc_cpi_exp) ...
+        = c1_roc_cpi_exp * log(roc_cpi{+1}) ...
+        + (1 - c1_roc_cpi_exp) * log(ss_roc_cpi) ...
+        + cx_roc_cpi_exp * x ...
+    !! roc_cpi_exp = ss_roc_cpi;
+
+
+% Monetary Policy
+
+    "Zero interest floor"
+    r = ...
+        + floor_slope * r_uc  ...
+        + (1-floor_slope) * max(r_uc, r_floor) ...
+    !! r = r_uc;
+
+    "Monetary policy reaction function"
+    r_uc = ...
+        + c0_r * r{-1} ...
+        + (1 - c0_r) * ( ...
+            + r_tnd ...
+            + c1_r*(log(roc4_cpi{+3})/4 - log(ss_roc_cpi)) ...
+            + c2_r/4*log(y_gap) ...
+            + c3_r*log(roc_e_gap) ...
+        ) ...
+        + shock_r ...
+        + tune_r ...
+    !! r = r_tnd;
+
+    1 + r_tnd = (1 + rr_tnd) * ss_roc_cpi ...
+    !! r_tnd = (1 + ss_rr) * ss_roc_cpi - 1;
+
+    1 + rr = (1 + r) / roc_cpi_exp ...
+    !! rr = ss_rr;
+
+    rr_gap = rr - rr_tnd ...
+    !! rr_gap = 0;
+
+    rr_tnd = ...
+        + c0_rr_tnd * rr_tnd{-1} ...
+        + (1 - c0_rr_tnd) * ss_rr ...
+        + shock_rr_tnd ...
+        + tune_rr_tnd ...
+    !! rr_tnd = ss_rr;
+
+
+% Exchange Rate
+
+    "Uncovered interest parity"
+    (1 + r) = (1 + rw) * e_exp/e * (1 + prem) * exp(shock_e + cx_e * x) ...
+    !! roc_e = $ss_roc_e$;
+
+
+    "Interest disparity"
+    prem = prem_tnd + prem_gap + c1_prem*new_rl_full_spread_gap ...
+    !! prem = $ss_prem$;
+
+
+    "Interest disparity trend"
+    (1 + rr_tnd) = (1 + rrw_tnd) * roc_re_tnd{+1} * (1 + prem_tnd) ...
+    !! prem_tnd = $ss_prem$;
+
+
+    "Interest disparity gap"
+    prem_gap = ...
+        + c0_prem_gap * prem_gap{-1} ...
+        + shock_prem_gap ...
+        + tune_prem_gap ...
+    !! prem_gap = 0;
+
+
+    "Exchange rate expectations"
+    log(e_exp) ...
+        = c1_e_exp * log(e{+1}) ...
+        + (1 - c1_e_exp) * log(e{-1} * $ss_roc_e$^2) ...
+    !! e_exp = e{+1};
+
+
+    "Real exchange rate definition"
+    re = e * cpiw / cpi;
+
+
+    "Real exchange rate trend-gap decomposition"
+    re = re_tnd * re_gap;
+
+
+    "Real exchange rate trend assumptions"
+    log(roc_re_tnd) = ...
+        + c0_roc_re_tnd * log(roc_re_tnd{-1}) ...
+        + (1 - c0_roc_re_tnd) * log(ss_roc_re) ...
+        + c1_roc_re_tnd * log(re_gap) ...
+        + shock_roc_re_tnd ...
+    !! roc_re_tnd = ss_roc_re;
+
+
+    "Nominal exchange rate depreciation gap"
+    roc_e_gap = roc_e / (roc_re_tnd / &roc_cpiw*&roc_cpi);
+
+
+% Rates of change
+
+    !for ny, y, y_tnd, e, py, cpi, re_tnd, re_gap !do
+        roc_? = ? / ?{-1};
+    !end
+
+
+% Four-quarter rates of change
+
+    !for cpi, y !do
+        roc4_? = ? / ?{-4};
+    !end
+
+
+% Stress scenario factor
+
+    x = ...
+        + (c0_x + shock_c0_x) * x{-1} ...
+        + shock_x ...
+    !! x = 0;
+
+
+!autoswaps-simulate
+
+    y_gap := tune_y_gap;
+    roc_y_tnd := tune_roc_y_tnd;
+    roc_cpi := tune_roc_cpi;
+    r := tune_r;
+    rr_tnd := tune_rr_tnd;
+    e := tune_prem_gap;
+
+

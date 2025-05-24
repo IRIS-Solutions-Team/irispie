@@ -1,0 +1,13 @@
+
+    !equations
+
+        a = a[-1] * roc_a;
+
+        c === cc * a;
+
+        i === ii * a;
+
+        yy === yy * a;
+
+        kk === kk * a;
+

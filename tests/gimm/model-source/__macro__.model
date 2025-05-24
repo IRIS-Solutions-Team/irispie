@@ -1,0 +1,10 @@
+
+!variables
+    new_rl_full_spread_gap
+
+!log-variables !all-but
+    new_rl_full_spread_gap
+
+!equations
+    new_rl_full_spread_gap = 0;
+

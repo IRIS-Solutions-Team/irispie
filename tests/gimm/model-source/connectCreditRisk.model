@@ -1,0 +1,95 @@
+%% MESSr: Credit risk module 
+
+
+%% Aggregate 
+
+!variables(:creditRisk)
+
+    "Average aggregate portfolio default rates" q
+
+
+!log-variables !all-but
+
+    q
+
+
+!shocks(:creditRisk)
+
+    "Shocks to Credit Events Impact, Total" shock_q
+
+
+!parameters(:stress)
+
+    cx_z
+
+
+!equations(:creditRisk)
+
+    "Average aggregate portfolio default rates"
+    q = (!for <segments> !do + q_? * lp_? !end) / lp;
+
+%
+
+
+%% Loan portfolio segments 
+
+!for ? = <segments> !do
+
+    !variables(:creditRisk)
+
+        "Credit events, ?" q_?
+        "S/S Slope of credit risk function, ?" ss_slope_q_?
+        "Macro conditions index, ?" z_?
+
+
+    !log-variables !all-but
+
+        q_?, ss_slope_q_?, z_?
+
+
+    !shocks(:creditRisk)
+
+        "Shock to credit events, ?" shock_q_?
+
+
+    !parameters(:creditRisk)
+
+        "S/S Portfolio default rate, ?" ss_q_?
+
+        "Credit risk function, Scale, ?" c2_q_?
+        "Credit risk function, Shape, ?" c3_q_?
+        "Credit risk function, Lower bound, ?" c4_q_?
+        "Credit risk function, Upper bound, ?" c5_q_?
+
+        "Composition of macroeconomic conditions index" c1_z_?
+
+
+    !parameters(:stress)
+
+        cx_z_?
+
+
+    !equations(:creditRisk)
+
+        "Portfolio default rate function, ?"
+        q_? = ...
+            + glogc(-z_?, ss_q_?, c2_q_?, c3_q_?, c4_q_?, c5_q_?) ...
+            + shock_q_? + shock_q ...
+        !! q_? = ss_q_? + shock_q_? + shock_q ;
+
+
+        "S/S Slope of portfolio default rate function, ?"
+        ss_slope_q_? = &ss_slope_q_? ...
+        !! ss_slope_q_? = glogd(0, ss_q_?, c2_q_?, c3_q_?, c4_q_?, c5_q_?);
+
+
+        "Macro conditions index, ?"
+        z_? = ...
+            + c1_z_? * log(y_gap) ...
+            - (1 - c1_z_?) * ( l_?/(4*py*fwy) - l_to_4ny_tnd_? ) ...
+            - cx_z * x ...
+            - cx_z_? * x ...
+        !! z_? = 0;
+
+!end
+

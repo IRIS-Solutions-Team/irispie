@@ -1,0 +1,223 @@
+%% MESSr: Bank capital module
+
+
+%% Aggregate quantities
+
+!variables
+
+    "Total net assets" tna
+    "Financial bank capital, closing" bk
+    "Financial bank capital, opening after profits" bk0
+    "Financial bank capital, closing, Rate of change" roc_bk
+    "Regulatory capital" bg
+    "Return on bank capital" rbk
+    "Standard capital adequacy ratio" car
+    "Minimum regulatory car" car_min
+    "Comfort level of standard capital adequacy ratio" car_tar
+    "Average effective risk weight" riskw
+    "Capital adequacy risk surcharge" rx
+    "Non-equity liabilities" d
+    "Other net assets" ona
+    "Open net foreign exchange position" onfx
+    "Regulatory to financial bank capital ratio" bg_to_bk
+    "External capital flows to bank capital ratio" xcf_to_bk
+
+    !for <segments> !do
+        rbk_int_loans_?
+    !end
+    rbk_int_loans
+    rbk_int_ona
+    rbk_prov
+    rbk_val_ass
+    rbk_int_liab
+    rbk_val_liab
+    rbk_other
+    d_fcy_to_d
+    
+    
+
+
+!parameters
+
+    % Directly calibrated steady state values
+    "S/S Average Effective Risk Weight" ss_riskw
+    "S/S Minimum Regulatory CAR" ss_car_min
+    "S/S Comfort Level of CAR Buffers" ss_car_exc
+    "S/S Open Net Foreign Position" ss_onfx
+    "S/S Share of Other Net Assets in Total Net Assets" ss_ona_to_tna
+    "S/s Regulatory bank capital" ss_bg_to_bk
+
+
+    % Dynamic parameters
+    "Add-hoc reaction to capital buffer" c1_bk
+    "Autoregression in average effective risk weight" c0_riskw
+    "Autoregression in minimum regulatory CAR" c0_car_min
+    "Other profit and loss to total net assets ratio" c1_rbk_other
+    "Autoregression in other net assets" c0_ona
+    "Autoregression in regulatory to financial bank capital ratio" c0_bg_to_bk
+
+
+    % Parameters of capital adequacy stress nonlinearity
+    "Capital adequacy stress function parameter" c1_rx
+    "Capital adequacy stress function parameter" c2_rx
+    "Capital adequacy stress function parameter" c3_rx
+    "Capital adequacy stress function parameter" c4_rx
+    "Capital adequacy stress function parameter" c5_rx
+
+    "Floor on return on bank capital" floor_rbk
+
+
+!parameters(:stress)
+
+    cx_rbk_x, cx_riskw, cx_car_tar, cx_rx
+
+
+!shocks
+
+    "Shock to Return on Bank Capital" shock_rbk
+    "Shock to Regulatory Risk Weights" shock_riskw
+    "Shock to Open Net Foreign Exchange Position" shock_onfx
+    "Shock to minimum regulatory CAR" shock_car_min
+    "Shock to other net assets" shock_ona
+    "Shock to regulatory to financial bank capital ratio" shock_bg_to_bk
+    shock_bk
+
+
+!log-variables !all-but
+
+    rbk, car, car_min, car_tar, riskw, onfx
+    bg_to_bk, rx, xcf_to_bk
+    !for <segments> !do
+        rbk_int_loans_?
+    !end
+    rbk_int_loans
+    rbk_int_ona
+    rbk_prov
+    rbk_val_ass
+    rbk_int_liab
+    rbk_val_liab
+    rbk_other
+    d_fcy_to_d
+
+
+!equations
+
+    % Balance sheet identity
+    tna = l - af + ona;
+    tna = d + bk;
+
+
+    % Other assets
+    log(ona) = ...
+        + c0_ona * log(&roc_ny*ona{-1}) ...
+        + (1 - c0_ona) * log(ss_ona_to_tna * tna) ...
+        + shock_ona ...
+    !! ona = ss_ona_to_tna * tna;
+
+
+    !for <segments> !do
+        rbk_int_loans_? = (rl_?{-1}*(lp0_? + lnc0_?)) / bk{-1};
+    !end
+    rbk_int_loans = !for <segments> !do + rbk_int_loans_? !end;
+
+    rbk_int_ona = (rona{-1} * ona{-1}) / bk{-1};
+    rbk_prov = (!for <segments> !do - (ap_? - ap_?{-1} + woff_?) !end) / bk{-1};
+    rbk_val_ass = (!for <segments> !do + l_?{-1}*(j_? - 1) !end) / bk{-1};
+    rbk_int_liab = (-(rd_lcy{-1}*(1-d_fcy_to_d{-1}) + rd_fcy{-1}*e/e{-1}*d_fcy_to_d{-1})*d{-1}) / bk{-1};
+    rbk_val_liab = (-(d_fcy_to_d{-1}*d{-1}*(e/e{-1} - 1))) / bk{-1};
+    rbk_other = (c1_rbk_other * tna{-1}) / bk{-1};
+
+
+
+    "Financial bank capital, opening after profits"
+    rbk = ...
+        + rbk_int_loans ...    Interest income from loans
+        + rbk_int_ona ...      Interest income from other net assets (securities)
+        + rbk_other ...        Other net income
+        + rbk_prov ...         Provisioning
+        + rbk_val_ass ...      Exchange rate valuation of assets
+        + rbk_int_liab ...     Interest expense on liabilities
+        + rbk_val_liab ...     Exchange rate valuation of liabilities
+        + shock_rbk - cx_rbk_x * x ...
+    ;
+
+    "Return on bank capital"
+    bk0 = (1 + rbk) * bk{-1};
+
+
+    "Financial bank capital, closing"
+    log(bk) = log(bk{-1} * ((1 + rbk) + (&roc_bk - &rbk - 1))) ... 
+        - c1_bk*(car{+8} - car_tar{+8}) + shock_bk ...
+    !! car = car_tar;
+
+    % External capital flows
+    xcf_to_bk = (bk - bk0) / bk0;
+
+    roc_bk = roc(bk);
+
+    % Regulatory bank capital
+    bg = bg_to_bk * bk;
+
+    bg_to_bk = ...
+        + c0_bg_to_bk * bg_to_bk{-1} ...
+        + (1 - c0_bg_to_bk) * ss_bg_to_bk ...
+        + shock_bg_to_bk ...
+    !! bg_to_bk = ss_bg_to_bk;
+
+
+
+    % Standard capital adequacy ratio
+    car = bg / (riskw * tna);
+
+
+    % Average effective risk weights
+    riskw ...
+        = c0_riskw * riskw{-1} ...
+        + (1 - c0_riskw) * ss_riskw ...
+        + shock_riskw ...
+        + cx_riskw * x ...
+    !! riskw = ss_riskw;
+
+
+    "Comfort level of standard CAR"
+    car_tar = car_min + ss_car_exc + cx_car_tar * x ...
+    !! car_tar = car_min + ss_car_exc;
+
+
+    "Regulatory minimum for standard CAR"
+    car_min ...
+        = c0_car_min * car_min{-1} ...
+        + (1 - c0_car_min) * ss_car_min ...
+        + shock_car_min ...
+    !! car_min = ss_car_min;
+
+
+    "Impact of capital adequacy stress on lending conditions"
+    rx = ...
+        + glogc(-(car - car_min), c1_rx, c2_rx, c3_rx, c4_rx, c5_rx) ...
+        + cx_rx * x ...
+    ;
+
+
+%% Currency of denomination for funding liabilities
+
+    d_fcy_to_d * d = ...
+        !for <segments> !do + sigma_? * l_? !end ...
+        + onfx * bk ...
+    ;
+
+    onfx = ss_onfx + shock_onfx;
+
+
+!postprocessor
+
+    roa = rbk * bk{-1} / tna{-1};
+    roa_int_loans = rbk_int_loans * bk{-1} / tna{-1};
+    roa_int_ona = rbk_int_ona * bk{-1} / tna{-1};
+    roa_prov = rbk_prov * bk{-1} / tna{-1};
+    roa_val_ass = rbk_val_ass * bk{-1} / tna{-1};
+    roa_int_liab = rbk_int_liab * bk{-1} / tna{-1};
+    roa_val_liab = rbk_val_liab * bk{-1} / tna{-1};
+    roa_other = rbk_other * bk{-1} / tna{-1};
+
+

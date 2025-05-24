@@ -1,0 +1,106 @@
+%% MESSr: Rest of world macro module 
+
+
+!transition-variables(:world)
+
+    "Foreign demand gap" yw_gap
+    "Foreign short-term rate, FCY" rw
+    "Foreign real short-term rate, FCY" rrw_tnd
+    "Foreign CPI" cpiw
+    "Foreign CPI, Rate of change" roc_cpiw
+
+
+!log-variables !all-but
+
+    rw, rrw_tnd
+
+
+!parameters(:world)
+
+    % Directly calibrate steady state properties
+
+    "S/S Real short-term rate, foreign currency" ss_rrw
+    "S/S Foreign CPI, Rate of change" ss_roc_cpiw
+
+
+    % Dynamic parameters
+
+    "Autoregression in foreign demand gap" c0_yw_gap
+    "Autoregression in foreign short-term rate" c0_rw
+    "Autoregression in real foreign short-term rate" c0_rrw_tnd
+    "Autoregression in foreign CPI inflation" c0_roc_cpiw
+
+
+!parameters(:stress)
+
+    cx_yw_gap, cx_rw, cx_roc_cpiw
+
+
+!transition-shocks(:world)
+
+    "Tune on foreign demand gap" tune_yw_gap
+    "Tune on foreign short-term rate" tune_rw
+    "Tune on real foreign short-term rate trend" tune_rrw_tnd
+    "Tune on to foreign CPI inflation" tune_roc_cpiw
+
+    "Shock to foreign demand gap" shock_yw_gap
+    "Shock to foreign short-term rate, FCY" shock_rw
+    "Shock to real foreign short-term rate trend, FCY" shock_rrw_tnd
+    "Shock to foreign CPI inflation" shock_roc_cpiw
+
+
+!substitutions
+
+    ss_rw = ((1 + ss_rrw) * ss_roc_cpiw - 1);
+
+
+!transition-equations(:world)
+
+    "Foreign demand gap"
+    log(yw_gap) = ...
+        + c0_yw_gap * log(yw_gap{-1}) ...
+        + tune_yw_gap ...
+        + shock_yw_gap ...
+        - cx_yw_gap * x ...
+    !! yw_gap = 1;
+
+
+    "Short-term rate, FCY"
+    rw ...
+        = c0_rw * rw{-1} ...
+        + (1 - c0_rw) * $ss_rw$ ...
+        + tune_rw ...
+        + shock_rw ...
+        + cx_rw * x ...
+    !! rw = $ss_rw$;
+
+
+    "Real foreign short-term rate trend, FCY"
+    rrw_tnd = ...
+        + c0_rrw_tnd * rrw_tnd{-1} ...
+        + (1 - c0_rrw_tnd) * ss_rrw ...
+        + tune_rrw_tnd ...
+        + shock_rrw_tnd ...
+    !! rrw_tnd = ss_rrw;
+
+
+    "Foreign CPI inflation"
+    log(roc_cpiw) ...
+        = c0_roc_cpiw * log(roc_cpiw{-1}) ...
+        + (1 - c0_roc_cpiw) * log(ss_roc_cpiw) ...
+        + tune_roc_cpiw ...
+        + shock_roc_cpiw ...
+        + cx_roc_cpiw * x ...
+    !! roc_cpiw = ss_roc_cpiw;
+
+    roc_cpiw = cpiw / cpiw{-1};
+
+
+#!autoswaps-simulate
+#
+#    yw_gap := tune_yw_gap;
+#    roc_cpiw := tune_roc_cpiw;
+#    rw := tune_rw;
+#    rrw_tnd := tune_rrw_tnd;
+#
+

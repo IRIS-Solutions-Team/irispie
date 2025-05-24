@@ -1,0 +1,113 @@
+%% MESSr: Postprocessing equations
+
+%
+% These equations are technically not part of the model (are not simulated
+% with the model) but can be stored within the model object for
+% convenience, and then executed (separately from the model simulation) on
+% the simulation output databank
+%
+
+
+!postprocessor
+
+    % Net rate of Q/Q growth PA as percentages
+    % Net rate of Y/Y growth as percentages
+    !for
+        ?var = y, y_tnd, ny, cpi, e, l, cpiw, q_hh, q_nfc, d, d_lcy, bk, ona
+    !do
+        pct_aroc_?var = 100 * ((?var/?var{-1})^4 - 1);
+        pct_roc4_?var = 100 * (?var/?var{-4} - 1);
+    !end
+
+
+    % Convert multiplicative gaps to percent gaps
+    !for
+        ?var = y_gap, yw_gap, re_gap
+       !do
+        pct_?var = 100*(?var - 1);
+    !end
+
+
+    % Net rate of Q/Q growth PA as percentages
+    % Net rate of Y/Y growth as percentages
+    !for
+        ?var = l, ln, lp, new_l, ln_rec, lp_rec
+    !do
+
+        pct_aroc_?var = 100 * ((?var/?var{-1})^4 - 1);
+        pct_roc4_?var = 100 * (?var/?var{-4} - 1);
+        !for ?k = <segments> !do
+            pct_aroc_?var_?k = 100 * ((?var_?k/?var_?k{-1})^4 - 1);
+            pct_roc4_?var_?k = 100 * (?var_?k/?var_?k{-4} - 1);
+
+        !end
+    !end
+
+     !for
+        ?var =   lnw, lnc, ap
+    !do
+
+        !for ?k = <segments> !do
+            pct_aroc_?var_?k = 100 * ((?var_?k/?var_?k{-1})^4 - 1);
+            pct_roc4_?var_?k = 100 * (?var_?k/?var_?k{-4} - 1);
+        !end
+    !end
+
+
+    % Ratios as percentages
+
+
+    !for
+       ?var = car, riskw
+    !do
+        pct_?var = 100 * ?var;
+
+    !end
+
+    !for
+        ?var = l_to_4ny, new_l_to_ny, new_l_to_l, ln_to_l, ln_rec_to_l
+    !do
+        pct_?var = 100 * ?var;
+        !for ?k = <segments> !do
+           pct_?var_?k = 100 * ?var_?k;
+        !end
+    !end
+
+
+    % Interest rate as PA percentages
+    !for
+        ?var = r, rw, prem, rona, rd_lcy, rd_fcy
+    !do
+        pct_?var = 400 * ?var;
+
+    !end
+
+
+      !for
+        ?var = new_rl, rl, q
+    !do
+      !for ?k = <segments> !do
+           pct_?var_?k = 400 * ?var_?k;
+        !end
+
+    !end
+
+    % Bank profits
+
+%     convert_bk = @(x) (x/bk{-1})*100;
+
+    prof_prov_bk =  (prof_prov/(bk{-1}/4))*100;
+    prof_val_ass_bk =  (prof_val_ass/(bk{-1}/4))*100;
+    prof_int_liab_bk =  (prof_int_liab/(bk{-1}/4))*100;
+    prof_val_liab_bk =  (prof_val_liab/(bk{-1}/4))*100;
+    prof_val_bk =  (prof_val/(bk{-1}/4))*100;
+    prof_int_ona_bk =  (prof_int_ona/(bk{-1}/4))*100;
+    prof_other_bk =  (prof_other/(bk{-1}/4))*100;
+    prof_int_loans_bk = (prof_int_loans/(bk{-1}/4))*100;
+
+
+    % Provisions
+
+    share_ap_nfc = (ap_nfc/l_nfc)*100;
+    share_ap_hh = (ap_hh/l_hh)*100;
+

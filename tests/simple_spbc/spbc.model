@@ -1,0 +1,213 @@
+%% Simple sticky-price business-cycle model
+%
+% This is a model source fille for a simple sticky-price business model.
+% The model file describes variables, parameters and equations. Note that
+% the model file does not specifies the tasks that will be performed with
+% the model. The tasks will be set up in separate m-files, using standard
+% Matlab functions and IrisT functions.
+%
+% Model source files themselves cannot be executed. Instead, they are read
+% in and converted into model objects by the Iris function
+% `Model.fromFile()`. This is shown in [`createModel`](createModel.m).
+%
+
+
+%% Declare variables, shocks, parameters
+%
+% Use single-quoted text preceding the respective name to annotate the
+% variablews, shocks, or parameters. These descriptions are stored in the
+% resulting model object as well.
+%
+
+!transition-variables
+
+    "Output" Y, "Labor" N, "Wage rate" W
+    "Nominal marginal cost" Q, "Consumption habit" H, "Productivity" A
+    "Rate of change in productivity" dA
+    "Final prices" P, "Nominal interest rate" R, "Real interest rate" RR
+    "5-year interest rate" R20, "5-Year expectations of short rates" R20exp
+    "5-year term premium" term20
+    "Price of capital" Pk, dPk
+    "Rental price of capital" Rk
+    "Households shadow value of wealth" Lambda
+    "Inflation Q/Q" dP, "Inflation Y/Y" d4P, "Wage inflation Q/Q" dW
+    "Real marginal cost" RMC
+
+
+!transition-shocks
+
+    "Consumption demand shock" Ey, "Cost push shock" Ep,
+    "Productivity shock" Ea, "Policy shock" Er
+    "Long-term rate shock" Eterm20
+    "Wage shock" Ew
+
+
+!parameters
+
+    "Long run growth !! \alpha" alpha, "Discount !! \beta" beta
+    "Utility of net worth parameter !! \beta_0" beta0, beta1
+    "Labor share !! \gamma" gamma, "Depreciation !! \delta" delta,
+    "Fixed level of capital" k
+    "Inflation target" pi
+    "Elasticity of substitution in monopoly markets" eta
+    "Inverse elasticity of labor supply" psi
+
+    "Habit !! \chi" chi, "Wage stickiness !! \xi_w" xiw,
+    "Price stickiness !! \xi_p" xip
+    "Autoregression in productivity !! \rho_a" rhoa
+    "Autoregression in short rate !! \rho_r" rhor
+    "Monetary policy reaction to inflation !! \kappa_p" kappap
+    "Monetary policy reaction to labor !! \kappa_n" kappan
+    "Autoregression in 5-year term premium !! \rho_{t20}" rhoterm20
+
+
+
+%% Control linearized and log-linerised variables
+%
+% By default, all variables are linearized when the first-order solution is
+% computed in non-linear models. If you want some variables to be
+% log-linearized instead, use the `!log-variables` section. Note how the
+% keyword `!all-but` reverses the logic of this section -- all variables
+% will be log-linearized except those listed here.
+
+
+!log-variables !all-but
+
+    term20
+
+
+%% Write model equations
+%
+% Each equation must end with a semicolon. As in variable declaration,
+% equations also can be annotated with a single-quoted text preceding the
+% equation.
+
+!transition-equations
+
+    % Households
+
+    "Consumption demand"
+    P*Lambda = (1-chi)/(Y - chi*H) !! P*Y*Lambda = 1;
+
+    "Intertemporal choice"
+    Lambda*(1 + beta0) = beta*R*Lambda{1} !! beta*R = alpha*pi*(1 + beta0);
+
+    "Habit in consumption"
+    H = exp(Ey)*alpha*Y{-1} !! H = Y;
+
+    "Real interest rate"
+    RR = R / dP{+1};
+
+    "Wage Phillips curve"
+    xiw/(eta-1)*(dW/dW{-1} - 1) = ...
+        beta*beta1*xiw/(eta-1)*(dW{1}/dW - 1 + Ew) ...
+        + (eta/(eta-1)*N^psi/(Lambda*W) - 1) ...
+    !! eta/(eta-1)*N^psi = Lambda*W;
+
+    "Market price of production capital"
+    Lambda*Pk = beta*Lambda{1}*(Rk{1} + (1-delta)*Pk{1});
+
+
+    % Supply side
+
+    "Production function"
+    Y = A * (N - (1-gamma)*&N)^gamma * k^(1-gamma);
+
+    "Demand for labor"
+    gamma*Q*Y = W*(N - (1-gamma)*&N);
+
+    "Demand for capital"
+    (1-gamma)*Q*Y = Rk*k;
+
+    "Price setting (Phillips curve)"
+    xip/(eta-1)*(dP/dP{-1} - 1) = ...
+        beta*beta1*xip/(eta-1)*(dP{1}/dP - 1 + Ep) ...
+        + (eta/(eta-1)*RMC - 1) ...
+    !! eta/(eta-1)*Q = P;
+
+    "Real marginal cost"
+    RMC = Q/P !! RMC = (eta-1)/eta;
+
+
+    % Productivity
+
+    "Productivity growth"
+    log(dA) = rhoa*log(dA{-1}) + (1-rhoa)*log(alpha) + Ea ...
+    !! dA = alpha;
+
+    dA = A/A{-1};
+
+
+    % Monetary policy
+
+    "Monetary policy reaction function"
+    log(R) = rhor*log(R{-1}) + (1-rhor)*(log(&R) ...
+        + kappap*(log(d4P{+4})/4 - log(pi)) ...
+        + kappan*(N/&N - 1)) + Er ...
+    !! d4P = pi^4;
+
+
+    % Long rates
+
+    "Long (5-year) rate"
+    log(R20) = log(R20exp) + term20;
+
+    "Expected average of short term rates over 5 years"
+    log(R20exp) = movavg(log(R), +20);
+
+    "Term premium for 5-year rate"
+    term20 = rhoterm20*term20{-1} + Eterm20;
+
+
+    % One-quarter and four-quarter rates of change
+
+    !for P, W, Pk !do
+        d? = ?/?{-1};
+    !end
+
+    d4P = P/P{-4};
+
+
+%% Declare measurement variables (observables)
+
+!measurement-variables
+
+    "Short term rate" Short, "Long term rate" Long,
+    "Price inflation" Infl,
+    "Output growth" Growth, "Wage inflation" Wage
+    "Level of output" Output
+
+
+!log-variables !all-but
+
+    Short, Long, Infl, Growth, Wage
+
+
+!measurement-shocks
+
+    "Measurement error on price inflation" Mp,
+    "Measurement error on wage inflation" Mw
+
+
+%% Write measurement equations
+
+!measurement-equations
+
+    Short = Short_ + 100*(R^4 - 1);
+    Long =  Long_ + 100*(R20^4 - 1);
+    Infl = Infl_ + 100*((P/P{-1})^4 - 1 + Mp);
+    Wage = Wage_ + 100*((W/W{-1})^4 - 1 + Mw);
+    Growth = Growth_ + 100*((Y/Y{-1})^4 - 1);
+    Output = Y;
+
+
+%% Parameters for deterministic trends
+
+!parameters
+
+    "Intercept in short rate" Short_
+    "Intercept in long rate" Long_
+    "Intercept in inflation rate" Infl_
+    "Intercept in output growth rate" Growth_
+    "Intercept in wage inflation rate" Wage_
+

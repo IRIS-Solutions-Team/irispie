@@ -1,0 +1,48 @@
+%% MESSr: Assets module
+
+
+!variables(:macro)
+
+    "Real future income proxy" fwy_fund
+    "Actual real market valuation of assets" fwy
+    "Bubble in market valuation of assets" fwy_bubble
+
+
+!parameters(:macro)
+
+    "S/S Discount rate in future income proxy" ss_disc_fwy
+
+    "A/R Bubble in market valuation of assets" c0_fwy_bubble
+    "Sensitivity of discount rate in future income proxy to lending conditions" c1_fwy
+    "Stress scenario multiplier in bubble" cx_fwy_bubble
+
+
+!shocks(:macro)
+
+    "Shock to bubble in market valuation of assets" shock_fwy_bubble
+
+
+!equations(:macro)
+
+
+% Proxy for the fundamental value of asset prices (Claims on future GDP)
+
+    "Discounted forward sum of real GDP, normalized to current"
+    fwy_fund ...
+        = (1 - 1/(1 + ss_disc_fwy)) * y ...
+        + 1/(1 + ss_disc_fwy + c1_fwy*new_rl_full_spread_gap) * fwy_fund{+1} / ss_roc_y ...
+    !! fwy_fund = y;
+
+
+% Proxy for the actual market valuation of assets
+
+    fwy = fwy_fund * fwy_bubble ...
+    !! fwy = y;
+
+    log(fwy_bubble) = ...
+        + c0_fwy_bubble * log(fwy_bubble{-1}) ...
+        + shock_fwy_bubble ...
+        - cx_fwy_bubble * x ...
+    !! fwy_bubble = 1;
+
+

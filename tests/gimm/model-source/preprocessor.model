@@ -1,0 +1,37 @@
+%% MESSr: Preprocessing equations 
+%
+% These equations are technically not part of the model (are not simulated
+% with the model) but can be stored within the model object for
+% convenience, and then executed (separately from the model simulation) on
+% the simulation input databank
+%
+
+
+!preprocessor
+
+    % Make sure total loans exist
+    !for
+        ?var = l, ln, ln_rec
+    !do
+        ?var = !for ?k = <segments> !do + ?var_?k !end;
+    !end
+
+
+    % Make sure ratios over GDP exist
+    !for 
+        ?var = l
+    !do
+        ?var_to_4ny = ?var / (4*ny);
+        !for ?k = <segments> !do
+            ?var_to_4ny_?k = ?var_?k / (4*ny);
+        !end
+    !end
+
+
+    % Make sure ratios exist
+    ln_rec_to_l = ln_rec / l;
+    !for ?k = <segments> !do
+        ln_rec_to_l_?k = ln_rec_?k / l_?k;
+    !end
+
+

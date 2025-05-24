@@ -1,0 +1,44 @@
+
+    !transition-variables
+        "Productivity, Rate of change" roc_a
+        "Gross production" yy
+        "Private consumption" cc
+        "Private investment" ii
+        "Stock of capital" kk
+        "Hours worked" h
+        "Real wage rate" ww
+        "Real interest rate" r
+        "Private consumption to GDP ratio" c_to_y
+        "Private investment to GDP ratio" i_to_y
+
+    !log-variables !all-but
+        c_to_y, i_to_y
+
+    !transition-shocks
+        "Shock to productivity" shock_a
+        "Shock to consumer preferences" shock_c
+
+    !transition-equations
+
+        log(roc_a) = rho*log(roc_a[-1]) + (1-rho)*log(alpha) + shock_a \
+        !! roc_a = alpha;
+
+        cc[+1]*roc_a[+1]/cc = beta*r*exp(shock_c);
+
+        ww = cc;
+
+        kk = (1 - delta)*kk[-1]/roc_a + ii;
+
+        yy = h^(1-gamma) * (kk[-1]/roc_a)^gamma;
+
+        gamma*yy = kk[-1]/roc_a * (r - 1 + delta);
+
+        (1-gamma)*yy = ww * h;
+
+        yy = ii + cc;
+
+        c_to_y = cc / yy;
+
+        i_to_y = ii / yy;
+
+

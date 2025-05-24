@@ -1,0 +1,259 @@
+%% MESSr: Interest rate module
+
+
+%% Aggregate
+
+!variables
+
+    "Short-term funding liability rate, local currency" rp_lcy
+    "Short-term funding liability rate, foreign currency" rp_fcy
+    "Return on other net assets" rona
+    "Effective lending spread gap" new_rl_full_spread_gap
+    "Stock lending rate" rl
+    "Spread in return on other net assets" rona_spread
+
+
+!parameters(:interestRates)
+
+    ss_rona_spread
+
+
+!parameters(:stress)
+
+    cx_rd, cx_rona
+    cx_new_rl_full, cx_new_rd
+
+
+!log-variables !all-but
+
+    rona, rona_spread, rp_lcy, rp_fcy
+    new_rl_full_spread_gap
+    rl
+
+
+!shocks
+
+    "Shock to return on other net assets" shock_rona
+    "Shock to autonomous profit margins" shock_rl_apm
+    shock_rona_spread
+
+
+!equations
+
+    "Short-term funding liability rate, local currency"
+    rp_lcy = r ...
+    !! rp_lcy = ((1 + ss_rr) * ss_roc_cpi - 1);
+
+
+    "Short-term funding liability rate, foreign currency"
+    rp_fcy = rw ...
+    !! rp_fcy = ((1 + ss_rrw) * ss_roc_cpiw - 1);
+
+
+    "Return on other net assets"
+    rona = ...
+        + rp_lcy + rona_spread ...
+        + shock_rona - cx_rona * x;
+
+
+    rona_spread = ss_rona_spread + shock_rona_spread ...
+    !! rona_spread = ss_rona_spread;
+
+
+    "Effective lending conditions spread gap"
+    new_rl_full_spread_gap = ...
+        (!for <segments> !do + new_rl_full_spread_gap_? * &new_l_? !end) / &new_l ...
+    !! new_rl_full_spread_gap = 0;
+
+
+    "Stock lending rate"
+    rl = (!for <segments> !do + rl_? * lp_? !end) / lp;
+
+
+
+%% Lending rates by loan portfolio segments
+
+!for ? = <segments> !do
+
+    !variables
+
+        new_rl_cap_?, cap_?
+        "Stock Lending Rate, ?" rl_?
+        "New Lending Rate w Partial Risk Adjustment, ?" new_rl_?
+        "New Lending Rate w Full Risk Adjustment, ?" new_rl_full_?
+        "Cost of short-term liability and expected credit loss" cost_sr_ecl_?
+        "Cost of bank capital adequayc" cost_bk_?
+        "Base rate for new lending rate, ?" rl_base_?
+
+        "Lending conditions spread" new_rl_full_spread_?
+        "Autonomous Profit Margin in Lending Rates, ?" rl_apm_?
+        "Lending conditions spread gap" new_rl_full_spread_gap_?
+
+
+    !log-variables !all-but
+
+        rl_?, new_rl_?, new_rl_full_?, cost_sr_ecl_?, cost_bk_?, rl_base_?,  rl_apm_?
+        new_rl_full_spread_?, new_rl_full_spread_gap_?
+        new_rl_cap_?, cap_?
+
+
+    !parameters(:interestRates)
+
+        ss_cap_?
+        c1_new_rl_full_?
+        c1_new_rl_cap_?
+
+        "S/S Autonomous Profit Margin in Lending Rates, ?" ss_rl_apm_?
+
+        "Pass-through of actual rates to lending base rates" c1_rl_base_?
+        "Duration Parameter for Interest Rate Fix, ?" psi_rl_?
+        "Partial Risk Adjustment, ?" c1_new_rl_?
+        c0_rl_apm_?
+
+
+    !parameters(:stress)
+
+        cx_new_rl_full_?
+
+
+
+
+    !shocks
+
+        shock_cap_?
+        "Shock to Stock Lending Rate, ?" shock_rl_?
+        "Shock to New Lending Rate, ?" shock_new_rl_?
+        "Shock to New Lending Rate, ?" shock_new_rl_full_?
+        "Shock to New Lending Rate, ?" shock_new_rl_full1_?
+        "Shock to New Lending Rate, ?" shock_new_rl_full2_?
+        shock_rl_apm_?
+
+
+    !substitutions
+
+        Psi_? := ((1 - psi_rl_?)*(1 - theta_lp_?));
+        Omega_? := ((psi_rl_? * (1 - theta_lp_?) * lp0_? + new_l_?) / lp_?);
+
+
+    !equations
+
+%% Stock lending rates
+
+        "Stock-flow dynamics in lending rates, ?"
+        rl_? = ...
+            + rl_?{-1} ...
+            + $Omega_?$ * (new_rl_? - rl_?{-1}) ...
+            + shock_rl_? ...
+        !! rl_? = new_rl_?;
+
+
+%% New lending rates and conditions
+
+        "Base rate for lending rates, ?"
+        rl_base_? =  ...
+            + (1-new_sigma_?) * (c1_rl_base_?*rp_lcy + (1-c1_rl_base_?)*&rp_lcy) ...
+            + new_sigma_? * (c1_rl_base_?*rp_fcy + (1-c1_rl_base_?)*&rp_fcy);
+
+
+        "Autonomous profit margins in lending rates, ?"
+        rl_apm_? = c0_rl_apm_? * rl_apm_?{-1} + (1 - c0_rl_apm_?) * ss_rl_apm_? ...
+            + shock_rl_apm_?
+        !! rl_apm_? = ss_rl_apm_?;
+
+
+        "Cost of short-term liability and expected credit loss"
+        (1 + cost_sr_ecl_?) = ...
+             + (1 - $Psi_?$) * (1 + rl_base_?)/(1 - lambda_?*q_?{+1}) ...
+             + $Psi_?$ * (1 + cost_sr_ecl_?{+1}) ...
+             + shock_new_rl_full1_? ...
+        !! 1 + cost_sr_ecl_? = (1 + rl_base_?) / (1 - lambda_?*q_?);
+
+
+        "Cost of bank capital adequacy"
+        (1 + cost_bk_?) = ...
+             + (1 - 1*$Psi_?$) * (1 + rx) ...
+             + 1*$Psi_?$ * (1 + cost_bk_?{+1}) ...
+             + shock_new_rl_full2_? ...
+        !! cost_bk_? = rx;
+
+
+        "New lending rates with full risk adjustment, ?"
+        (1 + new_rl_full_?) = ...
+            (1 + cost_sr_ecl_?) * (1 + cost_bk_?) * (1 + rl_apm_?) ...
+            * (1 + cx_new_rl_full * x + cx_new_rl_full_? * x) ...
+            * (1 + c1_new_rl_full_? * new_rl_cap_?);
+
+        new_rl_cap_? = (c1_new_rl_cap_?*max(0, new_l_to_ny_? - cap_?))^2 ...
+        !! new_rl_cap_? = 0;
+
+        cap_? = ss_cap_? + shock_cap_?;
+
+        "Actual new lending rates with partial risk, ?"
+        new_rl_? = ...
+            + rl_base_? ...
+            + c1_new_rl_? * (new_rl_full_? - rl_base_?) ...
+            + (1 - c1_new_rl_?) * (&new_rl_full_? - &rl_base_?) ...
+            + shock_new_rl_? ...
+        !! new_rl_? = new_rl_full_?;
+
+
+        "Effective lending conditions spread, ?"
+        new_rl_full_spread_? = new_rl_full_? - rl_base_?;
+
+
+        "Effective lending conditions spread gap, ?"
+        new_rl_full_spread_gap_? = new_rl_full_spread_? - &new_rl_full_spread_? ...
+        !! new_rl_full_spread_gap_? = 0;
+
+!end
+
+
+%% Funding rates by currency of denomination
+
+!for ? = lcy, fcy !do
+
+    !variables
+        "New funding rates, ?" new_rd_?
+        "Stock funding rates, ?" rd_?
+
+
+    !log-variables !all-but
+        rd_?, new_rd_?
+
+
+    !parameters
+
+        "Duration parameter for local currency funding rate, ?" psi_rd_?
+        "S/S Autonomous profit margin in funding rates, ?" ss_rd_apm_?
+
+
+    !parameters(:stress)
+
+        cx_rd_?, cx_new_rd_?
+
+
+    !shocks
+
+        "Shock to stock funding rate, ?" shock_rd_?
+        "Shock to new funding rate, ?" shock_new_rd_?
+
+
+    !equations
+
+        "Stock funding rates, ?"
+        rd_? = ...
+            + (1 - psi_rd_?) * rd_?{-1} ...
+            + psi_rd_? * new_rd_? ...
+            + shock_rd_? ...
+            + (cx_rd + cx_rd_?) * x ...
+        !! rd_? = new_rd_? ;
+
+        "New funding rates, ?"
+        new_rd_? = ...
+            + rp_? + ss_rd_apm_? ...
+            + shock_new_rd_? ...
+            + (cx_new_rd + cx_new_rd_?) * x ...
+        !! new_rd_? = rp_? + ss_rd_apm_? ;
+
+!end
+

@@ -1,0 +1,99 @@
+%% MESSr module: Financial (IFRS9) allowances
+
+
+%% Aggregate
+
+!variables
+
+    "Fwl allowances for credit losses, total" af
+    "Fwl allowances to gross loans ratio, total" af_to_l
+
+    "Bwl allowances" ap
+    "Bwl allowances to gross loans" ap_to_l
+    "Bwl allowances to nonperforming loans" ap_to_ln
+
+
+!log-variables !all-but
+
+    af_to_l
+    ap_to_l
+    ap_to_ln
+
+
+!equations
+
+    af = !for <segments> !do + af_? !end;
+    af_to_l = af / l;
+
+    ap = !for <segments> !do + ap_? !end ;
+    ap_to_l = ap / l;
+    ap_to_ln = ap / ln;
+
+
+
+%% Loan portfolio segments 
+
+!for ? = <segments> !do
+
+    !variables
+
+        "Present value of expected cash flows from unit static pool" pvx_?
+        "Fwl allowances for expected credit losses, ?" af_?
+        "Fwl allowances to gross loans ratio, ?" af_to_l_?
+
+        "Bwl allowances, ?" ap_?
+        "Bwl allowances for performing loans, ?" ap_lp_?
+        "Bwl allowances for nonperforming loans, ?" ap_ln_?
+        "Bwl allowances to gross loans ratio, ?" ap_to_l_?
+        "Bwl allowances to nonperforming loans ratio, ?" ap_to_ln_?
+
+
+    !log-variables !all-but
+
+        af_to_l_?
+        ap_to_l_?
+        ap_to_ln_?
+
+
+    !parameters
+
+        c1_af_?
+
+        "PD for performing loans, ?" pd_lp_?
+        "PD for nonperforming loans, ?" pd_ln_?
+        "LGD for performing loans, ?" lgd_lp_?
+        "LGD for nonperforming loans, ?" lgd_ln_?
+
+
+    !equations
+
+    % Fwl (expected loss based) allowances
+
+        "Allowances for expected credit losses, ?"
+        af_? = l_? - c1_af_? * (pvx_?*lp_? + lnc_?);
+
+        "Present value of expected cash flow from unit static pool, ?"
+        pvx_? = (1 - q_?{+1})/(1 + rl_?)*(theta_lp_? + rl_? + (1 - theta_lp_?)*pvx_?{+1}) ...
+              + (1 - lambda_?) * q_?{+1};
+
+
+    % Bwl (incurred loss based) allowances
+
+        ap_? = ap_lp_? + ap_ln_?;
+
+        ap_ln_? = (pd_ln_? * lgd_ln_?) * ln_?;
+        ap_lp_? = (pd_lp_? * lgd_lp_?) * lp_?;
+
+        ap_to_l_? = ap_? / l_?;
+        ap_to_ln_? = ap_? / ln_?;
+
+
+
+    % Calibration ratios
+
+        "Allowances to gross loans ratio, ?"
+        af_to_l_? = af_? / l_?;
+
+
+!end
+
