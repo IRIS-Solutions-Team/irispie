@@ -4,45 +4,28 @@ Data arrays with row and column names
 
 
 #[
+
 from __future__ import annotations
 
-from typing import (Self, Protocol, )
-from numbers import (Number, )
-from collections.abc import (Iterable, Iterator, )
+from typing import Self, Protocol
+from numbers import Real
+from collections.abc import Iterable, Iterator
 import numpy as _np
 import numpy as _np
 import functools as _ft
 import itertools as _it
 
-from ..series.main import (Series, )
-from ..databoxes.main import (Databox, )
+from ..series.main import Series
+from ..databoxes.main import Databox
 from ..incidences import main as _incidences
 from ..conveniences import iterators as _iterators
-from ..dates import (Period, Span, )
+from ..dates import Period, Span
 from .. import dates as _dates
 from .. import has_variants as _has_variants
 
-from . import _invariants as _invariants
-from . import _variants as _variants
-#]
-
-
-__all__ = (
-    "Dataslate",
-)
-
-
-class SlatableProtocol(Protocol, ):
-    """
-    """
-    max_lag: int
-    max_lead: int
-    databox_names: Iterable[str]
-    databox_validators: dict[str, Callable]
-    fallbacks: dict[str, Real]
-    overwrites: dict[str, Real]
-    output_names: Iterable[str]
-    qid_to_logly: dict[int, bool | None]
+from ._invariants import Invariant
+from ._variants import Variant
+from ._slatables import Slatable
 
 
 class Dataslate(
@@ -57,21 +40,15 @@ class Dataslate(
         "_variants",
     )
 
-    def __init__(self, /, ) -> None:
-        self._invariant = None
-        self._variants = []
-
-    @classmethod
-    def skeleton(
-        klass,
-        other: Self,
-    ) -> Self:
+    def __init__(
+        self, 
+        invariant: Invariant | None = None,
+        variants: Iterable[Variant] | None = None,
+    ) -> None:
+        r"""
         """
-        """
-        self = klass()
-        self._invariant = other._invariant
-        self._variants = []
-        return self
+        self._invariant = invariant
+        self._variants = list(variants) if variants else []
 
     @classmethod
     def nan_from_names_periods(
@@ -89,9 +66,9 @@ class Dataslate(
         num_names = len(names)
         num_periods = len(periods)
         self = klass()
-        self._invariant = _invariants.Invariant(names, periods, **kwargs, )
+        self._invariant = Invariant(names, periods, **kwargs, )
         self._variants = [
-            _variants.Variant.nan_data_array(self._invariant, )
+            Variant.nan_data_array(self._invariant, )
             for _ in range(num_variants, )
         ]
         return self
@@ -107,7 +84,7 @@ class Dataslate(
         """
         self = klass.skeleton(other, )
         self._variants = [
-            _variants.Variant.nan_data_array(self._invariant, )
+            Variant.nan_data_array(self._invariant, )
             for _ in range(num_variants, )
         ]
         return self
@@ -120,8 +97,8 @@ class Dataslate(
         periods: Iterable[Period] | string,
         /,
         num_variants: int = 1,
-        fallbacks: dict[str, Number] | None = None,
-        overwrites: dict[str, Number] | None = None,
+        fallbacks: dict[str, Real] | None = None,
+        overwrites: dict[str, Real] | None = None,
         clip_data_to_base_span: bool = False,
         validators: dict[str, Callable] | None = None,
         **kwargs,
@@ -161,9 +138,9 @@ class Dataslate(
         )
         #
         self = klass()
-        self._invariant = _invariants.Invariant(names, periods, **kwargs, )
+        self._invariant = Invariant(names, periods, **kwargs, )
         self._variants = [
-            _variants.Variant.from_databox_variant(
+            Variant.from_databox_variant(
                 databox_v, self._invariant,
                 fallbacks=fallbacks_v,
                 overwrites=overwrites_v,
@@ -176,7 +153,7 @@ class Dataslate(
     @classmethod
     def from_databox_for_slatable(
         klass,
-        slatable: SlatableProtocol,
+        slatable: Slatable,
         databox: Databox | dict,
         base_span: Iterable[Period],
         /,
@@ -492,7 +469,7 @@ class Dataslate(
 
 
 def _get_extended_span(
-    slatable: SlatableProtocol,
+    slatable: Slatable,
     base_span: Iterable[Period],
     /,
     prepend_initial: bool,

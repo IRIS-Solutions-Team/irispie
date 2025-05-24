@@ -260,14 +260,20 @@ steady_changes = self.get_steady_changes(
         return _incidence.print_tokens(initial_tokens, qid_to_name, qid_to_logly, )
         # [^1] Do not wrap initial conditions in log(...)
 
-    def get_solution_vectors(self, /, ) -> _descriptors.HumanSolutionVectors:
+    def _get_dynamic_solution_vectors(self, ) -> _descriptors.SolutionVectors:
+        r"""
+        FordSimulatableProtocol
+        """
+        return self._invariant.dynamic_descriptor.solution_vectors
+
+    def get_solution_vectors(self, ) -> _descriptors.HumanSolutionVectors:
         """
         Get the solution vectors of the model
         """
         qid_to_name = self.create_qid_to_name()
         qid_to_logly = self.create_qid_to_logly()
         return _descriptors.HumanSolutionVectors(
-            self.solution_vectors,
+            self._dynamic_solution_vectors,
             qid_to_name,
             qid_to_logly,
         )
@@ -288,18 +294,16 @@ steady_changes = self.get_steady_changes(
         for v in self._variants:
             yield v.solution
 
-    def get_singleton_solution(
+    def _get_singleton_solution(
         self,
         deviation: bool = False,
-        #
         vid: int = 0,
     ) -> Solution:
+        r"""
         """
-        """
-        solution = self._variants[vid].solution
         return (
-            solution if not deviation
-            else Solution.deviation_solution(solution, )
+            self._variants[vid].solution if not deviation
+            else self._variants[vid].deviation_solution
         )
 
     def iter_std_name_to_value(self, /, ) -> Iterable[dict[str, Real]]:

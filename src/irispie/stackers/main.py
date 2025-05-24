@@ -1,7 +1,6 @@
-"""
+r"""
 First-order stacked-time system
 """
-
 
 #[
 
@@ -21,8 +20,8 @@ from ..dates import Period
 
 from ._invariants import Invariant
 from ._variants import Variant
-from ._slatable_protocols import Slatable
 from ..fords import covariances as _covariances
+from . import _slatable_protocols as _slatable_protocols
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -41,10 +40,11 @@ MarginalTupe = tuple[_np.ndarray, _np.ndarray]
 
 
 class Stacker(
+    _slatable_protocols.Inlay,
     _has_variants.Mixin,
     _quantities.Mixin,
 ):
-    """
+    r"""
     """
     #[
 
@@ -74,12 +74,6 @@ class Stacker(
             for solution, std_name_to_value, cov_u in zipped_iters
         ]
         return self
-
-    def _access_quantities(self, ) -> list[Quantity]:
-        r"""
-        Implement quantities.AccessQuantitiesProtocol
-        """
-        return self._invariant.quantities
 
     @property
     def max_lag(self, ) -> int:
@@ -120,8 +114,7 @@ class Stacker(
         r"""
         """
         num_variants = self.resolve_num_variants_in_context(num_variants, )
-        slatable = Slatable(
-            self,
+        slatable = self.slatable_for_marginal(
             shocks_from_data=shocks_from_data,
             stds_from_data=stds_from_data,
         )

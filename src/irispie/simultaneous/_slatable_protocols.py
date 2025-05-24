@@ -1,140 +1,38 @@
-"""
-Implement SlatableProtocol
+r"""
+Implement SlatableProtocol for Simultaneous models
 """
 
 
 #[
+
 from __future__ import annotations
 
-import warnings as _wa
-from typing import (TYPE_CHECKING, )
-
-from ..slatables import Slatable
 from ..series.main import Series
 from .. import quantities as _quantities
+from ..dataslates import Slatable
 
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import (Self, )
-    from numbers import (Real, )
+    from numbers import Real
+
 #]
 
 
 _DEFAULT_SHOCK_VALUE = 0.0
 
 
-class _Slatable(Slatable, ):
-    """
-    """
-    #[
+_OUTPUT_KIND_FOR_SIMULATE = (
+    _quantities.ANY_VARIABLE
+    | _quantities.ANY_SHOCK
+)
 
-    @classmethod
-    def for_simulate_and_kalman_filter(
-        klass,
-        model,
-        output_kind: _quantities.Quantity,
-        **kwargs,
-    ) -> Self:
-        r"""
-        """
-        #
-        self = klass(**kwargs, )
-        self.max_lag = model.max_lag
-        self.max_lead = model.max_lead
-        #
-        qid_to_name = model.create_qid_to_name()
-        self.databox_names = tuple(
-            qid_to_name[qid]
-            for qid in sorted(qid_to_name)
-        )
-        #
-        name_to_description = model.create_name_to_description()
-        self.descriptions = tuple(
-            name_to_description.get(name, "", )
-            for name in self.databox_names
-        )
-        #
-        # Databox validation - all variables must be time series
-        variable_names = model.get_names(kind=_quantities.ANY_VARIABLE, )
-        validator = (
-            lambda x: isinstance(x, Series),
-            "Input data for this variable is not a time series",
-        )
-        self.databox_validators = {
-            name: validator
-            for name in variable_names
-        }
-        #
-        # Fallbacks and overwrites
-        self.fallbacks = {}
-        self.overwrites = {}
-        #
-        parameter_name_to_value = model.get_parameters(unpack_singleton=True, )
-        if self.parameters_from_data:
-            self.fallbacks.update(parameter_name_to_value, )
-        else:
-            self.overwrites.update(parameter_name_to_value, )
-        #
-        shock_names = model.get_names(kind=_quantities.ANY_SHOCK, )
-        shock_name_to_value = {
-            name: [_DEFAULT_SHOCK_VALUE, ]*model.num_variants
-            for name in shock_names
-        }
-        if self.shocks_from_data:
-            self.fallbacks.update(shock_name_to_value, )
-        else:
-            self.overwrites.update(shock_name_to_value, )
-        #
-        std_name_to_value = model.get_stds(unpack_singleton=False, )
-        if self.stds_from_data:
-            self.fallbacks.update(std_name_to_value, )
-        else:
-            self.overwrites.update(std_name_to_value, )
-        #
-        self.qid_to_logly = model.create_qid_to_logly()
-        self.output_names = model.get_names(kind=output_kind, )
-        #
-        return self
 
-    @classmethod
-    def for_vary_stds(
-        klass,
-        model,
-        fallback_name_to_value: dict[str, list[Real]] | None,
-        **kwargs,
-    ) -> None:
-        r"""
-        """
-        #
-        self = klass(**kwargs, )
-        self.max_lag = 0
-        self.max_lead = 0
-        #
-        # Databox names
-        std_qids = _quantities.generate_qids_by_kind(
-            model._invariant.quantities,
-            kind=_quantities.ANY_STD,
-        )
-        qid_to_name = model.create_qid_to_name()
-        self.databox_names = tuple(
-            qid_to_name[qid]
-            for qid in sorted(std_qids)
-        )
-        #
-        self.descriptions = None
-        #
-        # Databox validation - all variables must be time series
-        self.databox_validators = None
-        #
-        # Fallbacks and overwrites
-        self.fallbacks = fallback_name_to_value
-        self.overwrites = None
-        #
-        self.qid_to_logly = None
-        self.output_names = self.databox_names
-        #
-        return self
-
-    #]
+_OUTPUT_KIND_FOR_KALMAN_FILTER = (
+    _quantities.ANY_VARIABLE
+    | _quantities.ANY_SHOCK
+    | _quantities.UNANTICIPATED_STD
+    | _quantities.MEASUREMENT_STD
+)
 
 
 class Inlay:
@@ -142,56 +40,120 @@ class Inlay:
     """
     #[
 
-    def get_slatable_for_simulate(self, **kwargs, ) -> _Slatable:
+    def slatable_for_simulate(self, **kwargs, ) -> Slatable:
         r"""
         """
-        output_kind = (
-            _quantities.ANY_VARIABLE
-            | _quantities.ANY_SHOCK
-        )
-        slatable = _Slatable.for_simulate_and_kalman_filter(
-            self,
-            output_kind=output_kind,
-            **kwargs,
-        )
-        #
+        slatable = _slatable_for_simulate_or_kalman_filter(self, **kwargs, )
+        slatable.output_names = self.get_names(kind=_OUTPUT_KIND_FOR_SIMULATE, )
         return slatable
 
-    def get_slatable_for_kalman_filter(self, **kwargs, ) -> _Slatable:
+    def slatable_for_kalman_filter(self, **kwargs, ) -> Slatable:
         r"""
         """
-        output_kind = (
-            _quantities.ANY_VARIABLE
-            | _quantities.ANY_SHOCK
-            | _quantities.UNANTICIPATED_STD
-            | _quantities.MEASUREMENT_STD
-        )
-        slatable = _Slatable.for_simulate_and_kalman_filter(
-            self,
-            output_kind=output_kind,
-            **kwargs,
-        )
-        #
+        slatable = _slatable_for_simulate_or_kalman_filter(self, parameters_from_data=False, **kwargs, )
+        slatable.output_names = self.get_names(kind=_OUTPUT_KIND_FOR_KALMAN_FILTER, )
         return slatable
 
-    def get_slatables_for_vary_stds(self, **kwargs, ) -> tuple[_Slatable, _Slatable]:
+    def slatables_for_vary_stds(self, ) -> tuple[Slatable, Slatable]:
         r"""
         """
+        std_slatable = _slatable_for_vary_stds(self, )
         std_name_to_value = self.get_stds(unpack_singleton=False, )
-        std_slatable = _Slatable.for_vary_stds(
-            self,
-            fallback_name_to_value=std_name_to_value,
-            **kwargs,
-        )
+        std_slatable.fallbacks = std_name_to_value
         #
+        multiplier_slatable = _slatable_for_vary_stds(self, )
         multiplier_name_to_value = { name: 1 for name in std_name_to_value.keys() }
-        multiplier_slatable = _Slatable.for_vary_stds(
-            self,
-            fallback_name_to_value=multiplier_name_to_value,
-            **kwargs,
-        )
+        multiplier_slatable.fallbacks = multiplier_name_to_value
         #
-        return std_slatable, multiplier_slatable
+        return std_slatable, multiplier_slatable,
 
+    #]
+
+
+def _slatable_for_simulate_or_kalman_filter(
+    model,
+    parameters_from_data: bool,
+    shocks_from_data: bool,
+    stds_from_data: bool,
+) -> Slatable:
+    r"""
+    """
+    #[
+    slatable = Slatable()
+    #
+    slatable.max_lag = model.max_lag
+    slatable.max_lead = model.max_lead
+    #
+    qid_to_name = model.create_qid_to_name()
+    slatable.databox_names = tuple(
+        qid_to_name[qid]
+        for qid in sorted(qid_to_name)
+    )
+    #
+    name_to_description = model.create_name_to_description()
+    slatable.descriptions = tuple(
+        name_to_description.get(name, "", )
+        for name in slatable.databox_names
+    )
+    #
+    # Databox validation - all variables must be time series
+    variable_names = model.get_names(kind=_quantities.ANY_VARIABLE, )
+    validator = (
+        lambda x: isinstance(x, Series),
+        "Input data for this variable is not a time series",
+    )
+    slatable.databox_validators = {
+        name: validator
+        for name in variable_names
+    }
+    #
+    # Fallbacks and overwrites
+    slatable.fallbacks = {}
+    slatable.overwrites = {}
+    #
+    parameter_name_to_value = model.get_parameters(unpack_singleton=True, )
+    if parameters_from_data:
+        slatable.fallbacks.update(parameter_name_to_value, )
+    else:
+        slatable.overwrites.update(parameter_name_to_value, )
+    #
+    shock_names = model.get_names(kind=_quantities.ANY_SHOCK, )
+    shock_name_to_value = {
+        name: [_DEFAULT_SHOCK_VALUE, ]*model.num_variants
+        for name in shock_names
+    }
+    if shocks_from_data:
+        slatable.fallbacks.update(shock_name_to_value, )
+    else:
+        slatable.overwrites.update(shock_name_to_value, )
+    #
+    std_name_to_value = model.get_stds(unpack_singleton=False, )
+    if stds_from_data:
+        slatable.fallbacks.update(std_name_to_value, )
+    else:
+        slatable.overwrites.update(std_name_to_value, )
+    #
+    slatable.qid_to_logly = model.create_qid_to_logly()
+    #
+    return slatable
+    #]
+
+
+def _slatable_for_vary_stds(model, ) -> Slatable:
+    r"""
+    """
+    #[
+    slatable = Slatable()
+    std_qids = _quantities.generate_qids_by_kind(
+        model._invariant.quantities,
+        kind=_quantities.ANY_STD,
+    )
+    qid_to_name = model.create_qid_to_name()
+    slatable.databox_names = tuple(
+        qid_to_name[qid]
+        for qid in sorted(std_qids)
+    )
+    slatable.output_names = slatable.databox_names
+    return slatable
     #]
 

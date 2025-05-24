@@ -72,8 +72,8 @@ class FordSimulatableProtocol(Protocol, ):
 
     num_variants: int
     is_singleton: bool
-    solution_vectors: SolutionVectors
-    def get_singleton_solution(self, deviation: bool, ) -> Solution: ...
+    def _get_dynamic_solution_vectors(self, ) -> SolutionVectors: ...
+    def _get_singleton_solution(self, deviation: bool, ) -> Solution: ...
 
     #]
 
@@ -166,18 +166,20 @@ def simulate_flat(
     model_v: FordSimulatableProtocol,
     frame_ds: Dataslate,
     frame: Frame,
-    *,
     deviation: bool,
     ignore_shocks: bool = False,
+    exogenous_impact: _np.ndarray | None = None,
 ) -> _np.ndarray:
     """
     """
     #[
-    solution = model_v.get_singleton_solution(deviation=deviation, )
-    vec = model_v.solution_vectors
+    solution = model_v._get_singleton_solution(deviation=deviation, )
+    vec = model_v._get_dynamic_solution_vectors()
     num_periods = frame_ds.num_periods
-    simulation_columns = tuple(range(*frame.simulation_slice.indices(num_periods, ), ), )
+    simulation_columns = list(range(*frame.simulation_slice.indices(num_periods, ), ), )
     curr_xi_qids, curr_xi_indexes = vec.get_curr_transition_indexes()
+    curr_xi_qids = list(curr_xi_qids)
+    curr_xi_indexes = list(curr_xi_indexes)
     #
     T = solution.T
     P = solution.P
@@ -187,6 +189,9 @@ def simulate_flat(
     data_array = frame_ds.get_data_variant(0, )
     num_xi = len(vec.transition_variables)
     xi_array = _np.full((num_xi, num_periods, ), _np.nan, )
+    # TODO: precalculate all_v_impact as exogenous_impact
+    all_v_impact = None
+    u_array = None
     if not ignore_shocks:
         u_array = _extract_shock_values(data_array, vec.unanticipated_shocks, )
         all_v_impact = _simulate_anticipated_shocks(model_v, frame_ds, frame, )
@@ -196,13 +201,17 @@ def simulate_flat(
     # Capture xi_array for later use in measurement equations
     xi = get_init_xi(data_array, vec.transition_variables, simulation_columns[0], )
     zero_false_init_xi(xi, vec.true_initials, )
+    Pu = P @ u_array
     for t in simulation_columns:
         xi = T @ xi + K
-        if not ignore_shocks:
-            xi += P @ u_array[:, t]
-            xi += all_v_impact[t] if all_v_impact[t] is not None else 0
+        if u_array is not None:
+            xi += Pu[:, t]
+        if all_v_impact is not None and all_v_impact[t] is not None:
+            xi += all_v_impact[t]
+        if exogenous_impact is not None:
+            xi += exogenous_impact[:, t]
         xi_array[:, t] = xi
-        data_array[curr_xi_qids, t] = xi[curr_xi_indexes, ...]
+        data_array[curr_xi_qids, t] = xi[curr_xi_indexes]
     #
     frame_ds.delogarithmize()
     return xi_array
@@ -224,8 +233,8 @@ def _simulate_conditional(
     """
     """
     #[
-    solution = model_v.get_singleton_solution(deviation=deviation, )
-    vec = model_v.solution_vectors
+    solution = model_v._get_singleton_solution(deviation=deviation, )
+    vec = model_v._get_dynamic_solution_vectors()
     periods = frame_ds.periods
     num_periods = frame_ds.num_periods
     squid = Squid.from_squidable(model_v, )
@@ -346,8 +355,8 @@ def _simulate_measurement(
     """
     """
     #[
-    solution = model_v.get_singleton_solution(deviation=deviation, )
-    vec = model_v.solution_vectors
+    solution = model_v._get_singleton_solution(deviation=deviation, )
+    vec = model_v._get_dynamic_solution_vectors()
     num_periods = frame_ds.num_periods
     #
     frame_ds.logarithmize()
@@ -439,8 +448,8 @@ def _generate_initials(
         init_mse = initials[1]
         uknown_init_impact = None
         initials = (
-            _np.pad(initials[0], (0, num_v_endogenized), ),
-            _block_diag(initials[1], _np.diag(std_v_endogenized**2), ),
+            _np.pad(init_med, (0, num_v_endogenized), ),
+            _sp.linalg.block_diag(init_mse, _np.diag(std_v_endogenized**2), ),
             uknown_init_impact,
         )
     #
@@ -642,18 +651,6 @@ def _insert_std_endogenized_unanticipated(
     #
     #]
 
-
-
-def _block_diag(A, B):
-    """
-    Concatenate two square matrices into a block diagonal matrix
-    """
-    #[
-    return _np.block([
-        [A, _np.zeros((A.shape[0], B.shape[1]), )],
-        [_np.zeros((B.shape[0], A.shape[1]), ), B],
-    ])
-    #]
 
 
 def _check_needs_splitting(

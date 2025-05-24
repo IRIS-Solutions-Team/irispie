@@ -14,7 +14,6 @@ from typing import (Any, )
 def exhaust_then_last(
     iterable: Iterable[Any],
     default=None,
-    /,
 ) -> Iterator[Any]:
     """
     Repeat the last element of an iterable indefinitely

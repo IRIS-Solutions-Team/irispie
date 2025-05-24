@@ -22,11 +22,11 @@ if TYPE_CHECKING:
 
 
 __all__ = (
-    "StrVar",
+    "StructVAR",
 )
 
 
-class StrVar(
+class StructVAR(
     _has_invariant.Mixin,
     _has_variants.Mixin,
 ):

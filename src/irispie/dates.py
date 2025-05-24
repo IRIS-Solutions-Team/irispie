@@ -595,8 +595,7 @@ time [Frequency](frequencies.md).
     )
     def from_iso_string(
         iso_string: str,
-        *,
-        frequency: Frequency | None = None,
+        frequency: Frequency = Frequency.DAILY,
     ) -> Self:
         r"""
 ................................................................................
@@ -634,9 +633,9 @@ integers.
 
 ................................................................................
         """
-        frequency = Frequency.DAILY if frequency is None else frequency
         year, month, day = iso_string.split("-", )
-        return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[frequency].from_ymd(int(year), int(month), int(day), )
+        period_constructor = PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[frequency].from_ymd
+        return period_constructor(int(year), int(month), int(day), )
 
     @staticmethod
     @_dm.reference(
@@ -645,8 +644,7 @@ integers.
     )
     def from_python_date(
         python_date: _dt.date,
-        *,
-        frequency: Frequency | None = None,
+        frequency: Frequency = Frequency.DAILY,
     ) -> Self:
         r"""
 ................................................................................
@@ -683,10 +681,9 @@ created based on the time frequency specified.
 
 ................................................................................
         """
-        if frequency is None:
-            frequency = Frequency.DAILY
         year, month, day = python_date.year, python_date.month, python_date.day
-        return PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[frequency].from_ymd(int(year), int(month), int(day), )
+        period_constructor = PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[frequency].from_ymd
+        return period_constructor(int(year), int(month), int(day), )
 
     @staticmethod
     @_dm.reference(
@@ -695,7 +692,6 @@ created based on the time frequency specified.
     )
     def from_sdmx_string(
         sdmx_string: str,
-        *,
         frequency: Frequency | None = None,
     ) -> Self:
         r"""
@@ -2743,6 +2739,32 @@ def refrequent(
     year, month, day = period.to_ymd(*args, **kwargs, )
     new_class = PERIOD_CLASS_FROM_FREQUENCY_RESOLUTION[new_freq]
     return new_class.from_ymd(year, month, day, )
+
+
+def spans_from_short_span(
+    short_span: Iterable[Period],
+    max_lag: int = 0,
+    max_lead: int = 0,
+) -> Span:
+    r"""
+    """
+    short_span = tuple(short_span)
+    short_span = periods_from_until(short_span[0], short_span[-1], )
+    long_span = periods_from_until(short_span[0]+max_lag, short_span[-1]+max_lead, )
+    return short_span, long_span,
+
+
+def spans_from_long_span(
+    long_span: Iterable[Period],
+    max_lag: int = 0,
+    max_lead: int = 0,
+) -> Span:
+    r"""
+    """
+    long_span = tuple(long_span)
+    long_span = periods_from_until(long_span[0], long_span[-1], )
+    short_span = periods_from_until(long_span[0]-max_lag, long_span[-1]-max_lead, )
+    return short_span, long_span,
 
 
 convert_to_new_freq = refrequent

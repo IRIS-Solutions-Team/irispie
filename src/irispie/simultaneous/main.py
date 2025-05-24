@@ -112,29 +112,17 @@ class Simultaneous(
     def __init__(
         self,
         invariant: Invariant | None = None,
-        variants: list[Variant] | None = None,
+        variants: Iterable[Variant] | None = None,
     ) -> None:
-        """
+        r"""
         """
         self._invariant = invariant
-        self._variants = variants or []
-
-    @classmethod
-    def skeleton(
-        klass,
-        other,
-        /,
-    ) -> Self:
-        """
-        """
-        self = klass()
-        self._invariant = other._invariant
-        return self
+        self._variants = list(variants) if variants else []
 
     @classmethod
     @_dm.reference(category="constructor", call_name="Simultaneous.from_file", )
     def from_file(klass, *args, **kwargs, ) -> _sources.SourceMixinProtocol:
-        """
+        r"""
 ················································································
 
 ==Create `Simultaneous` model object from source file or files==
@@ -146,7 +134,7 @@ model object.
 ```
 self = Simultaneous.from_file(
     file_names,
-    /,
+    #
     context=None,
     description="",
 )
@@ -192,7 +180,7 @@ Read and parse a text `string` with a model source code, and create a
 ```
 self = Simultaneous.from_string(
     string,
-    /,
+    #
     context=None,
     description="",
 )
@@ -217,7 +205,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         return _sources.from_string(klass, *args, **kwargs, )
 
-    def copy(self, /, ) -> Self:
+    def copy(self, ) -> Self:
         """
         Create a quasi-deep copy of this model
         """
@@ -229,7 +217,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
     def __getitem__(
         self,
         request: str | int,
-        /,
     ):
         """
         Implement self[i] for variants and self[name] for quantitie values
@@ -243,7 +230,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         self,
         reference: str,
         value: Any,
-        /,
     ) -> None:
         """
         """
@@ -252,7 +238,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         else:
             raise NotImplementedError("Assigning model variants not implemented yet", )
 
-    def __repr__(self, /, ) -> str:
+    def __repr__(self, ) -> str:
         """
         """
         indented = " " * 4
@@ -266,16 +252,9 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
             f"",
         ))
 
-    def _access_quantities(self, /, ) -> Iterable[Quantity]:
-        """
-        Implement quantities.AccessQuantitiesProtocol
-        """
-        return self._invariant.quantities
-
     def get_value(
         self,
         name: str,
-        /,
     ) -> Any:
         """
         """
@@ -307,59 +286,59 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
 
     @property
     @_dm.reference(category="property", )
-    def is_linear(self, /, ) -> bool:
+    def is_linear(self, ) -> bool:
         """==True for models declared as linear=="""
         return self._invariant._flags.is_linear
 
     @property
     @_dm.reference(category="property", )
-    def is_flat(self, /, ) -> bool:
+    def is_flat(self, ) -> bool:
         """==True for models declared as flat=="""
         return self._invariant._flags.is_flat
 
     @property
     @_dm.reference(category="property", )
-    def is_deterministic(self, /, ) -> bool:
+    def is_deterministic(self, ) -> bool:
         """==True for models declared as deterministic=="""
         return self._invariant._flags.is_deterministic
 
     @property
     @_dm.reference(category="property", )
-    def num_transition_equations(self, /, ) -> int:
+    def num_transition_equations(self, ) -> int:
         """==Number of transition equations=="""
         return self._invariant.num_transition_equations
 
     @property
     @_dm.reference(category="property", )
-    def num_measurement_equations(self, /, ) -> int:
+    def num_measurement_equations(self, ) -> int:
         """==Number of measurement equations=="""
         return self._invariant.num_measurement_equations
 
     @property
     @_dm.reference(category="property", )
-    def max_lag(self, /, ) -> int:
+    def max_lag(self, ) -> int:
         """==Maximul lag in the model (negative or zero)=="""
         return self._invariant._min_shift
 
     @property
     @_dm.reference(category="property", )
-    def max_lead(self, /, ) -> int:
+    def max_lead(self, ) -> int:
         """==Maximul lead in the model (positive or zero)=="""
         return self._invariant._max_shift
 
     @property
-    def solution_vectors(self, /, ) -> _descriptors.SolutionVectors:
+    def solution_vectors(self, ) -> _descriptors.SolutionVectors:
         """
         """
         return self._invariant.dynamic_descriptor.solution_vectors
 
     @property
-    def quantities(self, /, ) -> tuple[Quantity]:
+    def quantities(self, ) -> tuple[Quantity]:
         """==Tuple of model quantities=="""
         return self._invariant.quantities
 
     @property
-    def shock_qid_to_std_qid(self, /, ) -> dict[int, int]:
+    def shock_qid_to_std_qid(self, ) -> dict[int, int]:
         """==Dictionary mapping shock quantity id to standard deviation quantity id=="""
         return self._invariant.shock_qid_to_std_qid
 
@@ -389,7 +368,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
 
     def create_some_array(
         self,
-        /,
         deviation: bool,
         **kwargs,
     ) -> _np.ndarray:
@@ -400,7 +378,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         else:
             return self.create_zero_array(**kwargs, )
 
-    def _enforce_assignment_rules(self, variant, /, ) -> None:
+    def _enforce_assignment_rules(self, variant, ) -> None:
         """
         """
         #
@@ -421,7 +399,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
 
     def systemize(
         self,
-        /,
         unpack_singleton: bool = True,
         **kwargs,
     ) -> Iterable[_systems.System]:
@@ -443,7 +420,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         variant: Variant,
         descriptor: _descriptors.Descriptor,
         model_flags: flags.Flags,
-        /,
     ) -> _systems.System:
         """
         Create unsolved first-order system for one variant
@@ -468,7 +444,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
 
     def solve(
         self,
-        /,
         clip_small: bool = False,
         return_info: bool = False,
         unpack_singleton: bool = True,
@@ -503,7 +478,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         variant: Variant,
         vid: int,
         model_flags: flags.Flags,
-        /,
         clip_small: bool,
         tolerance: Real,
     ) -> None:
@@ -535,7 +509,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
     def _choose_plain_equator(
         self,
         equation_switch: Literal["dynamic", "steady", ],
-        /,
     ) -> Callable | None:
         """
         """
@@ -545,7 +518,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
             case "steady":
                 return self._invariant._plain_steady_equator
 
-    def reset_stds(self, /, ) -> None:
+    def reset_stds(self, ) -> None:
         """
         Initialize standard deviations of shocks to default values
         """
@@ -563,7 +536,6 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
     def from_source(
         klass,
         source: ModelSource,
-        /,
         **kwargs,
     ) -> Self:
         """
@@ -573,7 +545,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         self._initialize_variants_from_invariant()
         return self
 
-    def _initialize_variants_from_invariant(self, /, ) -> None:
+    def _initialize_variants_from_invariant(self, ) -> None:
         initial_variant = Variant.from_source(
             self._invariant.quantities,
             self._invariant._flags.is_flat,
@@ -582,15 +554,15 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         self.reset_stds()
         self._enforce_assignment_rules(self._variants[0], )
 
-    def get_context(self, /, ) -> dict[str, Any]:
+    def get_context(self, ) -> dict[str, Any]:
         """
         """
         return self._invariant._context
 
-    def resolve_flags(self, /, **kwargs, ) -> _flags.Flags:
+    def resolve_flags(self, **kwargs, ) -> _flags.Flags:
         return _flags.Flags.update_from_kwargs(self.get_flags(), **kwargs)
 
-    def __getstate__(self, /, ):
+    def __getstate__(self, ):
         """
         """
         return {
@@ -598,14 +570,14 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
             "_variants": self._variants,
         }
 
-    def __setstate__(self, state, /, ):
+    def __setstate__(self, state, ):
         """
         """
         self._invariant = state["_invariant"]
         self._variants = state["_variants"]
 
     @_dm.reference(category="serialize", )
-    def to_portable(self, /, ) -> dict[str, Any]:
+    def to_portable(self, ) -> dict[str, Any]:
         r"""
 ................................................................................
 
@@ -751,7 +723,7 @@ portable = self.to_portable()
 
     @classmethod
     @_dm.reference(category="constructor", )
-    def from_portable(klass, portable, /, ) -> Self:
+    def from_portable(klass, portable, ) -> Self:
         r"""
 ................................................................................
 

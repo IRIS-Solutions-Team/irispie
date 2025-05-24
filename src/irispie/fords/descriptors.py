@@ -319,7 +319,7 @@ class SystemVectors:
             min_shift = actual_min_shifts[token.qid]
             return min_shift <= shift < 0
         self.true_initials = tuple(
-            is_true_initial(t) for t in self.transition_variables
+            is_true_initial(i) for i in self.transition_variables
         )
     #]
 
@@ -332,11 +332,11 @@ class SolutionVectors:
 
     __slots__ = (
         "transition_variables",
-        "true_initials",
         "unanticipated_shocks",
         "anticipated_shocks",
         "measurement_variables",
         "measurement_shocks",
+        "true_initials",
     )
 
     def __init__(self, **kwargs, ) -> None:
@@ -355,7 +355,7 @@ class SolutionVectors:
         """
         self = klass()
         self.transition_variables, self.true_initials = \
-            _solution_vector_from_system_vector(system_vectors.transition_variables, system_vectors.true_initials)
+            _solution_vector_from_system_vector(system_vectors.transition_variables, system_vectors.true_initials, )
         self.unanticipated_shocks = tuple(system_vectors.unanticipated_shocks)
         self.anticipated_shocks = tuple(system_vectors.anticipated_shocks)
         self.measurement_variables = tuple(system_vectors.measurement_variables)

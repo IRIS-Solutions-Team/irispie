@@ -233,11 +233,20 @@ def create_qid_to_kind(quantities: Iterable[Quantity]) -> dict[int, QuantityKind
 
 def generate_quantities_of_kind(
     quantities: Iterable[Quantity],
-    kind: QuantityKind | None,
+    kind: QuantityKind | None = None,
 ) -> Iterable[Quantity]:
     """
     """
     return ( qty for qty in quantities if kind is None or qty.kind in kind )
+
+
+def generate_names_of_kind(
+    quantities: Iterable[Quantity],
+    kind: QuantityKind | None = None,
+) -> Iterable[str]:
+    """
+    """
+    return ( qty.human for qty in quantities if kind is None or qty.kind in kind )
 
 
 def count_quantities_of_kind(
@@ -440,7 +449,7 @@ def from_portable(portables: Iterable[_PortableType], /, ) -> tuple[Quantity, ..
     return tuple( Quantity.from_portable(i) for i in portables )
 
 
-class AccessQuantitiesProtocol(Protocol):
+class AccessQuantitiesProtocol(Protocol, ):
     """
     """
     #[
@@ -451,9 +460,16 @@ class AccessQuantitiesProtocol(Protocol):
 
 
 class Mixin:
-    """
+    r"""
+    Mixin for objects with quantities
     """
     #[
+
+    def _access_quantities(self, ) -> Iterable[Quantity]:
+        r"""
+        Default implementation of the _access_quantities method
+        """
+        return self._invariant.quantities
 
     def get_quantities(
         self: AccessQuantitiesProtocol,

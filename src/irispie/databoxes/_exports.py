@@ -104,7 +104,7 @@ class Inlay:
     #[
 
     @_dm.reference(category="import_export", )
-    def to_csv(
+    def to_csv_file(
         self,
         file_name: str,
         *,
@@ -128,7 +128,7 @@ class Inlay:
 ==Write Databox time series to a CSV file==
 
 
-    self.to_csv(
+    self.to_csv_file(
         file_name,
         *,
         frequency_span=None,
@@ -247,6 +247,9 @@ class Inlay:
         r"""
         """
         return self.to_csv(*args, **kwargs, )
+
+    # Legacy alias
+    to_csv = to_csv_file
 
     @_dm.reference(category="import_export", )
     def to_pickle(

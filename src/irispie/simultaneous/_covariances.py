@@ -14,7 +14,7 @@ import documark as _dm
 from ..incidences import main as _incidences
 from ..fords import covariances as _covariances
 from .. import quantities as _quantities
-from .. import namings as _namings
+from ..namings import DimensionNames
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 class Inlay:
     r"""
     """
+    #[
 
     @_dm.reference(category="parameters", )
     def rescale_stds(
@@ -84,20 +85,30 @@ model based on the provided factor.
         for v in self._variants:
             v.rescale_values("levels", factor, std_qids, )
 
+    def get_acov_dimension_names(self, ) -> DimensionNames:
+        r"""
+        """
+        system_vector, *_ = _get_system_vector(self, )
+        qid_to_name = self.create_qid_to_name()
+        qid_to_logly = self.create_qid_to_logly()
+        names = tuple(
+            _quantities.wrap_logly(qid_to_name[tok.qid], qid_to_logly[tok.qid], )
+            for tok in system_vector
+        )
+        return DimensionNames(rows=names, columns=names, )
+
     def get_acov(
         self,
-        #
         up_to_order: int = 0,
-        return_dimension_names: bool = True,
         unpack_singleton: bool = True,
-    ) -> tuple[list[_np.ndarray] | _np.ndarray, _namings.DimensionNames] | list[_np.ndarray] | _np.ndarray:
+    ) -> tuple[_np.ndarray, ...] | list[tuple[_np.ndarray, ...]]:
         r"""
         Asymptotic autocovariance of model variables
         """
         #
         # Combine vectors of transition and measurement tokens, and select
         # those with zero shift only using a boolex
-        system_vector, boolex_zero_shift = _get_system_vector(self, )
+        _, boolex_zero_shift, = _get_system_vector(self, )
         #
         # Tuple element cov_by_variant[variant_index][order] is an N-by-N
         # covariance matrix
@@ -120,45 +131,12 @@ model based on the provided factor.
             unpack_singleton=unpack_singleton,
         )
         #
-        if return_dimension_names:
-            dimension_names = _get_dimension_names(self, system_vector, )
-            return cov_by_variant, dimension_names
-        else:
-            return cov_by_variant
+        return cov_by_variant
 
-    def get_acorr(
-        self,
-        #
-        acov: tuple[_np.ndarray, ..., tuple[str], tuple[str]] | None = None,
-        up_to_order: int = 0,
-        unpack_singleton: bool = True,
-        return_dimension_names: bool = True,
-    ) -> tuple[list[_np.ndarray] | _np.ndarray, _namings.DimensionNames] | list[_np.ndarray] | _np.ndarray:
+    def get_acorr(self, *args, **kwargs, ):
         r"""
-        Asymptotic autocorrelation of model variables
         """
-        acov_by_variant = acov
-        if acov_by_variant is None:
-            acov_by_variant, *_ = self.get_acov(
-                up_to_order=up_to_order,
-                return_dimension_names=False,
-                unpack_singleton=False,
-            )
-        acov_by_variant = self.repack_singleton(acov_by_variant, )
-        acorr_by_variant = [
-            _covariances.acorr_from_acov(i)
-            for i in acov_by_variant
-        ]
-        acorr_by_variant = self.unpack_singleton(
-            acorr_by_variant,
-            unpack_singleton=unpack_singleton,
-        )
-        if return_dimension_names:
-            system_vector, *_ = _get_system_vector(self, )
-            dimension_names = _get_dimension_names(self, system_vector, )
-            return acorr_by_variant, dimension_names,
-        else:
-            return acorr_by_variant
+        return _covariances.get_acorr_by_variant(self, *args, **kwargs, )
 
     def getv_autocov(
         self,
@@ -267,6 +245,8 @@ model based on the provided factor.
         stds = self.getv_std_w(variant, )
         return _np.diag(stds**2, )
 
+    #]
+
 
 def _stack_singleton(x: tuple[_np.ndarray], ) -> _np.ndarray:
     return x[0]
@@ -285,16 +265,9 @@ _STACK_FUNC_FACTORY = {
 def _get_dimension_names(
     self,
     system_vector: tuple[_incidences.Token, ...],
-) -> tuple[tuple[str, ...], tuple[str, ...]]:
+) -> DimensionNames:
     r"""
     """
-    qid_to_name = self.create_qid_to_name()
-    qid_to_logly = self.create_qid_to_logly()
-    names = tuple(
-        _quantities.wrap_logly(qid_to_name[tok.qid], qid_to_logly[tok.qid], )
-        for tok in system_vector
-    )
-    return _namings.DimensionNames(rows=names, columns=names, )
 
 
 def _get_system_vector(self, ) -> tuple[tuple[_incidences.Token, ...], tuple[bool, ...]]:
@@ -305,7 +278,7 @@ def _get_system_vector(self, ) -> tuple[tuple[_incidences.Token, ...], tuple[boo
         + self._invariant.dynamic_descriptor.solution_vectors.measurement_variables
     boolex_zero_shift = tuple(tok.shift == 0 for tok in system_vector)
     system_vector = tuple(_it.compress(system_vector, boolex_zero_shift, ))
-    return system_vector, boolex_zero_shift
+    return system_vector, boolex_zero_shift,
 
 
 def _retrieve_stds(self, variant, shocks, ) -> _np.ndarray:

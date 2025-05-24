@@ -142,7 +142,8 @@ class SingleFrame(Frame, ):
         frame_ds: Dataslate,
         model: Slatable,
     ) -> None:
-        """
+        r"""
+        No pruning, keep unanticipated shocks
         """
         pass
 

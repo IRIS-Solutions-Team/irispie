@@ -17,7 +17,6 @@ from ..databoxes.main import Databox
 from ..dataslates.main import Dataslate
 from ..fords import solutions as _solutions
 from ..plans.simulation_plans import SimulationPlan
-
 from ..fords import simulators as _ford_simulator
 from ..period_by_period import simulators as _period_by_period_simulator
 from ..stacked_time import simulators as _stacked_time_simulator
@@ -51,7 +50,6 @@ class Inlay:
         self,
         in_db: Databox,
         span: Iterable[Period],
-        /,
         *,
         plan: SimulationPlan | None = None,
         method: Literal["first_order", "period_by_period", "period", "stacked_time", "stacked", ] = "first_order",
@@ -69,7 +67,7 @@ class Inlay:
         unpack_singleton: bool = True,
         return_info: bool = False,
         **kwargs,
-    ) -> tuple[Databox, _Info]:
+    ) -> Databox | tuple[Databox, _Info]:
         """
         """
 
@@ -84,7 +82,7 @@ class Inlay:
             plan = None
             extra_databox_names = None
 
-        slatable = self.get_slatable_for_simulate(
+        slatable = self.slatable_for_simulate(
             shocks_from_data=shocks_from_data,
             stds_from_data=stds_from_data,
             parameters_from_data=parameters_from_data,

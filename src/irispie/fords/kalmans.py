@@ -61,7 +61,7 @@ class KalmanFilterableProtocol(Protocol, ):
 
     is_singleton: bool
 
-    def get_singleton_solution(self, deviation: bool = False, ) -> Solution: ...
+    def _get_singleton_solution(self, deviation: bool = False, ) -> Solution: ...
 
     def get_cov_unanticipated_shocks(self, ) -> _np.ndarray: ...
 
@@ -593,7 +593,7 @@ class Mixin:
         #
         shocks_from_data: bool = False,
         stds_from_data: bool = False,
-        parameters_from_data: bool = False,
+        initials_from_data: bool = False,
         #
         prepend_initial: bool = False,
         append_terminal: bool = False,
@@ -759,10 +759,9 @@ the time series data.
 
         num_variants = self.resolve_num_variants_in_context(num_variants, )
 
-        slatable = self.get_slatable_for_kalman_filter(
+        slatable = self.slatable_for_kalman_filter(
             shocks_from_data=shocks_from_data,
             stds_from_data=stds_from_data,
-            parameters_from_data=parameters_from_data,
         )
 
         input_ds = Dataslate.from_databox_for_slatable(
@@ -839,7 +838,7 @@ the time series data.
                 f"Singularity in prediction MSE matrix in {variant_header}",
             ) if check_singularity else None
 
-            solution_v = self_v.get_singleton_solution(deviation=deviation, )
+            solution_v = self_v._get_singleton_solution(deviation=deviation, )
             data_array = input_ds_v.get_data_variant()
 
             #

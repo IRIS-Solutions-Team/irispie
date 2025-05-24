@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from typing import Self, Sequence, Iterable, Any, Callable, Literal
     from numbers import Real
     from types import EllipsisType
-    from .main import Series
+    from . import Series
     from ..ez_plotly import PlotlyDateAxisModeType
 
 #]

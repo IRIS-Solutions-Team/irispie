@@ -1,4 +1,4 @@
-"""
+r"""
 Sequential models
 """
 
@@ -7,7 +7,6 @@ Sequential models
 
 from __future__ import annotations
 
-from typing import (TYPE_CHECKING, )
 import numpy as _np
 import copy as _co
 import os as _os
@@ -16,25 +15,26 @@ import documark as _dm
 from .. import equations as _equations
 from .. import quantities as _quantities
 from .. import sources as _sources
-from ..incidences.main import (Token, )
+from ..incidences.main import Token
 from ..incidences import main as _incidences
 from ..incidences import blazer as _blazer
 from ..explanatories import main as _explanatories
 from .. import has_variants as _has_variants
 
-from . import _invariants as _invariants
-from . import _variants as _variants
 from . import _simulate as _simulate
 from . import _assigns as _assigns
 from . import _get as _get
-from . import _slatable_protocol as _slatable_protocol
+from . import _slatable_protocols as _slatable_protocols
 from . import _plannable_protocols as _plannable_protocols
+from ._invariants import Invariant
+from ._variants import Variant
 
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import (Self, Any, )
-    from collections.abc import (Iterable, Iterator, )
-    from ..equations import (Equation, )
-    from ..quantities import (Quantity, )
+    from typing import Self, Any
+    from collections.abc import Iterable, Iterator
+    from ..equations import Equation
+    from ..quantities import Quantity
 
 #]
 
@@ -59,7 +59,7 @@ class Sequential(
     _simulate.Inlay,
     _assigns.Inlay,
     _get.Inlay,
-    _slatable_protocol.Inlay,
+    _slatable_protocols.Inlay,
     _plannable_protocols.Inlay,
     #
     _has_variants.Mixin,
@@ -86,12 +86,13 @@ and period-by-period.
 
     def __init__(
         self,
-        /,
+        invariant: Invariant | None = None,
+        variants: Iterable[Variant] | None = None,
     ) -> None:
+        r"""
         """
-        """
-        self._invariant = _invariants.Invariant()
-        self._variants = []
+        self._invariant = Invariant()
+        self._variants = list(variants) if variants else []
 
     @_dm.reference(category="manipulation", )
     def copy(self, /, ) -> Self:
@@ -121,18 +122,6 @@ other = self.copy()
 ......................................................................
         """
         return _co.deepcopy(self, )
-
-    @classmethod
-    def skeleton(
-        klass,
-        other,
-        /,
-    ) -> Self:
-        """
-        """
-        self = klass()
-        self._invariant = other._invariant
-        return self
 
     @classmethod
     @_dm.reference(category="constructor", call_name="Sequential.from_file", )
@@ -234,8 +223,8 @@ See [`Sequential.from_file`](#sequentialfrom_file) for return values.
         """
         """
         self = klass()
-        self._invariant = _invariants.Invariant.from_equations(equations, quantities, **kwargs, )
-        initial_variant = _variants.Variant(self._invariant.parameter_names, )
+        self._invariant = Invariant.from_equations(equations, quantities, **kwargs, )
+        initial_variant = Variant(self._invariant.parameter_names, )
         self._variants = [ initial_variant ]
         return self
 

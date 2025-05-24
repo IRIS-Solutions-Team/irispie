@@ -45,7 +45,7 @@ class Mixin:
 
         base_dates = tuple(span, )
 
-        std_slatable, multiplier_slatable = self.get_slatables_for_vary_stds()
+        std_slatable, multiplier_slatable, = self.slatables_for_vary_stds()
 
         final_ds = Dataslate.from_databox_for_slatable(
             std_slatable, overwrite_db or Databox(), base_dates,

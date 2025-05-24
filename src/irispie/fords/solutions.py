@@ -123,11 +123,59 @@ class Solution:
         "measurement_vector_stability",
     )
 
-    def __init__(self, ) -> None:
+    def __init__(
+        self,
+        T: _np.ndarray | None = None,
+        P: _np.ndarray | None = None,
+        R: _np.ndarray | None = None,
+        K: _np.ndarray | None = None,
+        Z: _np.ndarray | None = None,
+        H: _np.ndarray | None = None,
+        D: _np.ndarray | None = None,
+        Ta: _np.ndarray | None = None,
+        Pa: _np.ndarray | None = None,
+        Ra: _np.ndarray | None = None,
+        Ka: _np.ndarray | None = None,
+        Za: _np.ndarray | None = None,
+        Ua: _np.ndarray | None = None,
+        J: _np.ndarray | None = None,
+        Ru: _np.ndarray | None = None,
+        X: _np.ndarray | None = None,
+        Xa: _np.ndarray | None = None,
+        square_expansion: list[_np.ndarray] | None = None,
+        triangular_expansion: list[_np.ndarray] | None = None,
+        eigenvalues: tuple[Real, ...] | None = None,
+        eigenvalues_stability: tuple[EigenvalueKind, ...] | None = None,
+        system_stability: SystemStabilityKind | None = None,
+        transition_vector_stability: tuple[EigenvalueKind, ...] | None = None,
+        measurement_vector_stability: tuple[EigenvalueKind, ...] | None = None,
+    ) -> None:
+        r"""
         """
-        """
-        for name in self.__slots__:
-            setattr(self, name, None, )
+        self.T = T
+        self.P = P
+        self.R = R
+        self.K = K
+        self.Z = Z
+        self.H = H
+        self.D = D
+        self.Ta = Ta
+        self.Pa = Pa
+        self.Ra = Ra
+        self.Ka = Ka
+        self.Za = Za
+        self.Ua = Ua
+        self.J = J
+        self.Ru = Ru
+        self.X = X
+        self.Xa = Xa
+        self.square_expansion = square_expansion
+        self.triangular_expansion = triangular_expansion
+        self.eigenvalues = eigenvalues
+        self.eigenvalues_stability = eigenvalues_stability
+        self.system_stability = system_stability
+        self.transition_vector_stability = transition_vector_stability
+        self.measurement_vector_stability = measurement_vector_stability
 
     @classmethod
     def from_system(
@@ -197,8 +245,7 @@ class Solution:
     def deviation_solution(
         klass,
         other: Self,
-        /,
-    ) -> Solution:
+    ) -> Self:
         """
         Create a shallow copy of the solution, and replace constant vectors with
         zeros
@@ -206,9 +253,12 @@ class Solution:
         self = klass()
         for n in self.__slots__:
             setattr(self, n, getattr(other, n, None), )
-        self.K = _np.zeros_like(other.K, )
-        self.Ka = _np.zeros_like(other.Ka, )
-        self.D = _np.zeros_like(other.D, )
+        if self.K is not None:
+            self.K = _np.zeros_like(other.K, )
+        if self.Ka is not None:
+            self.Ka = _np.zeros_like(other.Ka, )
+        if self.D is not None:
+            self.D = _np.zeros_like(other.D, )
         return self
 
     @property
@@ -350,7 +400,6 @@ class Solution:
         self,
         is_stable_root: Callable[[Real], bool],
         is_unit_root: Callable[[Real], bool],
-        /,
     ) -> None:
         self.eigenvalues_stability = tuple(
             _classify_eigenvalue_stability(v, is_stable_root, is_unit_root, )
@@ -360,7 +409,6 @@ class Solution:
     def _classify_system_stability(
         self,
         num_forwards: int,
-        /,
     ) -> None:
         num_unstable = self.eigenvalues_stability.count(EigenvalueKind.UNSTABLE)
         if num_unstable == num_forwards:
@@ -372,7 +420,6 @@ class Solution:
 
     def _classify_transition_vector_stability(
         self,
-        /,
         tolerance: float = 1e-12,
     ) -> None:
         self.transition_vector_stability \
@@ -384,7 +431,6 @@ class Solution:
 
     def _classify_measurement_vector_stability(
         self,
-        /,
         tolerance: float = 1e-12,
     ) -> None:
         self.measurement_vector_stability \
@@ -396,14 +442,14 @@ class Solution:
     #]
 
 
-def left_div(A, B):
+def left_div(A: _np.ndarray, B: _np.ndarray, ) -> _np.ndarray:
     r"""
     Solve A \ B = pinv(A) @ B or inv(A) @ B
     """
     return _np.linalg.lstsq(A, B, rcond=None)[0]
 
 
-def right_div(B, A):
+def right_div(B: _np.ndarray, A: _np.ndarray, ) -> _np.ndarray:
     r"""
     Solve B / A which is (A' \ B')'
     """

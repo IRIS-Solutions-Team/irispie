@@ -26,7 +26,7 @@ class Variant:
         "data",
     )
 
-    def __init__(self, /, ) -> None:
+    def __init__(self, ) -> None:
         """
         """
         self.data = None
@@ -36,7 +36,6 @@ class Variant:
         klass,
         databox_v: Databox | dict,
         invariant: _invariants.Invariant,
-        /,
         fallbacks: dict[str, Real] | None = None,
         overwrites: dict[str, Real] | None = None,
         clip_data_to_base_span: bool = False,
@@ -65,7 +64,6 @@ class Variant:
     def nan_data_array(
         klass,
         invariant: _invariants.Invariant,
-        /,
     ) -> Self:
         """
         """
@@ -73,7 +71,7 @@ class Variant:
         self.data = _np.full((invariant.num_names, invariant.num_periods, ), _np.nan, dtype=_np.float64, )
         return self
 
-    def copy(self, /) -> Self:
+    def copy(self, ) -> Self:
         """
         """
         new = type(self)()
@@ -84,7 +82,6 @@ class Variant:
         self,
         other: Self,
         columns: Iterable[int],
-        /,
     ) -> None:
         """
         """
@@ -94,7 +91,6 @@ class Variant:
     def remove_periods_from_start(
         self,
         num_periods_to_remove: int,
-        /,
     ) -> None:
         """
         """
@@ -104,7 +100,6 @@ class Variant:
     def remove_periods_from_end(
         self,
         num_periods_to_remove: int,
-        /,
     ) -> None:
         """
         """
@@ -136,7 +131,7 @@ class Variant:
             columns = ...
         return self.data[record_id, columns]
 
-    def iter_data(self, /, ) -> _np.ndarray:
+    def iter_data(self, ) -> _np.ndarray:
         """
         """
         return iter(self.data)
@@ -145,7 +140,6 @@ class Variant:
         self,
         values: _np.ndarray,
         record_id: int,
-        /,
         columns: slice | Iterable[int] | None = None,
     ) -> None:
         """
@@ -159,7 +153,6 @@ class Variant:
         self,
         fallbacks: dict[int, Real] | None,
         invariant: _invariants.Invariant,
-        /,
     ) -> None:
         """
         """
@@ -177,7 +170,6 @@ class Variant:
         self,
         overwrites: dict[str, Real] | None,
         invariant: _invariants.Invariant,
-        /,
     ) -> None:
         """
         """
@@ -190,7 +182,7 @@ class Variant:
             values[:] = _np.float64(overwrites[name])
             self.store_record(values, record_id, )
 
-    def logarithmize(self, logly_indexes: tuple[int], /, ) -> None:
+    def logarithmize(self, logly_indexes: tuple[int], ) -> None:
         r"""
         Logarithmize data flagged as logarithmic
         """
@@ -204,7 +196,7 @@ class Variant:
         if logly_indexes:
             self.data[logly_indexes, :] = _np.exp(self.data[logly_indexes, :])
 
-    def rescale_data(self, factor: Real, /, ) -> None:
+    def rescale_data(self, factor: Real, ) -> None:
         r"""
         Rescale data by a common factor
         """

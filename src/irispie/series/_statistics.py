@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Self
     from numbers import Real
-    from .main import Series, AxisType
+    from . import Series, AxisType
 
 #]
 

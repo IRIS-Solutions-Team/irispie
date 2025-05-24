@@ -22,8 +22,8 @@ class HasVariantsProtocol:
     """
     #[
 
-    _invariant: Any
-    _variants: list
+    _invariant: Any | None
+    _variants: list | None
 
     #]
 
@@ -34,21 +34,43 @@ class Mixin:
     """
     #[
 
+    @classmethod
+    def skeleton(
+        klass,
+        other,
+    ) -> Self:
+        r"""
+        """
+        return klass(invariant=other._invariant, )
+
+    def select_variants(
+        self,
+        selectors: Iterable[bool] | None = None,
+        indices: Iterable[int] | None = None,
+    ) -> None:
+        if (selectors is None) + (indices is None) != 1:
+            raise Exception("Either selectors or indices must be specified, but not both.")
+        if selectors is not None:
+            new_variants = [ v for v, s in zip(self._variants, selectors) if s ]
+        if indices is not None:
+            new_variants = [ self._variants[i] for i in indices ]
+        self._variants = new_variants
+
     @property
-    def num_variants(self, /, ) -> int:
+    def num_variants(self, ) -> int:
         """
         Number of alternative variants within this model
         """
         return len(self._variants)
 
     @property
-    def is_singleton(self, /, ) -> bool:
+    def is_singleton(self, ) -> bool:
         """
         True for models with only one variant
         """
         return is_singleton(self.num_variants, )
 
-    def new_with_shallow_variants(self, /, ) -> Self:
+    def new_with_shallow_variants(self, ) -> Self:
         """
         Create a new model with pointers to invariant and variants of this model
         """
@@ -70,10 +92,10 @@ class Mixin:
         elif new_num > self.num_variants:
             self.expand_num_variants(new_num, )
 
-    def shrink_num_variants(self, new_num: int, /, ) -> None:
+    def shrink_num_variants(self, new_num: int, ) -> None:
+        r"""
         """
-        """
-        if new_num<1:
+        if new_num < 1:
             raise Exception('Number of variants must be one or more')
         self._variants = (
             self._variants[0:new_num]
@@ -81,21 +103,23 @@ class Mixin:
             else self._variants
         )
 
-    def expand_num_variants(self, new_num: int, /, ) -> None:
+    def expand_num_variants(self, new_num: int, ) -> None:
+        r"""
         """
-        """
+        if new_num < 1:
+            raise Exception('Number of variants must be one or more')
         for i in range(self.num_variants, new_num):
             self._variants.append(self._variants[-1].copy(), )
 
-    def resolve_num_variants_in_context(self, custom_num_variants: int | None, /, ) -> int:
+    def resolve_num_variants_in_context(self, custom_num_variants: int | None, ) -> int:
         """
         """
-        return \
-            custom_num_variants \
-            if custom_num_variants is not None \
-            else self.num_variants
+        if custom_num_variants is None:
+            return self.num_variants
+        else:
+            return custom_num_variants
 
-    def broadcast_variants(self, other: Self, /, ) -> None:
+    def broadcast_variants(self, other: Self, ) -> None:
         """
         """
         if self.num_variants < other.num_variants:
@@ -104,49 +128,32 @@ class Mixin:
     def get_variant(
         self,
         vids: Iterable[int] | int | slice | EllipsisType,
-        /,
     ) -> Self:
-        new = type(self).skeleton(self, )
-        new._invariant = self._invariant
-        variant_iter = _resolve_vids(self, vids, )
-        new._variants = [ self._variants[i] for i in variant_iter ]
+        new = self.skeleton(self, )
+        new._variants = [ self._variants[i] for i in _resolve_vids(self, vids, ) ]
         return new
 
-    def iter_variants(
-        self,
-        /,
-    ) -> Iterator[Self]:
-        """
+    def iter_variants(self, ) -> Iterator[Self]:
+        r"""
         """
         return _iterators.exhaust_then_last(self, )
 
-    def iter_extract_variants(self, /, ) -> Iterator:
+    def iter_extract_variants(self, ) -> Iterator:
         """
         """
         return _iterators.exhaust_then_last(self._variants, )
 
-    def _shallow_with_single_variant(self: _T, variant, /, ) -> _T:
-        """
-        """
-        new = type(self).skeleton(self, )
-        new._variants = [ variant ]
-        return new
-
-    def iter_own_variants(
-        self,
-        /,
-    ) -> Iterator[Self]:
-        """
+    def iter_own_variants(self, ) -> Iterator[Self]:
+        r"""
         Iterate over alternative variants of this object
         """
         for v in self._variants:
-            yield self._shallow_with_single_variant(v, )
+            new = self.skeleton(self, )
+            new._variants = [v, ]
+            yield new
 
-    def __iter__(
-        self,
-        /,
-    ) -> Iterator[Self]:
-        """
+    def __iter__(self, ) -> Iterator[Self]:
+        r"""
         Iterate over alternative variants of this object
         """
         return self.iter_own_variants()
@@ -158,7 +165,7 @@ class Mixin:
     ) -> list[_T]:
         """
         """
-        return repack_singleton(anything, self.is_singleton, )
+        return [anything, ] if not isinstance(anything, list) else anything
 
     def unpack_singleton(
         self: HasVariantsProtocol,
@@ -231,12 +238,6 @@ def iter_own_variants(anything: _T, ) -> Iterator[_T]:
         return anything
     else:
         return [anything, ]
-
-
-def repack_singleton(anything: _T, is_singleton: bool, ) -> list[_T]:
-    """
-    """
-    return [anything] if is_singleton else anything
 
 
 def unpack_singleton(

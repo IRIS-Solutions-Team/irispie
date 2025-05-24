@@ -4,17 +4,19 @@ Handle exceptions and warnings
 
 
 #[
+
 from __future__ import annotations
 
-from typing import (TypeAlias, Literal, Callable, NoReturn, )
-from collections.abc import (Iterable, )
+from typing import Literal, Callable, NoReturn
+from collections.abc import Iterable
 import warnings as _wa
 import os as _os
+
 #]
 
 
 _WARN_SKIPS = (_os.path.dirname(__file__), )
-HOW: TypeAlias = Literal["error", "warning", "silent"]
+HOW = Literal["error", "warning", "silent"]
 
 
 _PLAIN_PREFIX = ""

@@ -24,36 +24,41 @@ def _simulate_anticipated_shocks(
     """
     """
     #[
-    if model_v.num_variants != 1:
-        raise ValueError("Simulator requires a singleton simulatable object")
     #
-    solution = model_v.get_solution()
-    solution_vectors = model_v.solution_vectors
+    # Preallocate impact with None, and return immediately if no anticipated
+    # shocks are present
+    impact = [None] * dataslate_v.num_periods
+    vec = model_v._get_dynamic_solution_vectors()
+    if not vec.anticipated_shocks:
+        return impact
+    #
+    # Deviation is irrelevant for the impact of anticipated shocks
+    solution = model_v._get_singleton_solution()
     base_columns = dataslate_v.base_columns
     first_column = frame.start - dataslate_v.periods[0]
     last_column = frame.simulation_end - dataslate_v.periods[0]
     columns_to_run = tuple(range(first_column, last_column+1))
     working_data = dataslate_v.get_data_variant(0, )
-    anticipated_shocks = extract_shock_values(working_data, solution_vectors.anticipated_shocks, )
     #
-    impact = [None] * dataslate_v.num_periods
-    column_incidence = _np.any(anticipated_shocks[:, columns_to_run], axis=0, ).tolist()
+    v_array = extract_shock_values(
+        working_data,
+        vec.anticipated_shocks,
+    )
+    #
+    column_incidence = _np.any(v_array[:, columns_to_run], axis=0, ).tolist()
     if any(column_incidence, ):
         #
         # Last shock is at t+forward
-        forward = len(column_incidence) - column_incidence[::-1].index(True, ) - 1
+        last_index_reversed = column_incidence[::-1].index(True)
+        forward = len(column_incidence) - last_index_reversed - 1
         Rx = get_solution_expansion(solution, forward, )
         #
         # Last column within dataslate_v
-        last_ant_column = (
-            first_column + forward
-            if forward is not None
-            else first_column - 1
-        )
+        last_ant_column = first_column + forward
         #
         for t in columns_to_run:
             impact[t] = sum(
-                Rx[k] @ anticipated_shocks[:, s]
+                Rx[k] @ v_array[:, s]
                 for k, s in enumerate(range(t, last_ant_column+1))
             )
     return impact

@@ -4,6 +4,8 @@
 ./tests/sequential
 ./tests/simultaneous
 ./tests/plotly
+./tests/vars
+./tests/progress_bars
 -v
 -ra
 

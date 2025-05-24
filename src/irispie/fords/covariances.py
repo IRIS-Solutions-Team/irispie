@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import numpy as _np
 import scipy as _sp
+import warnings as _wa
 from typing import Callable
 from numbers import Real
 
@@ -119,11 +120,9 @@ def get_cov_triangular_00(
     """
     #[
     # Triangular transition equations
-    #
     cov_alpha_00 = get_cov_alpha_00(solution, cov_u, )
     #
     # Measurement equations
-    #
     num_unit_roots = solution.num_unit_roots
     cov_alpha_stable = cov_alpha_00[num_unit_roots:, num_unit_roots:]
     Za_stable = solution.Za_stable
@@ -132,12 +131,10 @@ def get_cov_triangular_00(
     cov_y_00 = Za_stable @ cov_alpha_stable @ Za_stable.T + sigma_w
     #
     # Cross-covariance between transition and measurement equations
-    #
     Za = solution.Za
     cov_alpha_y_00 = cov_alpha_00 @ Za.T
     #
     # Full covariance matrix based on stable alpha
-    #
     return _np.block([
         [cov_alpha_00, cov_alpha_y_00],
         [cov_alpha_y_00.T, cov_y_00],
@@ -156,7 +153,7 @@ def get_cov_alpha_00(
     num_unit_roots = solution.num_unit_roots
     Ta_stable = solution.Ta_stable
     Pa_stable = solution.Pa_stable
-    sigma_u = Pa_stable @ cov_u @ Pa_stable.T
+    sigma_u = Pa_stable @ cov_u @ Pa_stable.T if Pa_stable is not None else cov_u
     cov_alpha_stable = _sp.linalg.solve_discrete_lyapunov(Ta_stable, sigma_u, )
     cov_alpha_00 = _np.zeros(solution.Ta.shape, dtype=float, )
     cov_alpha_00[num_unit_roots:, num_unit_roots:] = cov_alpha_stable
@@ -170,8 +167,6 @@ def acorr_from_acov(
     """
     """
     #[
-    acorr_by_order = [None, ] * len(acov_by_order)
-    #
     # Scale matrix has inv_std[i]*inv_std[j]
     scale_matrix = _get_scale_matrix(acov_by_order[0], )
     #
@@ -194,9 +189,9 @@ def _get_scale_matrix(
     """
     #[
     inv_std = _np.diag(cov).copy()
-    index_positive = _np.abs(inv_std) > 0
-    inv_std[index_positive] = 1 / _np.sqrt(inv_std[index_positive])
-    inv_std[~index_positive] = 0
+    where_positive = inv_std > 0
+    inv_std[where_positive] = 1 / _np.sqrt(inv_std[where_positive])
+    inv_std[~where_positive] = 0
     return inv_std.reshape(-1, 1, ) @ inv_std.reshape(1, -1, )
     #]
 
@@ -323,6 +318,76 @@ def cov_from_std(
         std = _np.maximum(std, 0)
     return _np.diag(std**2, )
     #]
+
+
+def corr_std_from_cov(
+    cov: _np.ndarray,
+    trim_negative: bool = True,
+) -> tuple[_np.ndarray, _np.ndarray]:
+    r"""
+    """
+    #[
+    std = std_from_cov(cov, trim_negative=trim_negative, )
+    corr = cov / std.reshape(-1, 1, ) / std.reshape(1, -1, )
+    return corr, std,
+    #]
+
+
+def cov_from_corr_std(
+    corr: _np.ndarray,
+    std: _np.ndarray,
+    trim_negative: bool = True,
+) -> _np.ndarray:
+    r"""
+    """
+    #[
+    if trim_negative:
+        std = _np.maximum(std, 0)
+    return corr * std.reshape(-1, 1, ) * std.reshape(1, -1, )
+    #]
+
+
+def autocorr_std_from_autocov(
+    autocov: Iterable[_np.ndarray, ...],
+    trim_negative: bool = True,
+) -> tuple[_np.ndarray, _np.ndarray]:
+    r"""
+    """
+    #[
+    std = std_from_cov(autocov[0], trim_negative=trim_negative, )
+    corr = tuple(
+        i / std.reshape(-1, 1, ) / std.reshape(1, -1, )
+        for i in autocov
+    )
+    return autocorr, std,
+    #]
+
+
+def get_acorr_by_variant(
+    self,
+    acov: tuple[_np.ndarray, ...] | list[tuple[_np.ndarray, ...]] | None = None,
+    up_to_order: int = 0,
+    unpack_singleton: bool = True,
+) -> tuple[_np.ndarray, ...] | list[tuple[_np.ndarray, ...]]:
+    r"""
+    """
+    if acov is None:
+        acov_by_variant = self.get_acov(
+            up_to_order=up_to_order,
+            unpack_singleton=False,
+        )
+    else:
+        acov_by_variant = self.repack_singleton(acov, )
+    #
+    acorr_by_variant = [
+        acorr_from_acov(i)
+        for i in acov_by_variant
+    ]
+    acorr_by_variant = self.unpack_singleton(
+        acorr_by_variant,
+        unpack_singleton=unpack_singleton,
+    )
+    return acorr_by_variant
 
 
 _DEFAULT_NUMPY_RNG = _np.random.default_rng()

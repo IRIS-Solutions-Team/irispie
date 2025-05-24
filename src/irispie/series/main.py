@@ -50,7 +50,10 @@ from ._categories import CATEGORIES
 #
 
 
-__all__ = ["Series", "shift", ]
+__all__ = (
+    "Series",
+    "shift",
+)
 
 
 Dates = Period | Iterable[Period] | Span | EllipsisType | None
@@ -1433,6 +1436,5 @@ _SERIES_POPULATOR = {
 for n in ("shift", "redate", "underlay", "overlay", ):
     code = FUNC_STRING.format(n=n, )
     exec(code, globals(), locals(), )
-    __all__.append(n)
-
+    __all__ += (n, )
 

@@ -49,8 +49,8 @@ class Terminator:
         terminal_columns = tuple(range(first_terminal, first_terminal + max_lead, ), )
         num_terminal_columns = len(terminal_columns)
         #
-        solution = simulatable_v.get_singleton_solution(deviation=False, )
-        vec = simulatable_v.solution_vectors
+        solution = simulatable_v._get_singleton_solution(deviation=False, )
+        vec = simulatable_v._get_dynamic_solution_vectors()
         qid_to_logly = simulatable_v.create_qid_to_logly()
         #
         curr_xi_qids, curr_xi_indexes = vec.get_curr_transition_indexes()

@@ -67,9 +67,9 @@ class Inlay:
     @classmethod
     @_dm.reference(
         category="constructor",
-        call_name="Databox.from_csv",
+        call_name="Databox.from_csv_file",
     )
-    def from_csv(
+    def from_csv_file(
         klass,
         file_name: str,
         *,
@@ -91,7 +91,7 @@ class Inlay:
 ==Create a new Databox by reading time series from a CSV file==
 
 
-    self = Databox.from_csv(
+    self = Databox.from_csv_file(
         file_name,
         *,
         period_from_string=None,
@@ -112,7 +112,7 @@ class Inlay:
 
 ???+ input "period_from_string"
     A callable for creating date objects from string representations. If `None`,
-    a default method based on the SDMX string format is used.
+    a default method expecting the SDMX string format is used.
 
 ???+ input "start_period_only"
     If `True`, only the start date of each time series is parsed from the CSV;
@@ -185,7 +185,10 @@ class Inlay:
     def from_sheet(klass, *args, **kwargs, ):
         r"""
         """
-        return klass.from_csv(*args, **kwargs, )
+        return klass.from_csv_file(*args, **kwargs, )
+
+    # Legacy alias
+    from_csv = from_csv_file
 
     @classmethod
     @_dm.reference(category="import_export", )

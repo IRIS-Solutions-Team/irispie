@@ -16,11 +16,11 @@ import documark as _dm
 
 from .. import wrongdoings as _wrongdoings
 from .. import has_variants as _has_variants
-from ..databoxes.main import (Databox, )
-from ..plans.simulation_plans import (SimulationPlan, )
-from ..plans.transforms import (PlanTransform, )
+from ..databoxes.main import Databox
+from ..plans.simulation_plans import SimulationPlan
+from ..plans.transforms import PlanTransform
 from ..explanatories import main as _explanatories
-from ..dataslates.main import (Dataslate, )
+from ..dataslates.main import Dataslate
 
 #]
 
@@ -180,7 +180,7 @@ out_db, info = self.simulate(
             plan.check_consistency(self, base_dates, )
             extra_databox_names = plan.get_databox_names()
         #
-        slatable = self.get_slatable_for_simulation(
+        slatable = self.slatable_for_simulate(
             shocks_from_data=shocks_from_data,
             parameters_from_data=parameters_from_data,
         )
