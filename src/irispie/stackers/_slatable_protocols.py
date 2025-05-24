@@ -35,19 +35,19 @@ class Inlay:
         #
         slatable = Slatable()
         #
-        self.max_lag = 0 # self.max_lag
-        self.max_lead = 0 # self.max_lead
+        slatable.max_lag = 0 # self.max_lag
+        slatable.max_lead = 0 # self.max_lead
         #
         qid_to_name = self.create_qid_to_name()
-        self.databox_names = tuple(
+        slatable.databox_names = tuple(
             qid_to_name[qid]
             for qid in sorted(qid_to_name)
         )
         #
         name_to_description = self.create_name_to_description()
-        self.descriptions = tuple(
+        slatable.descriptions = tuple(
             name_to_description.get(name, "", )
-            for name in self.databox_names
+            for name in slatable.databox_names
         )
         #
         # Databox validation - all variables must be time series
@@ -56,32 +56,32 @@ class Inlay:
             lambda x: isinstance(x, Series),
             "Input data for this variable is not a time series",
         )
-        self.databox_validators = {
+        slatable.databox_validators = {
             name: validator
             for name in variable_names
         }
         #
         # Fallbacks and overwrites
-        self.fallbacks = {}
-        self.overwrites = {}
+        slatable.fallbacks = {}
+        slatable.overwrites = {}
         #
         shock_names = self.get_names(kind=_quantities.ANY_SHOCK, )
         shock_name_to_value = {
             name: [_DEFAULT_SHOCK_VALUE, ]*self.num_variants
             for name in shock_names
         }
-        if self.shocks_from_data:
-            self.fallbacks.update(shock_name_to_value, )
+        if shocks_from_data:
+            slatable.fallbacks.update(shock_name_to_value, )
         else:
-            self.overwrites.update(shock_name_to_value, )
+            slatable.overwrites.update(shock_name_to_value, )
         #
         stds = self._variants[0].std_name_to_value
-        if self.stds_from_data:
-            self.fallbacks.update(stds, )
+        if stds_from_data:
+            slatable.fallbacks.update(stds, )
         else:
-            self.overwrites.update(stds, )
+            slatable.overwrites.update(stds, )
         #
-        self.qid_to_logly = self.create_qid_to_logly()
+        slatable.qid_to_logly = self.create_qid_to_logly()
         #
         return slatable
 
