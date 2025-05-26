@@ -191,9 +191,10 @@ def simulate_flat(
     xi_array = _np.full((num_xi, num_periods, ), _np.nan, )
     # TODO: precalculate all_v_impact as exogenous_impact
     all_v_impact = None
-    u_array = None
+    Pu = None
     if not ignore_shocks:
         u_array = _extract_shock_values(data_array, vec.unanticipated_shocks, )
+        Pu = P @ u_array
         all_v_impact = _simulate_anticipated_shocks(model_v, frame_ds, frame, )
     #
     # Simulate one period at a time
@@ -201,10 +202,9 @@ def simulate_flat(
     # Capture xi_array for later use in measurement equations
     xi = get_init_xi(data_array, vec.transition_variables, simulation_columns[0], )
     zero_false_init_xi(xi, vec.true_initials, )
-    Pu = P @ u_array
     for t in simulation_columns:
         xi = T @ xi + K
-        if u_array is not None:
+        if Pu is not None:
             xi += Pu[:, t]
         if all_v_impact is not None and all_v_impact[t] is not None:
             xi += all_v_impact[t]
