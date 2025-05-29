@@ -13,7 +13,7 @@ from .. import wrongdoings as _wrongdoings
 from ..equations import (Equation, )
 from ..quantities import (Quantity, )
 
-from ._dulmage_mendelsohn import dulmage_mendelsohn_reordering
+# from ._dulmage_mendelsohn import dulmage_mendelsohn_reordering
 #]
 
 
@@ -120,7 +120,7 @@ def blaze(
     # individually (an equation only has one quantity), and ordered last
     # individually (a quantity only occurs in one equation)
     #
-    dm_eids, dm_qids, dm_im, = dulmage_mendelsohn_reordering(im, )
+    # dm_eids, dm_qids, dm_im, = dulmage_mendelsohn_reordering(im, )
     eids_first, qids_first, eids_last, qids_last, eids_inner, qids_inner, im_inner \
         = prefetch(im, eids=eids, qids=qids, )
     #
