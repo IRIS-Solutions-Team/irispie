@@ -83,7 +83,7 @@ def min_version_required(
     minimum_version = _convert_version(min_version_string, )
     if current_version < minimum_version:
         raise Exception(
-            f"Current version of irispie ({__version__}) is less than minimum version required ({min_version_string})"
+            f"Current version of irispie ({__version__}) is less than the minimum version required ({min_version_string})"
         )
 
 min_irispie_version_required = min_version_required
