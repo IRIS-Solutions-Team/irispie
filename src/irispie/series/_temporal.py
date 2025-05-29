@@ -227,10 +227,7 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         self.temporal_change(shift, lambda x, y: x - y, neutral_value=0, )
 
     @_dm.reference(category="temporal_change", )
-    def adiff(
-        self,
-        /,
-    ) -> None:
+    def adiff(self, ) -> None:
         r"""
 ................................................................................
 
@@ -249,7 +246,6 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
     def diff_log(
         self,
         shift: int | str = -1,
-        /,
     ) -> None:
         r"""
 ................................................................................
@@ -264,10 +260,7 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
         self.temporal_change(shift, lambda x, y: _np.log(x) - _np.log(y), neutral_value=0, )
 
     @_dm.reference(category="temporal_change", )
-    def adiff_log(
-        self,
-        /,
-    ) -> None:
+    def adiff_log(self, ) -> None:
         r"""
 ................................................................................
 
@@ -286,7 +279,6 @@ See documentation for [temporal change calculations](#temporal-change-calculatio
     def roc(
         self,
         shift: int | str = -1,
-        /,
     ) -> None:
         r"""
 ................................................................................

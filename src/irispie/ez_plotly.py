@@ -21,8 +21,13 @@ if TYPE_CHECKING:
 
 
 __all__ = (
-    "plotly", "set_default_plotly_renderer",
-    "make_subplots"
+    "set_default_plotly_renderer",
+    "make_subplots",
+    "add_trace",
+    "update_subplot_title",
+    "highlight",
+    "freeze_span",
+    "vline",
 )
 
 
@@ -83,6 +88,8 @@ def make_subplots(
     vertical_spacing: float | None = None,
     horizontal_spacing: float | None = None,
     figure_height: int | None = None,
+    figure_title: str | None = None,
+    show_legend: bool = False,
     **kwargs,
 ) -> _pg.Figure:
     """
@@ -100,7 +107,7 @@ def make_subplots(
     num_columns = rows_columns[1] if rows_columns else 1
     total_num_subplots = num_rows * num_columns
     if subplot_titles is True:
-        subplot_titles = (_EMPTY_SUBPLOT_TITLE, )*total_num_subplots
+        subplot_titles = (_EMPTY_SUBPLOT_TITLE, ) * total_num_subplots
     figure = _ps.make_subplots(
         rows=num_rows,
         cols=num_columns,
@@ -109,15 +116,22 @@ def make_subplots(
         horizontal_spacing=horizontal_spacing,
         **kwargs,
     )
+    #
+    if figure_title is not None:
+        figure.update_layout(title=figure_title, )
+    #
     if figure_height is not None:
         figure.update_layout(height=figure_height, )
+    #
+    figure.update_layout(showlegend=show_legend, )
+    #
     return figure
 
 @_dm.reference(category="custom", )
-def highlight(
+def add_highlight(
     figure: _pg.Figure,
     span: Iterable[Period] | None = None,
-    subplot_ref: tuple[int, int] | int | None = None,
+    subplot: tuple[int, int] | int | None = None,
     color: str = "rgba(0, 0, 0, 0.15)",
 ) -> _pg.Figure:
     """
@@ -133,7 +147,7 @@ time `Span`, or a tuple of two `Periods`.
 ················································································
     """
     highlight_start, highlight_end = _resolve_highlight_span(figure, span, )
-    _, index = resolve_subplot_reference(figure, subplot_ref, )
+    _, index = resolve_subplot_reference(figure, subplot, )
     xref = f"x{index+1}" if index else "x"
     yref = f"y{index+1} domain" if index else "y domain"
     shape = {
@@ -150,26 +164,31 @@ time `Span`, or a tuple of two `Periods`.
     figure.add_shape(shape, )
 
 
-def vline(
+highlight = add_highlight
+
+
+def add_vline(
     figure,
-    vline_period,
-    subplot_ref: tuple[int, int] | int | None = None,
+    position,
+    subplot: tuple[int, int] | int | None = None,
     color: str = "rgba(0, 0, 0, 0.5)",
     width: int = None,
 ) -> None:
     r"""
     """
     date_axis_mode = get_date_axis_mode(figure, )
-    row_column, _ = resolve_subplot_reference(figure, subplot_ref, )
-    if hasattr(vline_period, "to_plotly_date"):
-        vline_period = vline_period.to_plotly_date(mode=date_axis_mode, )
-    figure.add_vline(vline_period, **row_column, line={"color": color, "width": width, }, )
+    row_column, _ = resolve_subplot_reference(figure, subplot, )
+    if hasattr(position, "to_plotly_date"):
+        position = position.to_plotly_date(mode=date_axis_mode, )
+    figure.add_vline(position, **row_column, line={"color": color, "width": width, }, )
+
+
+vline = add_vline
 
 
 def freeze_span(
     figure: _pg.Figure,
     span: Iterable[Period],
-    /,
     subplot: tuple[int, int] | int | None = None,
 ) -> None:
     """
@@ -258,14 +277,23 @@ def resolve_subplot_reference(
     raise TypeError(f"Invalid subplot type: {type(subplot)}")
 
 
+def add_trace(
+    figure: _pg.Figure,
+    trace,
+    subplot: tuple[int, int] | int | None = None,
+) -> None:
+    row_column, _ = resolve_subplot_reference(figure, subplot, )
+    figure.add_trace(trace, **row_column, )
+
+
 def update_subplot_title(
     figure: _pg.Figure,
-    subplot_ref: tuple[int, int] | int,
+    subplot: tuple[int, int] | int,
     title: str,
 ) -> None:
     r"""
     """
-    row_column, index = resolve_subplot_reference(figure, subplot_ref, )
+    row_column, index = resolve_subplot_reference(figure, subplot, )
     annotation = next(figure.select_annotations(index, ), None, )
     if annotation:
         annotation.text = title
@@ -278,30 +306,38 @@ def get_date_axis_mode(figure: _pg.Figure, ) -> PlotlyDateAxisModeType | None:
     return xaxis.ticklabelmode if xaxis.type == "date" else None
 
 
-@_dm.reference(
-    path=("visualization_reporting", "ez_plotlyper.md", ),
-    categories={
-        "arrange": "Arranging charts",
-        "custom": "Customizing charts",
-    },
-)
-class plotly:
+def add_histogram(figure, *args, subplot, **kwargs, ) -> _pg.Histogram:
     """
-················································································
-
-Plotly wrapper
-===============
-
-················································································
     """
-    #[
+    trace = _pg.Histogram(*args, **kwargs, )
+    add_trace(figure, trace, subplot=subplot, )
+    return trace
 
-    Figure = _pg.Figure
-    make_subplots = staticmethod(make_subplots)
-    update_subplot_title = staticmethod(update_subplot_title)
-    resolve_subplot_reference = staticmethod(resolve_subplot_reference)
-    highlight = staticmethod(highlight)
-    freeze_span = staticmethod(freeze_span)
 
-    #]
+# @_dm.reference(
+#     path=("visualization_reporting", "ez_plotlyper.md", ),
+#     categories={
+#         "arrange": "Arranging charts",
+#         "custom": "Customizing charts",
+#     },
+# )
+# class plotly:
+#     """
+# ················································································
+# 
+# Plotly wrapper
+# ===============
+# 
+# ················································································
+#     """
+#     #[
+# 
+#     Figure = _pg.Figure
+#     make_subplots = staticmethod(make_subplots)
+#     update_subplot_title = staticmethod(update_subplot_title)
+#     resolve_subplot_reference = staticmethod(resolve_subplot_reference)
+#     highlight = staticmethod(highlight)
+#     freeze_span = staticmethod(freeze_span)
+#
+#    #]
 

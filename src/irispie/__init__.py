@@ -34,8 +34,8 @@ from .stackers import __all__ as stackers_all
 from .fords import *
 from .fords import __all__ as fords_all
 
-from .vars import *
-from .vars import __all__ as vars_all
+from .red_vars import *
+from .red_vars import __all__ as red_vars_all
 
 from .quantities import *
 from .quantities import __all__ as quantities_all
@@ -103,7 +103,7 @@ __all__ = (
     *simultaneous_all,
     *stackers_all,
     *fords_all,
-    *vars_all,
+    *red_vars_all,
     *quantities_all,
     *equations_all,
     *sequentials_all,

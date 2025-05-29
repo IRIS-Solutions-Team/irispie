@@ -242,10 +242,10 @@ class Inlay:
             vline = xline
 
         if vline is not None:
-            _ez_plotly.vline(figure, vline, )
+            _ez_plotly.add_vline(figure, vline, )
 
         if highlight is not None:
-            _ez_plotly.highlight(figure, highlight, )
+            _ez_plotly.add_highlight(figure, highlight, )
 
         if show_figure:
             figure.show(renderer=renderer, )

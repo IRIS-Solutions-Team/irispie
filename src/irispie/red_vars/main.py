@@ -208,7 +208,7 @@ class RedVAR(
         """
         return self._invariant.solution_vectors
 
-    def _get_singleton_solution(
+    def _gets_solution(
         self,
         vid: int = 0,
         **kwargs,

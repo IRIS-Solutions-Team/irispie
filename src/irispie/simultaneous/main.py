@@ -34,7 +34,6 @@ from ..fords import solutions as _solutions
 from ..fords import steadiers as _fs
 from ..fords import descriptors as _descriptors
 from ..fords import systems as _systems
-from ..fords import kalmans as _kalmans
 from ..fords import std_simulators as _std_simulators
 
 from ._invariants import Invariant
@@ -43,6 +42,7 @@ from . import _covariances
 from . import _flags
 from . import _simulate
 from . import _steady
+from . import _kalmans
 from . import _logly
 from . import _get
 from . import _pretty
@@ -78,12 +78,12 @@ _DEFAULT_SOLUTION_TOLERANCE = 1e-12
 class Simultaneous(
     _has_invariant.Mixin,
     _has_variants.Mixin,
-    _kalmans.Mixin,
     _std_simulators.Mixin,
-
+    #
     _assigns.Inlay,
     _simulate.Inlay,
     _steady.Inlay,
+    _kalmans.Inlay,
     _logly.Inlay,
     _get.Inlay,
     _pretty.Inlay,

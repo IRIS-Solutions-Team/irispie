@@ -33,15 +33,18 @@ class Inlay:
     def slatable_for_estimate(self, ) -> Slatable:
         r"""
         """
-        slatable = _slatable_for_estimate_or_simulate(self, )
+        slatable = _slatable_for_anything(self, )
         residual_name_to_value = _create_residual_name_to_value(self, )
         slatable.overwrites.update(residual_name_to_value, )
         return slatable
 
-    def slatable_for_simulate(self, residuals_from_data: bool, ) -> Slatable:
+    def slatable_for_simulate(
+        self,
+        residuals_from_data: bool,
+    ) -> Slatable:
         r"""
         """
-        slatable = _slatable_for_estimate_or_simulate(self, )
+        slatable = _slatable_for_anything(self, )
         residual_name_to_value = _create_residual_name_to_value(self, )
         if residuals_from_data:
             slatable.fallbacks.update(residual_name_to_value, )
@@ -49,10 +52,12 @@ class Inlay:
             slatable.overwrites.update(residual_name_to_value, )
         return slatable
 
+    slatable_for_kalman_filter = slatable_for_simulate
+
     #]
 
 
-def _slatable_for_estimate_or_simulate(model: RedVAR, ) -> Slatable:
+def _slatable_for_anything(model: RedVAR, ) -> Slatable:
     r"""
     Create slatable base for estimate or simulate contexts
     """

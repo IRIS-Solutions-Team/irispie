@@ -646,7 +646,8 @@ class SquidableProtocol(Protocol, ):
     #[
 
     solution_vectors: SolutionVectors
-    shock_qid_to_std_qid: dict[int, int]
+
+    shock_qid_to_std_qid: dict[int, int] | None
 
     #]
 
@@ -688,11 +689,11 @@ class Squid:
         self.v_qids = tuple(t.qid for t in vec.anticipated_shocks)
         self.w_qids = tuple(t.qid for t in vec.measurement_shocks)
         #
-        self.std_u_qids = None
-        self.std_v_qids = None
-        self.std_w_qids = None
+        self.std_u_qids = ()
+        self.std_v_qids = ()
+        self.std_w_qids = ()
         #
-        if shock_qid_to_std_qid:
+        if shock_qid_to_std_qid is not None:
             self.std_u_qids = tuple(
                 shock_qid_to_std_qid[t.qid]
                 for t in vec.unanticipated_shocks

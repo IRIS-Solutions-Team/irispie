@@ -112,15 +112,13 @@ def _simulate(
         dataslate.iter_variants(),
     )
     #
+    # Simulate each variant
+    #=======================================================================
     progress_bar = ProgressBar(
-        num_variants,
+        num_steps=num_variants,
         show_progress=show_progress,
         **progress_bar_settings,
     )
-    #
-    # Simulate each variant
-    #=======================================================================
-    progress_bar.start()
     for vid, model_v, dataslate_v in zipped:
         #
         # Resample residuals
@@ -140,7 +138,6 @@ def _simulate(
             exogenous_impact=exogenous_impact,
         )
         progress_bar.increment()
-    progress_bar.finish()
     #=======================================================================
     #
     if remove_initial:

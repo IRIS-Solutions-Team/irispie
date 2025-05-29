@@ -302,9 +302,15 @@ def std_from_cov(
     #[
     diag = _np.diag(cov, )
     if trim_negative:
-        diag = _np.maximum(diag, 0)
-    return _np.sqrt(diag, )
+        sqrt = sqrt_positive
+    else:
+        sqrt = _np.sqrt
+    return sqrt(diag, )
     #]
+
+
+def sqrt_positive(x):
+    return _np.sqrt(_np.maximum(x, 0.0, ))
 
 
 def cov_from_std(

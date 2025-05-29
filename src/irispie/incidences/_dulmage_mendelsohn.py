@@ -34,7 +34,7 @@ def dulmage_mendelsohn_reordering(A: np.ndarray) -> tuple[list[int], list[int], 
     # Construct bipartite graph: equations as ('e', i), variables as ('v', j)
     eq_idxs, var_idxs = np.where(A)
     for i, j in zip(eq_idxs, var_idxs):
-        B.add_edge(("e", i), ("v", j))
+        B.add_edge(("e", int(i)), ("v", int(j)))
 
     # Find maximum matching on the bipartite graph
     matching = nx.bipartite.maximum_matching(B, top_nodes={("e", i) for i in range(m)})

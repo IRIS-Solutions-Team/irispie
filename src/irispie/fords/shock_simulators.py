@@ -33,7 +33,7 @@ def _simulate_anticipated_shocks(
         return impact
     #
     # Deviation is irrelevant for the impact of anticipated shocks
-    solution = model_v._get_singleton_solution()
+    solution = model_v._gets_solution()
     base_columns = dataslate_v.base_columns
     first_column = frame.start - dataslate_v.periods[0]
     last_column = frame.simulation_end - dataslate_v.periods[0]

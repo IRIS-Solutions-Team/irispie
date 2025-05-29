@@ -195,6 +195,12 @@ model based on the provided factor.
         for v in self._variants:
             yield self.getv_std_w(v, )
 
+    # TODO: Refactor this function and getv_cov_u to avoid code duplication
+    def _gets_cov_unanticipated_shocks(self, ) -> _np.ndarray:
+        r"""
+        """
+        return self.getv_cov_u(self._variants[0], )
+
     def get_cov_unanticipated_shocks(
         self,
         #
@@ -281,13 +287,17 @@ def _get_system_vector(self, ) -> tuple[tuple[_incidences.Token, ...], tuple[boo
     return system_vector, boolex_zero_shift,
 
 
-def _retrieve_stds(self, variant, shocks, ) -> _np.ndarray:
+def _retrieve_stds(
+    self,
+    variant: Variant,
+    shock_tokens: Iterable[Token],
+) -> _np.ndarray:
     r"""
     """
     #[
     std_qids = tuple(
-        self._invariant.shock_qid_to_std_qid[t.qid]
-        for t in shocks
+        self._invariant.shock_qid_to_std_qid[i.qid]
+        for i in shock_tokens
     )
     return variant.retrieve_values_as_array("levels", std_qids, )
     #]

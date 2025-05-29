@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from typing import Protocol
 import numpy as _np
+import scipy as _sp
 import functools as _ft
 import neqs as _nq
 
@@ -73,7 +74,7 @@ class FordSimulatableProtocol(Protocol, ):
     num_variants: int
     is_singleton: bool
     def _get_dynamic_solution_vectors(self, ) -> SolutionVectors: ...
-    def _get_singleton_solution(self, deviation: bool, ) -> Solution: ...
+    def _gets_solution(self, deviation: bool, ) -> Solution: ...
 
     #]
 
@@ -173,7 +174,7 @@ def simulate_flat(
     """
     """
     #[
-    solution = model_v._get_singleton_solution(deviation=deviation, )
+    solution = model_v._gets_solution(deviation=deviation, )
     vec = model_v._get_dynamic_solution_vectors()
     num_periods = frame_ds.num_periods
     simulation_columns = list(range(*frame.simulation_slice.indices(num_periods, ), ), )
@@ -233,7 +234,7 @@ def _simulate_conditional(
     """
     """
     #[
-    solution = model_v._get_singleton_solution(deviation=deviation, )
+    solution = model_v._gets_solution(deviation=deviation, )
     vec = model_v._get_dynamic_solution_vectors()
     periods = frame_ds.periods
     num_periods = frame_ds.num_periods
@@ -295,10 +296,13 @@ def _simulate_conditional(
     std_u_endogenized = std_u_endogenized[:, frame.simulation_slice]
     std_w_endogenized = std_w_endogenized[:, frame.simulation_slice]
     #
+    # Adjust initials for endogenized anticipated shocks
+    if std_v_endogenized is not None:
+        initials = _adjust_initials(initials, std_v_endogenized, )
+    #
     # Define the Kalman callbacks
-    generate_period_system = _ft.partial(
+    partial_generate_period_system = _ft.partial(
         _generate_period_system,
-        initials=initials,
         solution=solution,
         Z_xi=Z_xi,
         curr_xi_exogenized=curr_xi_exogenized,
@@ -310,7 +314,7 @@ def _simulate_conditional(
         Rx=Rx,
     )
     #
-    generate_period_data = _ft.partial(
+    partial_generate_period_data = _ft.partial(
         _generate_period_data,
         curr_xi_exogenized=curr_xi_exogenized,
         u_array=u0_array,
@@ -326,10 +330,12 @@ def _simulate_conditional(
     )
     #
     # Run Kalman filter and smoother
+    #
     cache = _kalmans.predict(
         num_periods=frame.num_simulation_columns,
-        generate_period_system=generate_period_system,
-        generate_period_data=generate_period_data,
+        initials=initials,
+        partial_generate_period_system=partial_generate_period_system,
+        partial_generate_period_data=partial_generate_period_data,
         store_smooth=True,
         check_singularity=check_singularity,
     )
@@ -355,7 +361,7 @@ def _simulate_measurement(
     """
     """
     #[
-    solution = model_v._get_singleton_solution(deviation=deviation, )
+    solution = model_v._gets_solution(deviation=deviation, )
     vec = model_v._get_dynamic_solution_vectors()
     num_periods = frame_ds.num_periods
     #
@@ -379,7 +385,6 @@ def _simulate_measurement(
 def _generate_period_system(
     t: int,
     #
-    initials: list[_np.ndarray, _np.ndarray, int, ],
     solution: Solution,
     Z_xi: _np.ndarray | None,
     curr_xi_exogenized: _np.ndarray | None,
@@ -393,16 +398,11 @@ def _generate_period_system(
     """
     """
     #[
-    #
-    # Initial conditions
-    if t == -1:
-        return _generate_initials(initials, std_v_endogenized, )
-    #
-    # Period t system matrices
     T = solution.T
     P = solution.P
     K = solution.K
     Z = _generate_Z(t, Z_xi, curr_xi_exogenized, )
+    U = None
     num_xi = T.shape[0]
     num_y = Z.shape[0]
     H = _np.zeros((num_y, solution.num_w, ), )
@@ -426,35 +426,29 @@ def _generate_period_system(
         if v_impact is not None:
             v_impact = _np.pad(v_impact, (0, num_v_endogenized), )
     #
-    return T, P, K, Z, H, D, cov_u, cov_w, v_impact,
+    return T, P, K, Z, H, D, cov_u, cov_w, v_impact, U,
     #]
 
 
-def _generate_initials(
-    initials: list[_np.ndarray, _np.ndarray, int, ],
+def _adjust_initials(
+    initials: list[_np.ndarray, _np.ndarray, None, ],
     std_v_endogenized: _np.ndarray,
-) -> tuple[_np.ndarray, _np.ndarray]:
-    """
+) -> tuple[_np.ndarray, _np.ndarray, None]:
+    r"""
+    Extend initial conditions to include endogenized anticipated shocks
     """
     #[
-    num_v_endogenized = (
-        len(std_v_endogenized)
-        if std_v_endogenized is not None else 0
+    num_v_endogenized = len(std_v_endogenized)
+    init_med = initials[0]
+    init_mse = initials[1]
+    uknown_init_impact = None
+    add_init_med = _np.zeros(num_v_endogenized, dtype=float, )
+    add_init_mse = _np.diag(std_v_endogenized**2, )
+    return (
+        _np.concatenate((init_med, add_init_med, ), ),
+        _sp.linalg.block_diag(init_mse, add_init_mse, ),
+        uknown_init_impact,
     )
-    #
-    # Extend initial conditions to include endogenized anticipated shocks
-    if num_v_endogenized > 0:
-        init_med = initials[0]
-        init_mse = initials[1]
-        uknown_init_impact = None
-        initials = (
-            _np.pad(init_med, (0, num_v_endogenized), ),
-            _sp.linalg.block_diag(init_mse, _np.diag(std_v_endogenized**2), ),
-            uknown_init_impact,
-        )
-    #
-    # Return updated initial conditions
-    return initials
     #]
 
 

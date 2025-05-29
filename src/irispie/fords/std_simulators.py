@@ -27,9 +27,9 @@ class Mixin:
 
     def vary_stds(
         self,
-        multiplier_db: Databox | None,
-        overwrite_db: Databox | None,
-        span: Iterable[Period],
+        multiplier_db: Databox | None = None,
+        overwrite_db: Databox | None = None,
+        span: Iterable[Period] | None = None,
         #
         num_variants: int | None = None,
         target_db: Databox | None = None,
@@ -38,25 +38,26 @@ class Mixin:
         return_info: bool = False,
         **kwargs,
     ) -> Databox | tuple[Databox, _Info]:
+        r"""
         """
-        """
-        num_variants \
-            = self.resolve_num_variants_in_context(num_variants, )
-
+        if span is None:
+            raise ValueError("Time span must be provided for vary_stds.")
         base_dates = tuple(span, )
-
+        #
+        num_variants = self.resolve_num_variants_in_context(num_variants, )
+        #
         std_slatable, multiplier_slatable, = self.slatables_for_vary_stds()
-
+        #
         final_ds = Dataslate.from_databox_for_slatable(
             std_slatable, overwrite_db or Databox(), base_dates,
             num_variants=num_variants,
         )
-
+        #
         multiplier_ds = Dataslate.from_databox_for_slatable(
             multiplier_slatable, multiplier_db or Databox(), base_dates,
             num_variants=num_variants,
         )
-
+        #
         zipped = zip(
             range(num_variants, ),
             final_ds.iter_variants(),

@@ -72,15 +72,13 @@ class Inlay:
         )
         self._variants = []
         #
+        # Estimate each variant
+        #=======================================================================
         progress_bar = ProgressBar(
-            num_variants,
+            num_steps=num_variants,
             show_progress=show_progress,
             **progress_bar_settings,
         )
-        #
-        # Estimate each variant
-        #=======================================================================
-        progress_bar.start()
         for vid, dataslate_v in zipped:
             estimated_variant = _estimate_variant(
                 self._invariant,
@@ -91,7 +89,6 @@ class Inlay:
             )
             self._variants.append(estimated_variant, )
             progress_bar.increment()
-        progress_bar.finish()
         #=======================================================================
         #
         output_db = dataslate.to_databox()

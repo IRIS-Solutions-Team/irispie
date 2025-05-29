@@ -18,7 +18,7 @@ __all__ = (
 )
 
 
-_DEFAULT_EMPTY_CHAR = "-"
+_DEFAULT_EMPTY_CHAR = "◻︎"
 _DEFAULT_FILL_CHAR = "◼︎"
 _DEFAULT_BAR_LENGTH = 50
 
@@ -39,6 +39,8 @@ class ProgressBar:
         progress_format: str = "{title} {bar} {percent:.2f}%",
         final_format: str = "{title} {bar} {time_elapsed:.4f}s",
         output_stream: Any = sys.stdout,
+        start: bool = True,
+        finish_when_complete: bool = True,
     ) -> None:
         r"""
         """
@@ -54,6 +56,15 @@ class ProgressBar:
         self.output_stream = output_stream
         self.time_started = None
         self.time_finished = None
+        self.finish_when_complete = finish_when_complete
+        if start:
+            self.start()
+
+    @property
+    def is_complete(self) -> bool:
+        r"""
+        """
+        return self.current_step >= self.num_steps
 
     def start(self, ) -> None:
         r"""
@@ -67,6 +78,8 @@ class ProgressBar:
         self.current_step = step
         if self.show_progress:
             self._print_bar()
+        if self.finish_when_complete and self.is_complete:
+            self.finish()
 
     def increment(self, step: int = 1, ) -> None:
         r"""

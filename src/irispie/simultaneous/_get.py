@@ -66,7 +66,6 @@ class Inlay(
     @_unpack_singleton_in_dict
     def get_steady_levels(
         self,
-        /,
         unpack_singleton: bool = True,
         kind: _quantities.QuantityKind | None = None,
         **kwargs,
@@ -119,7 +118,6 @@ steady_levels = self.get_steady_levels(
     @_unpack_singleton_in_dict
     def get_steady_changes(
         self,
-        /,
         unpack_singleton: bool = True,
         kind: _quantities.QuantityKind | None = None,
         **kwargs,
@@ -175,7 +173,6 @@ steady_changes = self.get_steady_changes(
     @_unpack_singleton_in_dict
     def get_steady(
         self,
-        /,
         unpack_singleton: bool = True,
         kind: _quantities.QuantityKind | None = None,
         **kwargs,
@@ -195,7 +192,6 @@ steady_changes = self.get_steady_changes(
     @_unpack_singleton_in_dict
     def get_parameters(
         self,
-        /,
         unpack_singleton: bool = True,
         **kwargs,
     ) -> dict[str, Real]:
@@ -208,7 +204,6 @@ steady_changes = self.get_steady_changes(
     @_unpack_singleton_in_dict
     def get_stds(
         self,
-        /,
         kind: _quantities.QuantityKind | None = None,
         unpack_singleton: bool = True,
         **kwargs,
@@ -220,7 +215,6 @@ steady_changes = self.get_steady_changes(
 
     def _get_std_qids(
         self,
-        /,
         kind: _quantities.QuantityKind | None = None,
     ) -> tuple[int, ...]:
         """
@@ -233,7 +227,6 @@ steady_changes = self.get_steady_changes(
     @_unpack_singleton_in_dict
     def get_parameters_stds(
         self,
-        /,
         unpack_singleton: bool = True,
         **kwargs,
     ) -> dict[str, Real]:
@@ -244,7 +237,6 @@ steady_changes = self.get_steady_changes(
 
     def get_initials(
         self,
-        /,
     ) -> _incidence.Tokens:
         """
         Get required list of initial conditions
@@ -288,13 +280,13 @@ steady_changes = self.get_steady_changes(
         solution_matrices = [ i for i in self.iter_solution() ]
         return self.unpack_singleton(solution_matrices, unpack_singleton=unpack_singleton, )
 
-    def iter_solution(self, /, ) -> Iterable[Solution]:
+    def iter_solution(self, ) -> Iterable[Solution]:
         """
         """
         for v in self._variants:
             yield v.solution
 
-    def _get_singleton_solution(
+    def _gets_solution(
         self,
         deviation: bool = False,
         vid: int = 0,
@@ -306,7 +298,7 @@ steady_changes = self.get_steady_changes(
             else self._variants[vid].deviation_solution
         )
 
-    def iter_std_name_to_value(self, /, ) -> Iterable[dict[str, Real]]:
+    def iter_std_name_to_value(self, ) -> Iterable[dict[str, Real]]:
         """
         """
         qid_to_name = self.create_qid_to_name()
@@ -320,7 +312,6 @@ steady_changes = self.get_steady_changes(
 
     def get_dynamic_equations(
         self,
-        /,
         kind: _equations.EquationKind | None = None,
     ) -> tuple[_equations.Equation]:
         return tuple(
@@ -330,7 +321,6 @@ steady_changes = self.get_steady_changes(
 
     def get_human_equations(
         self,
-        /,
         kind: _equations.EquationKind | None = None,
     ) -> tuple[str]:
         def _concatenate(dynamic: str, steady: str) -> str:
@@ -344,21 +334,8 @@ steady_changes = self.get_steady_changes(
             for dynamic, steady in zipper
         )
 
-    def get_std_qids_for_shock_qids(
-        self: Self,
-        shock_qids: Iterable[int],
-        /,
-    ) -> tuple[int]:
-        """
-        """
-        return tuple(
-            self._invariant.shock_qid_to_std_qid[qid]
-            for qid in shock_qids
-        )
-
     def get_steady_equations(
         self,
-        /,
         kind: _equations.EquationKind | None = None,
     ) -> tuple[_equations.Equation]:
         return tuple(
@@ -368,13 +345,11 @@ steady_changes = self.get_steady_changes(
 
     def get_flags(
         self,
-        /,
     ) -> _flags.Flags:
         return self._invariant._flags
 
     def get_context(
         self,
-        /,
     ) -> dict[str, Callable]:
         return self._invariant._context
 
@@ -382,7 +357,6 @@ steady_changes = self.get_steady_changes(
         self,
         variant_attr: Literal["levels", "changes"],
         qids: Iterable[int],
-        /,
         **kwargs,
     ) -> dict[str, Any]:
         """
@@ -412,8 +386,6 @@ steady_changes = self.get_steady_changes(
     @_unpack_singleton
     def get_eigenvalues(
         self,
-        /,
-        *,
         kind: EigenvalueKind = EigenvalueKind.ALL,
         unpack_singleton: bool = True,
     ) -> tuple[Real, ...] | list[tuple[Real, ...]]:
@@ -428,7 +400,6 @@ steady_changes = self.get_steady_changes(
     @_unpack_singleton
     def get_eigenvalues_stability(
         self,
-        *,
         kind: EigenvalueKind = EigenvalueKind.ALL,
         unpack_singleton: bool = True,
     ):
@@ -437,7 +408,7 @@ steady_changes = self.get_steady_changes(
             for v in self._variants
         ]
 
-    def _get_variable_stability_for_variant(self, variant, /, ) -> dict[str, bool]:
+    def _get_variable_stability_for_variant(self, variant, ) -> dict[str, bool]:
         """
         """
         vec = self._invariant.dynamic_descriptor.solution_vectors
@@ -457,7 +428,6 @@ steady_changes = self.get_steady_changes(
     @_unpack_singleton
     def get_variable_stability(
         self,
-        *,
         unpack_singleton: bool = True,
     ) -> dict[str, bool] | list[dict[str, bool]]:
         """
@@ -467,11 +437,11 @@ steady_changes = self.get_steady_changes(
             for v in self._variants
         ]
 
-    def generate_minus_control_quantities(self, /, ) -> tuple[int]:
+    def generate_minus_control_quantities(self, ) -> tuple[int]:
         """
         """
 
-    def map_name_to_minus_control_func(self, /, ) -> tuple[str]:
+    def map_name_to_minus_control_func(self, ) -> tuple[str]:
         """
         """
         minus_control_func = {
@@ -494,7 +464,6 @@ Inlay.get_log_status = _cast_as_output_type(Inlay.get_log_status, )
 
 
 def _resolve_steady_kind(
-    *,
     include_shocks: bool = False,
     **kwargs,
 ) -> _quantities.QuantityKind:
