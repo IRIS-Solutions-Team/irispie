@@ -74,18 +74,19 @@ def print_readme():
 
 
 #[
-def min_irispie_version_required(
-    minimum_version_str: str,
+def min_version_required(
+    min_version_string: str,
 ):
     """
     """
     current_version = _convert_version(__version__, )
-    minimum_version = _convert_version(minimum_version_str, )
+    minimum_version = _convert_version(min_version_string, )
     if current_version < minimum_version:
         raise Exception(
-            f"Current version of irispie ({__version__}) is less than minimum version required ({minimum_version_str})"
+            f"Current version of irispie ({__version__}) is less than minimum version required ({min_version_string})"
         )
 
+min_irispie_version_required = min_version_required
 
 def _convert_version(version_str: str) -> tuple[int, ...]:
     return tuple(int(s) for s in version_str.split("."))
@@ -113,6 +114,7 @@ __all__ = (
     *file_io_all,
     *portables_all,
     *progress_bars_all,
+    "min_version_required",
     "min_irispie_version_required",
     "__version__",
 )
