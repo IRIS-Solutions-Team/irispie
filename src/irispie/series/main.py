@@ -63,7 +63,7 @@ ShiftType = int | Literal["yoy", "soy", "eopy", "tty", ]
 AxisType = Literal[0, 1]
 
 
-def _get_date_positions(dates, base, num_periods, /, ):
+def _get_date_positions(dates, base, num_periods, ):
     pos = tuple(_dates.period_indexes(dates, base, ))
     min_pos = min((x for x in pos if x is not None), default=0)
     max_pos = max((x for x in pos if x is not None), default=0)
@@ -256,7 +256,7 @@ self = Series(
         self.trim()
         return self
 
-    def reset(self, /, ) -> None:
+    def reset(self, ) -> None:
         self.__init__(
             num_variants=self.num_variants,
             data_type=self.data_type,
@@ -273,24 +273,24 @@ self = Series(
 
     @property
     @_dm.reference(category="property", )
-    def shape(self, /, ) -> tuple[int, int]:
+    def shape(self, ) -> tuple[int, int]:
         """==Shape of time series data=="""
         return self.data.shape
 
     @property
     @_dm.reference(category="property", )
-    def num_periods(self, /, ) -> int:
+    def num_periods(self, ) -> int:
         """==Number of periods from the first to the last observation=="""
         return self.data.shape[0]
 
     @property
     @_dm.reference(category="property", )
-    def num_variants(self, /, ) -> int:
+    def num_variants(self, ) -> int:
         """==Number of variants (columns) within the `Series` object=="""
         return self.data.shape[1]
 
     @property
-    def is_singleton(self, /, ) -> bool:
+    def is_singleton(self, ) -> bool:
         """
         True for time series with only one variant
         """
@@ -312,7 +312,7 @@ self = Series(
 
     @property
     @_dm.reference(category="property", )
-    def periods(self, /, ) -> tuple[Period, ...]:
+    def periods(self, ) -> tuple[Period, ...]:
         """==N-tuple with the periods from the start period to the end period of the time series=="""
         return tuple(self.range, )
 
@@ -325,7 +325,7 @@ self = Series(
         raise NotImplementedError
 
     @property
-    def start_period(self, /, ):
+    def start_period(self, ):
         return self.start
 
     start_date = start_period
@@ -344,7 +344,7 @@ self = Series(
 
     @property
     @_dm.reference(category="property", )
-    def frequency(self, /, ):
+    def frequency(self, ):
         """==Date frequency of the time series=="""
         return (
             self.start.frequency
@@ -360,9 +360,9 @@ self = Series(
 
     @property
     @_dm.reference(category="property", )
-    def has_missing(self, /, ):
+    def has_missing(self, ):
         """==True if the time series is non-empty and contains in-sample missing values=="""
-        return (not self.is_empty) and _np.isnan(self.data).any()
+        return bool((not self.is_empty) and _np.isnan(self.data).any())
 
     def any_missing(self, *args, ) -> bool:
         """
@@ -383,7 +383,7 @@ self = Series(
         """
         """
         data = self.get_data(*args, )
-        return func(_np.isnan(data))
+        return bool(func(_np.isnan(data)))
 
     def set_data(
         self,
@@ -994,7 +994,7 @@ self.replace_where(
     __or__ = __and__
 
     @_dm.reference(category="manipulation", )
-    def trim(self, /, ) -> None:
+    def trim(self, ) -> None:
         r"""
 ................................................................................
 
@@ -1038,11 +1038,11 @@ This method modifies `self` in place and returns `None`.
             mode="constant", constant_values=_np.nan,
         )
 
-    def _check_data_shape(self, data, /, ):
+    def _check_data_shape(self, data, ):
         if data.shape[1] != self.data.shape[1]:
             raise Exception("Time series data being assigned must preserve the number of variants")
 
-    def __bool__(self, /, ):
+    def __bool__(self, ):
         """
         """
         return self.data.size > 0
@@ -1145,7 +1145,7 @@ This method modifies `self` in place and returns `None`.
         """
         return self._binop(other, _op.mod, )
 
-    def __rmod__(self, other, /, ):
+    def __rmod__(self, other, ):
         """
         other % self
         """
@@ -1211,7 +1211,7 @@ This method modifies `self` in place and returns `None`.
         new._replace_start_and_values(from_until[0], new_data, )
         return new
 
-    def _broadcast_variants(self, num_variants, /, ) -> None:
+    def _broadcast_variants(self, num_variants, ) -> None:
         """
         """
         if self.data.shape[1] == num_variants:
@@ -1246,9 +1246,9 @@ This method modifies `self` in place and returns `None`.
         """
         Default iterator is line by line, yielding a tuple of (date, values)
         """
-        def _unpack_singleton_data_row(data_list: list[Real], /, ):
+        def _unpack_singleton_data_row(data_list: list[Real], ):
             return _has_variants.unpack_singleton(data_list, True, )
-        def _keep_data_row(data_list: list[Real], /, ):
+        def _keep_data_row(data_list: list[Real], ):
             return data_list
         data_row_func = (
             _unpack_singleton_data_row
@@ -1282,7 +1282,7 @@ This method modifies `self` in place and returns `None`.
         """
         return _iterators.exhaust_then_last(self.iter_own_data_variants_from_until(from_until, ), )
 
-    def logistic(self, /, ) -> Self:
+    def logistic(self, ) -> Self:
         """
         """
         self.data = 1 / (1 + _np.exp(-self.data))
@@ -1290,7 +1290,7 @@ This method modifies `self` in place and returns `None`.
     #]
 
 
-def _get_num_leading_trailing_missing_rows(data: _np.ndarray, /, ):
+def _get_num_leading_trailing_missing_rows(data: _np.ndarray, ):
     """
     """
     #[
@@ -1386,7 +1386,7 @@ def _from_start_and_values(
     #]
 
 
-def _reshape_numpy_array(values: _np.ndarray, /, ) -> _np.ndarray:
+def _reshape_numpy_array(values: _np.ndarray, ) -> _np.ndarray:
     """
     """
     #[
@@ -1400,7 +1400,6 @@ def _reshape_numpy_array(values: _np.ndarray, /, ) -> _np.ndarray:
 def _broadcast_variants_if_needed(
     self: Series,
     other: Series,
-    /,
 ) -> tuple[Series, Series]:
     """
     """

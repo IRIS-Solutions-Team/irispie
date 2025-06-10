@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import functools as _ft
 import re as _re
-import math as _ma
 import documark as _dm
 import plotly.graph_objects as _pg
 from collections.abc import Sequence
@@ -558,23 +557,12 @@ def _resolve_tiles(tiles, num_charts, ) -> tuple[int, int]:
     """
     #[
     if tiles is None:
-        return _auto_tiles(num_charts, )
+        return _ez_plotly.auto_tiles(num_charts, )
     if isinstance(tiles, int, ):
-        return _auto_tiles(tiles, )
+        return _ez_plotly.auto_tiles(tiles, )
     if isinstance(tiles, Sequence, ):
         return tiles[:2]
     raise TypeError(f"Invalid tiles: {tiles!r}")
-    #]
-
-
-def _auto_tiles(num_charts, ) -> tuple[int, int]:
-    """
-    """
-    #[
-    n = _ma.ceil(_ma.sqrt(num_charts, ), )
-    if n * (n-1) >= num_charts:
-        return (n, n-1, )
-    return (n, n, )
     #]
 
 

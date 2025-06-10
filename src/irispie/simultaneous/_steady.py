@@ -62,7 +62,6 @@ class Inlay:
 
     def steady(
         self,
-        /,
         unpack_singleton: bool = True,
         update_steady_autovalues: bool = True,
         return_info: bool = False,
@@ -90,7 +89,6 @@ class Inlay:
         variant: Variant,
         model_flags: _flags.Flags,
         vid: int,
-        /,
         *,
         algorithm: Callable,
         **kwargs,
@@ -150,7 +148,6 @@ class Inlay:
         variant: Variant,
         model_flags: _flags.Flags,
         vid: int,
-        /,
         evaluator_class: type,
         *,
         plan: SteadyPlan | None = None,
@@ -162,8 +159,6 @@ class Inlay:
     ) -> dict[str, Any]:
         """
         """
-        iter_printer_settings = iter_printer_settings or {}
-        #
         qid_to_kind = self.create_qid_to_kind()
         qid_to_name = self.create_qid_to_name()
         #
@@ -181,6 +176,18 @@ class Inlay:
         human_blocks \
             = _blazer.human_blocks_from_blocks \
             (blocks, all_equations, all_quantities, )
+        #
+        # Prepare the solver and iter printer settings
+        #
+        solve = getattr(_solver_dispatcher, solver)
+        create_solver_settings = getattr(_solver_dispatcher, "create_solver_settings_for_" + solver, )
+        solver_settings = create_solver_settings(
+            user_solver_settings=solver_settings,
+            self_equality_tolerance=self.get_tolerance("equality", ),
+        )
+        iter_printer_settings = iter_printer_settings or {}
+        iter_printer_settings["norm_order"] = solver_settings["norm_order"]
+        #
         #
         info_v = {
             "success": None,
@@ -204,7 +211,6 @@ class Inlay:
             has_no_qids = (not block_level_qids) and (not block_change_qids)
             has_no_equations = not block_equations
             #
-            solve = getattr(_solver_dispatcher, solver)
             if has_no_qids or has_no_equations:
                 info_b["success"] = True
                 info_b["exit_status"] = _ne.ExitStatus.NO_SOLVER_NEEDED
@@ -314,7 +320,6 @@ class Inlay:
         self,
         is_linear: bool,
         is_flat: bool,
-        /,
     ) -> Callable:
         """
         Choose steady solver depending on linear and flat flags
@@ -331,16 +336,16 @@ class Inlay:
 
     def check_steady(
         self,
-        /,
         equation_switch: Literal["steady", "dynamic"] = "dynamic",
         when_fails: _wrongdoings.HOW = "error",
-        tolerance: float = 1e-12,
+        tolerance: float | None = None,
         return_info: bool = False,
         unpack_singleton: bool = True,
-    ) -> tuple[bool, tuple[dict, ...]]:
+    ) -> NoReturn | tuple[bool, tuple[dict, ...]]:
         """
         Verify currently assigned steady state in dynamic or steady equations for each variant within this model
         """
+        tolerance = tolerance or self.get_tolerance("equality", )
         qid_to_logly = self.create_qid_to_logly()
         equations = getattr(self._invariant, f"{equation_switch}_equations", )
         equator = self._choose_plain_equator(equation_switch, )
@@ -371,26 +376,31 @@ class Inlay:
             "Steady state discrepancies in these equations",
         )
         status = []
-        for vid, i in enumerate(discrepancies, ):
-            where = _np.any(_np.abs(i) > tolerance, axis=1, ).nonzero()[0].tolist()
+        failed_discrepancies = []
+        failed_equations = []
+        for vid, d, in enumerate(discrepancies, ):
+            where = _np.any(_np.abs(d) > tolerance, axis=1, ).nonzero()[0].tolist()
             for j in where:
-                fail_stream.add(f"[Variant {vid}] {equations[j].human}")
+                fail_stream.add(f"[Variant {vid}] {equations[j].human}: {d[j, :].tolist()}")
             status.append(not where)
+            failed_discrepancies.append(d[where, :], )
+            failed_equations.append(tuple(equations[j].human for j in where), )
+        overall_status = all(status)
+        #
         fail_stream._raise()
-        all_status = all(status)
         #
         if not return_info:
-            return all_status
+            return overall_status
         #
         info = [
-            {"discrepancies": d, }
-            for d in discrepancies
+            {"discrepancies": d, "failed_discrepancies": f, "failed_equations": e, }
+            for d, f, e in zip(discrepancies, failed_discrepancies, failed_equations, )
         ]
         info = _has_variants.unpack_singleton(
             info, self.is_singleton,
             unpack_singleton=unpack_singleton,
         )
-        return all_status, info,
+        return overall_status, info,
 
 
     def split_into_blocks(
@@ -418,7 +428,6 @@ def _apply_delog_on_vector(
     vector: _np.ndarray,
     qids: Iterable[int],
     qid_to_logly: dict[int, bool],
-    /,
 ) -> None:
     """
     Delogarithmize the elements of numpy vector that have True log-status
@@ -430,12 +439,11 @@ def _apply_delog_on_vector(
 def _calculate_steady_incidence_matrix(
     equations: Iterable[Equation],
     wrt_any_qids: Iterable[int],
-    /,
 ) -> _np.ndarray:
     """
     """
     qid_to_column = { qid: column for column, qid in enumerate(wrt_any_qids) }
-    def token_within_quantities(tok: Token, /, ) -> bool:
+    def token_within_quantities(tok: Token, ) -> bool:
         return qid_to_column.get(tok.qid, None)
         #
     return _equations.calculate_incidence_matrix(
@@ -448,7 +456,6 @@ def _calculate_steady_incidence_matrix(
 def _resolve_split_into_blocks(
     split_into_blocks: bool | None,
     plan: SteadyPlan | None,
-    /,
 ) -> bool:
     """
     """

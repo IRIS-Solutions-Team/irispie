@@ -192,7 +192,7 @@ class Inlay:
 
     @classmethod
     @_dm.reference(category="import_export", )
-    def from_pickle(
+    def from_pickle_file(
         klass,
         file_name: str,
         /,
@@ -225,6 +225,8 @@ class Inlay:
         """
         with open(file_name, "rb") as fid:
             return _pickle.load(fid, **kwargs, )
+
+    from_pickle = from_pickle_file
 
     #]
 

@@ -159,16 +159,19 @@ class Solution:
         self.Z = Z
         self.H = H
         self.D = D
+        #
         self.Ta = Ta
         self.Pa = Pa
         self.Ra = Ra
         self.Ka = Ka
         self.Za = Za
         self.Ua = Ua
+        #
         self.J = J
         self.Ru = Ru
         self.X = X
         self.Xa = Xa
+        #
         self.square_expansion = square_expansion
         self.triangular_expansion = triangular_expansion
         self.eigenvalues = eigenvalues
@@ -182,29 +185,31 @@ class Solution:
         klass,
         descriptor: _descriptors.Descriptor,
         system: _systems.System,
-        *,
         tolerance: float,
-        clip_small: bool = False,
+        clip_small: bool,
     ) -> Self:
         """
         """
         self = klass()
         #
-        def is_alpha_beta_stable_or_unit_root(alpha: Real, beta: Real, /, ) -> bool:
+        def is_alpha_beta_stable_or_unit_root(alpha: Real, beta: Real, ) -> bool:
             return abs(beta) < (1 + tolerance)*abs(alpha)
-        def is_stable_root(root: Real, /, ) -> bool:
+        def is_stable_root(root: Real, ) -> bool:
             return abs(root) < (1 - tolerance)
-        def is_unit_root(root: Real, /, ) -> bool:
+        def is_unit_root(root: Real, ) -> bool:
             return abs(root) >= (1 - tolerance) and abs(root) < (1 + tolerance)
-        def clip_func(x: _np.ndarray, /, ) -> _np.ndarray:
+        def clip_func(x: _np.ndarray, ) -> _np.ndarray:
             return _np.where(_np.abs(x) < tolerance, 0, x)
         clip = clip_func if clip_small else None
         #
         # Detach unstable from (stable + unit) roots and solve out expectations
         # The system is triangular but because stable and unit roots are
         # not detached yet, the system is called "preliminary"
-        qz_matrixes, self.eigenvalues = \
-            _solve_ordqz(system, is_alpha_beta_stable_or_unit_root, is_stable_root, is_unit_root, )
+        qz_matrixes, self.eigenvalues = _solve_ordqz(
+            system,
+            is_alpha_beta_stable_or_unit_root,
+        )
+        #
         self._classify_eigenvalues_stability(is_stable_root, is_unit_root, )
         #
         triangular_solution_prelim = \
@@ -420,7 +425,7 @@ class Solution:
 
     def _classify_transition_vector_stability(
         self,
-        tolerance: float = 1e-12,
+        tolerance: float,
     ) -> None:
         self.transition_vector_stability \
             = _classify_solution_vector_stability(
@@ -431,7 +436,7 @@ class Solution:
 
     def _classify_measurement_vector_stability(
         self,
-        tolerance: float = 1e-12,
+        tolerance: float,
     ) -> None:
         self.measurement_vector_stability \
             = _classify_solution_vector_stability(
@@ -458,7 +463,6 @@ def right_div(B: _np.ndarray, A: _np.ndarray, ) -> _np.ndarray:
 
 def _square_from_triangular(
     triangular_solution: tuple[_np.ndarray, ...],
-    /,
 ) -> tuple[_np.ndarray, ...]:
     r"""
     T <- Ua @ Ta / Ua
@@ -482,7 +486,6 @@ def _square_from_triangular(
 def detach_stable_from_unit_roots(
     transition_solution_prelim: tuple[_np.ndarray, ...],
     is_unit_root: Callable[[Real], bool],
-    /,
     clip: Callable | None,
 ) -> tuple[_np.ndarray, ...]:
     """
@@ -595,9 +598,6 @@ def _solve_transition_equations(
 def _solve_ordqz(
     system: _systems.System,
     is_alpha_beta_stable_or_unit_root: Callable,
-    is_stable_root: Callable,
-    is_unit_root: Callable,
-    /,
 ) -> tuple[tuple[_np.ndarray, ...], tuple[Real, ...], ]:
     """
     """
@@ -635,8 +635,7 @@ def _classify_eigenvalue_stability(
 def _classify_solution_vector_stability(
     transform_matrix: _np.ndarray,
     num_unit_roots: int,
-    /,
-    tolerance: float = 1e-12,
+    tolerance: float,
 ) -> None:
     """
     """
@@ -655,7 +654,6 @@ def _get_solution_expansion(
     existing_expansion: list[_np.ndarray],
     R, X, J, Ru,
     forward: int,
-    /,
 ) -> list[_np.ndarray]:
     """
     Expand R matrices of square solution for t+1...t+forward

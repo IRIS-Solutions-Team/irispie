@@ -4,30 +4,39 @@
 
 #[
 
-from __future__ import absolute_import
+from __future__ import annotations
 
-from typing import Literal, Iterable, Sequence
+import math as _ma
+from typing import Literal
+from numbers import Real
+from collections.abc import Iterable, Sequence
 import plotly.graph_objects as _pg
 import plotly.subplots as _ps
 import plotly.io as _pi
 import documark as _dm
 
-from .dates import Period, Frequency
+from ..dates import Period, Frequency
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    pass
+    from typing import Any
 #]
 
 
 __all__ = (
-    "set_default_plotly_renderer",
-    "make_subplots",
     "add_trace",
-    "update_subplot_title",
-    "highlight",
+    "add_highlight",
+    "add_vline",
+    "auto_tiles",
     "freeze_span",
+    "highlight",
+    "make_subplots",
+    "resolve_date_format",
+    "resolve_subplot_reference",
+    "set_default_plotly_renderer",
+    "update_subplot_title",
     "vline",
+    "PlotlyDateAxisModeType",
 )
 
 
@@ -69,17 +78,16 @@ def resolve_date_format(
     return date_format_style[frequency]
 
 
-_EMPTY_SUBPLOT_TITLE = " "
-
-
 def set_default_plotly_renderer(renderer: str, ) -> None:
     """
     """
     _pi.renderers.default = renderer
 
 
+_EMPTY_SUBPLOT_TITLE = " "
 _DEFAULT_VERTICAL_SPACING = 0.1
 _DEFAULT_HORIZONTAL_SPACING = 0.05
+
 
 @_dm.reference(category="arrange", )
 def make_subplots(
@@ -177,10 +185,10 @@ def add_vline(
     r"""
     """
     date_axis_mode = get_date_axis_mode(figure, )
-    row_column, _ = resolve_subplot_reference(figure, subplot, )
+    plotly_row_col, _ = resolve_subplot_reference(figure, subplot, )
     if hasattr(position, "to_plotly_date"):
         position = position.to_plotly_date(mode=date_axis_mode, )
-    figure.add_vline(position, **row_column, line={"color": color, "width": width, }, )
+    figure.add_vline(position, **plotly_row_col, line={"color": color, "width": width, }, )
 
 
 vline = add_vline
@@ -198,8 +206,8 @@ def freeze_span(
         "range": (start, end),
         "autorange": False,
     }
-    row_column, *_ = resolve_subplot_reference(figure, subplot, )
-    figure.update_xaxes(xaxis_update, **row_column, )
+    plotly_row_col, *_ = resolve_subplot_reference(figure, subplot, )
+    figure.update_xaxes(xaxis_update, **plotly_row_col, )
 
 
 def _resolve_figure_span(
@@ -260,21 +268,18 @@ def resolve_subplot_reference(
     num_rows = len(rows)
     num_columns = len(columns)
     num_tiles = num_rows * num_columns
-    if isinstance(subplot, Sequence):
-        row = subplot[0]
-        column = subplot[1]
+    if isinstance(subplot, Sequence, ):
+        row, column, = subplot
         index = row * num_columns + column
-        row_column = {"row": row+1, "col": column+1, }
-        return row_column, index,
-    if isinstance(subplot, int):
-        if subplot < 0:
-            subplot += num_tiles
-        index = subplot
+        plotly_row_col = {"row": row+1, "col": column+1, }
+        return plotly_row_col, index,
+    if isinstance(subplot, Real, ):
+        index = int(subplot, ) if subplot >= 0 else num_tiles + int(subplot)
         row = index // num_columns
         column = index % num_columns
-        row_column = {"row": row+1, "col": column+1, }
-        return row_column, index,
-    raise TypeError(f"Invalid subplot type: {type(subplot)}")
+        plotly_row_col = {"row": row+1, "col": column+1, }
+        return plotly_row_col, index,
+    raise TypeError(f"Invalid subplot reference: {subplot}")
 
 
 def add_trace(
@@ -282,9 +287,22 @@ def add_trace(
     trace,
     subplot: tuple[int, int] | int | None = None,
 ) -> None:
-    row_column, _ = resolve_subplot_reference(figure, subplot, )
-    figure.add_trace(trace, **row_column, )
+    plotly_row_col, _ = resolve_subplot_reference(figure, subplot, )
+    figure.add_trace(trace, **plotly_row_col, )
 
+
+def customize_tick_labels(
+    figure: _pg.Figure,
+    tick_labels: Iterable[str],
+    tick_values: Iterable[Any],
+    subplot: tuple[int, int] | int | None = None,
+) -> None:
+    plotly_row_col, _ = resolve_subplot_reference(figure, subplot, )
+    figure.update_xaxes(
+        ticktext=list(tick_labels),
+        tickvals=list(tick_values),
+        **plotly_row_col,
+    )
 
 def update_subplot_title(
     figure: _pg.Figure,
@@ -293,25 +311,50 @@ def update_subplot_title(
 ) -> None:
     r"""
     """
-    row_column, index = resolve_subplot_reference(figure, subplot, )
+    _, index = resolve_subplot_reference(figure, subplot, )
     annotation = next(figure.select_annotations(index, ), None, )
     if annotation:
         annotation.text = title
 
 
 def get_date_axis_mode(figure: _pg.Figure, ) -> PlotlyDateAxisModeType | None:
+    r"""
     """
-    """
+    #[
     xaxis = figure.layout.xaxis
     return xaxis.ticklabelmode if xaxis.type == "date" else None
+    #]
 
 
 def add_histogram(figure, *args, subplot, **kwargs, ) -> _pg.Histogram:
+    r"""
     """
-    """
+    #[
     trace = _pg.Histogram(*args, **kwargs, )
     add_trace(figure, trace, subplot=subplot, )
     return trace
+    #]
+
+
+def add_bar(figure, *args, subplot, **kwargs, ) -> _pg.Histogram:
+    r"""
+    """
+    #[
+    trace = _pg.Bar(*args, **kwargs, )
+    add_trace(figure, trace, subplot=subplot, )
+    return trace
+    #]
+
+
+def auto_tiles(num_charts, ) -> tuple[int, int]:
+    r"""
+    """
+    #[
+    n = _ma.ceil(_ma.sqrt(num_charts, ), )
+    if n * (n-1) >= num_charts:
+        return (n, n-1, )
+    return (n, n, )
+    #]
 
 
 # @_dm.reference(

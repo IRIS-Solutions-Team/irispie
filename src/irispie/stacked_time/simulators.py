@@ -113,6 +113,7 @@ def simulate_frame(
     #[
 
     solver_settings = solver_settings or {}
+    solver_settings = {"norm_order": float("inf"), } | solver_settings
 
     when_missing_stream = \
         _wrongdoings.STREAM_FACTORY[when_missing] \

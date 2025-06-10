@@ -38,19 +38,21 @@ from ..fords import std_simulators as _std_simulators
 
 from ._invariants import Invariant
 from ._variants import Variant
+
+from . import _assigns
 from . import _covariances
 from . import _flags
-from . import _simulate
-from . import _steady
+from . import _get
+from . import _io
 from . import _kalmans
 from . import _logly
-from . import _get
-from . import _pretty
-from . import _assigns
-from . import _slatable_protocols
 from . import _plannable_protocols
+from . import _pretty
+from . import _simulate
+from . import _slatable_protocols
+from . import _steady
 from . import _steady_boxable_protocols
-from . import _io
+from . import _tolerance
 
 #]
 
@@ -59,9 +61,6 @@ __all__ = [
     "Simultaneous",
     "Model",
 ]
-
-
-_DEFAULT_SOLUTION_TOLERANCE = 1e-12
 
 
 @_dm.reference(
@@ -91,6 +90,7 @@ class Simultaneous(
     _slatable_protocols.Inlay,
     _plannable_protocols.Inlay,
     _steady_boxable_protocols.Inlay,
+    _tolerance.Inlay,
     _io.Inlay,
 ):
     """
@@ -447,20 +447,21 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         clip_small: bool = False,
         return_info: bool = False,
         unpack_singleton: bool = True,
-        tolerance: Real = _DEFAULT_SOLUTION_TOLERANCE,
+        tolerance: float | None = None,
         **kwargs,
     ) -> dict[str, Any]:
         """
         Calculate first-order solution for each variant within this model
         """
         model_flags = self.resolve_flags(**kwargs, )
+        tolerance = tolerance or self.get_tolerance("eigenvalue", )
         out_info = [
             self._solve_variant(
                 self_v,
                 vid,
                 model_flags,
-                clip_small=clip_small,
                 tolerance=tolerance,
+                clip_small=clip_small,
             )
             for vid, self_v in enumerate(self._variants, )
         ]
@@ -478,8 +479,8 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         variant: Variant,
         vid: int,
         model_flags: flags.Flags,
+        tolerance: float,
         clip_small: bool,
-        tolerance: Real,
     ) -> None:
         """
         Calculate first-order solution for one variant of this model

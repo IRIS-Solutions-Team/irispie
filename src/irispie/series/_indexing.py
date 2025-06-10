@@ -99,7 +99,6 @@ time `Series` object based on the data selected by the `dates` and
     def __getitem__(
         self,
         index: int | tuple,
-        /,
     ) -> _np.ndarray:
         """
         Get data self[dates] or self[dates, variants]
@@ -122,7 +121,6 @@ time `Series` object based on the data selected by the `dates` and
         self,
         index: int | tuple,
         data,
-        /,
     ) -> None:
         """
         Set data self[dates] = ... or self[dates, variants] = ...

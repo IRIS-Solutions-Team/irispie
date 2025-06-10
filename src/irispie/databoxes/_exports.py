@@ -252,10 +252,9 @@ class Inlay:
     to_csv = to_csv_file
 
     @_dm.reference(category="import_export", )
-    def to_pickle(
+    def to_pickle_file(
         self,
         file_name: str,
-        /,
         **kwargs,
     ) -> None:
         r"""
@@ -284,6 +283,8 @@ This method returns `None`.
         """
         with open(file_name, "wb+") as fid:
             _pk.dump(self, fid, **kwargs, )
+
+    to_pickle = to_pickle_file
 
     #]
 

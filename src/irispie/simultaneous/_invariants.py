@@ -26,6 +26,7 @@ from .. import sources as _sources
 from .. sources import ModelSource
 
 from ._flags import Flags
+from . import _tolerance
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -72,6 +73,7 @@ def std_description_from_shock_description(shock_description: str, /, ) -> str:
 
 
 class Invariant(
+    _tolerance.InlayForInvariant,
     _descriptions.DescriptionMixin,
 ):
     """
@@ -84,6 +86,7 @@ class Invariant(
         "dynamic_equations",
         "steady_equations",
         "shock_qid_to_std_qid",
+        "tolerance",
         "_context",
         "_default_std",
         "_flags",
@@ -114,7 +117,7 @@ class Invariant(
     def from_source(
         klass,
         source: ModelSource,
-        /,
+        #
         check_syntax: bool = True,
         autodeclare_as: str | None = None,
         default_std: Real | None = None,
@@ -124,6 +127,7 @@ class Invariant(
         """
         """
         self = klass()
+        self.reset_tolerance()
         self.set_description(
             description if description is not None
             else source.description
@@ -218,7 +222,6 @@ class Invariant(
             _check_syntax(self.steady_equations, self._context, )
         #
         self._populate_min_max_shifts()
-        #
         self._populate_derived_attributes()
         #
         return self
