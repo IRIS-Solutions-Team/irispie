@@ -13,7 +13,8 @@ jobs:
           fetch-depth: 0
           ref: develop
           path: ./irispie-package
-          token: ${{ secrets.IRISPIE_CONTENTS_TOKEN }}
+          token: ${{ secrets.IRISPIE_TOKEN_2025 }}
+          repository: IRIS-Solutions-Team/irispie
 
       - name: Set up identity
         run: |
@@ -112,7 +113,7 @@ jobs:
         id: create_release
         env:
           tag: ${{ env.NEW_VERSION }}
-          GH_TOKEN: ${{ secrets.IRISPIE_CONTENTS_TOKEN }}
+          GH_TOKEN: ${{ secrets.IRISPIE_TOKEN_2025 }}
         run: |
          cd $GITHUB_WORKSPACE/irispie-package
          gh release create "$tag" \
