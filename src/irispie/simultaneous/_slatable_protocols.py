@@ -44,14 +44,20 @@ class Inlay:
         r"""
         """
         slatable = _slatable_for_simulate_or_kalman_filter(self, **kwargs, )
-        slatable.output_names = self.get_names(kind=_OUTPUT_KIND_FOR_SIMULATE, )
+        output_kind = _OUTPUT_KIND_FOR_SIMULATE
+        if kwargs.get("output_parameters", False):
+            output_kind |= _quantities.PARAMETER
+        slatable.output_names = self.get_names(kind=output_kind, )
         return slatable
 
     def slatable_for_kalman_filter(self, **kwargs, ) -> Slatable:
         r"""
         """
         slatable = _slatable_for_simulate_or_kalman_filter(self, parameters_from_data=False, **kwargs, )
-        slatable.output_names = self.get_names(kind=_OUTPUT_KIND_FOR_KALMAN_FILTER, )
+        output_kind = _OUTPUT_KIND_FOR_KALMAN_FILTER
+        if kwargs.get("output_parameters", False):
+            output_kind |= _quantities.PARAMETER
+        slatable.output_names = self.get_names(kind=output_kind, )
         return slatable
 
     def slatables_for_vary_stds(self, ) -> tuple[Slatable, Slatable]:
@@ -75,6 +81,7 @@ def _slatable_for_simulate_or_kalman_filter(
     parameters_from_data: bool,
     shocks_from_data: bool,
     stds_from_data: bool,
+    **kwargs,
 ) -> Slatable:
     r"""
     """

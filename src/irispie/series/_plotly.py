@@ -111,6 +111,7 @@ class Inlay:
         legend: Iterable[str] | None = None,
         show_figure: bool = True,
         show_legend: bool | None = None,
+        include_in_legend: bool | Iterable[bool] = False,
         renderer: str | None = None,
         subplot: tuple[int, int] | int | None = None,
         xline = None,
@@ -190,7 +191,7 @@ class Inlay:
             legend,
             color_cycle,
             update_traces_cycle,
-            showlegend=show_legend,
+            include_in_legend=include_in_legend,
             xhoverformat=date_format,
         )
 
@@ -211,6 +212,8 @@ class Inlay:
         layout = _cp.deepcopy(_PLOTLY_STYLES["layouts"]["plain"])
         del layout["xaxis"]
         del layout["yaxis"]
+
+        layout["showlegend"] = show_legend
 
         bar_mode = _BARMODE.get(chart_type, figure.layout["barmode"], )
         layout["barmode"] = bar_mode
@@ -283,23 +286,29 @@ def _iter_traces(
     legends: Iterable[str] | None,
     colors: Iterable[str],
     custom_updates: Iterable[dict],
+    include_in_legend: Iterable[bool],
     **kwargs,
 ) -> Any:
     """
     """
     #[
+    if isinstance(include_in_legend, bool):
+        include_in_legend = _it.repeat(include_in_legend, )
+    #
     zipped = zip(
         series.iter_own_data_variants_from_until(from_until=from_until, ),
         legends,
         colors,
         custom_updates,
+        include_in_legend,
     )
-    for data_v, legend_v, color_v, update_v in zipped:
+    for data_v, legend_v, color_v, update_v, include_in_legend_v in zipped:
         traces = traces_constructor(
             color=color_v,
             x=traces_period,
             y=tuple(transform(i) for i in data_v),
             name=legend_v,
+            showlegend=include_in_legend_v,
             **kwargs,
         )
         traces.update(update_v, )

@@ -815,7 +815,6 @@ callable function determining which items to retain.
     def apply(
         self,
         func: Callable,
-        /,
         source_names: SourceNames = None,
         in_place: bool = True,
         when_fails: Literal["critical", "error", "warning", "silent", ] = "critical",

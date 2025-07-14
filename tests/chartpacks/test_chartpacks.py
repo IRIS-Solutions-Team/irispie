@@ -1,4 +1,5 @@
 
+import sys
 import irispie as ir
 import numpy as np
 from irispie.chartpacks import main as ch
@@ -26,25 +27,24 @@ x = ch.Chartpack(
     legend=["abc", "def", ],
 )
 
-x.add_figure("Figure 1", )
-x.add_charts(["Inflation: cpi [pct]", "Short rate: stn"], )
-x.add_chart("GDP growh: gdp [pct]", )
-x.add_chart("GDP growh: gdp [pct]", )
+f = x.add_figure("Figure 1", )
+f.add_charts(["Inflation: cpi [pct]", "Short rate: stn"], )
+f.add_chart("GDP growh: gdp [pct]", )
+f.add_chart("GDP growh: gdp [pct]", )
 
-x.add_figure("Figure 2", )
-x.add_chart("GDP growh: gdp [pct]", )
-x.add_chart("GDP growh: gdp [pct]", )
-x.add_chart("GDP growh: gdp [pct]", )
-x.add_chart("GDP growh: gdp [pct]", )
-x.add_chart("GDP growh: gdp [pct]", )
-x.add_chart("GDP growh: gdp [pct]", )
-x.add_chart("GDP growh: gdp [pct]", )
+f = x.add_figure("Figure 2", show_legend=False, )
+f.add_chart("GDP growh: gdp [pct]", )
+f.add_chart("GDP growh: gdp [pct]", )
+f.add_chart("GDP growh: gdp [pct]", )
+f.add_chart("GDP growh: gdp [pct]", )
+f.add_chart("GDP growh: gdp [pct]", )
+f.add_chart("GDP growh: gdp [pct]", )
+f.add_chart("GDP growh: gdp [pct]", )
 
 db = ir.Databox()
-with db as _:
-    _.cpi = ir.Series(num_variants=2, dates=ir.qq(2020,1,...,2025,4), func=np.random.standard_normal, )
-    _.gdp = ir.Series(num_variants=2, dates=ir.qq(2020,1,...,2025,4), func=np.random.standard_normal, )
-    _.stn = ir.Series(num_variants=2, dates=ir.qq(2020,1,...,2025,4), func=np.random.standard_normal, )
+db["cpi"] = ir.Series(num_variants=2, dates=ir.qq(2020,1,...,2025,4), func=np.random.standard_normal, )
+db["gdp"] = ir.Series(num_variants=2, dates=ir.qq(2020,1,...,2025,4), func=np.random.standard_normal, )
+db["stn"] = ir.Series(num_variants=2, dates=ir.qq(2020,1,...,2025,4), func=np.random.standard_normal, )
 
 
 transforms = {
@@ -52,7 +52,9 @@ transforms = {
 }
 
 
-fs = x.plot(db, )
+fs = x.plot(db, return_info=True, )
+sys.exit()
+
 fs2 = x.plot(db, transforms=transforms, )
 
 sh = {

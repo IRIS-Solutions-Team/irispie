@@ -24,6 +24,10 @@ if TYPE_CHECKING:
 
 
 __all__ = (
+    "add_line",
+    "add_bar",
+    "add_histogram",
+    "customize_tick_labels",
     "add_trace",
     "add_highlight",
     "add_vline",
@@ -31,6 +35,7 @@ __all__ = (
     "freeze_span",
     "highlight",
     "make_subplots",
+    "get_date_axis_mode",
     "resolve_date_format",
     "resolve_subplot_reference",
     "set_default_plotly_renderer",
@@ -226,7 +231,7 @@ def _resolve_figure_span(
     else:
         start, end = None, None
     figure_span = figure.layout.xaxis.range
-    mode = get_date_axis_mode(figure, )
+    mode = get_date_axis_mode(figure, ) or "period"
     start = start.to_plotly_edge_before(mode=mode, ) if start is not None else figure_span[0]
     end = end.to_plotly_edge_after(mode=mode, ) if end is not None else figure_span[-1]
     return start, end,
@@ -344,6 +349,15 @@ def add_bar(figure, *args, subplot, **kwargs, ) -> _pg.Histogram:
     add_trace(figure, trace, subplot=subplot, )
     return trace
     #]
+
+
+def add_line(figure, *args, subplot, **kwargs, ) -> _pg.Scatter:
+    r"""
+    """
+    #[
+    trace = _pg.Scatter(*args, **kwargs, mode="lines+markers", )
+    add_trace(figure, trace, subplot=subplot, )
+    return trace
 
 
 def auto_tiles(num_charts, ) -> tuple[int, int]:

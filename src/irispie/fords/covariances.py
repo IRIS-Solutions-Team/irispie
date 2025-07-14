@@ -419,8 +419,12 @@ class CovarianceSimulator:
         if make_symmetric:
             cov = symmetrize(cov, )
         eig_values, eig_vectors = _np.linalg.eigh(cov, )
+        # eig_vectors, eig_values, *_ = _np.linalg.svd(cov, )
         if trim_negative:
+            print(_np.min(eig_values))
             eig_values = _np.maximum(eig_values, 0)
+        if _np.any(eig_values < 0):
+            raise ValueError("Negative eigenvalues found in covariance matrix.")
         std_devs = _np.sqrt(eig_values, )
         self.factor = eig_vectors @ _np.diag(std_devs, )
         self._populate_mean(mean, )

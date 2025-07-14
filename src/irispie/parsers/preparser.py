@@ -440,10 +440,10 @@ def _evaluate_contextual_expressions(
     """
     """
     #[
-    def _replace(match):
+    context = (dict(context, ) if context else {}) | {"__builtins__": {}}
+    def _replace(match, ):
+        expression = match.group(1).strip()
         try:
-            expression = match.group(1).strip()
-            context = (dict(context) if context else {}) | {"__builtins__": {}}
             value = eval(expression, context, )
             return _stringify(value, )
         except:

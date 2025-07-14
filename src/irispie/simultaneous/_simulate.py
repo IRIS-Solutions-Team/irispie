@@ -61,6 +61,7 @@ class Inlay:
         shocks_from_data: bool = True,
         stds_from_data: bool = True,
         parameters_from_data: bool = False,
+        output_parameters: bool = False,
         force_split_frames: bool = False,
         when_fails: Literal["critical", "error", "warning", "silent"] = "critical",
         #
@@ -68,7 +69,7 @@ class Inlay:
         return_info: bool = False,
         **kwargs,
     ) -> Databox | tuple[Databox, _Info]:
-        """
+        r"""
         """
 
         num_variants = self.resolve_num_variants_in_context(num_variants, )
@@ -86,6 +87,7 @@ class Inlay:
             shocks_from_data=shocks_from_data,
             stds_from_data=stds_from_data,
             parameters_from_data=parameters_from_data,
+            output_parameters=output_parameters,
         )
 
         dataslate = Dataslate.from_databox_for_slatable(

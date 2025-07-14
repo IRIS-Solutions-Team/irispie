@@ -30,7 +30,7 @@ class Inlay:
     """
     #[
 
-    def slatable_for_estimate(self, ) -> Slatable:
+    def slatable_for_estimate(self, **kwargs, ) -> Slatable:
         r"""
         """
         slatable = _slatable_for_anything(self, )
@@ -41,6 +41,7 @@ class Inlay:
     def slatable_for_simulate(
         self,
         residuals_from_data: bool,
+        **kwargs,
     ) -> Slatable:
         r"""
         """

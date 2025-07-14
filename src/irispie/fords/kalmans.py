@@ -596,6 +596,7 @@ def kalman_filter(
     shocks_from_data: bool = False,
     stds_from_data: bool = False,
     initials_from_data: bool = False,
+    output_parameters: bool = False,
     #
     prepend_initial: bool = False,
     append_terminal: bool = False,
@@ -765,6 +766,7 @@ containing the dictionary for singleton models, too.
     slatable = model.slatable_for_kalman_filter(
         shocks_from_data=shocks_from_data,
         stds_from_data=stds_from_data,
+        output_parameters=output_parameters,
     )
 
     input_ds = Dataslate.from_databox_for_slatable(

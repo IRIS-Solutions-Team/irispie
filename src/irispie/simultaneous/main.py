@@ -241,14 +241,15 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
     def __repr__(self, ) -> str:
         """
         """
-        indented = " " * 4
         return "\n".join((
             f"",
             f"<{self.__class__.__name__} at {id(self):#x}>",
             f"[Description: \"{self.get_description()}\"]",
             f"[Num variants: {self.num_variants}]",
-            f"[Num transition, measurement equations: {self.num_transition_equations}, {self.num_measurement_equations}]",
-            f"[Max lag, lead: t{self.max_lag:+g}, t{self.max_lead:+g}]",
+            f"[Num transition: {self.num_transition_equations}]",
+            f"[Num measurement: {self.num_measurement_equations}]",
+            f"[Max lag: t{self.max_lag:+g}]",
+            f"[Max lead: t{self.max_lead:+g}]",
             f"",
         ))
 
