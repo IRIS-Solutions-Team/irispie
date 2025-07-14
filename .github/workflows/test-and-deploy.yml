@@ -113,7 +113,7 @@ jobs:
         id: create_release
         env:
           tag: ${{ env.NEW_VERSION }}
-          GH_TOKEN: ${{ secrets.IRISPIE_CONTENTS_TOKEN }}
+          GH_TOKEN: ${{ secrets.IRISPIE_TOKEN_2025 }}
         run: |
          cd $GITHUB_WORKSPACE/irispie-package
          gh release create "$tag" \
