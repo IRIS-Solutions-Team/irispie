@@ -14,6 +14,7 @@ jobs:
           ref: develop
           path: ./irispie-package
           token: ${{ secrets.IRISPIE_CONTENTS_TOKEN }}
+          repository: IRIS-Solutions-Team/irispie
 
       - name: Set up identity
         run: |
