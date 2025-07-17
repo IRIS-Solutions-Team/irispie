@@ -7,7 +7,7 @@ Merge inlay
 
 from __future__ import annotations
 
-from typing import (TYPE_CHECKING, )
+from typing import Literal
 import warnings as _wa
 import documark as _dm
 
@@ -15,48 +15,60 @@ from .. import wrongdoings as _wrongdoings
 from ..series import main as _series
 from . import main as _databoxes
 
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import (Self, Iterable, Literal, )
-    MergeStrategyType = Literal[
-        "stack", # Stack values as variants
-        "hstack", # Legacy alias for stack, do not include in the docstring
-        "replace", # Replace the existing value with the new one
-        "discard", # Discard the new value and keep the existing one
-        "silent", # Exactly the same as discard
-        "warning", # Same as discard with a warning
-        "error", # Throw an error for the first duplicate key
-        "critical", # Throw a critical error for the first duplicate key
-    ]
+    from typing import Self, Iterable
 
 #]
 
 
-class Inlay:
-    """
+MergeStrategyType = Literal[
+    "stack", # Stack values as variants
+    "hstack", # Legacy alias for stack, do not include in the docstring
+    "replace", # Replace the existing value with the new one
+    "discard", # Discard the new value and keep the existing one
+    "silent", # Exactly the same as discard
+    "warning", # Same as discard with a warning
+    "error", # Throw an error for the first duplicate key
+    "critical", # Throw a critical error for the first duplicate key
+]
+
+
+def mixin(klass, ):
+    r"""
+    Mixin function to add the merge functionality to a databox class
     """
     #[
+    for attr in ("from_merge", "merge", ):
+        if hasattr(klass, attr, ):
+            raise TypeError(f"The class already has a '{attr}' method; cannot mixin again", )
+    klass.by_merging = classmethod(_by_merging, )
+    klass.merge = _merge
+    return klass
+    #]
 
-    @classmethod
-    def merged(
-        klass,
-        databoxes: Iterable[Self],
-        merge_strategy: MergeStrategyType = "stack",
-    ) -> Self:
-        """
-        """
-        out = klass()
-        out.merge(databoxes, merge_strategy, )
-        return out
 
-    @_dm.reference(category="multiple", )
-    def merge(
-        self: Self,
-        other: Self | Iterable[Self],
-        merge_strategy: MergeStrategyType = "stack",
-        # Do not include the following in the docstring
-        action = None,
-    ) -> None:
-        r"""
+def _by_merging(
+    klass,
+    databoxes: Iterable[Self],
+    merge_strategy: MergeStrategyType = "stack",
+) -> Self:
+    r"""
+    """
+    out = klass()
+    out.merge(databoxes, merge_strategy, )
+    return out
+
+
+@_dm.reference(category="multiple", )
+def _merge(
+    self: Self,
+    other: Self | Iterable[Self],
+    merge_strategy: MergeStrategyType = "stack",
+    # Do not include the following in the docstring
+    action = None,
+) -> None:
+    r"""
 ................................................................................
 
 ==Merge Databoxes==
@@ -64,63 +76,63 @@ class Inlay:
 Combine one or more databoxes into a single databox using a specified merge
 strategy to handle potential conflicts between duplicate keys.
 
-    self.merge(
-        other,
-        merge_strategy="stack",
-    )
+self.merge(
+    other,
+    merge_strategy="stack",
+)
 
 
 ### Input arguments ###
 
 ???+ input "other"
-    The databox or iterable of databoxes to merge into the current databox. If
-    merging a single databox, it should be passed directly; for multiple
-    databoxes, pass an iterable containing all.
+The databox or iterable of databoxes to merge into the current databox. If
+merging a single databox, it should be passed directly; for multiple
+databoxes, pass an iterable containing all.
 
 ???+ input "merge_strategy"
-    Determines how to process keys that exist in more than one databox. The
-    default strategy is `"stack"`.
+Determines how to process keys that exist in more than one databox. The
+default strategy is `"stack"`.
 
-    * `"stack"`: Stack values; this means combine time series into multiple
-    columns, or combine lists, or convert non-lists to lists for stacking.
+* `"stack"`: Stack values; this means combine time series into multiple
+columns, or combine lists, or convert non-lists to lists for stacking.
 
-    * `"replace"`: Replace existing values with new values.
+* `"replace"`: Replace existing values with new values.
 
-    * `"discard"` and `"silent"`: Retain original values and ignore new values.
+* `"discard"` and `"silent"`: Retain original values and ignore new values.
 
-    * `"warning"`: Behave like `"discard"` but issue a warning for each conflict.
+* `"warning"`: Behave like `"discard"` but issue a warning for each conflict.
 
-    * `"error"`: Raise an error on encountering the first duplicate key.
+* `"error"`: Raise an error on encountering the first duplicate key.
 
-    * `"critical"`: Raise a critical error on encountering the first duplicate key.
+* `"critical"`: Raise a critical error on encountering the first duplicate key.
 
 
 ### Returns ###
 
-    This method modifies the databox in place and returns `None`.
+This method modifies the databox in place and returns `None`.
 
 ................................................................................
-        """
-        # Legacy name
-        if action is not None:
-            _wa.warn("The 'action' input argument is deprecated; use 'merge_strategy' instead", )
-            merge_strategy = action
-        #
-        merge_strategy_func = _MERGE_STRATEGY_DISPATCH[merge_strategy]
-        stream = _wrongdoings.create_stream(
-            merge_strategy,
-            "Duplicate keys when merging databoxes",
-            when_no_stream="silent",
-        )
-        if hasattr(other, "items", ):
-            other = (other, )
-        for t in other:
-            for key, value in t.items():
-                if key in self:
-                    merge_strategy_func(self, key, value, stream, )
-                else:
-                    self[key] = value
-        stream._raise()
+    """
+    # Legacy name
+    if action is not None:
+        _wa.warn("The 'action' input argument is deprecated; use 'merge_strategy' instead", )
+        merge_strategy = action
+    #
+    merge_strategy_func = _MERGE_STRATEGY_DISPATCH[merge_strategy]
+    stream = _wrongdoings.create_stream(
+        merge_strategy,
+        "Duplicate keys when merging databoxes",
+        when_no_stream="silent",
+    )
+    if hasattr(other, "items", ):
+        other = (other, )
+    for t in other:
+        for key, value in t.items():
+            if key in self:
+                merge_strategy_func(self, key, value, stream, )
+            else:
+                self[key] = value
+    stream._raise()
 
     #]
 

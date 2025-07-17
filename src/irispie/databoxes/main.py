@@ -28,9 +28,9 @@ from ..dates import (Period, Frequency, Span, EmptySpan, )
 from .. import quantities as _quantities
 from .. import wrongdoings as _wrongdoings
 
+from . import _merge
 from . import _imports as _imports
 from . import _exports as _exports
-from . import _merge as _merge
 from . import _fred as _fred
 from . import _views as _views
 
@@ -71,6 +71,7 @@ def _extended_span_tuple_from_base_span(
     return start_date, end_date
 
 
+@_merge.mixin
 @_dm.reference(
     path=("data_management", "databoxes.md", ),
     categories={
@@ -88,7 +89,6 @@ def _extended_span_tuple_from_base_span(
 class Databox(
     _imports.Inlay,
     _exports.Inlay,
-    _merge.Inlay,
     _views.Inlay,
     _fred.Inlay,
     _descriptions.DescriptionMixin,

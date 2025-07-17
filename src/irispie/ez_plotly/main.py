@@ -24,7 +24,9 @@ if TYPE_CHECKING:
 
 
 __all__ = (
+    "figure",
     "add_line",
+    "add_scatter",
     "add_bar",
     "add_histogram",
     "customize_tick_labels",
@@ -358,6 +360,35 @@ def add_line(figure, *args, subplot, **kwargs, ) -> _pg.Scatter:
     trace = _pg.Scatter(*args, **kwargs, mode="lines+markers", )
     add_trace(figure, trace, subplot=subplot, )
     return trace
+
+
+def add_scatter(figure, *args, subplot, **kwargs, ) -> _pg.Scatter:
+    r"""
+    """
+    #[
+    trace = _pg.Scatter(*args, **kwargs, mode="markers", )
+    add_trace(figure, trace, subplot=subplot, )
+    return trace
+
+
+def figure() -> _pg.Figure:
+    r"""
+    """
+    #[
+    figure = _pg.Figure()
+    return figure
+    #]
+
+
+def auto_tiles(num_charts, ) -> tuple[int, int]:
+    r"""
+    """
+    #[
+    n = _ma.ceil(_ma.sqrt(num_charts, ), )
+    if n * (n-1) >= num_charts:
+        return (n, n-1, )
+    return (n, n, )
+    #]
 
 
 def auto_tiles(num_charts, ) -> tuple[int, int]:
