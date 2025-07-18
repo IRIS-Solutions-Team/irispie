@@ -36,7 +36,7 @@ MergeStrategyType = Literal[
 
 def mixin(klass, ):
     r"""
-    Mixin function to add the merge functionality to a databox class
+    Mix by_merging and merge methods into the class
     """
     #[
     for attr in ("from_merge", "merge", ):

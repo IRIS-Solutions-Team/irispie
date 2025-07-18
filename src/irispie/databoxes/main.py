@@ -29,9 +29,10 @@ from .. import quantities as _quantities
 from .. import wrongdoings as _wrongdoings
 
 from . import _merge
+from . import _fred
+
 from . import _imports as _imports
 from . import _exports as _exports
-from . import _fred as _fred
 from . import _views as _views
 
 #]
@@ -72,6 +73,7 @@ def _extended_span_tuple_from_base_span(
 
 
 @_merge.mixin
+@_fred.mixin
 @_dm.reference(
     path=("data_management", "databoxes.md", ),
     categories={
@@ -90,7 +92,6 @@ class Databox(
     _imports.Inlay,
     _exports.Inlay,
     _views.Inlay,
-    _fred.Inlay,
     _descriptions.DescriptionMixin,
     dict,
 ):

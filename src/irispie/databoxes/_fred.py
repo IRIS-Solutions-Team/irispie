@@ -32,19 +32,24 @@ _PARAMETERS = r"?series_id={series_id}&api_key={api_key}&file_type=json"
 _MISSING_VALUE = r"."
 
 
-class Inlay:
-    """
+def mixin(klass, ):
+    r"""
+    Mix the from_fred method into the class
     """
     #[
+    if hasattr(klass, "from_fred", ):
+        raise TypeError("The class already has a 'from_fred' method; cannot mixin again", )
+    klass.from_fred = classmethod(_from_fred, )
+    return klass
+    #]
 
-    @classmethod
-    @_dm.reference(category="api", )
-    def from_fred(
-        klass,
-        mapper: Iterable[str] | dict[str, str],
-        /,
-    ) -> _databoxes.Databox:
-        r"""
+
+@_dm.reference(category="api", )
+def _from_fred(
+    klass,
+    request: Iterable[str] | dict[str, str],
+) -> _databoxes.Databox:
+    r"""
 ................................................................................
 
 ==Download time series from FRED (St Louis Fed Database)==
@@ -55,36 +60,36 @@ by the FRED website. The API key is stored in the `_API_KEY` variable in the
 `_fred.py` module. The method downloads the data for the specified series IDs
 and returns a `Databox` object with the downloaded series.
 
-    db = Databox.from_fred(
-        mapper,
-    )
+db = Databox.from_fred(
+    request,
+)
 
 ### Input arguments ###
 
-???+ input "mapper"
-    A dictionary or list of series IDs to download from FRED. If a dictionary is
-    provided, the keys are used as the FRED codes and the values are used for
-    the names of the time series in the Databox. If list of strings is provided,
-    the series IDs are used as the names of the series in the `Databox` object.
+???+ input "request"
+A dictionary or list of series IDs to download from FRED. If a dictionary is
+provided, the keys are used as the FRED codes and the values are used for
+the names of the time series in the Databox. If list of strings is provided,
+the series IDs are used as the names of the series in the `Databox` object.
 
 ### Returns ###
 
 ???+ returns "db"
-    A `Databox` object containing the downloaded time series data.
+A `Databox` object containing the downloaded time series data.
 
 ................................................................................
-        """
-        self = klass()
-        if not isinstance(mapper, dict):
-            mapper = _mapper_from_series_ids(mapper, )
-        for name, series_id in mapper.items():
-            self[name] = _get_series(series_id, )
-        return self
+    """
+    #[
+    self = klass()
+    if not isinstance(request, dict):
+        request = _request_from_series_ids(request, )
+    for name, series_id in request.items():
+        self[name] = _get_series(series_id, )
+    return self
+    #}
 
-    #]
 
-
-def _mapper_from_series_ids(series_ids: Iterable[str], /, ):
+def _request_from_series_ids(series_ids: Iterable[str], ):
     """
     """
     #[
@@ -94,7 +99,8 @@ def _mapper_from_series_ids(series_ids: Iterable[str], /, ):
     }
     #]
 
-def _get_series(series_id: str, /, ):
+
+def _get_series(series_id: str, ):
     """
     """
     #[
@@ -107,13 +113,13 @@ def _get_series(series_id: str, /, ):
     #
     freq = _get_freq_from_meta_response(meta_response, )
     iso_dates, str_values = _get_dates_and_values_from_data_response(data_response, )
-    values = ( (float(x) if x != _MISSING_VALUE else None) for x in str_values )
+    values = tuple( (float(x) if x != _MISSING_VALUE else None) for x in str_values )
     dates = _dates.periods_from_iso_strings(iso_dates, frequency=freq, )
-    return Series(dates=dates, values=list(values), )
+    return Series(periods=dates, values=values, )
     #]
 
 
-def _get_freq_from_meta_response(meta_response: dict, /, ):
+def _get_freq_from_meta_response(meta_response: dict, ):
     """
     """
     #[
@@ -122,7 +128,7 @@ def _get_freq_from_meta_response(meta_response: dict, /, ):
     #]
 
 
-def _get_dates_and_values_from_data_response(data_response: dict, /, ):
+def _get_dates_and_values_from_data_response(data_response: dict, ):
     """
     """
     #[
@@ -134,7 +140,7 @@ def _get_dates_and_values_from_data_response(data_response: dict, /, ):
     #]
 
 
-def _get_series_urls(series_id: str, /, ):
+def _get_series_urls(series_id: str, ):
     """
     """
     #[

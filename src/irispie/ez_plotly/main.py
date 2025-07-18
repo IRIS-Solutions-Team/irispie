@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 
 
 __all__ = (
-    "figure",
     "add_line",
     "add_scatter",
     "add_bar",
@@ -333,7 +332,7 @@ def get_date_axis_mode(figure: _pg.Figure, ) -> PlotlyDateAxisModeType | None:
     #]
 
 
-def add_histogram(figure, *args, subplot, **kwargs, ) -> _pg.Histogram:
+def add_histogram(figure, *args, subplot=None, **kwargs, ) -> _pg.Histogram:
     r"""
     """
     #[
@@ -343,7 +342,7 @@ def add_histogram(figure, *args, subplot, **kwargs, ) -> _pg.Histogram:
     #]
 
 
-def add_bar(figure, *args, subplot, **kwargs, ) -> _pg.Histogram:
+def add_bar(figure, *args, subplot=None, **kwargs, ) -> _pg.Histogram:
     r"""
     """
     #[
@@ -353,30 +352,24 @@ def add_bar(figure, *args, subplot, **kwargs, ) -> _pg.Histogram:
     #]
 
 
-def add_line(figure, *args, subplot, **kwargs, ) -> _pg.Scatter:
+def add_line(figure, *args, subplot=None, **kwargs, ) -> _pg.Scatter:
     r"""
     """
     #[
-    trace = _pg.Scatter(*args, **kwargs, mode="lines+markers", )
+    mode = kwargs.pop("mode", "lines+markers", )
+    trace = _pg.Scatter(*args, **kwargs, mode=mode, )
     add_trace(figure, trace, subplot=subplot, )
     return trace
 
 
-def add_scatter(figure, *args, subplot, **kwargs, ) -> _pg.Scatter:
+def add_scatter(figure, *args, subplot=None, **kwargs, ) -> _pg.Scatter:
     r"""
     """
     #[
-    trace = _pg.Scatter(*args, **kwargs, mode="markers", )
+    mode = kwargs.pop("mode", "markers", )
+    trace = _pg.Scatter(*args, **kwargs, mode=mode, )
     add_trace(figure, trace, subplot=subplot, )
     return trace
-
-
-def figure() -> _pg.Figure:
-    r"""
-    """
-    #[
-    figure = _pg.Figure()
-    return figure
     #]
 
 
