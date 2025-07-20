@@ -36,7 +36,7 @@ MergeStrategyType = Literal[
 
 def mixin(klass, ):
     r"""
-    Mix by_merging and merge methods into the class
+    Mix the by_merging and merge methods into the class
     """
     #[
     for attr in ("from_merge", "merge", ):
@@ -55,9 +55,9 @@ def _by_merging(
 ) -> Self:
     r"""
     """
-    out = klass()
-    out.merge(databoxes, merge_strategy, )
-    return out
+    self = klass()
+    self.merge(databoxes, merge_strategy, )
+    return self
 
 
 @_dm.reference(category="multiple", )

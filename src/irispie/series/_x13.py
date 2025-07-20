@@ -33,7 +33,22 @@ if TYPE_CHECKING:
 __all__ = []
 
 
-Mode = Literal["mult", "add", "pseudoadd", "logadd", ]
+ModeType = Literal[
+    "mult",
+    "add",
+    "pseudoadd",
+    "logadd",
+]
+
+
+OutputType = Literal[
+    "seasonal",
+    "seasonally_adjusted",
+    "trend_cycle",
+    "irregular",
+    "seasonal_and_td",
+    "holiday_and_td",
+]
 
 
 class Inlay:
@@ -48,7 +63,7 @@ class Inlay:
         span: Span | EllipsisType = ...,
         when_error: _wrongdoings.HOW = "warning",
         clean_up: bool = True,
-        output: str = "seasonally_adjusted",
+        output: OutputType = "seasonally_adjusted",
         #
         return_info: bool = False,
         unpack_singleton: bool = True,
@@ -326,7 +341,6 @@ def _x13_data(
     base_start: Period,
     base_variant_data: _np.ndarray,
     x11_save: str,
-    /,
     *,
     info: dict[str, Any],
     clean_up: bool = True,
@@ -354,7 +368,6 @@ def _x13_data(
 
 def _print_series_data(
     variant_data: _np.ndarray,
-    /,
 ) -> str:
     """
     """
@@ -369,7 +382,6 @@ def _print_series_data(
 
 def _execute(
     specs_file_name_without_ext: str,
-    /,
 ) -> _sp.CompletedProcess:
     """
     """
@@ -386,7 +398,6 @@ def _collect_outputs(
     specs_file_name_without_ext: str,
     output: _sp.CompletedProcess,
     out_table: str,
-    /,
 ) -> tuple[_np.ndarray | None, dict[str, str]]:
     """
     """
@@ -433,7 +444,6 @@ def _read_out_files(
 
 def _write_specs_to_file(
     specs: str,
-    /,
 ) -> str:
     """
     """
@@ -446,7 +456,6 @@ def _write_specs_to_file(
 def _remove_leading_trailing_nans(
     base_start: Period,
     variant_data: _np.ndarray,
-    /,
 ) -> tuple[Period, _np.ndarray, slice]:
     """
     """
@@ -472,7 +481,7 @@ _TRANFORM_FUNCTION_DISPATCH = {
 
 def _resolve_mode(
     self: Series,
-    mode: Mode | None,
+    mode: ModeType | None,
     transform_function: str | None = None,
 ) -> tuple[str, str, bool]:
     """
@@ -492,7 +501,7 @@ def _resolve_mode(
 def _prepare_basic_settings(
     base_start: Period,
     output: str,
-    mode: Mode,
+    mode: ModeType,
     transform_function: str = "none",
 ) ->  dict[str, str]:
     """
@@ -584,7 +593,6 @@ def _insert_basic_settings_into_specs_template_string(
 
 def _clean_up(
     specs_file_name_without_ext: str,
-    /,
 ) -> None:
     """
     """
