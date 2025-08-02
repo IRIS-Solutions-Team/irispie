@@ -46,7 +46,7 @@ import copy as _co
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import Self, Callable
+    from typing import Self, Callable, Iterable
     from numbers import Real
     from ..fords import descriptors as _descriptors
     from ..fords import systems as _systems
@@ -123,62 +123,11 @@ class Solution:
         "measurement_vector_stability",
     )
 
-    def __init__(
-        self,
-        T: _np.ndarray | None = None,
-        P: _np.ndarray | None = None,
-        R: _np.ndarray | None = None,
-        K: _np.ndarray | None = None,
-        Z: _np.ndarray | None = None,
-        H: _np.ndarray | None = None,
-        D: _np.ndarray | None = None,
-        Ta: _np.ndarray | None = None,
-        Pa: _np.ndarray | None = None,
-        Ra: _np.ndarray | None = None,
-        Ka: _np.ndarray | None = None,
-        Za: _np.ndarray | None = None,
-        Ua: _np.ndarray | None = None,
-        J: _np.ndarray | None = None,
-        Ru: _np.ndarray | None = None,
-        X: _np.ndarray | None = None,
-        Xa: _np.ndarray | None = None,
-        square_expansion: list[_np.ndarray] | None = None,
-        triangular_expansion: list[_np.ndarray] | None = None,
-        eigenvalues: tuple[Real, ...] | None = None,
-        eigenvalues_stability: tuple[EigenvalueKind, ...] | None = None,
-        system_stability: SystemStabilityKind | None = None,
-        transition_vector_stability: tuple[EigenvalueKind, ...] | None = None,
-        measurement_vector_stability: tuple[EigenvalueKind, ...] | None = None,
-    ) -> None:
+    def __init__(self, ) -> None:
         r"""
         """
-        self.T = T
-        self.P = P
-        self.R = R
-        self.K = K
-        self.Z = Z
-        self.H = H
-        self.D = D
-        #
-        self.Ta = Ta
-        self.Pa = Pa
-        self.Ra = Ra
-        self.Ka = Ka
-        self.Za = Za
-        self.Ua = Ua
-        #
-        self.J = J
-        self.Ru = Ru
-        self.X = X
-        self.Xa = Xa
-        #
-        self.square_expansion = square_expansion
-        self.triangular_expansion = triangular_expansion
-        self.eigenvalues = eigenvalues
-        self.eigenvalues_stability = eigenvalues_stability
-        self.system_stability = system_stability
-        self.transition_vector_stability = transition_vector_stability
-        self.measurement_vector_stability = measurement_vector_stability
+        for n in self.__slots__:
+            setattr(self, n, None, )
 
     @classmethod
     def from_system(
@@ -193,13 +142,21 @@ class Solution:
         self = klass()
         #
         def is_alpha_beta_stable_or_unit_root(alpha: Real, beta: Real, ) -> bool:
-            return abs(beta) < (1 + tolerance)*abs(alpha)
-        def is_stable_root(root: Real, ) -> bool:
-            return abs(root) < (1 - tolerance)
-        def is_unit_root(root: Real, ) -> bool:
-            return abs(root) >= (1 - tolerance) and abs(root) < (1 + tolerance)
+            abs_alpha = abs(alpha)
+            abs_beta = abs(beta)
+            return abs_beta < (1 + tolerance)*abs_alpha
+        #
+        def is_stable_root(root: complex, ) -> bool:
+            abs_root = abs(root)
+            return abs_root < (1 - tolerance)
+        #
+        def is_unit_root(root: complex, ) -> bool:
+            abs_root = abs(root)
+            return abs_root >= (1 - tolerance) and abs_root < (1 + tolerance)
+        #
         def clip_func(x: _np.ndarray, ) -> _np.ndarray:
             return _np.where(_np.abs(x) < tolerance, 0, x)
+        #
         clip = clip_func if clip_small else None
         #
         # Detach unstable from (stable + unit) roots and solve out expectations
@@ -210,6 +167,7 @@ class Solution:
             is_alpha_beta_stable_or_unit_root,
         )
         #
+        # Classify eigenvalues as stable, unit root, or unstable
         self._classify_eigenvalues_stability(is_stable_root, is_unit_root, )
         #
         triangular_solution_prelim = \
@@ -403,8 +361,8 @@ class Solution:
 
     def _classify_eigenvalues_stability(
         self,
-        is_stable_root: Callable[[Real], bool],
-        is_unit_root: Callable[[Real], bool],
+        is_stable_root: Callable[[complex], bool],
+        is_unit_root: Callable[[complex], bool],
     ) -> None:
         self.eigenvalues_stability = tuple(
             _classify_eigenvalue_stability(v, is_stable_root, is_unit_root, )
@@ -598,29 +556,38 @@ def _solve_transition_equations(
 def _solve_ordqz(
     system: _systems.System,
     is_alpha_beta_stable_or_unit_root: Callable,
-) -> tuple[tuple[_np.ndarray, ...], tuple[Real, ...], ]:
-    """
+) -> tuple[tuple[_np.ndarray, ...], tuple[complex, ...], ]:
+    r"""
+    Solve the system using the ordered QZ decomposition and separate unstable
+    roots from stable and unit roots
     """
     #[
+    #
+    # Calculate QZ decomposition
     S, T, alpha, beta, Q, Z = _sp.linalg.ordqz(
         system.A, system.B,
         sort=is_alpha_beta_stable_or_unit_root,
     )
     Q = Q.T
+    qz_matrixes = (S, T, Q, Z, )
     #
+    # Calculate eigenvalues
     _wa.filterwarnings(action="ignore", category=RuntimeWarning, )
-    eigenvalues = tuple(-beta / alpha)
+    eigenvalues = tuple(complex(i) for i in -beta/alpha)
     _wa.filterwarnings(action="default", category=RuntimeWarning, )
     #
-    return (S, T, Q, Z), eigenvalues
+    return qz_matrixes, eigenvalues,
     #]
 
 
 def _classify_eigenvalue_stability(
-    eigenvalue,
-    is_stable_root,
-    is_unit_root,
+    eigenvalue: complex,
+    is_stable_root: Callable[[complex], bool],
+    is_unit_root: Callable[[complex], bool],
 ) -> EigenvalueKind:
+    r"""
+    Classify a complex number (eigenvalue) as stable, unit root, or unstable.
+    """
     #[
     abs_eigenvalue = _np.abs(eigenvalue)
     if is_stable_root(abs_eigenvalue):

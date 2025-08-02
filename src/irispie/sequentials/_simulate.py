@@ -110,7 +110,7 @@ out_db, info = self.simulate(
     span needs to go forward and have a one-period step.
 
 ???+ input "plan"
-    [Simulation plan](plans.md) for the simulation specifying the
+    [Simulation plan](simulation_plans.md) for the simulation specifying the
     exogenized data points. If `None`, no simulation plan is imposed.
 
 ???+ input "prepend_input"

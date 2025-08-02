@@ -126,9 +126,11 @@ the input databox when the simulation is run.
 
 ==Create new simulation plan object==
 
-```
-self = SimulationPlan(model, time_span, )
-```
+    self = SimulationPlan(
+        model,
+        time_span,
+    )
+
 
 Create a new simulation plan object for a
 [`Simultaneous`](sequential_models) or
@@ -303,12 +305,11 @@ values.
 
 ==Exogenize certain quantities at certain dates==
 
-```
-self.exogenize_anticipated(
-    dates,
-    names,
-)
-```
+    self.exogenize_anticipated(
+        dates,
+        names,
+    )
+
 
 ### Input arguments ###
 

@@ -286,11 +286,10 @@ class Variant:
     ) -> Solution:
         r"""
         """
-        solution = Solution(
-            T=self.companion_T,
-            P=self._get_companion_P(),
-            K=self._get_companion_K(),
-        )
+        solution = Solution()
+        solution.T = self.companion_T
+        solution.P = self._get_companion_P()
+        solution.K = self._get_companion_K()
         if deviation:
             solution = Solution.deviation_solution(solution, )
         return solution

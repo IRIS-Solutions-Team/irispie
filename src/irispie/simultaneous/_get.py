@@ -12,6 +12,7 @@ from numbers import Real
 import functools as _ft
 import json as _js
 import numpy as _np
+import documark as _dm
 
 from .. import equations as _equations
 from .. import quantities as _quantities
@@ -31,7 +32,8 @@ from . import _flags
 
 
 def _cast_as_output_type(func: Callable, ):
-    """
+    r"""
+    Decorator to cast the output of a function to a specified type.
     """
     #[
     @_ft.wraps(func)
@@ -44,6 +46,9 @@ def _cast_as_output_type(func: Callable, ):
 
 
 def _unpack_singleton_in_dict(func: Callable, ):
+    r"""
+    Decorator to unpack output from a singleton model
+    """
     #[
     @_ft.wraps(func)
     def _wrapper(self, *args, **kwargs, ):
@@ -62,6 +67,7 @@ class Inlay(
     """
     #[
 
+    @_dm.reference(category="information", )
     @_cast_as_output_type
     @_unpack_singleton_in_dict
     def get_steady_levels(
@@ -75,14 +81,13 @@ class Inlay(
 
 ==Get steady-state levels of variables==
 
-```
-steady_levels = self.get_steady_levels(
-    *,
-    round: int = None,
-    unpack_singleton: bool = True,
-    output_typ: type = Databox,
-)
-```
+    steady_levels = self.get_steady_levels(
+        *,
+        round: int = None,
+        unpack_singleton: bool = True,
+        output_typ: type = Databox,
+    )
+
 
 ### Input arguments ###
 
@@ -114,6 +119,7 @@ steady_levels = self.get_steady_levels(
         qids = _quantities.generate_qids_by_kind(self._invariant.quantities, kind, )
         return self._get_values_as_dict("levels", qids, **kwargs, )
 
+    @_dm.reference(category="information", )
     @_cast_as_output_type
     @_unpack_singleton_in_dict
     def get_steady_changes(
@@ -127,14 +133,12 @@ steady_levels = self.get_steady_levels(
 
 ==Get steady-state changes of variables==
 
-```
-steady_changes = self.get_steady_changes(
-    *,
-    round: int = None,
-    unpack_singleton: bool = True,
-    output_typ: type = Databox,
-)
-```
+    steady_changes = self.get_steady_changes(
+        *,
+        round: int = None,
+        unpack_singleton: bool = True,
+        output_typ: type = Databox,
+    )
 
 
 ### Input arguments ###
@@ -310,19 +314,38 @@ steady_changes = self.get_steady_changes(
                 for qid, value in std_qid_to_value.items()
             }
 
-    def get_dynamic_equations(
-        self,
-        kind: _equations.EquationKind | None = None,
-    ) -> tuple[_equations.Equation]:
-        return tuple(
-            _equations.generate_equations_of_kind(self._invariant.dynamic_equations, kind)
-            if kind else self._invariant.dynamic_equations
-        )
-
-    def get_human_equations(
+    @_dm.reference(category="information", )
+    def get_equations(
         self,
         kind: _equations.EquationKind | None = None,
     ) -> tuple[str]:
+        r"""
+...................................................................................
+
+==Get the model equations==
+
+    equations = self.get_equations(
+        kind=None,
+    )
+
+
+### Input arguments ###
+
+???+ input "self"
+    A `Simultaneous` model object.
+
+???+ input "kind"
+    The kind of equations to retrieve. If `None`, all equations are returned.
+
+
+### Returns ###
+
+???+ returns "equations"
+    A tuple of strings representing the equations of the model, with dynamic
+    and steady equations concatenated using "!!" if they differ.
+
+...................................................................................
+        """
         def _concatenate(dynamic: str, steady: str) -> str:
             return f"{dynamic} !! {steady}" if steady != dynamic else dynamic
         zipper = zip(
@@ -332,6 +355,17 @@ steady_changes = self.get_steady_changes(
         return tuple(
             _concatenate(dynamic.human, steady.human, )
             for dynamic, steady in zipper
+        )
+
+    get_human_equations = get_equations
+
+    def get_dynamic_equations(
+        self,
+        kind: _equations.EquationKind | None = None,
+    ) -> tuple[_equations.Equation]:
+        return tuple(
+            _equations.generate_equations_of_kind(self._invariant.dynamic_equations, kind)
+            if kind else self._invariant.dynamic_equations
         )
 
     def get_steady_equations(
@@ -379,21 +413,24 @@ steady_changes = self.get_steady_changes(
         return out_dict
 
     def get_equation_descriptions(self, ) -> dict[str, str]:
-        """
+        r"""
         """
         return _equations.create_human_to_description(self._invariant.dynamic_equations, )
 
     @_unpack_singleton
     def get_eigenvalues(
         self,
-        kind: EigenvalueKind = EigenvalueKind.ALL,
+        transform: Callable[[Real], Real] = lambda x: x,
+        kind: EigenvalueKind | None = EigenvalueKind.ALL,
         unpack_singleton: bool = True,
     ) -> tuple[Real, ...] | list[tuple[Real, ...]]:
-        """
+        r"""
         Eigenvalues
         """
+        if kind is None:
+            kind = EigenvalueKind.ALL
         return [
-            tuple(e for e, s in zip(v.solution.eigenvalues, v.solution.eigenvalues_stability, ) if s in kind)
+            tuple(transform(e) for e, s in zip(v.solution.eigenvalues, v.solution.eigenvalues_stability, ) if s in kind)
             for v in self._variants
         ]
 

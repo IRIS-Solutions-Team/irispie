@@ -46,7 +46,6 @@ class Inlay:
     def aggregate(
         self,
         target_freq: _dates.Frequency,
-        #
         method: Literal["mean", "sum", "first", "last", "min", "max"] | Callable | None = None,
         discard_missing: bool | None = None,
         select: list[int] | None = None,

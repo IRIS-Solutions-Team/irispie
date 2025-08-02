@@ -1,4 +1,4 @@
-"""
+r"""
 Main time series class definition
 """
 
@@ -18,7 +18,7 @@ import documark as _dm
 from ..conveniences import descriptions as _descriptions
 from ..conveniences import copies as _copies
 from ..conveniences import iterators as _iterators
-from ..dates import (Period, Span, Frequency, EmptyRanger, )
+from ..dates import Period, Span, Frequency, EmptyRanger
 from .. import dates as _dates
 from .. import wrongdoings as _wrongdoings
 from .. import has_variants as _has_variants
@@ -133,7 +133,6 @@ variants of the data, stored as mutliple columns.
     )
     def __init__(
         self,
-        /,
         *,
         num_variants: int = 1,
         data_type: type = _np.float64,
@@ -152,26 +151,22 @@ variants of the data, stored as mutliple columns.
 
 ==Create a new `Series` object==
 
-```
-self = Series(
-    start=start,
-    values=values,
-)
-```
+    self = Series(
+        start=start,
+        values=values,
+    )
 
-```
-self = Series(
-    periods=periods,
-    values=values,
-)
-```
 
-```
-self = Series(
-    periods=periods,
-    func=func,
-)
-```
+    self = Series(
+        periods=periods,
+        values=values,
+    )
+
+
+    self = Series(
+        periods=periods,
+        func=func,
+    )
 
 
 ### Input arguments ###
@@ -241,19 +236,62 @@ self = Series(
         )
 
     @classmethod
-    def _guaranteed(
+    @_dm.reference(
+        category="constructor",
+        call_name="Series.from_start_and_array",
+    )
+    def from_start_and_array(
         klass,
         start: Period,
-        values: _np.ndarray,
+        array: _np.ndarray,
         description: str = "",
+        trim: bool = True,
     ) -> Self:
-        """
+        r"""
+················································································
+
+==Create a new `Series` object from a start period and a numpy array==
+
+    self = Series.from_start_and_array(
+        start,
+        array,
+        description="",
+        trim=True,
+    )
+
+
+### Input arguments ###
+
+???+ input "start"
+    The time [`Period`](periods.md) of the first value in the `array`.
+
+???+ input "array"
+    A numpy array containing the time series values. The array is reshaped to a
+    two-dimensional array if needed. The individual rows are expected to
+    correspond to a continuous sequence of time periods starting from `start`.
+
+???+ input "description"
+    A string description of the time series.
+
+???+ input "trim"
+    If `True`, the time series date will be trimmed to remove any leading
+    or trailing periods that contain only `nan` values.
+
+
+### Returns ###
+
+???+ returns "self"
+    A new `Series` object initialized with the provided start period and
+    numpy array.
+
+................................................................................
         """
         self = klass()
         self.start = start
-        self.data = values
-        self.__description__ = description
-        self.trim()
+        self.data = _reshape_numpy_array(array, )
+        self.set_description(description, )
+        if trim:
+            self.trim()
         return self
 
     def reset(self, ) -> None:
@@ -314,7 +352,7 @@ self = Series(
     @_dm.reference(category="property", )
     def periods(self, ) -> tuple[Period, ...]:
         """==N-tuple with the periods from the start period to the end period of the time series=="""
-        return tuple(self.range, )
+        return tuple(self.span, )
 
     dates = periods
 
@@ -390,7 +428,6 @@ self = Series(
         dates: Dates,
         data: Any | Series,
         variants: VariantsRequestType = None,
-        /,
     ) -> None:
         """
         """
@@ -439,7 +476,6 @@ self = Series(
         self,
         dates: Dates,
         variants: VariantsRequestType = None,
-        /,
     ) -> tuple[Iterable[Period], Iterable[int], Iterable[int], _np.ndarray]:
         """
         """
@@ -461,7 +497,6 @@ self = Series(
     def alter_num_variants(
         self,
         new_num: int,
-        /,
     ) -> Self:
         """
         Alter (expand, shrink) the number of variants in this time series object
@@ -474,7 +509,6 @@ self = Series(
     def expand_num_variants(
         self,
         new_num: int,
-        /,
     ) -> None:
         """
         """
@@ -487,7 +521,6 @@ self = Series(
     def shrink_num_variants(
         self,
         new_num: int,
-        /,
     ) -> None:
         """
         """
@@ -526,7 +559,6 @@ self = Series(
         self,
         dates: Dates,
         variant: Real | None = None,
-        /,
     ) -> _np.ndarray:
         """
         """
@@ -549,7 +581,6 @@ self = Series(
         self,
         from_until: Iterable[Period],
         variant: int | None = None,
-        /,
     ) -> _np.ndarray:
         """
         """
@@ -559,7 +590,6 @@ self = Series(
     def extract_variants(
         self,
         variants,
-        /,
     ) -> None:
         if not isinstance(variants, Iterable):
             variants = (variants, )
@@ -570,7 +600,6 @@ self = Series(
     def set_start(
         self,
         new_start: Period,
-        /,
     ) -> Self:
         self.start = new_start
         return self
@@ -597,7 +626,6 @@ self = Series(
     def _resolve_variants(
         self,
         variants: VariantsRequestType,
-        /,
     ) -> Iterable[int]:
         """
         Resolve variant request to an iterable of integers
@@ -656,29 +684,29 @@ date.
             return
         self.start -= by
 
-    def _shift_yoy(self, /, **kwargs, ) -> None:
+    def _shift_yoy(self, **kwargs, ) -> None:
         r"""
         Shift the start date by one year back
         """
         self._shift_by_number(-self.frequency.value, )
 
-    def _shift_soy(self, /, **kwargs, ) -> None:
+    def _shift_soy(self, **kwargs, ) -> None:
         r"""
         Replace each observation by the start of the year observation
         """
         new_data = self.get_data(
             t.create_soy()
-            for t in self.range
+            for t in self.span
         )
         self._replace_data(new_data, )
 
-    def _shift_eopy(self, /, **kwargs, ) -> Self:
+    def _shift_eopy(self, **kwargs, ) -> Self:
         r"""
         Replace each observation by the end of the previous year observation
         """
         new_data = self.get_data(
             t.create_eopy()
-            for t in self.range
+            for t in self.span
         )
         self._replace_data(new_data, )
 
@@ -726,7 +754,6 @@ date.
     @_dm.reference(category="homogenizing", )
     def clip(
         self,
-        /,
         new_start: Period | None,
         new_end: Period | None,
     ) -> None:
@@ -780,16 +807,14 @@ date.
     def overlay_by_span(
         self,
         other: Self,
-        /,
     ) -> None:
-        self.set_data(other.range, other.data, )
+        self.set_data(other.span, other.data, )
         self.trim()
 
     @_dm.reference(category="multiple", )
     def overlay(
         self,
         other: Self,
-        /,
         method: LayMethodType = "by_span",
     ) -> None:
         r"""
@@ -849,7 +874,6 @@ This method modifies `self` in place and returns `None`.
     def underlay_by_span(
         self,
         other: Self,
-        /,
     ) -> None:
         r"""
         """
@@ -861,7 +885,6 @@ This method modifies `self` in place and returns `None`.
     def underlay(
         self,
         other: Self,
-        /,
         method: LayMethodType = "by_span",
     ) -> None:
         r"""
@@ -940,12 +963,10 @@ This method modifies `self` in place and returns `None`.
 
 ==Replace time series values that pass a test==
 
-```
-self.replace_where(
-    test,
-    new_value,
-)
-```
+    self.replace_where(
+        test,
+        new_value,
+    )
 
 
 ### Input arguments ###
@@ -978,7 +999,6 @@ self.replace_where(
     def _shallow_copy_data(
         self,
         other: Self,
-        /,
     ) -> None:
         """
         """
@@ -1177,7 +1197,7 @@ This method modifies `self` in place and returns `None`.
     for n in ["gt", "lt", "ge", "le", "eq", "ne", ]:
         exec(f"def __{n}__(self, other): return self._binop(other, _op.{n}, )", )
 
-    def apply(self, func, /, *args, **kwargs, ):
+    def apply(self, func, *args, **kwargs, ):
         new_data = func(self.data, *args, **kwargs, )
         axis = kwargs.get("axis", None, )
         if new_data.shape == self.data.shape:
@@ -1199,10 +1219,10 @@ This method modifies `self` in place and returns `None`.
                 " in a data array with an unexpected shape"
             )
 
-    def _binop(self, other, func, /, new=None, ):
+    def _binop(self, other, func, new=None, ):
         if not isinstance(other, type(self)):
             return self.apply(lambda data: func(data, other))
-        # FIXME: empty encompassing range
+        # FIXME: empty encompassing span
         _, *from_until = _dates.get_encompassing_span(self, other)
         self_data = self.get_data_from_until(from_until, )
         other_data = other.get_data_from_until(from_until, )
@@ -1224,7 +1244,6 @@ This method modifies `self` in place and returns `None`.
     def _replace_data(
         self,
         new_values,
-        /,
     ) -> None:
         """
         """
@@ -1235,7 +1254,6 @@ This method modifies `self` in place and returns `None`.
         self,
         new_start,
         new_values,
-        /,
     ) -> None:
         """
         """
@@ -1255,7 +1273,7 @@ This method modifies `self` in place and returns `None`.
             if self.is_singleton and unpack_singleton
             else _keep_data_row
         )
-        for date, data_row in zip(self.range, self.data, ):
+        for date, data_row in zip(self.span, self.data, ):
             yield date, data_row_func(data_row.tolist(), )
 
     def iter_variants(self, ) -> Iterator[Self]:
@@ -1320,7 +1338,6 @@ def _create_data_variant_from_number(
     number: Real,
     span: Span,
     data_type: type,
-    /,
 ) -> _np.ndarray:
     return _np.full((len(span), 1), number, dtype=data_type)
 
@@ -1366,6 +1383,7 @@ def _from_start_and_values(
     start: Period,
     values: _np.ndarray | Iterable,
     frequency: Frequency | None = None,
+    trim: bool = True,
     **kwargs,
 ) -> None:
     """
@@ -1382,18 +1400,23 @@ def _from_start_and_values(
         ])
     values = values.astype(self.data_type, )
     self.data = values
-    self.trim()
+    #
+    if trim:
+        self.trim()
     #]
 
 
 def _reshape_numpy_array(values: _np.ndarray, ) -> _np.ndarray:
-    """
+    r"""
+    Reshape numpy array to a 2D array
     """
     #[
-    return (
-        values.reshape(values.shape[0], -1)
-        if values.ndim >= 2 else values.reshape(-1, 1)
-    )
+    if values.ndim == 2:
+        return values
+    if values.ndim < 2:
+        return values.reshape(-1, 1, )
+    if values.ndim > 2:
+        return values.reshape(values.shape[0], -1, )
     #]
 
 

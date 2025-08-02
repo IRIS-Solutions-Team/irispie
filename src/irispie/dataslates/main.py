@@ -339,12 +339,12 @@ class Dataslate(
 
     def to_databox(
         self,
-        /,
         target_db: Databox | None = None,
         span: Literal["base", "full", ] = "full",
+        trim: bool = True,
     ) -> Databox:
-        """
-        Add data from a dataslate to a new or existing databox
+        r"""
+        Add data from a dataslate as time series to a new or existing databox
         """
         #[
         if target_db is None:
@@ -360,13 +360,14 @@ class Dataslate(
         for qid in self._invariant.output_qids:
             name = self._invariant.names[qid]
             description = self._invariant.descriptions[qid]
-            values = _np.vstack([
+            array = _np.vstack([
                 v.data[qid, column_slice] for v in self._variants
             ]).T
-            target_db[name] = Series._guaranteed(
+            target_db[name] = Series.from_start_and_array(
                 start=start,
-                values=values,
+                array=array,
                 description=description,
+                trim=trim,
             )
         return target_db
         #]

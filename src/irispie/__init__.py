@@ -10,9 +10,6 @@ from .series import __all__ as series_all
 from .ez_plotly import *
 from .ez_plotly import __all__ as ez_plotly_all
 
-from .rephrases import *
-from .rephrases import __all__ as rephrases_all
-
 from .databoxes import *
 from .databoxes import __all__ as databoxes_all
 
@@ -97,7 +94,6 @@ __all__ = (
     *dates_all,
     *series_all,
     *ez_plotly_all,
-    *rephrases_all,
     *databoxes_all,
     *dataslates_all,
     *sources_all,
