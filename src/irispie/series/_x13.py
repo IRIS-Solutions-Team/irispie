@@ -308,8 +308,8 @@ info = self.x13(
             )
             if flip_sign:
                 new_data_v = -new_data_v
-            new_data.append(new_data_v.reshape(-1, 1, ))
-            out_info.append(info_v)
+            new_data.append(new_data_v.reshape(-1, 1, ), )
+            out_info.append(info_v, )
             #
         if not all(i["success"] for i in out_info):
             message = "X13 failed to produce a result for at least one variant."
@@ -484,17 +484,19 @@ def _resolve_mode(
     mode: ModeType | None,
     transform_function: str | None = None,
 ) -> tuple[str, str, bool]:
-    """
+    r"""
     """
     #[
     flip_sign = False
     if mode is None:
-        is_sign_strict = _np.all(self.data > 0) or _np.all(self.data < 0)
+        all_positive = _np.all((self.data > 0) | _np.isnan(self.data))
+        all_negative = _np.all((self.data < 0) | _np.isnan(self.data))
+        is_sign_strict = all_positive or all_negative
         mode = "mult" if is_sign_strict else "add"
     if transform_function is None:
         transform_function = _TRANFORM_FUNCTION_DISPATCH.get(mode, "none", )
     flip_sign = _np.all(self.data < 0)
-    return mode, transform_function, flip_sign
+    return mode, transform_function, flip_sign,
     #]
 
 
