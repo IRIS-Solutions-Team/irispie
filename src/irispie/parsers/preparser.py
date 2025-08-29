@@ -224,15 +224,15 @@ class _For:
 
     level = 1
 
-    def __init__(self, control_name, tokens_as_string, /, ):
+    def __init__(self, control_name, tokens_as_string, ):
         self._control_name = control_name
         self._tokens_as_string = tokens_as_string
 
-    def replace(self, pattern, replacement, /, ) -> Self:
+    def replace(self, pattern, replacement, ) -> Self:
         self._tokens_as_string = self._tokens_as_string.replace(pattern, replacement, )
         return self
 
-    def _expand_tokens(self, for_body_sequence: Sequence, context: dict, /, ):
+    def _expand_tokens(self, for_body_sequence: Sequence, context: dict, ):
         """
         """
         tokens = self._prepare_tokens(context, )
@@ -272,7 +272,7 @@ class _For:
         tokens_as_string = _evaluate_contextual_expressions(self._tokens_as_string, context, )
         return _re.findall(r"\w+", tokens_as_string, )
 
-    def resolve(self, sequence: Sequence, context: dict, /, ):
+    def resolve(self, sequence: Sequence, context: dict, ):
         """
         """
         index_end = _find_matching_end(sequence)
@@ -289,7 +289,7 @@ class _If:
     #[
     level = 1
 
-    def __init__(self, condition, /, ):
+    def __init__(self, condition, ):
         self._condition_text = condition.strip()
         self._condition_result = None
 
@@ -297,7 +297,7 @@ class _If:
         self._condition_text = self._condition_text.replace(pattern, replacement)
         return self
 
-    def resolve(self, sequence: Sequence, context: dict, /, ):
+    def resolve(self, sequence: Sequence, context: dict, ):
         """
         """
         self._evaluate_condition(context, )
@@ -312,7 +312,6 @@ class _If:
     def _evaluate_condition(
         self,
         context: dict[str, Any] | None,
-        /,
     ) -> None:
         """
         """
@@ -371,21 +370,23 @@ _LINE_COMMENT_PATTERN = _re.compile(r'"[^"\n]*"|[%#](?!!).*|\.\.\..*|\\.*', )
 _BLOCK_COMMENT_PATTERN = _re.compile(r"([%#]){.*?\1\}", _re.DOTALL, )
 
 
-def _remove_line_comments(source: str, /, ) -> str:
+def _remove_line_comments(source: str, ) -> str:
     return _re.sub(
         _LINE_COMMENT_PATTERN,
         lambda m: m.group(0) if m.group(0).startswith('"') else "",
         source,
     )
 
-def _remove_block_comments(source: str, /, ) -> str:
+
+def _remove_block_comments(source: str, ) -> str:
     return _re.sub(_BLOCK_COMMENT_PATTERN, "", source, )
 
-def _cumulate_level(sequence: Sequence, /, ) -> int:
+
+def _cumulate_level(sequence: Sequence, ) -> int:
     return list(_it.accumulate(s.level for s in sequence))
 
 
-def _find_matching_end(sequence: Sequence, /, ) -> int:
+def _find_matching_end(sequence: Sequence, ) -> int:
     """
     Find !end that is on level 0
     """
@@ -395,7 +396,7 @@ def _find_matching_end(sequence: Sequence, /, ) -> int:
     #]
 
 
-def _find_matching_else(sequence: Sequence, /, ) -> int:
+def _find_matching_else(sequence: Sequence, ) -> int:
     """
     Find !else that is on level 0
     """
@@ -408,7 +409,7 @@ def _find_matching_else(sequence: Sequence, /, ) -> int:
     #]
 
 
-def _resolve_sequence(sequence: Sequence, context: dict, /, ) -> str:
+def _resolve_sequence(sequence: Sequence, context: dict, ) -> str:
     """
     """
     #[
@@ -425,7 +426,7 @@ def _resolve_sequence(sequence: Sequence, context: dict, /, ) -> str:
     #]
 
 
-def _consolidate_lines(text: str) -> str:
+def _consolidate_lines(text: str, ) -> str:
     split_text = _re.split(" *\n+", text, )
     return "\n".join(i for i in split_text if i)
 
@@ -447,33 +448,41 @@ def _evaluate_contextual_expressions(
             value = eval(expression, context, )
             return _stringify(value, )
         except:
-            raise Exception(f"Failed to evaluate this contextual expression: {expression}")
-    return _re.sub(_CONTEXTUAL_EXPRESSION_PATTERN, _replace, text)
+            raise ValueError(f"Failed to evaluate this contextual expression: {expression}", )
+    return _re.sub(_CONTEXTUAL_EXPRESSION_PATTERN, _replace, text, )
     #]
 
 
-def _stringify(input, /, ):
+def _stringify(input, ):
+    #[
     if isinstance(input, str):
         return input
     elif not isinstance(input, Iterable):
         return str(input)
     else:
         return ",".join(_stringify(i, ) for i in input)
+    #]
 
 
-def _is_preparser_needed(source: str, /, ) -> bool:
+def _is_preparser_needed(source: str, ) -> bool:
     return _common.KEYWORD_PREFIX in source
 
 
-def _save_preparsed_source(source: str, file_name: str, /, ) -> None:
-    if file_name:
-        with open(file_name, "wt+") as fid:
-            fid.write(source)
+def _save_preparsed_source(source: str, file_name: str, ) -> None:
+    #[
+    if not file_name:
+        return
+    with open(file_name, "wt+") as fid:
+        fid.write(source)
+    #]
 
-def _run_preparser_on_source_string(source: str, context: dir, /, ) -> str:
+
+def _run_preparser_on_source_string(source: str, context: dir, ) -> str:
+    #[
     nodes = _GRAMMAR["source"].parse(source, )
     visitor = _Visitor()
     sequence = visitor.visit(nodes, )
     return _resolve_sequence(sequence, context, )
+    #]
 
 
