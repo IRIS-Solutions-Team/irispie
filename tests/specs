@@ -6,6 +6,7 @@
 ./tests/plotly
 ./tests/vars
 ./tests/progress_bars
+./tests/preparser
 -v
 -ra
 
