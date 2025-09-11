@@ -112,7 +112,7 @@ _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
         for_control = for_control_name_equals? for_tokens
         for_control_name_equals = for_control_name white_spaces ~r"[=:]" white_spaces
         for_control_name = ~r"\?[\w\(\)]*"
-        for_tokens = ~r"\s*[^¡]+\s*"
+        for_tokens = ~r"\s*[^¡=]+\s*"
         for_keyword = keyword_prefix "for"
         do_keyword = keyword_prefix "do"
 
