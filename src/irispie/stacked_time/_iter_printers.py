@@ -48,7 +48,7 @@ def create_iter_printer(
     )
 
 
-def _get_equation_strings(equations: Iterable[Equation], /, ) -> tuple[str, ...]:
+def _get_equation_strings(equations: Iterable[Equation], ) -> tuple[str, ...]:
     return tuple(i.human for i in equations)
 
 
@@ -56,7 +56,6 @@ def _get_quantity_strings(
     qids: Iterable[str],
     qid_to_logly: dict[str, bool],
     qid_to_name: dict[str, str],
-    /,
 ) -> tuple[str, ...]:
     return tuple(
         _quantities.wrap_logly(qid_to_name[i], qid_to_logly.get(i, False), )

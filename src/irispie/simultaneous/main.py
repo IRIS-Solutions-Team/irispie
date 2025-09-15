@@ -63,6 +63,10 @@ __all__ = [
 ]
 
 
+@_steady_boxable_protocols.inlay
+@_slatable_protocols.inlay
+@_steady.inlay
+@_plannable_protocols.inlay
 @_dm.reference(
     path=("structural_models", "simultaneous.md", ),
     categories={
@@ -81,15 +85,11 @@ class Simultaneous(
     #
     _assigns.Inlay,
     _simulate.Inlay,
-    _steady.Inlay,
     _kalmans.Inlay,
     _logly.Inlay,
     _get.Inlay,
     _pretty.Inlay,
     _covariances.Inlay,
-    _slatable_protocols.Inlay,
-    _plannable_protocols.Inlay,
-    _steady_boxable_protocols.Inlay,
     _tolerance.Inlay,
     _io.Inlay,
 ):
@@ -231,7 +231,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         reference: str,
         value: Any,
     ) -> None:
-        """
+        r"""
         """
         if isinstance(reference, str):
             self._assign({reference: value}, )
@@ -386,7 +386,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         # Reset levels of shocks to zero
         name_to_qid = self.create_name_to_qid()
         shock_qids = _quantities.generate_qids_by_kind(
-            self._invariant.quantities, _quantities.QuantityKind.ANY_SHOCK,
+            self._invariant.quantities, _quantities.QuantityKind.ANY_SHOCK_OR_SHOCK_VALUE,
         )
         zero_shocks = { i: 0 for i in shock_qids }
         variant.update_values_from_dict(zero_shocks, )
@@ -443,7 +443,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
             model_flags, data_array_lagged, column_offset,
         )
 
-    def solve(
+    def solve_first_order(
         self,
         clip_small: bool = False,
         return_info: bool = False,
@@ -451,7 +451,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         tolerance: float | None = None,
         **kwargs,
     ) -> dict[str, Any]:
-        """
+        r"""
         Calculate first-order solution for each variant within this model
         """
         model_flags = self.resolve_flags(**kwargs, )
@@ -475,6 +475,8 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         else:
             return
 
+    solve = solve_first_order
+
     def _solve_variant(
         self,
         variant: Variant,
@@ -483,7 +485,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         tolerance: float,
         clip_small: bool,
     ) -> None:
-        """
+        r"""
         Calculate first-order solution for one variant of this model
         """
         variant_header = f"[Variant {vid}]"
@@ -673,7 +675,6 @@ portable = self.to_portable()
     | Transition variable | `#x` |
     | Measurement variable | `#y` |
     | Unanticipated shock | `#u` |
-    | Anticipated shock | `#v` |
     | Measurement shock | `#w` |
     | Parameter | `#p` |
     | Exogenous variable | `#z` |

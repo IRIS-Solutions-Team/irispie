@@ -107,7 +107,7 @@ class RedVAR(
         r"""
         """
         quantities = self._access_quantities()
-        return tuple(_quantities.generate_names_of_kind(quantities, QuantityKind.UNANTICIPATED_SHOCK, ))
+        return tuple(_quantities.generate_names_of_kind(quantities, QuantityKind.TRANSITION_SHOCK, ))
 
     def get_endogenous_qids(self, ) -> tuple[int, ...]:
         r"""
@@ -208,11 +208,7 @@ class RedVAR(
         """
         return self._invariant.solution_vectors
 
-    def _gets_solution(
-        self,
-        vid: int = 0,
-        **kwargs,
-    ) -> Solution:
+    def _gets_solution(self, **kwargs, ) -> Solution:
         r"""
         """
         return self._variants[0]._get_companion_solution(**kwargs, )

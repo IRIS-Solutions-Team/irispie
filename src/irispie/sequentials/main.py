@@ -44,6 +44,7 @@ __all__ = (
 )
 
 
+@_simulate.inlay
 @_dm.reference(
     path=("structural_models", "sequential.md", ),
     categories={
@@ -56,7 +57,6 @@ __all__ = (
     },
 )
 class Sequential(
-    _simulate.Inlay,
     _assigns.Inlay,
     _get.Inlay,
     _slatable_protocols.Inlay,
@@ -91,7 +91,8 @@ and period-by-period.
     ) -> None:
         r"""
         """
-        self._invariant = Invariant()
+        # self._invariant = Invariant()
+        self._invariant = invariant
         self._variants = list(variants) if variants else []
 
     @_dm.reference(category="manipulation", )
@@ -126,15 +127,15 @@ other = self.copy()
     @classmethod
     @_dm.reference(category="constructor", call_name="Sequential.from_file", )
     def from_file(klass, *args, **kwargs, ) -> _sources.SourceMixinProtocol:
-        """
-················································································
+        r"""
+................................................................................
 
 ==Create new `Sequential` model object from source file or files==
 
 ```
 self = Sequential.from_file(
     file_names,
-    /,
+    *,
     context=None,
     description="",
 )
@@ -182,7 +183,6 @@ model object.
 ```
 self = Sequential.from_string(
     string,
-    /,
     *,
     context=None,
     description="",
@@ -208,7 +208,7 @@ See [`Sequential.from_file`](#sequentialfrom_file) for other input arguments.
 
 See [`Sequential.from_file`](#sequentialfrom_file) for return values.
 
-················································································
+................................................................................
         """
         return _sources.from_string(klass, *args, **kwargs, )
 
@@ -216,7 +216,6 @@ See [`Sequential.from_file`](#sequentialfrom_file) for return values.
     def from_equations(
         klass,
         equations: Iterable[Equation],
-        /,
         quantities: Iterable[Quantity] | None = None,
         **kwargs,
     ) -> Self:

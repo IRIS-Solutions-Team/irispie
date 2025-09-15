@@ -293,14 +293,13 @@ class Inlay(
     def _gets_solution(
         self,
         deviation: bool = False,
-        vid: int = 0,
     ) -> Solution:
         r"""
         """
-        return (
-            self._variants[vid].solution if not deviation
-            else self._variants[vid].deviation_solution
-        )
+        solution = self._variants[0].solution
+        if deviation:
+            solution = solution.create_deviation_solution()
+        return solution
 
     def iter_std_name_to_value(self, ) -> Iterable[dict[str, Real]]:
         """
@@ -486,7 +485,7 @@ class Inlay(
             False: lambda x, y: x - y,
             None: lambda x, y: x - y,
         }
-        kind = _quantities.ANY_VARIABLE | _quantities.ANY_SHOCK
+        kind = _quantities.ANY_VARIABLE | _quantities.ANY_SHOCK_OR_SHOCK_VALUE
         return {
             q.human: minus_control_func[q.logly]
             for q in self._invariant.quantities
@@ -507,9 +506,9 @@ def _resolve_steady_kind(
     """
     """
     #[
-    return (
-        QuantityKind.LOGGABLE_VARIABLE if not include_shocks
-        else QuantityKind.LOGGABLE_VARIABLE_OR_ANY_SHOCK
-    )
+    steady_kind = QuantityKind.LOGGABLE_VARIABLE
+    if include_shocks:
+        steady_kind = steady_kind | QuantityKind.ANY_SHOCK_OR_SHOCK_VALUE
+    return steady_kind
     #]
 

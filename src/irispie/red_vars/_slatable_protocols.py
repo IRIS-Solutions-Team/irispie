@@ -99,7 +99,7 @@ def _create_residual_name_to_value(model, ) -> dict[str, Real]:
     Create dict with default residual values for all residuals in the model
     """
     #[
-    residual_names = model.get_names(kind=_quantities.UNANTICIPATED_SHOCK, )
+    residual_names = model.get_names(kind=_quantities.TRANSITION_SHOCK, )
     return {
         name: _DEFAULT_RESIDUAL_VALUE
         for name in residual_names

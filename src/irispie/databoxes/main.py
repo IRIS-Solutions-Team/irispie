@@ -24,7 +24,8 @@ from ..conveniences import views as _views
 from ..conveniences import descriptions as _descriptions
 from ..conveniences import iterators as _iterators
 from ..series.main import (Series, )
-from ..dates import (Period, Frequency, Span, EmptySpan, )
+from ..dates import Period, Frequency, Span, EmptySpan
+from .. import dates as _times
 from .. import quantities as _quantities
 from .. import wrongdoings as _wrongdoings
 
@@ -53,23 +54,6 @@ class SteadyDataboxableProtocol(Protocol):
     def generate_steady_items(self, *args) -> Any: ...
 
     #]
-
-
-def _extended_span_tuple_from_base_span(
-    input_span: Iterable[Period],
-    min_shift: int,
-    max_shift: int,
-    prepend_initial: bool,
-    append_terminal: bool,
-    /,
-) -> tuple[Period, Period]:
-    """
-    """
-    range_list = tuple(t for t in input_span)
-    start_date, end_date = range_list[0], range_list[-1]
-    start_date += min_shift if prepend_initial else 0
-    end_date += max_shift if append_terminal else 0
-    return start_date, end_date
 
 
 @_merge.mixin
@@ -129,10 +113,7 @@ batch processing, importing and exporting data, and more.
         category="constructor",
         call_name="Databox.empty",
     )
-    def empty(
-        klass,
-        /,
-    ) -> Self:
+    def empty(klass, ) -> Self:
         """
 ················································································
 
@@ -164,7 +145,6 @@ No input arguments are required for this method.
     def from_dict(
         klass,
         _dict: dict,
-        /,
     ) -> Self:
         """
 ················································································
@@ -449,7 +429,7 @@ yet to be added to the Databox.
 
     @property
     @_dm.reference(category="property", )
-    def num_items(self, /, ) -> int:
+    def num_items(self, ) -> int:
         """==Number of items in the databox=="""
         return len(self.keys())
 
@@ -483,7 +463,6 @@ used with other Python libraries or functions.
     @_dm.reference(category="manipulation", )
     def copy(
         self: Self,
-        /,
         source_names: SourceNames = None,
         target_names: TargetNames = None,
         strict_names: bool = False,
@@ -542,7 +521,6 @@ during the duplication process.
 
     def has(
         self: Self,
-        /,
         names: Iterable[str] | str,
     ) -> bool:
         """
@@ -555,7 +533,6 @@ during the duplication process.
     @_dm.reference(category="copying", )
     def shallow(
         self: Self,
-        /,
         source_names: SourceNames = None,
         target_names: TargetNames = None,
         strict_names: bool = False,
@@ -627,7 +604,7 @@ references, but does not copy the items themselves.
     def validate(
         self: Self,
         validators: dict[str, Callable] | None,
-        /,
+        #
         strict_names: bool = False,
         when_fails: Literal["critical", "error", "warning", "silent", ] = "error",
         title: str = "Databox validation errors",
@@ -657,13 +634,13 @@ references, but does not copy the items themselves.
     @_dm.reference(category="manipulation", )
     def rename(
         self: Self,
-        /,
+        #
         source_names: SourceNames = None,
         target_names: TargetNames = None,
         strict_names: bool = False,
     ) -> None:
-        """
-················································································
+        r"""
+................................................................................
 
 ==Rename items in a Databox==
 
@@ -701,8 +678,7 @@ or a callable function taking a source name and returning the new target name.
 
 Returns `None`; `self` is modified in place.
 
-
-················································································
+................................................................................
         """
         source_names, target_names, *_ = self._resolve_source_target_names(
             source_names, target_names, strict_names,
@@ -713,12 +689,12 @@ Returns `None`; `self` is modified in place.
     @_dm.reference(category="manipulation", )
     def remove(
         self: Self,
-        /,
+        #
         remove_names: SourceNames = None,
         strict_names: bool = False,
     ) -> None:
         """
-················································································
+................................................................................
 
 ==Remove specified items from a Databox==
 
@@ -763,7 +739,7 @@ Returns `None`; `self` is modified in place.
     @_dm.reference(category="manipulation", )
     def keep(
         self: Self,
-        /,
+        #
         keep_names: SourceNames = None,
         strict_names: bool = False,
     ) -> None:
@@ -914,7 +890,7 @@ the results.
     @_dm.reference(category="information", )
     def filter(
         self,
-        /,
+        #
         name_test: Callable | None = None,
         value_test: Callable | None = None,
     ) -> Iterable[str]:
@@ -1088,7 +1064,6 @@ Returns `None`; the Databox is saved to the specified JSON file.
     def overlay(
         self,
         other: Self,
-        /,
         **kwargs,
     ) -> None:
         """
@@ -1149,7 +1124,6 @@ by the Series class.
     def underlay(
         self,
         other: Self,
-        /,
         **kwargs,
     ) -> None:
         """
@@ -1210,7 +1184,6 @@ by the Series class.
         self,
         other: Self,
         func: Callable,
-        /,
         names: Iterable[str] | None = None,
         strict_names: bool = False,
         **kwargs,
@@ -1234,7 +1207,6 @@ by the Series class.
     @_dm.reference(category="manipulation", )
     def clip(
         self,
-        /,
         new_start_date: Period | None = None,
         new_end_date: Period | None = None,
     ) -> None:
@@ -1296,7 +1268,6 @@ are left unchanged.
         self,
         other: Self,
         end_prepending: Period,
-        /,
     ) -> Self:
         """
 ................................................................................
@@ -1342,7 +1313,6 @@ This method uses the `underlay` method to add the time series data from the
     def evaluate_expression(
         self,
         expression: str,
-        /,
         context: dict[str, Any] | None = None,
     ) -> Any:
         """
@@ -1400,7 +1370,6 @@ Shortcut syntax:
     def eval(
         self,
         expression: str,
-        /,
         context: dict[str, Any] | None = None,
     ) -> Any:
         """
@@ -1412,7 +1381,6 @@ Shortcut syntax:
     def __call__(
         self,
         expression: str,
-        /,
         context: dict[str, Any] | None = None,
     ) -> Any:
         """
@@ -1478,7 +1446,7 @@ VectorAutoregression models.
 ................................................................................
         """
         self = klass()
-        start, end = _extended_span_tuple_from_base_span(
+        start, end = _times.extend_span(
             span,
             steady_databoxable.max_lag,
             steady_databoxable.max_lead,
@@ -1498,7 +1466,7 @@ VectorAutoregression models.
         klass,
         steady_databoxable: SteadyDataboxableProtocol,
         span: Iterable[Period],
-        /,
+        *,
         deviation: None = None,
         **kwargs,
     ) -> Self:
@@ -1570,7 +1538,6 @@ This method modifies the Databox in place and returns `None`.
 
     def _resolve_source_target_names(
         self,
-        /,
         source_names: SourceNames,
         target_names: TargetNames,
         strict_names: bool = False,
@@ -1633,7 +1600,6 @@ def _default_item_iterator(value: Any, ) -> Iterator[Any]:
 def _get_series_constructor(
     start: Period | None = None,
     periods: Iterable[Period] | None = None,
-    /,
 ) -> Callable | None:
     """
     """

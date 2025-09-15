@@ -45,7 +45,6 @@ class SourceMixinProtocol(Protocol, ):
     def from_source(
         klass,
         source: ModelSource,
-        /,
         **kwargs,
     ) -> Self:
         ...
@@ -56,16 +55,20 @@ class SourceMixinProtocol(Protocol, ):
 def from_string(
     klass: type[SourceMixinProtocol],
     source_string: str,
-    /,
     context: dict | None = None,
     save_preparsed: str = "",
+    return_info: bool = False,
     **kwargs,
 ) -> SourceMixinProtocol:
-    """Create a new object from model source string"""
+    r"""Create a new object from model source string"""
     #[
     source, info = ModelSource.from_string(
-        source_string, context=context, save_preparsed=save_preparsed,
+        source_string,
+        context=context,
+        save_preparsed=save_preparsed,
     )
+    if return_info:
+        return klass.from_source(source, context=context, **kwargs, ), info
     return klass.from_source(source, context=context, **kwargs, )
     #]
 
@@ -73,13 +76,16 @@ def from_string(
 def from_file(
     klass: type[SourceMixinProtocol],
     source_files: str | Iterable[str],
-    /,
+    return_info: bool = False,
     **kwargs,
 ) -> SourceMixinProtocol:
-    """Create a new object from source file(s)"""
+    r"""Create a new object from source file(s)"""
     #[
     source_string = _combine_source_files_into_string(source_files, )
-    return from_string(klass, source_string, **kwargs, )
+    new, info, = from_string(klass, source_string, return_info=True, **kwargs, )
+    if return_info:
+        return new, info
+    return new
     #]
 
 
@@ -104,11 +110,11 @@ class ModelSource:
         self.description = kwargs.get("description", "")
 
     @property
-    def num_quantities(self, /, ) -> int:
+    def num_quantities(self, ) -> int:
         return len(self.quantities)
 
     @property
-    def all_names(self, /, ) -> Iterable[str]:
+    def all_names(self, ) -> Iterable[str]:
         return [ qty.human for qty in self.quantities ]
 
     def _add_parameters(self, names: Iterable[QuantityInput] | None) -> None:
@@ -120,11 +126,8 @@ class ModelSource:
     def _add_transition_variables(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
         self._add_quantities(quantity_inputs, QuantityKind.TRANSITION_VARIABLE)
 
-    def _add_anticipated_shocks(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
-        self._add_quantities(quantity_inputs, QuantityKind.ANTICIPATED_SHOCK)
-
-    def _add_unanticipated_shocks(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
-        self._add_quantities(quantity_inputs, QuantityKind.UNANTICIPATED_SHOCK)
+    def _add_transition_shocks(self, quantity_inputs: Iterable[QuantityInput] | None) -> None:
+        self._add_quantities(quantity_inputs, QuantityKind.TRANSITION_SHOCK)
 
     def _add_transition_equations(self, equation_inputs: Iterable[EquationInput] | None) -> None:
         self._add_equations(equation_inputs, EquationKind.TRANSITION_EQUATION)
@@ -146,7 +149,7 @@ class ModelSource:
             return
         self.all_but.append(all_but_input)
 
-    def _add_log_variables(self, log_variable_inputs: Iterable[str] | None, /, ) -> None:
+    def _add_log_variables(self, log_variable_inputs: Iterable[str] | None, ) -> None:
         if not log_variable_inputs:
             return
         self.log_variables += log_variable_inputs
@@ -170,7 +173,7 @@ class ModelSource:
             for i, q in enumerate(quantity_inputs, start=start_entry, )
         ]
 
-    def _add_equations(self, equation_inputs: Iterable[EquationInput] | None, kind: EquationKind, /, ) -> None:
+    def _add_equations(self, equation_inputs: Iterable[EquationInput] | None, kind: EquationKind, ) -> None:
         """
         """
         if not equation_inputs:
@@ -223,7 +226,7 @@ class ModelSource:
         log_variables = set(log_variables) if log_variables else set()
         unlisted_logly = bool(all_but)
         listed_logly = not unlisted_logly
-        def is_logly(human: str, /, ) -> bool:
+        def is_logly(human: str, ) -> bool:
             return listed_logly if human in log_variables else unlisted_logly
         for qty in self.quantities:
             if qty.kind not in QuantityKind.LOGGABLE_VARIABLE:
@@ -235,8 +238,7 @@ class ModelSource:
         klass,
         transition_variables: Iterable[QuantityInput],
         transition_equations: Iterable[EquationInput],
-        anticipated_shocks: Iterable[QuantityInput] | None = None,
-        unanticipated_shocks: Iterable[QuantityInput] | None = None,
+        transition_shocks: Iterable[QuantityInput] | None = None,
         measurement_variables: Iterable[QuantityInput] | None = None,
         measurement_equations: Iterable[EquationInput] | None = None,
         measurement_shocks: Iterable[QuantityInput] | None = None,
@@ -247,14 +249,13 @@ class ModelSource:
         all_but: bool = False,
         context: dict | None = None,
     ) -> Self:
-        """
+        r"""
         """
         self = klass()
         #
         self._add_transition_variables(transition_variables, )
         self._add_transition_equations(transition_equations, )
-        self._add_anticipated_shocks(anticipated_shocks, )
-        self._add_unanticipated_shocks(unanticipated_shocks, )
+        self._add_transition_shocks(transition_shocks, )
         self._add_measurement_variables(measurement_variables, )
         self._add_parameters(parameters, )
         self._add_exogenous_variables(exogenous_variables, )
@@ -265,7 +266,7 @@ class ModelSource:
         self._add_measurement_shocks(measurement_shocks, )
         self._add_steady_autovalues(steady_autovalues, )
         #
-        self.context = (dict(context) if context else {}) | {"__builtins__": {}}
+        self.context = (dict(context) if context else {})
         #
         return self
 
@@ -277,11 +278,13 @@ class ModelSource:
         context: dict | None = None,
         save_preparsed: str = "",
     ) -> tuple[Self, dict[str, Any]]:
+        r"""
         """
-        """
-        context = (dict(context) if context else {}) | {"__builtins__": {}}
+        context = (dict(context) if context else {})
         preparsed_string, preparser_info = _preparser.from_string(
-            source_string, context=context, save_preparsed=save_preparsed, 
+            source_string,
+            context=context,
+            save_preparsed=save_preparsed,
         )
         parsed_content = _models.from_string(preparsed_string)
         all_but = _is_all_but_present(parsed_content.get("all-but", ), )
@@ -290,8 +293,7 @@ class ModelSource:
         self = klass.from_lists(
             transition_variables=parsed_content.get("transition-variables", ),
             transition_equations=parsed_content.get("transition-equations", ),
-            anticipated_shocks=parsed_content.get("anticipated-shocks", ),
-            unanticipated_shocks=parsed_content.get("unanticipated-shocks", ),
+            transition_shocks=parsed_content.get("transition-shocks", ),
             measurement_variables=parsed_content.get("measurement-variables", ),
             measurement_equations=parsed_content.get("measurement-equations", ),
             measurement_shocks=parsed_content.get("measurement-shocks", ),
@@ -303,13 +305,12 @@ class ModelSource:
             context=context,
         )
         #
-        return self, preparser_info
+        return self, preparser_info,
 
     @classmethod
     def from_file(
         klass,
         source_files: str | Iterable[str],
-        /,
         **kwargs,
     ) -> Self:
         """Create a new ModelSource from source file(s)"""
@@ -319,11 +320,11 @@ class ModelSource:
     #]
 
 
-def _handle_white_spaces(x: str, /, ) -> str:
+def _handle_white_spaces(x: str, ) -> str:
     return _re.sub(r"[\s\n\r]+", "", x)
 
 
-def _conform_attributes(attributes: str | Iterable[str] | None, /, ) -> set:
+def _conform_attributes(attributes: str | Iterable[str] | None, ) -> set:
     """
     """
     #[
@@ -337,7 +338,6 @@ def _conform_attributes(attributes: str | Iterable[str] | None, /, ) -> set:
 
 def _combine_source_files_into_string(
     source_files: str | Iterable[str],
-    /,
     joint: str = "\n\n",
 ) -> str:
     """
@@ -353,7 +353,7 @@ def _combine_source_files_into_string(
     #]
 
 
-def _verify_all_but(all_but: list[str] | None, /, ) -> None | NoReturn:
+def _verify_all_but(all_but: list[str] | None, ) -> None | NoReturn:
     if all_but is None:
         return
     if all(i == _models.ALL_BUT_KEYWORD for i in all_but):
@@ -363,7 +363,7 @@ def _verify_all_but(all_but: list[str] | None, /, ) -> None | NoReturn:
     raise Exception("Inconsistent use of !all-but in !log-variables")
 
 
-def _is_all_but_present(all_but: Iterable[str] | None, /, ) -> bool:
+def _is_all_but_present(all_but: Iterable[str] | None, ) -> bool:
     if not all_but:
         return False
     all_but = tuple(all_but)
@@ -371,7 +371,7 @@ def _is_all_but_present(all_but: Iterable[str] | None, /, ) -> bool:
     return all_but[0] == _models.ALL_BUT_KEYWORD
 
 
-def _extract_loggable_names(quantities: Iterable[Quantity], /, ) -> set[str]:
+def _extract_loggable_names(quantities: Iterable[Quantity], ) -> set[str]:
     """
     """
     return set(
