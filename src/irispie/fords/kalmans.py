@@ -36,9 +36,9 @@ if TYPE_CHECKING:
 #]
 
 
-_simulate_anticipated_shocks = (
+_simulate_anticipated_shock_values = (
     _shock_simulators
-    .simulate_triangular_anticipated_shocks
+    .simulate_triangular_anticipated_shock_values
 )
 
 
@@ -75,7 +75,7 @@ class KalmanFilterableProtocol(SquidableProtocol, ):
 
     def _gets_solution(self, deviation: bool = False, ) -> Solution: ...
 
-    def _gets_cov_unanticipated_shocks(self, ) -> _np.ndarray: ...
+    def _gets_cov_transition_shocks(self, ) -> _np.ndarray: ...
 
     #]
 
@@ -849,14 +849,14 @@ containing the dictionary for singleton models, too.
         #
         # Initialize median and MSE of the alpha state vector
         #
-        init_cov_u = model_v._gets_cov_unanticipated_shocks()
+        init_cov_u = model_v._gets_cov_transition_shocks()
         initials = initialize(solution_v, init_cov_u, )
 
         #
         # Presimulate the impact of anticipated shocks
         #
         all_v_impact = (
-            _simulate_anticipated_shocks(model_v, input_ds_v, frame, )
+            _simulate_anticipated_shock_values(model_v, input_ds_v, frame, )
             if shocks_from_data else None
         )
 

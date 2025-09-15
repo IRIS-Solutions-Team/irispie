@@ -54,8 +54,16 @@ def simulate_initial_guess(): ...
 def simulate_frame(): ...
 
 
-_extract_shock_values = _shock_simulators.extract_shock_values
-_simulate_anticipated_shocks = _shock_simulators.simulate_square_anticipated_shocks
+_extract_shock_values = (
+    _shock_simulators
+    .extract_shock_values
+)
+
+
+_simulate_anticipated_shock_values = (
+    _shock_simulators
+    .simulate_square_anticipated_shock_values
+)
 
 
 _RELEVANT_REGISTER_NAMES = (
@@ -194,9 +202,9 @@ def simulate_flat(
     all_v_impact = None
     Pu = None
     if not ignore_shocks:
-        u_array = _extract_shock_values(data_array, vec.unanticipated_shocks, )
+        u_array = _extract_shock_values(data_array, vec.transition_shocks, )
         Pu = P @ u_array
-        all_v_impact = _simulate_anticipated_shocks(model_v, frame_ds, frame, )
+        all_v_impact = _simulate_anticipated_shock_values(model_v, frame_ds, frame, )
     #
     # Simulate one period at a time
     # Store results in data_array
@@ -269,7 +277,7 @@ def _simulate_conditional(
         std_v_array = data_array[squid.std_v_qids, frame.simulation_slice]
         std_w_array = data_array[squid.std_w_qids, frame.simulation_slice]
     #
-    all_v_impact = _simulate_anticipated_shocks(model_v, frame_ds, frame, )
+    all_v_impact = _simulate_anticipated_shock_values(model_v, frame_ds, frame, )
     #
     # Preallocate default data
     curr_xi_exogenized = _np.full((squid.num_curr_xi, num_periods, ), _np.nan, )

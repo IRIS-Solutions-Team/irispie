@@ -32,7 +32,7 @@ db["covid_dummy"] = ir.Series(periods=estim_span, values=0, )
 db["covid_dummy"][ir.qq(2020,2)] = 1
 
 endogenous_names = ["ad2_y_tnd", "y_gap", "cpi", "rs"]
-num_resamples = 1_000
+num_resamples = 1_00
 
 
 def test_plain():
@@ -69,6 +69,9 @@ def test_plain():
         prepend_input=True,
     )
 
+
+if __name__ == "__main__":
+    test_plain()
 
 d1 = ir.MinnesotaPriorObs(rho=0, mu2=num_estim_periods, )
 d2 = ir.MeanPriorObs(mu2=num_estim_periods, mean=[0,0,0,0], )

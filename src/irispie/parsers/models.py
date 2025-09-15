@@ -18,7 +18,7 @@ from . import _substitutions as _substitutions
 _WHERE_TO_APPLY_SUBSTITUTIONS = ["transition-equations", "measurement-equations", ]
 
 
-def from_string(source: str, /, ) -> sources.Source:
+def from_string(source: str, ) -> sources.Source:
     """
     """
     #[
@@ -53,8 +53,7 @@ _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
         transition_equations_keyword
         / measurement_equations_keyword
         / steady_autovalues_keyword
-        / transition_variables_keyword
-        / anticipated_shocks_keyword / unanticipated_shocks_keyword
+        / transition_variables_keyword / transition_shocks_keyword
         / measurement_variables_keyword / measurement_shocks_keyword
         / parameters_keyword / exogenous_variables_keyword
         / log_keyword / all_but_keyword
@@ -82,8 +81,7 @@ _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
 
     qty_block = qty_keyword block_attributes? qty_ended*
     qty_keyword =
-        transition_variables_keyword
-        / anticipated_shocks_keyword / unanticipated_shocks_keyword
+        transition_variables_keyword / transition_shocks_keyword
         / measurement_variables_keyword / measurement_shocks_keyword
         / parameters_keyword / exogenous_variables_keyword
     qty_ended = white_spaces description white_spaces qty_name qty_end
@@ -95,8 +93,7 @@ _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
     log_ended = white_spaces qty_name qty_end
 
     transition_variables_keyword = keyword_prefix "transition-variables"
-    anticipated_shocks_keyword = keyword_prefix "anticipated-shocks"
-    unanticipated_shocks_keyword = keyword_prefix "unanticipated-shocks"
+    transition_shocks_keyword = keyword_prefix "transition-shocks"
     measurement_variables_keyword = keyword_prefix "measurement-variables"
     measurement_shocks_keyword = keyword_prefix "measurement-shocks"
     parameters_keyword = keyword_prefix "parameters"
@@ -195,8 +192,7 @@ class _Visitor(_pa.nodes.NodeVisitor):
         return "transition-" + visited_children[1]
 
     visit_transition_variables_keyword = _visit_keyword
-    visit_anticipated_shocks_keyword = _visit_keyword
-    visit_unanticipated_shocks_keyword = _visit_keyword
+    visit_transition_shocks_keyword = _visit_keyword
     visit_measurement_variables_keyword = _visit_keyword
     visit_measurement_shocks_keyword = _visit_keyword
     visit_parameters_keyword = _visit_keyword
@@ -244,32 +240,27 @@ class _Visitor(_pa.nodes.NodeVisitor):
     #]
 
 
-_SHORTCUT_KEYWORDS = [
-    ( _re.compile(_common.HUMAN_PREFIX + r"variables\b"), _common.HUMAN_PREFIX + r"transition-variables" ),
-    ( _re.compile(_common.HUMAN_PREFIX + r"equations\b"), _common.HUMAN_PREFIX + r"transition-equations" ),
-]
-
-
 _LINE_COMMENT_PATTERN = _re.compile(r" *[%#]!.*", )
-
-
-def _remove_line_comments(source: str, /, ) -> str:
+def _remove_line_comments(source: str, ) -> str:
     return _re.sub(_LINE_COMMENT_PATTERN, "", source)
 
 
-def _expand_shortcut_keywords(source_string: str, /, ) -> str:
+_SHORTCUT_KEYWORDS = [
+    ( _re.compile(_common.HUMAN_PREFIX + r"variables\b"), _common.HUMAN_PREFIX + r"transition-variables" ),
+    ( _re.compile(_common.HUMAN_PREFIX + r"shocks\b"), _common.HUMAN_PREFIX + r"transition-shocks" ),
+    ( _re.compile(_common.HUMAN_PREFIX + r"equations\b"), _common.HUMAN_PREFIX + r"transition-equations" ),
+]
+def _expand_shortcut_keywords(source_string: str, ) -> str:
     for short, long in _SHORTCUT_KEYWORDS:
         source_string = _re.sub(short, long, source_string)
     return source_string
 
 
 _KEYWORD_WITH_UNDERSCORE = _re.compile(r"(?<!!)(![a-z]+)_([a-z]+)", )
-
-
-def _replace_underscores_by_hyphens(source_string: str, /, ) -> str:
+def _replace_underscores_by_hyphens(source_string: str, ) -> str:
     return _KEYWORD_WITH_UNDERSCORE.sub(r"\1-\2", source_string, )
 
 
-def _deblank(string: str, /, ) -> str:
+def _deblank(string: str, ) -> str:
     return "".join(string.split())
 

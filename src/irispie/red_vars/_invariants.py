@@ -70,7 +70,7 @@ class Invariant(
     def get_residual_qids(self, ) -> tuple[int, ...]:
         r"""
         """
-        return self._get_some_qids(QuantityKind.UNANTICIPATED_SHOCK, )
+        return self._get_some_qids(QuantityKind.TRANSITION_SHOCK, )
 
     def get_exogenous_qids(self, ) -> tuple[int, ...]:
         r"""
@@ -98,8 +98,8 @@ class Invariant(
         )
         self.solution_vectors = SolutionVectors(
             transition_variables=transition_tokens,
-            unanticipated_shocks=residual_tokens,
-            anticipated_shocks=(),
+            transition_shocks=residual_tokens,
+            anticipated_shock_values=(),
             measurement_variables=measurement_tokens,
             measurement_shocks=(),
             true_initials=(True, ) * num_lagged_endogenous,
@@ -128,7 +128,7 @@ def _create_quantities(
     #
     append_quantities(endogenous_names , QuantityKind.TRANSITION_VARIABLE, )
     append_quantities(exogenous_names, QuantityKind.EXOGENOUS_VARIABLE, )
-    append_quantities(residual_names, QuantityKind.UNANTICIPATED_SHOCK, )
+    append_quantities(residual_names, QuantityKind.TRANSITION_SHOCK, )
     #
     return tuple(quantities, )
 

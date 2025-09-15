@@ -49,7 +49,7 @@ class Token(NamedTuple, ):
         shift = _PRINT_SHIFT.format(shift=self.shift, ) if self.shift else ""
         return name + shift
 
-    def print_xtring(self, /, ) -> str:
+    def print_xtring(self, ) -> str:
         return (
             _PRINT_TOKEN.format(qid=self.qid, shift=self.shift, )
             if self.shift else _PRINT_ZERO_SHIFT_TOKEN.format(qid=self.qid, )
@@ -116,7 +116,6 @@ def generate_zero_shift_tokens_from_quantities(
 
 def print_tokens(
     tokens: Iterable[Token],
-    /,
     qid_to_name: dict[int, str],
     qid_to_logly: dict[int, bool],
 ) -> Iterable[str]:

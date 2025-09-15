@@ -293,14 +293,13 @@ class Inlay(
     def _gets_solution(
         self,
         deviation: bool = False,
-        vid: int = 0,
     ) -> Solution:
         r"""
         """
-        return (
-            self._variants[vid].solution if not deviation
-            else self._variants[vid].deviation_solution
-        )
+        solution = self._variants[0].solution
+        if deviation:
+            solution = solution.create_deviation_solution()
+        return solution
 
     def iter_std_name_to_value(self, ) -> Iterable[dict[str, Real]]:
         """
@@ -346,14 +345,14 @@ class Inlay(
 
 ...................................................................................
         """
-        def _concatenate(dynamic: str, steady: str) -> str:
+        def concatenate(dynamic: str, steady: str) -> str:
             return f"{dynamic} !! {steady}" if steady != dynamic else dynamic
         zipper = zip(
             self.get_dynamic_equations(kind=kind, ),
             self.get_steady_equations(kind=kind, ),
         )
         return tuple(
-            _concatenate(dynamic.human, steady.human, )
+            concatenate(dynamic, steady)
             for dynamic, steady in zipper
         )
 
@@ -363,12 +362,34 @@ class Inlay(
         self,
         kind: _equations.EquationKind | None = None,
     ) -> tuple[_equations.Equation]:
+        r"""
+        """
+        return tuple(
+            i.human
+            for i in self.get_dynamic_equation_objects(kind=kind, )
+        )
+
+    def get_steady_equations(
+        self,
+        kind: _equations.EquationKind | None = None,
+    ) -> tuple[_equations.Equation]:
+        r"""
+        """
+        return tuple(
+            i.human
+            for i in self.get_steady_equation_objects(kind=kind, )
+        )
+
+    def get_dynamic_equation_objects(
+        self,
+        kind: _equations.EquationKind | None = None,
+    ) -> tuple[_equations.Equation]:
         return tuple(
             _equations.generate_equations_of_kind(self._invariant.dynamic_equations, kind)
             if kind else self._invariant.dynamic_equations
         )
 
-    def get_steady_equations(
+    def get_steady_equation_objects(
         self,
         kind: _equations.EquationKind | None = None,
     ) -> tuple[_equations.Equation]:
@@ -486,7 +507,7 @@ class Inlay(
             False: lambda x, y: x - y,
             None: lambda x, y: x - y,
         }
-        kind = _quantities.ANY_VARIABLE | _quantities.ANY_SHOCK
+        kind = _quantities.ANY_VARIABLE | _quantities.ANY_SHOCK_OR_SHOCK_VALUE
         return {
             q.human: minus_control_func[q.logly]
             for q in self._invariant.quantities
@@ -507,9 +528,9 @@ def _resolve_steady_kind(
     """
     """
     #[
-    return (
-        QuantityKind.LOGGABLE_VARIABLE if not include_shocks
-        else QuantityKind.LOGGABLE_VARIABLE_OR_ANY_SHOCK
-    )
+    steady_kind = QuantityKind.LOGGABLE_VARIABLE
+    if include_shocks:
+        steady_kind = steady_kind | QuantityKind.ANY_SHOCK_OR_SHOCK_VALUE
+    return steady_kind
     #]
 

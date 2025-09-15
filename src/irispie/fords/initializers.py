@@ -18,8 +18,8 @@ _DEFAULT_DIFFUSE_SCALE = 1e8
 
 
 def _approx_diffuse(
-        solution: Solution,
-        custom_diffuse_scale: Real | None = None,
+    solution: Solution,
+    custom_diffuse_scale: Real | None = None,
 ) -> tuple[Real, _np.ndarray | None]:
     """
     """
@@ -31,8 +31,8 @@ def _approx_diffuse(
 
 
 def _fixed_unknown(
-        solution: Solution,
-        custom_diffuse_scale: Real | None = None,
+    solution: Solution,
+    custom_diffuse_scale: Real | None = None,
 ) -> tuple[Real, _np.ndarray | None]:
     """
     """
@@ -47,8 +47,8 @@ def _fixed_unknown(
 
 
 def _fixed_zero(
-        solution: Solution,
-        custom_diffuse_scale: Real | None = None,
+    solution: Solution,
+    custom_diffuse_scale: Real | None = None,
 ) -> tuple[Real, _np.ndarray | None]:
     """
     """

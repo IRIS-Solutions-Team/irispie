@@ -5,7 +5,7 @@ import irispie as ir
 source = r"""
 !transition_variables
     a, b, c
-!unanticipated_shocks
+!transition_shocks
     shk_a, shk_b, shk_c
 !transition_equations
     a = shk_a;
