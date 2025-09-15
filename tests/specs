@@ -8,6 +8,7 @@
 ./tests/progress_bars
 ./tests/preparser
 ./tests/chartpacks
+./tests/large_models
 -v
 -ra
 

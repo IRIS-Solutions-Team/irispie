@@ -126,7 +126,7 @@ def simulate_frame(
 
     endogenous_quantities = model_v.get_quantities(kind=_quantities.ENDOGENOUS_VARIABLE, )
     endogenous_qids = tuple(i.id for i in endogenous_quantities)
-    wrt_equations = model_v.get_dynamic_equations(kind=_equations.ENDOGENOUS_EQUATION, )
+    wrt_equations = model_v.get_dynamic_equation_objects(kind=_equations.ENDOGENOUS_EQUATION, )
 
     if len(wrt_equations) != len(endogenous_qids):
         raise _wrongdoings.IrisPieCritical(

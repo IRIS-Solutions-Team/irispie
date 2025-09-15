@@ -345,14 +345,14 @@ class Inlay(
 
 ...................................................................................
         """
-        def _concatenate(dynamic: str, steady: str) -> str:
+        def concatenate(dynamic: str, steady: str) -> str:
             return f"{dynamic} !! {steady}" if steady != dynamic else dynamic
         zipper = zip(
             self.get_dynamic_equations(kind=kind, ),
             self.get_steady_equations(kind=kind, ),
         )
         return tuple(
-            _concatenate(dynamic.human, steady.human, )
+            concatenate(dynamic, steady)
             for dynamic, steady in zipper
         )
 
@@ -362,12 +362,34 @@ class Inlay(
         self,
         kind: _equations.EquationKind | None = None,
     ) -> tuple[_equations.Equation]:
+        r"""
+        """
+        return tuple(
+            i.human
+            for i in self.get_dynamic_equation_objects(kind=kind, )
+        )
+
+    def get_steady_equations(
+        self,
+        kind: _equations.EquationKind | None = None,
+    ) -> tuple[_equations.Equation]:
+        r"""
+        """
+        return tuple(
+            i.human
+            for i in self.get_steady_equation_objects(kind=kind, )
+        )
+
+    def get_dynamic_equation_objects(
+        self,
+        kind: _equations.EquationKind | None = None,
+    ) -> tuple[_equations.Equation]:
         return tuple(
             _equations.generate_equations_of_kind(self._invariant.dynamic_equations, kind)
             if kind else self._invariant.dynamic_equations
         )
 
-    def get_steady_equations(
+    def get_steady_equation_objects(
         self,
         kind: _equations.EquationKind | None = None,
     ) -> tuple[_equations.Equation]:

@@ -379,10 +379,12 @@ def _steady_nonlinear(
     num_blocks = len(blocks)
     #
     all_quantities = self.get_quantities()
-    all_equations = self.get_steady_equations(kind=_STEADY_EQUATION_SOLVED, )
-    human_blocks \
-        = _blazer.human_blocks_from_blocks \
-        (blocks, all_equations, all_quantities, )
+    all_equations = self.get_steady_equation_objects(kind=_STEADY_EQUATION_SOLVED, )
+    human_blocks = _blazer.human_blocks_from_blocks(
+        blocks,
+        all_equations,
+        all_quantities,
+    )
     #
     # Prepare the solver and iter printer settings
     #
@@ -468,7 +470,7 @@ def _resolve_steady_wrt(
     r"""
     """
     #[
-    wrt_equations = self.get_steady_equations(kind=_STEADY_EQUATION_SOLVED, )
+    wrt_equations = self.get_steady_equation_objects(kind=_STEADY_EQUATION_SOLVED, )
     wrt_eids = tuple(e.id for e in wrt_equations)
     #
     plannable = self.get_steady_plannable(is_flat=is_flat, )
