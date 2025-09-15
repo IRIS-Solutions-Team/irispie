@@ -12,3 +12,4 @@ dist/
 sandbox
 session
 issues/
+*.log
