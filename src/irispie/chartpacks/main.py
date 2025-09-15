@@ -484,8 +484,10 @@ class _Chart:
         for n in self.__slots__:
             setattr(self, n, None, )
         self.expression = (expression or "").strip()
-        self.title = (title or "").strip() or self.expression
-        self.transform = (transform or "").strip()
+        self.title = (title or "").strip()
+        self.transform = transform
+        if isinstance(transform, str):
+            self.transform = self.transform.strip()
         chart_settings_cascaded = chart_settings_cascaded or {}
         for key in _CHART_SETTINGS_KEYS:
             if getattr(self, key, None) is not None:
@@ -513,12 +515,26 @@ class _Chart:
         if not match:
             raise ValueError(f"Invalid input string: {input_string!r}")
         match_dict = match.groupdict()
-        return klass(**match.groupdict(), chart_settings_cascaded=chart_settings_cascaded, **kwargs, )
+        # Resolve transform - it can come from three places:
+        # 1. directly from the input string
+        # 2. from kwargs
+        # 3. from the cascaded chart settings
+        # The order of precedence is 1, 2, 3
+        input_string_transform = match_dict.pop("transform", None)
+        kwargs_transform = kwargs.pop("transform", None)
+        chart_settings_transform = chart_settings_cascaded.pop("transform", None) if chart_settings_cascaded else None
+        transform = input_string_transform or kwargs_transform or chart_settings_transform
+        return klass(**match_dict, transform=transform, chart_settings_cascaded=chart_settings_cascaded, **kwargs, )
 
     @property
     def caption(self, ) -> str:
         """Caption shown at the top of the chart"""
-        return self.title or (self.expression + f" [{self.transform}]" if self.transform else "")
+        return self.title if self.title else self._create_autocaption()
+
+    def _create_autocaption(self, ) -> str:
+        r"""Create an automatic caption based on the expression and transform"""
+        transform_string = self.transform if isinstance(self.transform, str) else "transformed"
+        return f"{self.expression} [{transform_string}]"
 
     def plot(
         self,
@@ -549,12 +565,14 @@ class _Chart:
     def _apply_transform(self, x, ):
         """
         """
-        if self.transform and self.transforms and self.transform in self.transforms:
+        if self.transform and isinstance(self.transform, str) and self.transforms and self.transform in self.transforms:
             func = self.transforms[self.transform]
             return func(x, )
         if self.transform and isinstance(self.transform, str):
             func = eval("lambda x:" + self.transform, )
             return func(x, )
+        if self.transform and callable(self.transform, ):
+            return self.transform(x, )
         return x
 
     def __str__(self, /, ) -> str:

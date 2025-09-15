@@ -7,6 +7,7 @@
 ./tests/vars
 ./tests/progress_bars
 ./tests/preparser
+./tests/chartpacks
 -v
 -ra
 
