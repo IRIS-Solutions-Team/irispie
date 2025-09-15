@@ -63,9 +63,9 @@ model based on the provided factor.
     An optional parameter to narrow down the types of shocks to rescale. It
     can be one, or a combination, of the following:
 
-    * `ir.UNANTICIPATED_STD`
-    * `ir.ANTICIPATED_STD`
+    * `ir.TRANSITION_STD`
     * `ir.MEASUREMENT_STD`
+    * `ir.ANY_STD`
 
     If `None`, the standard deviations of all shocks will be rescaled.
 
@@ -159,7 +159,7 @@ model based on the provided factor.
         cov_by_order = _covariances.get_autocov_square(variant.solution, cov_u, cov_w, up_to_order, )
         return tuple(select(cov, ) for cov in cov_by_order)
 
-    def get_stdvec_unanticipated_shocks(self, ):
+    def get_stdvec_transition_shocks(self, ):
         r"""
         """
         std_u = [ std_u for std_u in self.iter_std_u() ]
@@ -196,14 +196,13 @@ model based on the provided factor.
             yield self.getv_std_w(v, )
 
     # TODO: Refactor this function and getv_cov_u to avoid code duplication
-    def _gets_cov_unanticipated_shocks(self, ) -> _np.ndarray:
+    def _gets_cov_transition_shocks(self, ) -> _np.ndarray:
         r"""
         """
         return self.getv_cov_u(self._variants[0], )
 
-    def get_cov_unanticipated_shocks(
+    def get_cov_transition_shocks(
         self,
-        #
         unpack_singleton: bool = True,
     ):
         r"""
@@ -216,7 +215,6 @@ model based on the provided factor.
 
     def get_cov_measurement_shocks(
         self,
-        #
         unpack_singleton: bool = True,
     ):
         r"""
@@ -230,7 +228,7 @@ model based on the provided factor.
     def getv_std_u(self, variant, ):
         r"""
         """
-        shocks = self._invariant.dynamic_descriptor.solution_vectors.unanticipated_shocks
+        shocks = self._invariant.dynamic_descriptor.solution_vectors.transition_shocks
         return _retrieve_stds(self, variant, shocks, )
 
     def getv_std_w(self, variant, ):

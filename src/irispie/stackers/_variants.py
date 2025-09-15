@@ -74,9 +74,10 @@ class Variant:
         self = klass()
         #
         num_periods = invariant.num_periods
-        forward = num_periods - 1
-        T, P, _, K, Z, H, D, U = solution.unpack_triangular_solution()
-        R = solution.expand_triangular_solution(forward=forward, )
+        #
+        T, P, K, Z, H, D, U = solution.unpack_triangular_solution()
+        R = self.expand_triangular_solution(forward=num_periods-1, )
+        #
         index_xi = invariant.index_xi
         index_u = invariant.index_u
         index_v = invariant.index_v

@@ -15,7 +15,7 @@ from .solutions import (Solution, )
 #]
 
 
-def _simulate_anticipated_shocks(
+def _simulate_anticipated_shock_values(
     model_v,
     dataslate_v: Dataslate,
     frame: Frame,
@@ -29,7 +29,7 @@ def _simulate_anticipated_shocks(
     # shocks are present
     impact = [None] * dataslate_v.num_periods
     vec = model_v._get_dynamic_solution_vectors()
-    if not vec.anticipated_shocks:
+    if not vec.anticipated_shock_values:
         return impact
     #
     # Deviation is irrelevant for the impact of anticipated shocks
@@ -42,7 +42,7 @@ def _simulate_anticipated_shocks(
     #
     v_array = extract_shock_values(
         working_data,
-        vec.anticipated_shocks,
+        vec.anticipated_shock_values,
     )
     #
     column_incidence = _np.any(v_array[:, columns_to_run], axis=0, ).tolist()
@@ -65,14 +65,14 @@ def _simulate_anticipated_shocks(
     #]
 
 
-simulate_square_anticipated_shocks = _ft.partial(
-    _simulate_anticipated_shocks,
+simulate_square_anticipated_shock_values = _ft.partial(
+    _simulate_anticipated_shock_values,
     get_solution_expansion=Solution.expand_square_solution,
 )
 
 
-simulate_triangular_anticipated_shocks = _ft.partial(
-    _simulate_anticipated_shocks,
+simulate_triangular_anticipated_shock_values = _ft.partial(
+    _simulate_anticipated_shock_values,
     get_solution_expansion=Solution.expand_triangular_solution,
 )
 

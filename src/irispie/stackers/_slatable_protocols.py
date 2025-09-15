@@ -65,7 +65,7 @@ class Inlay:
         slatable.fallbacks = {}
         slatable.overwrites = {}
         #
-        shock_names = self.get_names(kind=_quantities.ANY_SHOCK, )
+        shock_names = self.get_names(kind=_quantities.ANY_SHOCK_OR_SHOCK_VALUE, )
         shock_name_to_value = {
             name: [_DEFAULT_SHOCK_VALUE, ]*self.num_variants
             for name in shock_names

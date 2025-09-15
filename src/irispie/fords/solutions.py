@@ -6,7 +6,7 @@ r"""
 
 $$
 \begin{gathered}
-\xi_t = T \, \xi_{t-1} + P \, u_t + R \, v_t + K
+\xi_t = T \, \xi_{t-1} + P \, u_t + \sum \, R \, v_t + K
 \\
 y_t = Z \, \xi_t + H \, w_t + D
 \end{gathered}
@@ -17,7 +17,7 @@ $$
 
 $$
 \begin{gathered}
-\alpha_t = T_\alpha \, \alpha_{t-1} + P_\alpha \, u_t + R_\alpha \, v_t + K_\alpha
+\alpha_t = T_\alpha \, \alpha_{t-1} + P_\alpha \, u_t + \sum \, R_\alpha \, v_t + K_\alpha
 \\
 y_t = Z_\alpha \, \alpha_t + D + H \, w_t
 \\
@@ -82,8 +82,7 @@ class Solution:
     ## Square solution:
 
     T: Transition matrix
-    P: Impact matrix of unanticipated shocks
-    R: Impact matrix of anticipated shocks
+    P: Impact matrix of transition shocks
     K: Intercept in transition equation
     Z: Measurement matrix
     H: Impact matrix of measurement shocks
@@ -93,8 +92,7 @@ class Solution:
     ## Equivalent block-triangular solution:
 
     Ta: Transition matrix in triangular system
-    Pa: Impact matrix of unanticipated shocks in triangular system
-    Ra: Impact matrix of anticipated shocks in triangular system
+    Pa: Impact matrix of transition shocks in triangular system
     Ka: Intercept in transition equation in triangular system
     Za: Measurement matrix in triangular system
     Ua: Rotation matrix from triangular to square system
@@ -110,8 +108,8 @@ class Solution:
     #[
 
     __slots__ = (
-        "T", "P", "R", "K", "Z", "H", "D",
-        "Ta", "Pa", "Ra", "Ka", "Za", "Ua",
+        "T", "P", "K", "Z", "H", "D",
+        "Ta", "Pa", "Ka", "Za", "Ua",
         "J", "Ru", "X", "Xa",
         "square_expansion",
         "triangular_expansion",
@@ -185,8 +183,8 @@ class Solution:
         #
         square_solution = _square_from_triangular(triangular_solution, )
         #
-        self.Ua, self.Ta, self.Pa, self.Ra, self.Ka, self.Xa, self.J, self.Ru = triangular_solution
-        self.T, self.P, self.R, self.K, self.X = square_solution
+        self.Ua, self.Ta, self.Pa, self.Ka, self.Xa, self.J, self.Ru = triangular_solution
+        self.T, self.P, self.K, self.X = square_solution
         #
         # Solve measurement equations
         self.Z, self.H, self.D, self.Za = _solve_measurement_equations(
@@ -204,98 +202,88 @@ class Solution:
         #
         return self
 
-    @classmethod
-    def deviation_solution(
-        klass,
-        other: Self,
-    ) -> Self:
-        """
+    def create_deviation_solution(self, ) -> Self:
+        r"""
         Create a shallow copy of the solution, and replace constant vectors with
         zeros
         """
-        self = klass()
-        for n in self.__slots__:
-            setattr(self, n, getattr(other, n, None), )
-        if self.K is not None:
-            self.K = _np.zeros_like(other.K, )
-        if self.Ka is not None:
-            self.Ka = _np.zeros_like(other.Ka, )
-        if self.D is not None:
-            self.D = _np.zeros_like(other.D, )
-        return self
+        new = type(self)()
+        for n in new.__slots__:
+            setattr(new, n, getattr(self, n, None), )
+        if new.K is not None:
+            new.K = _np.zeros_like(self.K, )
+        if new.Ka is not None:
+            new.Ka = _np.zeros_like(self.Ka, )
+        if new.D is not None:
+            new.D = _np.zeros_like(self.D, )
+        return new
 
     @property
-    def num_xi(self, /, ) -> int:
+    def num_xi(self, ) -> int:
         """==Number of xi vector elements=="""
         return self.T.shape[0]
 
     @property
-    def num_alpha(self, /, ) -> int:
+    def num_alpha(self, ) -> int:
         """==Number of alpha vector elements=="""
         return self.Ta.shape[0]
 
     @property
-    def num_y(self, /, ) -> int:
+    def num_y(self, ) -> int:
         """==Number of y vector elements=="""
         return self.Z.shape[0]
 
     @property
-    def num_u(self, /, ) -> int:
+    def num_u(self, ) -> int:
+        """==Number of u vector elements=="""
+        return self.P.shape[1]
+
+    @property
+    def num_v(self, ) -> int:
         """==Number of v vector elements=="""
         return self.P.shape[1]
 
     @property
-    def num_v(self, /, ) -> int:
-        """==Number of v vector elements=="""
-        return self.R.shape[1]
-
-    @property
-    def num_w(self, /, ) -> int:
+    def num_w(self, ) -> int:
         """==Number of w vector elements=="""
         return self.H.shape[1]
 
     @property
-    def num_unit_roots(self, /, ) -> int:
+    def num_unit_roots(self, ) -> int:
         """==Number of unit roots=="""
         return self.eigenvalues_stability.count(EigenvalueKind.UNIT_ROOT)
 
     @property
-    def num_stable(self, /, ) -> int:
+    def num_stable(self, ) -> int:
         """==Number of stable elements in alpha vector=="""
         return self.num_alpha - self.num_unit_roots
 
     @property
-    def Ta_stable(self, /, ) -> _np.ndarray:
+    def Ta_stable(self, ) -> _np.ndarray:
         """==Stable part of transition matrix=="""
         num_unit_roots = self.num_unit_roots
         return self.Ta[num_unit_roots:, num_unit_roots:]
 
     @property
-    def Pa_stable(self, /, ) -> _np.ndarray:
-        """==Stable part of impact matrix of unanticipated shocks=="""
+    def Pa_stable(self, ) -> _np.ndarray:
+        """==Stable part of impact matrix of transition shocks=="""
         num_unit_roots = self.num_unit_roots
         return self.Pa[num_unit_roots:, :]
 
     @property
-    def Ra_stable(self, /, ) -> _np.ndarray:
-        """==Stable part of impact matrix of transition shocks=="""
-        num_unit_roots = self.num_unit_roots
-        return self.Ra[num_unit_roots:, :]
-
-    @property
-    def Ka_stable(self, /, ) -> _np.ndarray:
+    def Ka_stable(self, ) -> _np.ndarray:
         """==Stable part of intercept in transition equation=="""
         num_unit_roots = self.num_unit_roots
         return self.Ka[num_unit_roots:]
 
     @property
-    def Za_stable(self, /, ) -> _np.ndarray:
+    def Za_stable(self, ) -> _np.ndarray:
         """==Stable part of measurement matrix=="""
         num_unit_roots = self.num_unit_roots
         return self.Za[:, num_unit_roots:]
 
     @property
-    def boolex_stable_transition_vector(self, /, ) -> tuple[int, ...]:
+    def boolex_stable_transition_vector(self, ) -> tuple[int, ...]:
         r"""==Index of stable transition vector elements=="""
         return _np.array(tuple(
             i == EigenvalueKind.STABLE
@@ -303,36 +291,26 @@ class Solution:
         ), dtype=bool, )
 
     @property
-    def boolex_stable_measurement_vector(self, /, ) -> tuple[int, ...]:
+    def boolex_stable_measurement_vector(self, ) -> tuple[int, ...]:
         r"""==Index of stable measurement vector elements=="""
         return _np.array(tuple(
             i == EigenvalueKind.STABLE
             for i in self.measurement_vector_stability
         ), dtype=bool, )
 
-    def unpack_square_solution(
-        self, 
-        forward: int = 0,
-    ) -> tuple[_np.ndarray, ...]:
+    def unpack_square_solution(self, ) -> tuple[_np.ndarray, ...]:
         r"""
         Return square solution matrices in the following order:
-        T, P, R, K, Z, H, D, None
-        where R is expanded until t+forward
+        T, P, K, Z, H, D, None
         """
-        R = self.expand_square_solution(forward, )
-        return self.T, self.P, R, self.K, self.Z, self.H, self.D, None,
+        return self.T, self.P, self.K, self.Z, self.H, self.D, None,
 
-    def unpack_triangular_solution(
-        self,
-        forward: int = 0,
-    ) -> tuple[_np.ndarray, ...]:
+    def unpack_triangular_solution(self, ) -> tuple[_np.ndarray, ...]:
         r"""
         Return triangular solution matrices in the following order:
-        Ta, Pa, Ra, Ka, Za, H, D, Ua
-        where Ra is expanded until t+forward
+        Ta, Pa, Ka, Za, H, D, Ua
         """
-        Ra = self.expand_triangular_solution(forward=0, )
-        return self.Ta, self.Pa, Ra, self.Ka, self.Za, self.H, self.D, self.Ua,
+        return self.Ta, self.Pa, self.Ka, self.Za, self.H, self.D, self.Ua,
 
     def copy(self, ) -> Self:
         r"""
@@ -345,7 +323,7 @@ class Solution:
         """
         return _get_solution_expansion(
             self.square_expansion,
-            self.R, self.X, self.J, self.Ru,
+            self.P, self.X, self.J, self.Ru,
             forward,
         )
 
@@ -355,7 +333,7 @@ class Solution:
         """
         return _get_solution_expansion(
             self.triangular_expansion,
-            self.Ra, self.Xa, self.J, self.Ru,
+            self.Pa, self.Xa, self.J, self.Ru,
             forward,
         )
 
@@ -424,20 +402,18 @@ def _square_from_triangular(
 ) -> tuple[_np.ndarray, ...]:
     r"""
     T <- Ua @ Ta / Ua
-    P <- Ua @ Pa
     R <- Ua @ Ra
     X <- Xa @ Ra
     K <- Ua @ Ka
     xi[t] = ... -X J**(k-1) Ru e[t+k]
     """
     #[
-    Ua, Ta, Pa, Ra, Ka, Xa, *_ = triangular_solution
+    Ua, Ta, Ra, Ka, Xa, *_ = triangular_solution
     T = Ua @ right_div(Ta, Ua) # Ua @ (Ta / Ua)
-    P = Ua @ Pa
     R = Ua @ Ra
     K = Ua @ Ka
     X = Ua @ Xa
-    return T, P, R, K, X
+    return T, R, K, X,
     #]
 
 
@@ -450,16 +426,15 @@ def detach_stable_from_unit_roots(
     Apply a secondary Schur decomposition to detach stable eigenvalues from unit roots
     """
     #[
-    Ug, Tg, Pg, Rg, Kg, Xg, J, Ru = transition_solution_prelim
+    Ug, Tg, Rg, Kg, Xg, J, Ru = transition_solution_prelim
     num_xib = Tg.shape[0]
     Ta, u, check_num_unit_roots = _sp.linalg.schur(Tg, sort=is_unit_root, ) # Tg = u @ Ta @ u.T
     Ua = Ug @ u if Ug is not None else u
     Ua = clip(Ua) if clip is not None else Ua
-    Pa = u.T @ Pg
     Ra = u.T @ Rg
     Ka = u.T @ Kg
     Xa = u.T @ Xg if Xg is not None else None
-    return Ua, Ta, Pa, Ra, Ka, Xa, J, Ru, check_num_unit_roots
+    return Ua, Ta, Ra, Ka, Xa, J, Ru, check_num_unit_roots,
     #]
 
 
@@ -467,10 +442,10 @@ def _solve_measurement_equations(
     descriptor,
     system,
     Ua,
-    /,
+    *,
     clip: Callable | None,
 ) -> tuple[_np.ndarray, ...]:
-    """
+    r"""
     """
     #[
     num_forwards = descriptor.get_num_forwards()
@@ -480,7 +455,7 @@ def _solve_measurement_equations(
     D = left_div(-system.F, system.H) # -F \ H
     Z = clip(Z) if clip is not None else Z
     Za = Z @ Ua
-    return Z, H, D, Za
+    return Z, H, D, Za,
     #]
 
 
@@ -488,15 +463,14 @@ def _solve_transition_equations(
     descriptor,
     system,
     qz_matrixes: tuple[_np.ndarray, ...],
-    /,
 ) -> tuple[_np.ndarray, ...]:
-    """
+    r"""
     """
     #[
     num_backwards = descriptor.get_num_backwards()
     num_forwards = descriptor.get_num_forwards()
     num_stable = num_backwards
-    S, T, Q, Z = qz_matrixes
+    S, T, Q, Z, = qz_matrixes
     #
     S11 = S[:num_stable, :num_stable]
     S12 = S[:num_stable, num_stable:]
@@ -509,26 +483,20 @@ def _solve_transition_equations(
     Z21 = Z[num_forwards:, :num_stable]
     Z22 = Z[num_forwards:, num_stable:]
     #
-    # Constant in transition
+    # Constant in transition equations
     Q_CC = Q @ system.C
     Q_CC1 = Q_CC[:num_stable]
     Q_CC2 = Q_CC[num_stable:]
     #
-    # Unanticipated shocks in transition
+    # Transition shocks in transition equations
     Q_DD = Q @ system.D
     Q_DD1 = Q_DD[:num_stable, :]
     Q_DD2 = Q_DD[num_stable:, :]
     #
-    # Antiicipated shocks in transition
-    Q_EE = Q @ system.E
-    Q_EE1 = Q_EE[:num_stable, :]
-    Q_EE2 = Q_EE[num_stable:, :]
-    #
     # Unstable block
     #
     G = left_div(-Z21, Z22) # -Z21 \ Z22
-    Pu = left_div(-T22, Q_DD2) # -T22 \ Q_DD2
-    Ru = left_div(-T22, Q_EE2) # -T22 \ Q_EE2
+    Ru = left_div(-T22, Q_DD2) # -T22 \ Q_DD2
     Ku = left_div(-(S22 + T22), Q_CC2) # -(S22+T22) \ Q_CC2
     #
     # Transform stable block==transform backward-looking variables:
@@ -538,8 +506,7 @@ def _solve_transition_equations(
     Xg1 = G + left_div(S11, S12)
     #
     Tg = left_div(-S11, T11)
-    Pg = -Xg0 @ Pu - left_div(S11, Q_DD1)
-    Rg = -Xg0 @ Ru - left_div(S11, Q_EE1)
+    Rg = -Xg0 @ Ru - left_div(S11, Q_DD1)
     Kg = -(Xg0 + Xg1) @ Ku - left_div(S11, Q_CC1)
     Ug = Z21 # xib = Ug @ gamma
     #
@@ -549,7 +516,7 @@ def _solve_transition_equations(
     J = left_div(-T22, S22) # -T22 \ S22
     Xg = Xg1 + Xg0 @ J
     #
-    return Ug, Tg, Pg, Rg, Kg, Xg, J, Ru,
+    return Ug, Tg, Rg, Kg, Xg, J, Ru,
     #]
 
 
@@ -619,13 +586,13 @@ def _classify_solution_vector_stability(
 
 def _get_solution_expansion(
     existing_expansion: list[_np.ndarray],
-    R, X, J, Ru,
+    P, X, J, Ru,
     forward: int,
 ) -> list[_np.ndarray]:
     """
     Expand R matrices of square solution for t+1...t+forward
     """
-    if (R is None) or (X is None) or (J is None) or (Ru is None):
+    if (P is None) or (X is None) or (J is None) or (Ru is None):
         return None
     #
     # return [R(t), R(t+1), R(t+2), ..., R(t+forward)]
@@ -634,11 +601,12 @@ def _get_solution_expansion(
     # R(t+k) = -X J**(k-1) Ru e(t+k)
     # k = 1, ..., forward or k-1 = 0, ..., forward-1
     #
+    R0 = _np.array(P, )
     existing_forward = len(existing_expansion)
     for k_minus_1 in range(existing_forward, forward):
         Rk = -X @ _np.linalg.matrix_power(J, k_minus_1, ) @ Ru
         existing_expansion.append(Rk, )
-    return [R, ] + existing_expansion[:forward]
+    return [R0, ] + existing_expansion[:forward]
     #
     # return [R, ] + [
     #     -X @ _np.linalg.matrix_power(J, k_minus_1) @ Ru

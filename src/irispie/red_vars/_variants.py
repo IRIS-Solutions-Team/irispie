@@ -291,7 +291,7 @@ class Variant:
         solution.P = self._get_companion_P()
         solution.K = self._get_companion_K()
         if deviation:
-            solution = Solution.deviation_solution(solution, )
+            solution = solution.create_deviation_solution()
         return solution
 
     #]

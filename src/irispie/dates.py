@@ -2783,6 +2783,23 @@ def get_printable_span(start: Period, end: Period, ) -> str:
     )
 
 
+def extend_span(
+    span: Iterable[Period],
+    min_shift: int,
+    max_shift: int,
+    prepend_initial: bool,
+    append_terminal: bool,
+) -> tuple[Period, Period]:
+    """
+    """
+    range_tuple = tuple(t for t in span)
+    start_date, end_date, = range_tuple[0], range_tuple[-1],
+    start_date += min_shift if prepend_initial else 0
+    end_date += max_shift if append_terminal else 0
+    return start_date, end_date,
+
+
+
 #
 # Legacy aliases
 #

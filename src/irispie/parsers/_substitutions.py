@@ -14,9 +14,8 @@ import operator as _op
 def resolve_substitutions(
     parsed: dict[str, tuple],
     where_substitute: list[str],
-    /,
 ) -> dict[str, tuple]:
-    """
+    r"""
     """
     source = parsed.get("substitutions", None)
     if not source:
@@ -26,7 +25,7 @@ def resolve_substitutions(
     subs_pattern = _re.compile(r"\$(" + "|".join(lhs for lhs in definitions.keys()) + r")\$")
     def replace(match, ) -> str:
         return definitions[match.group(1)]
-    def make_substitutions(source: str, /, ) -> str:
+    def make_substitutions(source: str, ) -> str:
         return _re.sub(subs_pattern, replace, source)
     for wh in where_substitute:
         parsed[wh] = [
@@ -36,14 +35,14 @@ def resolve_substitutions(
     return parsed
 
 
-def _define_substitutions(substitutions: list, /, ) -> dict[str, str]:
+def _define_substitutions(substitutions: list, ) -> dict[str, str]:
     return dict(_separate_lhs_rhs(s[1][0]) for s in substitutions)
 
 
 _SUBS_NAME = _re.compile(r"\w+", )
 
 
-def _separate_lhs_rhs(subs_string: str, /, ) -> tuple[str, str]:
+def _separate_lhs_rhs(subs_string: str, ) -> tuple[str, str]:
     subs_string = subs_string.replace(":=", "=", )
     lhs, rhs = subs_string.split("=", maxsplit=1, )
     return lhs, rhs

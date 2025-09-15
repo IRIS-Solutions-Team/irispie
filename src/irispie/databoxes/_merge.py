@@ -39,9 +39,6 @@ def mixin(klass, ):
     Mix the by_merging and merge methods into the class
     """
     #[
-    for attr in ("from_merge", "merge", ):
-        if hasattr(klass, attr, ):
-            raise TypeError(f"The class already has a '{attr}' method; cannot mixin again", )
     klass.by_merging = classmethod(_by_merging, )
     klass.merge = _merge
     return klass

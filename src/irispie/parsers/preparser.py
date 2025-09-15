@@ -35,63 +35,58 @@ def from_string(
     """
     """
     #[
-    info = {
-        "context": None,
-        "preparser_needed": None,
-    }
-
-    context = (dict(context) if context else {}) | {"__builtins__": {}}
-    info["context"] = context
-
+    context = (dict(context) if context else {})
+    #
     # Remove NON-NESTED block comments #{ ... #} or %{ ... %}
     source = _remove_block_comments(source, )
-
+    #
     # Run Jinja2 templater
     if jinja:
         source = _JJ_ENVIRONMENT.from_string(source, ).render(context, )
-
+    #
     # Remove line comments %, #, ..., \, except for #!, %!
     source = _remove_line_comments(source, )
-
+    #
     # Replace time shifts {...} by [...]
     source = _shifts.standardize_time_shifts(source)
-
+    #
     # Replace human prefix (!) with processing prefix (¡)
     source = _translate_keywords(source)
-
+    #
     # Add blank lines pre and post source
     source = _common.add_blank_lines(source)
-
+    #
     # Run preparser on !-commands only if necessary
     preparser_needed = _is_preparser_needed(source)
     preparsed_source = (
         _run_preparser_on_source_string(source, context, )
         if preparser_needed else source
     )
-
+    #
     # Remove multiple blank lines
     preparsed_source = _consolidate_lines(preparsed_source, )
-
+    #
     # Evaluate and stringify Python expressions in <...> or <<...>>
     # Do this only after the !-command preparser because the <...> expression
     # may contain ?(...) control tokens
-    preparsed_source = _evaluate_contextual_expressions(preparsed_source, info["context"], )
-
+    preparsed_source = _evaluate_contextual_expressions(preparsed_source, context, )
+    #
     # Expand lists
     preparsed_source = _lists.resolve_lists(preparsed_source, )
-
+    #
     # Resolve pseudofunctions: diff(...), ...
     preparsed_source = _pseudofunctions.resolve_pseudofunctions(preparsed_source, )
-
+    #
     if save_preparsed:
         _save_preparsed_source(preparsed_source, save_preparsed, )
-
+    #
     info = {
         "preparser_needed": preparser_needed,
         "preparsed_source": preparsed_source,
+        "preparser_context": context,
     }
-
-    return preparsed_source, info
+    #
+    return preparsed_source, info,
     #]
 
 
@@ -127,7 +122,15 @@ _GRAMMAR_DEF = _common.GRAMMAR_DEF + r"""
     list = list_keyword "(" list_name ")"
     list_keyword = keyword_prefix "list"
     list_name = ~r"`\w+"
+"""
 
+
+_LET_GRAMMAR_DEF = r"""
+    let = let_keyword white_spaces let_name white_spaces ~r":?=" white_spaces let_value white_spaces let_end
+    let_keyword = keyword_prefix "let"
+    let_name = ~r"\w+"
+    let_value = ~r"[^¡;]+"
+    let_end = ";"
 """
 
 
@@ -144,7 +147,7 @@ class _Visitor(_pa.nodes.NodeVisitor):
     def __init__(self, context=None):
         super().__init__()
         self.content = []
-        self.context = (dict(context) if context else {}) | {"__builtins__": {}}
+        self.context = (dict(context) if context else {})
 
     def _add(self, new):
         self.content.append(new)
@@ -159,7 +162,7 @@ class _Visitor(_pa.nodes.NodeVisitor):
         self._add(_Else())
 
     def visit_for_do_block(self, node, visited_children, ):
-        control_name, tokens_as_string = visited_children[2]
+        control_name, tokens_as_string, = visited_children[2]
         self._add(_For(control_name, tokens_as_string))
 
     def visit_for_control(self, node, visited_children, ):
@@ -278,7 +281,7 @@ class _For:
         index_end = _find_matching_end(sequence)
         for_body_sequence = self._expand_tokens(sequence[1:index_end], context, )
         code = _resolve_sequence(for_body_sequence, context, )
-        return code, sequence[index_end+1:]
+        return code, sequence[index_end+1:],
 
     #]
 
@@ -315,9 +318,9 @@ class _If:
     ) -> None:
         """
         """
-        context = (dict(context) if context else {}) | {"__builtins__": {}}
+        context_copy = dict(context) if context else {}
         try:
-            value = eval(self._condition_text, context, )
+            value = eval(self._condition_text, context_copy, )
             self._condition_result = bool(value)
         except Exception as exc:
             raise _wrongdoings.IrisPieError(
@@ -415,7 +418,7 @@ def _resolve_sequence(sequence: Sequence, context: dict, ) -> str:
     #[
     code = ""
     while sequence:
-        new_code, sequence = sequence[0].resolve(sequence, context, )
+        new_code, sequence, = sequence[0].resolve(sequence, context, )
         if code and new_code:
             code = code + "\n" + new_code
         elif new_code:
@@ -441,11 +444,11 @@ def _evaluate_contextual_expressions(
     """
     """
     #[
-    context = (dict(context, ) if context else {}) | {"__builtins__": {}}
+    context_copy = dict(context, ) if context else {}
     def _replace(match, ):
         expression = match.group(1).strip()
         try:
-            value = eval(expression, context, )
+            value = eval(expression, context_copy, )
             return _stringify(value, )
         except:
             raise ValueError(f"Failed to evaluate this contextual expression: {expression}", )

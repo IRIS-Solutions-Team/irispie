@@ -5,7 +5,7 @@
 ## Unsolved-expectations system
 
 $$
-A E[x_t] + B E[x_{t-1}] + C + D u_t + E v_t = 0
+A E[x_t] + B E[x_{t-1}] + C + D u_t + D v_t = 0
 $$
 
 $$
@@ -35,7 +35,7 @@ class System:
 
     __slots__ = (
         # Transition equations
-        "A", "B", "C", "D", "E",
+        "A", "B", "C", "D",
 
         # Measurement equations
         "F", "G", "H", "J",
@@ -48,14 +48,13 @@ class System:
         model_flags: _flags.ModelFlags,
         data_array_lagged: _np.ndarray | None,
         column_offset: int,
-        /,
     ) -> None:
         """
         """
         #
         # Differentiate and evaluate constant
         #
-        td, tc = descriptor.aldi_context.eval_to_arrays(data_array, column_offset, )
+        td, tc, = descriptor.aldi_context.eval_to_arrays(data_array, column_offset, )
 
         smap = descriptor.system_map
         svec = descriptor.system_vectors
@@ -79,22 +78,18 @@ class System:
             xi_lagged = _get_vector(descriptor, data_array_lagged, tokens, logly, column_offset, )
             self.C = -(self.A @ xi + self.B @ xi_lagged)
 
-        self.D = _np.zeros(svec.shape_D_excl_dynid, dtype=float)
+        self.D = _np.zeros(svec.shape_D_excl_dynid, dtype=float, )
         self.D[smap.D.lhs] = td[smap.D.rhs]
         self.D = _np.vstack((self.D, smap.dynid_D))
 
-        self.E = _np.zeros(svec.shape_E_excl_dynid, dtype=float)
-        self.E[smap.E.lhs] = td[smap.E.rhs]
-        self.E = _np.vstack((self.E, smap.dynid_E))
-
-        self.F = _np.zeros(svec.shape_F, dtype=float)
+        self.F = _np.zeros(svec.shape_F, dtype=float, )
         self.F[smap.F.lhs] = td[smap.F.rhs]
 
-        self.G = _np.zeros(svec.shape_G, dtype=float)
+        self.G = _np.zeros(svec.shape_G, dtype=float, )
         self.G[smap.G.lhs] = td[smap.G.rhs]
 
         if model_flags.is_linear:
-            self.H = _np.zeros(svec.shape_H, dtype=float)
+            self.H = _np.zeros(svec.shape_H, dtype=float, )
             self.H[smap.H.lhs] = tc[smap.H.rhs, 0]
         else:
             tokens = descriptor.system_vectors.transition_variables
@@ -115,16 +110,15 @@ def _get_vector(
     tokens: Iterable[_incidence.Token],
     logly: Iterable[bool],
     column_offset: int,
-    /,
 ) -> _np.ndarray:
-    """
+    r"""
+    Extract numeric vector from data array for given tokens
     """
     #[
     logly = list(logly)
     rows = tuple(tok.qid for tok in tokens)
     columns = tuple(column_offset + tok.shift for tok in tokens)
     x = data_array[rows, columns]
-    xx = _np.copy(x)
     x[logly] = _np.log(x[logly])
     return x
     #]
