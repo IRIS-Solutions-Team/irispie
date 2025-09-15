@@ -19,4 +19,6 @@ def test_progress_bar():
         log = fid.read()
     assert log[-1] == "\n"
     assert log[-2] == "s"
+    if os.path.exists(log_file):
+        os.remove(log_file)
 
