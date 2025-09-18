@@ -28,7 +28,6 @@ def main(args, ):
     with open(args.source_path, "rt", ) as f:
         toml_content = toml.load(f, )
     current_version = toml_content["project"]["version"]
-    print(current_version, )
     bumped_version = _upgrade_version_string(current_version, args.release_type, )
     toml_content["project"]["version"] = bumped_version
     print(bumped_version, )
