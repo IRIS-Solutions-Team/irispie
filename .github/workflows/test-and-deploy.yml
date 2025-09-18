@@ -29,8 +29,7 @@ jobs:
       - name: Install dependencies
         run: |
           # pip install -e irispie-package
-          # pip install pytest toml
-          echo "Installing dependencies"
+          pip install pytest toml
 
       - name: Run tests
         run: |
