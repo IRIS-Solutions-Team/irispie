@@ -29,7 +29,8 @@ def main(args, ):
         toml_content = toml.load(f, )
     current_version = toml_content["project"]["version"]
     bumped_version = _upgrade_version_string(current_version, args.release_type, )
-    toml_content["project"]["version"] = bumped_version + "-" + args.edition
+    toml_content["project"]["version"] = bumped_version # + "-" + args.edition
+    print(toml_content["project"]["version"], )
     print(bumped_version, )
     if args.target_path:
         with open(args.target_path, "wt", ) as f:
