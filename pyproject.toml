@@ -5,10 +5,11 @@ build-backend = "hatchling.build"
 [project]
 name = "irispie-ce"
 version = "0.68.4"
+license = { text = "OGResearch Community License 1.0" }
 description = "Macroeconomic modeling package"
 readme = "README.md"
 requires-python = ">=3.11"
-classifiers = [ "Programming Language :: Python :: 3", "License :: OGResearch-Community-1.0 ", "Operating System :: OS Independent",]
+classifiers = [ "Programming Language :: Python :: 3", "License :: Other/Proprietary License", "Operating System :: OS Independent",]
 keywords = [ "macroeconomics", "economics", "modeling", "simulation", "forecasting", "dsge",]
 dependencies = [ "numpy >= 2.1", "scipy >= 1.14.1", "python-dateutil >= 2.9.0", "plotly >= 6.3", "Jinja2 >= 3.1.4", "parsimonious >= 0.10", "prettytable >= 3.10", "pandas >= 2.1.2", "dill >= 0.3.8", "requests >= 2.31.0", "neqs >= 0.9.0", "documark >= 0.4.0", "daqp >= 0.6.0",]
 [[project.authors]]
