@@ -102,7 +102,7 @@ jobs:
       - name: Upload to PYPI
         run: |
           cd $GITHUB_WORKSPACE/irispie-package
-          python -m twine upload dist/* -r pypi -u __token__ -p ${{ secrets.PYPI_API_TOKEN }} --verbose
+          python -m twine upload dist/* -r pypi -u __token__ -p ${{ secrets.PYPI_API_TOKEN_ALL }} --verbose
 
       - name: Upload new dist as artifact
         uses: actions/upload-artifact@master
@@ -118,6 +118,6 @@ jobs:
         run: |
          cd $GITHUB_WORKSPACE/irispie-package
          gh release create "$tag" \
-           --title "Release $tag" \
+           --title "Release $tag-ce" \
            --notes ""
 
