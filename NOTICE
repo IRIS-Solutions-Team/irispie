@@ -1,0 +1,52 @@
+
+================================================================================
+== NOTICE ==
+================================================================================
+
+Project: IrisPie (Python package for macroeconomic modeling)
+Copyright (c) 2025 OGResearch s.r.o.
+
+--------------------------------------------------------------------------------
+Licensing
+--------------------------------------------------------------------------------
+
+This project is distributed under three coordinated source-available licenses:
+
+1. OGResearch Community License 1.0
+   - For personal, educational, and other non-commercial use by individuals.
+   - No redistribution permitted.
+
+2. OGResearch Registered License 1.0
+   - For companies, institutions, and government agencies that have completed
+     registration with OGResearch.
+   - Permits internal organizational use and redistribution.
+   - External redistribution prohibited.
+
+3. OGResearch Private License 1.0
+   - For internal use within OGResearch by its employees and contractors only.
+   - No redistribution permitted.
+
+Full license texts are provided in the LICENSES/ directory.
+
+--------------------------------------------------------------------------------
+Disclaimer
+--------------------------------------------------------------------------------
+
+This software is provided "as is", without warranty of any kind, express or
+implied, including but not limited to the warranties of merchantability,
+fitness for a particular purpose, and noninfringement. In no event shall the
+authors or copyright holders be liable for any claim, damages, or other
+liability, whether in an action of contract, tort, or otherwise, arising from,
+out of, or in connection with the software or the use or other dealings in the
+software.
+
+--------------------------------------------------------------------------------
+Attribution
+--------------------------------------------------------------------------------
+
+Developed and maintained by the Iris Solutions Team.
+
+For registration and commercial inquiries: `info@ogresearch.com`
+
+================================================================================
+
