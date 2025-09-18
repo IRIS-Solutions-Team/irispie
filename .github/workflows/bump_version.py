@@ -29,7 +29,7 @@ def main(args, ):
         toml_content = toml.load(f, )
     current_version = toml_content["project"]["version"]
     bumped_version = _upgrade_version_string(current_version, args.release_type, )
-    toml_content["project"]["version"] = bumped_version
+    toml_content["project"]["version"] = bumped_version + "-" + args.edition
     print(bumped_version, )
     if args.target_path:
         with open(args.target_path, "wt", ) as f:
@@ -41,6 +41,7 @@ if __name__ == "__main__":
     parser.add_argument("--release_type", choices=["major", "minor", "patch"])
     parser.add_argument("--source_path", )
     parser.add_argument("--target_path", default=None, )
+    parser.add_argument("--edition", )
     args = parser.parse_args()
     main(args, )
 

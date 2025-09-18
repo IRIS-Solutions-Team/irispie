@@ -49,6 +49,7 @@ jobs:
             --release_type=$RELEASE_TYPE \
             --source_path=./pyproject.toml \
             --target_path=./pyproject.toml \
+            --edition=ce \
           )
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
 
