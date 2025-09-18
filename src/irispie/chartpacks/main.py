@@ -485,7 +485,7 @@ class _Chart:
             setattr(self, n, None, )
         self.expression = (expression or "").strip()
         self.title = (title or "").strip()
-        self.transform = transform
+        self.transform = transform or ""
         if isinstance(transform, str):
             self.transform = self.transform.strip()
         chart_settings_cascaded = chart_settings_cascaded or {}
@@ -533,8 +533,12 @@ class _Chart:
 
     def _create_autocaption(self, ) -> str:
         r"""Create an automatic caption based on the expression and transform"""
-        transform_string = self.transform if isinstance(self.transform, str) else "transformed"
-        return f"{self.expression} [{transform_string}]"
+        transform_string = ""
+        if self.transform and callable(self.transform, ):
+            transform_string = " [transformed]"
+        elif self.transform and isinstance(self.transform, str):
+            transform_string = f" [{self.transform}]"
+        return f"{self.expression}{transform_string}"
 
     def plot(
         self,
@@ -565,7 +569,7 @@ class _Chart:
     def _apply_transform(self, x, ):
         """
         """
-        if self.transform and isinstance(self.transform, str) and self.transforms and self.transform in self.transforms:
+        if self.transform and isinstance(self.transform, str) and self.transforms and (self.transform in self.transforms):
             func = self.transforms[self.transform]
             return func(x, )
         if self.transform and isinstance(self.transform, str):

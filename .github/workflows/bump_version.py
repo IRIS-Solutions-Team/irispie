@@ -26,14 +26,14 @@ def _upgrade_version_string(version: str, bump: Literal["major", "minor", "patch
 
 def main(args, ):
     with open(args.source_path, "rt", ) as f:
-        file = toml.load(f, )
-    current_version = file["project"]["version"]
+        toml_content = toml.load(f, )
+    current_version = toml_content["project"]["version"]
     bumped_version = _upgrade_version_string(current_version, args.release_type, )
-    file["project"]["version"] = bumped_version
+    toml_content["project"]["version"] = bumped_version
     print(bumped_version, )
     if args.target_path:
         with open(args.target_path, "wt", ) as f:
-            f.write(toml.dumps(file, ), )
+            f.write(toml.dumps(toml_content, ), )
 
 
 if __name__ == "__main__":

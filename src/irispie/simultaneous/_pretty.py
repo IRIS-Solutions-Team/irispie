@@ -1,8 +1,9 @@
-"""
+r"""
 """
 
 
 #[
+
 from __future__ import annotations
 
 from prettytable import (PrettyTable, )
@@ -15,41 +16,54 @@ from typing import (TYPE_CHECKING, )
 if TYPE_CHECKING:
     from typing import (Any, )
     from collections.abc import (Iterable, )
+
 #]
 
 
 _DEFAULT_ROUND_TO = 16
 
 
-class Inlay:
-    """
+#-------------------------------------------------------------------------------
+# Functions to be used as methods in Simultaneous class
+#-------------------------------------------------------------------------------
+
+
+def inlay(klass: type, ) -> type:
+    r"""
     """
     #[
-
-    def create_steady_table(
-        self,
-        columns: Iterable[str] = ("name", "steady_level", "steady_change", ),
-        kind: int = _quantities.ANY_VARIABLE | _quantities.PARAMETER,
-        names: tuple[str, ...] | None = None,
-        save_to_csv_file: str | None = None,
-        **kwargs,
-    ) -> PrettyTable:
-        """
-        """
-        column_constructors = [
-            _COLUMN_CONSTRUCTORS[column.lower().strip()]
-            for column in columns
-        ]
-        row_names = tuple(names) if names is not None else self.get_names(kind=kind, )
-        table = PrettyTable()
-        for constructor in column_constructors:
-            for header, values, settings in constructor(self, row_names, **kwargs, ):
-                table.add_column(header, values, **settings, )
-        if save_to_csv_file:
-            _save_pretty_table_to_csv_file(table, save_to_csv_file, )
-        return table
-
+    klass.create_steady_table = create_steady_table
+    return klass
     #]
+
+
+def create_steady_table(
+    self,
+    columns: Iterable[str] = ("name", "steady_level", "steady_change", ),
+    kind: int = _quantities.ANY_VARIABLE | _quantities.PARAMETER,
+    names: tuple[str, ...] | None = None,
+    save_to_csv_file: str | None = None,
+    **kwargs,
+) -> PrettyTable:
+    r"""
+    """
+    #[
+    column_constructors = [
+        _COLUMN_CONSTRUCTORS[column.lower().strip()]
+        for column in columns
+    ]
+    row_names = tuple(names) if names is not None else self.get_names(kind=kind, )
+    table = PrettyTable()
+    for constructor in column_constructors:
+        for header, values, settings in constructor(self, row_names, **kwargs, ):
+            table.add_column(header, values, **settings, )
+    if save_to_csv_file:
+        _save_pretty_table_to_csv_file(table, save_to_csv_file, )
+    return table
+    #]
+
+
+#-------------------------------------------------------------------------------
 
 
 def _name_column(

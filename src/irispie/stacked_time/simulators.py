@@ -85,7 +85,7 @@ def simulate_initial_guess(
     initial_guess: Literal["first_order", "data"] = "first_order",
     **kwargs,
 ) -> None:
-    """
+    r"""
     """
     _INITIAL_GUESS_SIMULATOR[initial_guess](model_v, dataslate_v, )
 
@@ -124,9 +124,12 @@ def simulate_frame(
     qid_to_name = model_v.create_qid_to_name()
     name_to_qid = model_v.create_name_to_qid()
 
-    endogenous_quantities = model_v.get_quantities(kind=_quantities.ENDOGENOUS_VARIABLE, )
+    # endogenous_quantities = model_v.get_quantities(kind=_quantities.ENDOGENOUS_VARIABLE, )
+    endogenous_quantities = model_v.get_quantities(kind=_quantities.TRANSITION_VARIABLE, )
     endogenous_qids = tuple(i.id for i in endogenous_quantities)
-    wrt_equations = model_v.get_dynamic_equation_objects(kind=_equations.ENDOGENOUS_EQUATION, )
+
+    # wrt_equations = model_v.get_dynamic_equation_objects(kind=_equations.ENDOGENOUS_EQUATION, )
+    wrt_equations = model_v.get_dynamic_equation_objects(kind=_equations.TRANSITION_EQUATION, )
 
     if len(wrt_equations) != len(endogenous_qids):
         raise _wrongdoings.IrisPieCritical(

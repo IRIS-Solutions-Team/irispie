@@ -63,6 +63,7 @@ __all__ = [
 ]
 
 
+@_pretty.inlay
 @_steady_boxable_protocols.inlay
 @_slatable_protocols.inlay
 @_steady.inlay
@@ -88,7 +89,6 @@ class Simultaneous(
     _kalmans.Inlay,
     _logly.Inlay,
     _get.Inlay,
-    _pretty.Inlay,
     _covariances.Inlay,
     _tolerance.Inlay,
     _io.Inlay,

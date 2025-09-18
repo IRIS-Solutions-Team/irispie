@@ -11,8 +11,11 @@ from typing import (TYPE_CHECKING, )
 from .. import quantities as _quantities
 
 from ..quantities import (
-    TRANSITION_SHOCK, ANTICIPATED_SHOCK_VALUE,
-    ENDOGENOUS_VARIABLE, PARAMETER,
+    TRANSITION_VARIABLE,
+    TRANSITION_SHOCK,
+    ANTICIPATED_SHOCK_VALUE,
+    ENDOGENOUS_VARIABLE,
+    PARAMETER,
 )
 
 if TYPE_CHECKING:
@@ -63,18 +66,19 @@ class _SimulationPlannable:
     ) -> None:
         r"""
         """
-        curr_xi_qids, *_ = model.solution_vectors.get_curr_transition_indexes()
-        qid_to_name = model.create_qid_to_name()
-        can_be_exogenized = tuple( qid_to_name[qid] for qid in curr_xi_qids )
-        #
-        self.can_be_exogenized_anticipated = can_be_exogenized
-        self.can_be_exogenized_unanticipated = can_be_exogenized
         #
         def get_names(kind: QuantityKind, ):
             return tuple(_quantities.generate_quantity_names_by_kind(
                 model.quantities, kind=kind,
             ))
         #
+        # qid_to_name = model.create_qid_to_name()
+        # curr_xi_qids, *_ = model.solution_vectors.get_curr_transition_indexes()
+        # can_be_exogenized = tuple( qid_to_name[qid] for qid in curr_xi_qids )
+        #
+        can_be_exogenized = get_names(TRANSITION_VARIABLE, )
+        self.can_be_exogenized_anticipated = can_be_exogenized
+        self.can_be_exogenized_unanticipated = can_be_exogenized
         self.can_be_endogenized_unanticipated = get_names(TRANSITION_SHOCK, )
         self.can_be_endogenized_anticipated = get_names(ANTICIPATED_SHOCK_VALUE, )
 
@@ -100,6 +104,7 @@ class _SteadyPlannable:
             ))
         #
         self.can_be_exogenized = get_names(ENDOGENOUS_VARIABLE, )
+        # self.can_be_exogenized = get_names(TRANSITION_VARIABLE, )
         self.can_be_endogenized = get_names(PARAMETER, )
         self.can_be_fixed_level = self.can_be_exogenized
         self.can_be_fixed_change = ()
