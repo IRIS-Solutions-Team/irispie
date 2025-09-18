@@ -21,3 +21,14 @@ Homepage = "https://github.com/iris-solutions-team/irispie"
 Documentation = "https://iris-solutions-team.github.io/irispie-pages"
 "Bug Tracker" = "https://github.com/iris-solutions-team/irispie/issues"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/irispie"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/irispie",
+  "README.md",
+  "LICENSE",
+  "NOTICE",
+]
+
