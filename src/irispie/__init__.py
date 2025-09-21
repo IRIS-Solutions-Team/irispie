@@ -60,7 +60,7 @@ version = distribution.version + "-" + edition
 __version__ = version
 __doc__ = distribution.metadata["description"]
 
-_wa.warn(banner, UserWarning, )
+_wa.warn(_BANNER[edition], UserWarning, )
 
 #]
 
