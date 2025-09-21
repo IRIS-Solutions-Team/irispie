@@ -3,7 +3,7 @@ requires = [ "hatchling",]
 build-backend = "hatchling.build"
 
 [project]
-name = "irispie-ce"
+name = "irispie-de"
 version = "0.70.0"
 description = "Macroeconomic modeling package"
 readme = "README.md"
