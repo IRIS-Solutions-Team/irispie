@@ -1,25 +1,23 @@
-
 ================================================================================
-== OGResearch Community License 1.0 ==
+== OGResearch Developer License 1.0 ==
 ================================================================================
 
-SPDX-License-Identifier: OGResearch-Community-1.0
+SPDX-License-Identifier: OGResearch-Developer-1.0
 
 Copyright (c) 2025 OGResearch s.r.o.
 
-Permission is hereby granted, free of charge, to any natural person acting in a
-personal capacity (not on behalf of a company, institution, organization, or
-government) to use and modify this software for personal, educational, or other
-non-commercial purposes, subject to the following conditions:
+Permission is hereby granted to registered developers authorized by OGResearch
+s.r.o. to use and modify this software for the purposes of development,
+testing, and evaluation, subject to the following conditions:
 
 1. Redistribution prohibited. You may not publish, redistribute, sublicense, or
    otherwise make the software available, in source or binary form, to any
    third party.
 2. This license does not grant trademark rights, brand rights, or rights to
    sublicense the software.
-3. Commercial, institutional, or organizational use is not permitted under this
-   license. Such use requires a separate Registered License agreement with the
-   copyright holders.
+3. Use of this software is limited to development and testing activities by
+   registered developers. Production, commercial, or institutional use is not
+   permitted under this license.
 
 This software is provided "as is", without warranty of any kind, express or
 implied, including but not limited to the warranties of merchantability,
@@ -30,7 +28,7 @@ out of, or in connection with the software or the use or other dealings in the
 software.
 
 This license is not an OSI-approved open source license. It is a source-available
-license intended for community (non-commercial) use only.
+license intended solely for registered developers of OGResearch s.r.o.
 
 ================================================================================
 
