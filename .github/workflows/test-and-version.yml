@@ -110,6 +110,6 @@ jobs:
           event-type: new-release
           client-payload: |
             {
-              "mmp": "${{ env.NEW_MMP }}",
+              "mmp": "${{ env.NEW_MMP }}"
             }
 
