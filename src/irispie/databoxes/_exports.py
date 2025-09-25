@@ -246,7 +246,7 @@ class Inlay:
     def to_sheet(self, *args, **kwargs, ):
         r"""
         """
-        return self.to_csv(*args, **kwargs, )
+        return self.to_csv_file(*args, **kwargs, )
 
     # Legacy alias
     to_csv = to_csv_file
