@@ -49,8 +49,8 @@ jobs:
       - name: Set up identity
         run: |
           cd $GITHUB_WORKSPACE/irispie-package
-          git config --local user.email "jaromir.benes@gmail.com"
-          git config --local user.name "Jaromir Benes"
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
 
       - uses: actions/setup-python@v5
         with:
