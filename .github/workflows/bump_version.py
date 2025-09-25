@@ -1,46 +1,46 @@
 
-# Write a module to read pyproject.toml and bump the version number in it,
-# depending on the argument passed to the script.
-
-from typing import Literal
 import argparse
 import toml
 
 
-def _upgrade_version_string(version: str, bump: Literal["major", "minor", "patch"]) -> str:
-    """Bump the version number"""
+def _upgrade_mmp_string(
+    mmp_string: str,
+    bump: str,
+) -> str:
+    """Bump the major-minor-patch number"""
     def add_one(number: str, ) -> str:
         return str(int(number) + 1)
-    major_minor_patch = version.split(".")
+    mmp = mmp_string.split(".")
     if bump == "major":
-        major_minor_patch[0] = add_one(major_minor_patch[0], )
-        major_minor_patch[1] = "0"
-        major_minor_patch[2] = "0"
+        mmp[0] = add_one(mmp[0], )
+        mmp[1] = "0"
+        mmp[2] = "0"
     elif bump == "minor":
-        major_minor_patch[1] = add_one(major_minor_patch[1], )
-        major_minor_patch[2] = "0"
+        mmp[1] = add_one(mmp[1], )
+        mmp[2] = "0"
     elif bump == "patch":
-        major_minor_patch[2] = add_one(major_minor_patch[2], )
-    return ".".join(major_minor_patch, )
+        mmp[2] = add_one(mmp[2], )
+    else:
+        raise ValueError(f"Unknown bump type: {bump}")
+    return ".".join(mmp, )
 
 
-def main(args, ):
-    with open(args.source_path, "rt", ) as f:
-        toml_content = toml.load(f, )
-    current_version = toml_content["project"]["version"]
-    bumped_version = _upgrade_version_string(current_version, args.release_type, )
-    toml_content["project"]["version"] = bumped_version
-    print(bumped_version, )
-    if args.target_path:
-        with open(args.target_path, "wt", ) as f:
-            f.write(toml.dumps(toml_content, ), )
+_PYPROJECT_PATH = "./pyproject.toml"
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--release-type", required=True, choices=["major", "minor", "patch"], )
+args = parser.parse_args()
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--release_type", choices=["major", "minor", "patch"])
-    parser.add_argument("--source_path", )
-    parser.add_argument("--target_path", default=None, )
-    args = parser.parse_args()
-    main(args, )
+with open(_PYPROJECT_PATH, "rt", ) as f:
+    toml_content = toml.load(f, )
+
+current_version = toml_content["project"]["version"]
+current_mmp_string, edition, = current_version.split("-", maxsplit=1, )
+bumped_mmp_string = _upgrade_mmp_string(current_mmp_string, args.release_type, )
+bumped_version = f"{bumped_mmp_string}-{edition}"
+toml_content["project"]["version"] = bumped_version
+
+with open(_PYPROJECT_PATH, "wt", ) as f:
+    f.write(toml.dumps(toml_content, ), )
+
 

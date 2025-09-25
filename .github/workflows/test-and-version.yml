@@ -1,0 +1,115 @@
+name: Test and version
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: develop
+          path: ./irispie-package
+          token: ${{ secrets.IRISPIE_TOKEN_2025 }}
+          repository: IRIS-Solutions-Team/irispie
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          pip install -e irispie-package
+          pip install pytest toml
+
+      - name: Run tests
+        run: |
+          cd $GITHUB_WORKSPACE/irispie-package
+          pytest @tests/specs
+
+  version-bump:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      new-version: ${{ steps.bump-version.outputs.new-version }}
+      new-mmp: ${{ steps.bump-version.outputs.new-mmp }}
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: develop
+          path: ./irispie-package
+          token: ${{ secrets.IRISPIE_TOKEN_2025 }}
+          repository: IRIS-Solutions-Team/irispie
+
+      - name: Set up identity
+        run: |
+          cd $GITHUB_WORKSPACE/irispie-package
+          git config --local user.email "jaromir.benes@gmail.com"
+          git config --local user.name "Jaromir Benes"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies for version bumping
+        run: |
+          pip install toml
+
+      - name: Bump version in pyproject.toml
+        id: bump-version
+        run: |
+          cd $GITHUB_WORKSPACE/irispie-package
+          if ! [[ -e ./.release_type ]]; then
+            echo "Cannot release without .release_type"
+            exit 1
+          fi
+          RELEASE_TYPE=$(< ./.release_type)
+          python ./.github/workflows/bump_version.py --release-type=$RELEASE_TYPE
+          NEW_MMP=$(python ./.github/workflows/print_mmp.py)
+          NEW_VERSION=$(python ./.github/workflows/print_version.py)
+          echo "New version is $NEW_VERSION"
+          echo "New MMP is $NEW_MMP"
+          echo "new-mmp=$NEW_MMP" >> $GITHUB_OUTPUT
+
+      - name: Commit and push new version to develop
+        run: |
+          cd $GITHUB_WORKSPACE/irispie-package
+          NEW_VERSION=$(python ./.github/workflows/print_version.py)
+          git switch develop
+          git add ./pyproject.toml
+          git commit -m "Bump version number to $NEW_VERSION"
+          git push origin develop
+
+      - name: Remove .release_type from develop
+        run: |
+          cd $GITHUB_WORKSPACE/irispie-package
+          git switch develop
+          git rm .release_type
+          git commit -m "Remove .release_type after release"
+          git push origin develop
+
+  broadcast-release:
+    needs: version-bump
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        repository: [irispie-ce, irispie-re, irispie-pe]
+    env:
+      NEW_MMP: ${{ needs.version-bump.outputs.new-mmp }}
+    steps:
+      - name: Repository dispatch to ${{ matrix.repository }}
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.IRISPIE_TOKEN_2025 }}
+          repository: IRIS-Solutions-Team/${{ matrix.repository }}
+          event-type: new-release
+          client-payload: |
+            {
+              "mmp": "${{ env.NEW_MMP }}",
+            }
+
