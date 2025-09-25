@@ -13,7 +13,7 @@ jobs:
           fetch-depth: 0
           ref: develop
           path: ./irispie-package
-          token: ${{ secrets.IRISPIE_TOKEN_2025 }}
+          token: ${{ secrets.IRISPIE_ACTIONS_TOKEN_2025 }}
           repository: IRIS-Solutions-Team/irispie
 
       - uses: actions/setup-python@v5
@@ -43,7 +43,7 @@ jobs:
           fetch-depth: 0
           ref: develop
           path: ./irispie-package
-          token: ${{ secrets.IRISPIE_TOKEN_2025 }}
+          token: ${{ secrets.IRISPIE_ACTIONS_TOKEN_2025 }}
           repository: IRIS-Solutions-Team/irispie
 
       - name: Set up identity
@@ -105,7 +105,7 @@ jobs:
       - name: Repository dispatch to ${{ matrix.repository }}
         uses: peter-evans/repository-dispatch@v3
         with:
-          token: ${{ secrets.IRISPIE_TOKEN_2025 }}
+          token: ${{ secrets.IRISPIE_ACTIONS_TOKEN_2025 }}
           repository: IRIS-Solutions-Team/${{ matrix.repository }}
           event-type: new-release
           client-payload: |
