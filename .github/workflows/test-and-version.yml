@@ -97,7 +97,7 @@ jobs:
           version: ${{ steps.get_version.outputs.version }}
           # gh picks the token from GITHUB_TOKEN env variable automatically
           GITHUB_TOKEN: ${{ secrets.IRISPIE_ACTIONS_TOKEN_2025 }}
-        working-directory: irispie-re
+        working-directory: irispie-package
         run: |
             gh release create "$version" \
               --title "Release $version" \
