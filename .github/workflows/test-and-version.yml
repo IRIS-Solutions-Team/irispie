@@ -94,7 +94,7 @@ jobs:
       - name: Create release
         id: create-release
         env:
-          version: ${{ steps.get_version.outputs.version }}
+          version: ${{ steps.bump-version.outputs.new-version }}
           # gh picks the token from GITHUB_TOKEN env variable automatically
           GITHUB_TOKEN: ${{ secrets.IRISPIE_ACTIONS_TOKEN_2025 }}
         working-directory: irispie-package
