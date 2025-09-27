@@ -77,23 +77,31 @@ jobs:
           echo "New version is $NEW_VERSION"
           echo "New MMP is $NEW_MMP"
           echo "new-mmp=$NEW_MMP" >> $GITHUB_OUTPUT
+          echo "new-version=$NEW_VERSION" >> $GITHUB_OUTPUT 
 
       - name: Commit and push new version to develop
+        env:
+            version: ${{ steps.bump-version.outputs.new-version }}
         working-directory: irispie-package
         run: |
-          NEW_VERSION=$(python ./.github/workflows/print_version.py)
           git switch develop
           git add ./pyproject.toml
-          git commit -m "Bump version number to $NEW_VERSION"
-          git push origin develop
-
-      - name: Remove .release_type from develop
-        working-directory: irispie-package
-        run: |
-          git switch develop
           git rm .release_type
-          git commit -m "Remove .release_type after release"
-          git push origin develop
+          git commit -m "Bump version to $version"
+          git tag $version
+          git push origin develop --tags
+
+      - name: Create release
+        id: create-release
+        env:
+          version: ${{ steps.get_version.outputs.version }}
+          # gh picks the token from GITHUB_TOKEN env variable automatically
+          GITHUB_TOKEN: ${{ secrets.IRISPIE_ACTIONS_TOKEN_2025 }}
+        working-directory: irispie-re
+        run: |
+            gh release create "$version" \
+              --title "Release $version" \
+              --notes ""
 
 
   broadcast-release:
@@ -103,7 +111,7 @@ jobs:
       matrix:
         repository: [irispie-ce, irispie-re, irispie-pe]
     env:
-      NEW_MMP: ${{ needs.version-bump.outputs.new-mmp }}
+      new-mmp: ${{ needs.version-bump.outputs.new-mmp }}
 
     steps:
       - name: Repository dispatch to ${{ matrix.repository }}
@@ -114,6 +122,6 @@ jobs:
           event-type: new-release
           client-payload: |
             {
-              "mmp": "${{ env.NEW_MMP }}"
+              "mmp": "${{ env.new-mmp }}"
             }
 
