@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Literal
 import functools as _ft
 import numpy as _np
-import daqp as _qp
+# import daqp as _qp
 import ctypes as _ct
 
 from ..dates import Period
