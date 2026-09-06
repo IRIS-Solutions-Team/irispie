@@ -38,7 +38,6 @@ $$
 
 from __future__ import annotations
 
-import warnings as _wa
 import enum as _en
 import numpy as _np
 import scipy as _sp
@@ -55,30 +54,52 @@ if TYPE_CHECKING:
 
 
 __all__ = (
-    "STABLE", "UNIT_ROOT", "UNSTABLE", "UNIT",
+    "STABLE", "UNIT_ROOT", "UNSTABLE",
 )
 
 
 class UnitRootException(Exception):
+    r"""
+    Number of unit roots exceeds the number of backward-looking variables
+    """
     pass
 
 
-class EigenvalueKind(_en.Flag, ):
+class QzReorderingException(Exception):
+    r"""
+    Reordering of the QZ decomposition failed because some eigenvalues are too
+    close to swap
+    """
+    pass
+
+
+class ElementStability(_en.Flag, ):
     STABLE = _en.auto()
     UNIT_ROOT = _en.auto()
     UNSTABLE = _en.auto()
-    UNIT = UNIT_ROOT
+    #
     ALL = STABLE | UNIT_ROOT | UNSTABLE
 
 
-class SystemStabilityKind(_en.Flag, ):
-    STABLE = _en.auto()
+class SystemStability(_en.Flag, ):
+    UNIQUE_STABLE = _en.auto()
     MULTIPLE_STABLE = _en.auto()
     NO_STABLE = _en.auto()
 
 
+@dataclass(frozen=True, slots=True, )
+class Stability:
+    #[
+
+    eigenvalues: tuple[ElementStability, ...],
+    eigenvalue_stability: tuple[ElementStability, ...],
+    system_stability: SystemStability,
+
+    #]
+
+
 class Solution:
-    """
+    r"""
     ## Square solution:
 
     T: Transition matrix
@@ -120,10 +141,8 @@ class Solution:
         "J", "Ru", "X", "Xa",
         "square_expansion",
         "triangular_expansion",
-        "eigenvalues",
+        "num_unit_roots",
 
-        "eigenvalues_stability",
-        "system_stability",
         "transition_vector_stability",
         "measurement_vector_stability",
 
@@ -140,80 +159,6 @@ class Solution:
             if k in self.__slots__:
                 setattr(self, k, v, )
 
-    @classmethod
-    def from_system(
-        klass,
-        descriptor: _descriptors.Descriptor,
-        system: _systems.System,
-        tolerance: float,
-        clip_small: bool,
-    ) -> Self:
-        """
-        """
-        self = klass()
-        #
-        def is_alpha_beta_stable_or_unit_root(alpha: Real, beta: Real, ) -> bool:
-            abs_alpha = abs(alpha)
-            abs_beta = abs(beta)
-            return abs_beta < (1 + tolerance)*abs_alpha
-        #
-        def is_stable_root(root: complex, ) -> bool:
-            abs_root = abs(root)
-            return abs_root < (1 - tolerance)
-        #
-        def is_unit_root(root: complex, ) -> bool:
-            abs_root = abs(root)
-            return abs_root >= (1 - tolerance) and abs_root < (1 + tolerance)
-        #
-        def clip_func(x: _np.ndarray, ) -> _np.ndarray:
-            return _np.where(_np.abs(x) < tolerance, 0, x)
-        #
-        clip = clip_func if clip_small else None
-        #
-        # Detach unstable from (stable + unit) roots and solve out expectations
-        # The system is triangular but because stable and unit roots are
-        # not detached yet, the system is called "preliminary"
-        qz_matrixes, self.eigenvalues = _solve_ordqz(
-            system,
-            is_alpha_beta_stable_or_unit_root,
-        )
-        #
-        # Classify eigenvalues as stable, unit root, or unstable
-        self._classify_eigenvalues_stability(is_stable_root, is_unit_root, )
-        #
-        triangular_solution_prelim = \
-            _solve_transition_equations(descriptor, system, qz_matrixes, )
-        #
-        # Detach unit from stable roots to create the final triangular solution
-        # From the final triangular solution, calculate the square solution
-        *triangular_solution, check_num_unit_roots = detach_stable_from_unit_roots(
-            triangular_solution_prelim,
-            is_unit_root,
-            clip=clip,
-        )
-        if check_num_unit_roots != self.num_unit_roots:
-            raise UnitRootException
-        #
-        square_solution = _square_from_triangular(triangular_solution, )
-        #
-        self.Ua, self.Ta, self.Pa, self.Ka, self.Xa, self.J, self.Ru = triangular_solution
-        self.T, self.P, self.K, self.X = square_solution
-        #
-        # Solve measurement equations
-        self.Z, self.H, self.D, self.Za = _solve_measurement_equations(
-            descriptor,
-            system,
-            self.Ua,
-            clip=clip,
-        )
-        self._classify_system_stability(descriptor.get_num_forwards(), )
-        self._classify_transition_vector_stability(tolerance=tolerance, )
-        self._classify_measurement_vector_stability(tolerance=tolerance, )
-        #
-        self.square_expansion = []
-        self.triangular_expansion = []
-        #
-        return self
 
     def create_deviation_solution(self, ) -> Self:
         r"""
@@ -262,11 +207,6 @@ class Solution:
         return self.H.shape[1]
 
     @property
-    def num_unit_roots(self, ) -> int:
-        """==Number of unit roots=="""
-        return self.eigenvalues_stability.count(EigenvalueKind.UNIT_ROOT)
-
-    @property
     def num_stable(self, ) -> int:
         """==Number of stable elements in alpha vector=="""
         return self.num_alpha - self.num_unit_roots
@@ -299,7 +239,7 @@ class Solution:
     def boolex_stable_transition_vector(self, ) -> tuple[int, ...]:
         r"""==Index of stable transition vector elements=="""
         return _np.array(tuple(
-            i == EigenvalueKind.STABLE
+            i == ElementStability.STABLE
             for i in self.transition_vector_stability
         ), dtype=bool, )
 
@@ -307,7 +247,7 @@ class Solution:
     def boolex_stable_measurement_vector(self, ) -> tuple[int, ...]:
         r"""==Index of stable measurement vector elements=="""
         return _np.array(tuple(
-            i == EigenvalueKind.STABLE
+            i == ElementStability.STABLE
             for i in self.measurement_vector_stability
         ), dtype=bool, )
 
@@ -350,27 +290,17 @@ class Solution:
             forward,
         )
 
-    def _classify_eigenvalues_stability(
-        self,
-        is_stable_root: Callable[[complex], bool],
-        is_unit_root: Callable[[complex], bool],
-    ) -> None:
-        self.eigenvalues_stability = tuple(
-            _classify_eigenvalue_stability(v, is_stable_root, is_unit_root, )
-            for v in self.eigenvalues
-        )
-
     def _classify_system_stability(
         self,
         num_forwards: int,
     ) -> None:
-        num_unstable = self.eigenvalues_stability.count(EigenvalueKind.UNSTABLE)
+        num_unstable = self.eigenvalues_stability.count(ElementStability.UNSTABLE)
         if num_unstable == num_forwards:
-            self.system_stability = SystemStabilityKind.STABLE
+            self.system_stability = SystemStability.UNIQUE_STABLE
         elif num_unstable > num_forwards:
-            self.system_stability = SystemStabilityKind.NO_STABLE
+            self.system_stability = SystemStability.NO_STABLE
         else:
-            self.system_stability = SystemStabilityKind.MULTIPLE_STABLE
+            self.system_stability = SystemStability.MULTIPLE_STABLE
 
     def _classify_transition_vector_stability(
         self,
@@ -394,6 +324,66 @@ class Solution:
                 tolerance=tolerance,
             )
     #]
+
+
+def calculate_stability_and_solution(
+    klass,
+    descriptor: _descriptors.Descriptor,
+    system: _systems.System,
+    tolerance: dict[str, float],
+) -> tuple[Stability, Solution | None]:
+    r"""
+    Calculate the first-order solution for an unsolved-expectations system
+
+    The eigenvalues are separated into three clusters (unit roots, stable
+    roots, unstable roots) within a single generalized Schur decomposition,
+    and are therefore classified exactly once; see `_solve_ordqz`
+    """
+    #[
+    eigenvalue_tolerance = tolerance["eigenvalue"]
+    stationarity_tolerance = tolerance["stationarity"]
+    #
+    # Detach unstable from (stable + unit) roots, and unit from stable
+    # roots, ordering the eigenvalues as unit, stable, unstable
+    qz_matrixes, eigenvalues, eigenvalue_stability, num_unit_roots = _solve_ordqz(system, eigenvalue_tolerance, )
+    #
+    #
+    # TEST BK HERE
+    raise NotImplementedError("BK test not implemented yet")
+    # solution._classify_system_stability(descriptor.get_num_forwards(), )
+    if stability.system_stability != SystemStability.UNIQUE_STABLE:
+        return stability, None,
+    #
+    solution = Solution()
+    solution.num_unit_roots = num_unit_roots
+    #
+    # Solve out expectations; the resulting transition matrix is already
+    # block triangular with the unit roots in the leading block because the
+    # QZ decomposition was reordered that way
+    triangular_solution = _solve_transition_equations(descriptor, system, qz_matrixes, )
+    #
+    # Clear the dirt left by the least-squares solves below the unit-root
+    # block boundary; these entries are zero analytically
+    #!!!!!!!!!!!!!!!!!! Tg[num_unit_roots:, :num_unit_roots] = 0
+    #
+    solution.Ua, solution.Ta, solution.Pa, solution.Ka, solution.Xa, solution.J, solution.Ru, = triangular_solution
+    #
+    # From the final triangular solution, calculate the square solution
+    solution.T, solution.P, solution.K, solution.X, = _square_from_triangular(triangular_solution, )
+    #
+    # Solve measurement equations
+    solution.Z, solution.H, solution.D, solution.Za = _solve_measurement_equations(
+        descriptor,
+        system,
+        solution.Ua,
+    )
+    solution._classify_transition_vector_stability(tolerance=stationarity_tolerance, )
+    solution._classify_measurement_vector_stability(tolerance=stationarity_tolerance, )
+    #
+    solution.square_expansion = []
+    solution.triangular_expansion = []
+    #
+    return stability, solution,
 
 
 def left_div(A: _np.ndarray, B: _np.ndarray, ) -> _np.ndarray:
@@ -430,33 +420,11 @@ def _square_from_triangular(
     #]
 
 
-def detach_stable_from_unit_roots(
-    transition_solution_prelim: tuple[_np.ndarray, ...],
-    is_unit_root: Callable[[Real], bool],
-    clip: Callable | None,
-) -> tuple[_np.ndarray, ...]:
-    """
-    Apply a secondary Schur decomposition to detach stable eigenvalues from unit roots
-    """
-    #[
-    Ug, Tg, Rg, Kg, Xg, J, Ru = transition_solution_prelim
-    num_xib = Tg.shape[0]
-    Ta, u, check_num_unit_roots = _sp.linalg.schur(Tg, sort=is_unit_root, ) # Tg = u @ Ta @ u.T
-    Ua = Ug @ u if Ug is not None else u
-    Ua = clip(Ua) if clip is not None else Ua
-    Ra = u.T @ Rg
-    Ka = u.T @ Kg
-    Xa = u.T @ Xg if Xg is not None else None
-    return Ua, Ta, Ra, Ka, Xa, J, Ru, check_num_unit_roots,
-    #]
-
-
 def _solve_measurement_equations(
     descriptor,
     system,
     Ua,
     *,
-    clip: Callable | None,
 ) -> tuple[_np.ndarray, ...]:
     r"""
     """
@@ -466,7 +434,6 @@ def _solve_measurement_equations(
     Z = left_div(-system.F, G) # -F \ G
     H = left_div(-system.F, system.J) # -F \ J
     D = left_div(-system.F, system.H) # -F \ H
-    Z = clip(Z) if clip is not None else Z
     Za = Z @ Ua
     return Z, H, D, Za,
     #]
@@ -535,47 +502,168 @@ def _solve_transition_equations(
 
 def _solve_ordqz(
     system: _systems.System,
-    is_alpha_beta_stable_or_unit_root: Callable,
-) -> tuple[tuple[_np.ndarray, ...], tuple[complex, ...], ]:
+    tolerance: float,
+) -> tuple[tuple[_np.ndarray, ...], tuple[complex, ...], tuple[ElementStability, ...], int, ]:
     r"""
-    Solve the system using the ordered QZ decomposition and separate unstable
-    roots from stable and unit roots
+    Calculate a generalized Schur (QZ) decomposition of the system with the
+    eigenvalues separated into three clusters, ordered as unit roots, stable
+    roots, unstable roots
+
+    Scipy can only separate two clusters at a time. Instead of running a second
+    decomposition (which would recompute the eigenvalues and could well classify
+    them differently), the eigenvalues are computed and classified exactly once
+    here, and the existing decomposition is then reordered in place by the
+    LAPACK routine ?tgsen
     """
     #[
     #
-    # Calculate QZ decomposition
-    S, T, alpha, beta, Q, Z = _sp.linalg.ordqz(
-        system.A, system.B,
-        sort=is_alpha_beta_stable_or_unit_root,
+    # Detach unstable roots from stable and unit roots; scipy calls the sort
+    # criterion once, with the whole alpha and beta arrays
+    def sort_stable_or_unit_root(alpha, beta, ) -> _np.ndarray:
+        return _distance_from_unit_circle(alpha, beta, ) <= tolerance
+    #
+    try:
+        S, T, alpha, beta, Q, Z = _sp.linalg.ordqz(
+            system.A, system.B,
+            sort=sort_stable_or_unit_root,
+        )
+    except ValueError as exception:
+        # Scipy implements ordqz as an unsorted decomposition followed by a
+        # reordering, and raises when that reordering fails
+        raise QzReorderingException from exception
+    #
+    # Calculate and classify the eigenvalues; the classification relies on the
+    # very same measure of the distance from the unit circle as the sort
+    # criterion above, and is never revisited afterwards
+    distance = _distance_from_unit_circle(alpha, beta, )
+    eigenvalues = tuple(
+        _eigenvalue_from_alpha_beta(a, b, )
+        for a, b in zip(alpha, beta, )
     )
-    Q = Q.T
-    qz_matrixes = (S, T, Q, Z, )
+    eigenvalue_stability = tuple(
+        _classify_from_distance(d, tolerance, )
+        for d in distance
+    )
     #
-    # Calculate eigenvalues
-    _wa.filterwarnings(action="ignore", category=RuntimeWarning, )
-    eigenvalues = tuple(complex(i) for i in -beta/alpha)
-    _wa.filterwarnings(action="default", category=RuntimeWarning, )
+    # Detach unit roots from stable roots by moving the unit roots to the top
+    # of the existing decomposition; the relative order of the remaining roots
+    # is preserved, and hence the resulting order is unit, stable, unstable
+    select = _np.array(
+        tuple(i == ElementStability.UNIT_ROOT for i in stability),
+        dtype=_np.int32,
+    )
+    select = _sync_select_over_2x2_blocks(select, S, )
+    num_unit_roots_check = int(select.sum())
     #
-    return qz_matrixes, eigenvalues,
+    tgsen, = _sp.linalg.get_lapack_funcs(("tgsen", ), (S, T, ), )
+    S, T, _alphar, _alphai, _beta, Q, Z, num_unit_roots, *_, info = \
+        tgsen(select, S, T, Q, Z, ijob=0, lwork=4*select.size+16, liwork=1, )
+    if info < 0:
+        raise ValueError(f"Illegal value in argument {-info} of tgsen", )
+    if info > 0 or num_unit_roots != num_unit_roots_check:
+        raise QzReorderingException
+    #
+    qz_matrixes = S, T, Q.T, Z,
+    #
+    # Reorder the eigenvalues and their classification exactly the way the
+    # diagonal blocks have been reordered
+    eigenvalues = (
+        tuple(e for e, i in zip(eigenvalues, select, ) if i)
+        + tuple(e for e, i in zip(eigenvalues, select, ) if not i)
+    )
+    eigenvalue_stability = (
+        tuple(s for s, i in zip(stability, select, ) if i)
+        + tuple(s for s, i, in zip(stability, select, ) if not i)
+    )
+    #
+    return qz_matrixes, eigenvalues, eigenvalue_stability, num_unit_roots,
     #]
 
 
-def _classify_eigenvalue_stability(
-    eigenvalue: complex,
-    is_stable_root: Callable[[complex], bool],
-    is_unit_root: Callable[[complex], bool],
-) -> EigenvalueKind:
+def _distance_from_unit_circle(
+    alpha: _np.ndarray,
+    beta: _np.ndarray,
+) -> _np.ndarray:
     r"""
-    Classify a complex number (eigenvalue) as stable, unit root, or unstable.
+    Relative distance of the eigenvalues -beta/alpha from the unit circle:
+    negative inside, zero on, and positive outside the unit circle
+
+    Normalizing by the larger of the two moduli keeps the measure well scaled
+    and free of overflow for infinite eigenvalues (alpha=0). A zero scale means
+    a singular pencil (alpha=beta=0); an infinite distance is reported so that
+    such a root is consistently treated as unstable both when the decomposition
+    is sorted and when the eigenvalues are classified
     """
     #[
-    abs_eigenvalue = _np.abs(eigenvalue)
-    if is_stable_root(abs_eigenvalue):
-        return EigenvalueKind.STABLE
-    elif is_unit_root(abs_eigenvalue):
-        return EigenvalueKind.UNIT_ROOT
-    else:
-        return EigenvalueKind.UNSTABLE
+    abs_alpha = _np.abs(alpha, )
+    abs_beta = _np.abs(beta, )
+    scale = _np.maximum(abs_alpha, abs_beta, )
+    return _np.divide(
+        abs_beta - abs_alpha, scale,
+        out=_np.full(_np.shape(scale, ), _np.inf, dtype=float, ),
+        where=(scale != 0),
+    )
+    #]
+
+
+def _eigenvalue_from_alpha_beta(
+    alpha: Real | complex,
+    beta: Real | complex,
+) -> complex:
+    r"""
+    Eigenvalue -beta/alpha, reported as infinity when alpha=0, and as nan when
+    the pencil is singular (alpha=beta=0)
+    """
+    #[
+    if alpha:
+        return complex(-beta / alpha, )
+    return complex(_np.inf, 0, ) if beta else complex(_np.nan, _np.nan, )
+    #]
+
+
+def _classify_from_distance(
+    distance: Real,
+    tolerance: float,
+) -> ElementStability:
+    r"""
+    Classify an eigenvalue as stable, unit root, or unstable, based on its
+    relative distance from the unit circle
+    """
+    #[
+    if distance < -tolerance:
+        return ElementStability.STABLE
+    if distance <= tolerance:
+        return ElementStability.UNIT_ROOT
+    return ElementStability.UNSTABLE
+    #]
+
+
+def _sync_select_over_2x2_blocks(
+    select: _np.ndarray,
+    S: _np.ndarray,
+) -> _np.ndarray:
+    r"""
+    Make the selection consistent within the 2x2 diagonal blocks of the real
+    generalized Schur form
+
+    Both halves of a complex conjugate pair must be selected or unselected
+    together. This follows from the classification itself because the two halves
+    have identical moduli, and is enforced here only as a safety net because
+    LAPACK rejects an inconsistent selection
+    """
+    #[
+    select = _np.array(select, dtype=_np.int32, )
+    subdiagonal = _np.diag(S, -1, )
+    index = 0
+    while index < select.size - 1:
+        if subdiagonal[index]:
+            both = select[index] or select[index+1]
+            select[index] = both
+            select[index+1] = both
+            index += 2
+        else:
+            index += 1
+    return select
     #]
 
 
@@ -583,15 +671,25 @@ def _classify_solution_vector_stability(
     transform_matrix: _np.ndarray,
     num_unit_roots: int,
     tolerance: float,
-) -> None:
-    """
+) -> tuple[ElementStability, ...]:
+    r"""
+    Classify the elements of a solution vector as stable or nonstationary
+    depending on whether they load on any of the unit-root components
+
+    The loadings are compared to the overall scale of the corresponding row so
+    that the outcome does not depend on how the rows happen to be scaled
     """
     #[
     test_matrix = _np.abs(transform_matrix[:, :num_unit_roots], )
-    index = _np.any(test_matrix > tolerance, axis=1, )
+    row_scale = _np.max(
+        _np.abs(transform_matrix, ),
+        axis=1, keepdims=True, initial=0,
+    )
+    row_scale[row_scale == 0] = 1
+    index = _np.any(test_matrix > tolerance*row_scale, axis=1, )
     return tuple(
-        EigenvalueKind.UNIT_ROOT if i
-        else EigenvalueKind.STABLE
+        ElementStability.UNIT_ROOT if i
+        else ElementStability.STABLE
         for i in index
     )
     #]
@@ -627,8 +725,7 @@ def _get_solution_expansion(
     # ]
 
 
-STABLE = EigenvalueKind.STABLE
-UNIT_ROOT = EigenvalueKind.UNIT_ROOT
-UNSTABLE = EigenvalueKind.UNSTABLE
-UNIT = UNIT_ROOT
+STABLE = ElementStability.STABLE
+UNIT_ROOT = ElementStability.UNIT_ROOT
+UNSTABLE = ElementStability.UNSTABLE
 

@@ -22,7 +22,7 @@ from .. import equations as _equations
 from .. import quantities as _quantities
 from ..quantities import QuantityKind
 from ..incidences import main as _incidence
-from ..fords.solutions import EigenvalueKind, Solution
+from ..fords.solutions import ElementStability, Solution
 from ..fords import descriptors as _descriptors
 
 from . import _flags
@@ -65,6 +65,17 @@ class Inlay(
     Frontend getter methods for Simultaneous objects
     """
     #[
+
+    @_dm.reference(category="information", )
+    def get_system_stability(
+        self,
+        unpack_singleton: bool = True,
+    ) -> bool:
+        r"""
+        Get the system stability of the model
+        """
+        system_stability = [ v.solution.system_stability for v in self._variants ]
+        return self.unpack_singleton(system_stability, unpack_singleton=unpack_singleton, )
 
     @_dm.reference(category="information", )
     @_cast_as_output_type
@@ -469,14 +480,14 @@ class Inlay(
     def get_eigenvalues(
         self,
         transform: Callable[[Real], Real] = lambda x: x,
-        kind: EigenvalueKind | None = EigenvalueKind.ALL,
+        kind: ElementStability | None = ElementStability.ALL,
         unpack_singleton: bool = True,
     ) -> tuple[Real, ...] | list[tuple[Real, ...]]:
         r"""
         Eigenvalues
         """
         if kind is None:
-            kind = EigenvalueKind.ALL
+            kind = ElementStability.ALL
         return [
             tuple(transform(e) for e, s in zip(v.solution.eigenvalues, v.solution.eigenvalues_stability, ) if s in kind)
             for v in self._variants
@@ -485,10 +496,10 @@ class Inlay(
     @unpack_singleton_decorator
     def get_eigenvalues_stability(
         self,
-        kind: EigenvalueKind = EigenvalueKind.ALL,
+        kind: ElementStability = ElementStability.ALL,
         unpack_singleton: bool = True,
     ):
-        return [ 
+        return [
             tuple(i for i in v.solution.eigenvalues_stability if i in kind)
             for v in self._variants
         ]
@@ -500,12 +511,12 @@ class Inlay(
         qid_to_name = self.create_qid_to_name()
         return {
             qid_to_name[token.qid]: \
-                variant.solution.transition_vector_stability[index] == EigenvalueKind.STABLE
+                variant.solution.transition_vector_stability[index] == ElementStability.STABLE
             for index, token in enumerate(vec.transition_variables)
             if token.shift == 0
         } | {
             qid_to_name[token.qid]: \
-                variant.solution.measurement_vector_stability[index] == EigenvalueKind.STABLE
+                variant.solution.measurement_vector_stability[index] == ElementStability.STABLE
             for index, token in enumerate(vec.measurement_variables)
             if token.shift == 0
         }

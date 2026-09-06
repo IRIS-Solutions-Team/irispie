@@ -455,13 +455,15 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         Calculate first-order solution for each variant within this model
         """
         model_flags = self.resolve_flags(**kwargs, )
-        tolerance = tolerance or self.get_tolerance("eigenvalue", )
+        tolerance_by_key = dict(self.get_tolerance(), )
+        if tolerance is not None:
+            tolerance_by_key["eigenvalue"] = float(tolerance, )
         out_info = [
             self._solve_variant(
                 self_v,
                 vid,
                 model_flags,
-                tolerance=tolerance,
+                tolerance=tolerance_by_key,
                 clip_small=clip_small,
             )
             for vid, self_v in enumerate(self._variants, )
@@ -482,7 +484,7 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         variant: Variant,
         vid: int,
         model_flags: flags.Flags,
-        tolerance: float,
+        tolerance: dict[str, float],
         clip_small: bool,
     ) -> None:
         r"""
@@ -503,8 +505,14 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
             )
         except _solutions.UnitRootException:
             raise _wrongdoings.Critical(
-                f"{variant_header} Inconsistency in classification of unit roots; "
-                "modify (increase) the tolerance level",
+                f"{variant_header} Number of unit roots exceeds the number of "
+                "backward-looking variables; check the model, or lower the "
+                "eigenvalue tolerance level",
+            )
+        except _solutions.QzReorderingException:
+            raise _wrongdoings.Critical(
+                f"{variant_header} Failed to reorder the QZ decomposition "
+                "because some eigenvalues are too close to swap",
             )
         info = {}
         #

@@ -295,6 +295,8 @@ class Invariant(
     def __setstate__(self, state: dict[str, Any], ) -> None:
         for k in self._serialized_slots:
             setattr(self, k, state[k])
+        # Fill in tolerance keys introduced after this object was serialized
+        self.tolerance = _tolerance.DEFAULT_TOLERANCE | dict(self.tolerance or {}, )
         self._populate_derived_attributes()
 
     def to_portable(self, ) -> dict[str, Any]:
