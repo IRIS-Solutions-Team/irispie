@@ -5,11 +5,34 @@ r"""
 
 from __future__ import annotations
 
+import numpy as _np
+
 #]
 
 
+_EPS = _np.finfo(float).eps
+
+
 DEFAULT_TOLERANCE = {
-    "eigenvalue": 1e-12,
+
+    # Relative distance from the unit circle within which an eigenvalue is
+    # classified as a unit root; the value is the accuracy that can be
+    # realistically expected from a QZ decomposition of a macroeconomic model
+    "eigenvalue": _EPS**(5/9),
+
+    # Relative loading on the unit-root components above which an element of a
+    # solution vector is classified as nonstationary
+    "stationarity": _EPS**(5/9),
+
+    # Relative magnitude below which the entries of the solution matrices are
+    # clipped to zero
+    "clip": _EPS**(2/3),
+
+    # Reciprocal condition number below which a matrix is considered
+    # numerically singular; used for the Blanchard-Kahn rank condition, and
+    # corresponding to a loss of more than about ten significant digits
+    "rank": _EPS**(2/3),
+
     "equality": 1e-12,
 }
 

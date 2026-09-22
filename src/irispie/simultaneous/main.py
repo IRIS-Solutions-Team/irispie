@@ -445,33 +445,37 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
 
     def solve_first_order(
         self,
-        clip_small: bool = False,
         return_info: bool = False,
         unpack_singleton: bool = True,
-        tolerance: float | None = None,
+        when_fails: Literal["critical", "error", "warning", "silent"] = "error",
         **kwargs,
     ) -> dict[str, Any]:
         r"""
         Calculate first-order solution for each variant within this model
         """
         model_flags = self.resolve_flags(**kwargs, )
-        tolerance = tolerance or self.get_tolerance("eigenvalue", )
-        out_info = [
-            self._solve_variant(
-                self_v,
-                vid,
+        tolerance_by_key = dict(self.get_tolerance(), )
+        when_fails_stream = _wrongdoings.create_stream(
+            when_fails,
+            "First-order solution failed for these model variants:",
+        )
+        all_info = []
+        for vid, variant, in enumerate(self._variants, ):
+            info = self._solve_variant(
+                variant,
                 model_flags,
-                tolerance=tolerance,
-                clip_small=clip_small,
+                tolerance=tolerance_by_key,
             )
-            for vid, self_v in enumerate(self._variants, )
-        ]
+            all_info.append(info, )
+            if not variant.stability.is_success:
+                when_fails_stream.add(f"[Variant {vid}] {variant.stability.message}")
+        when_fails_stream._raise()
         if return_info:
-            out_info = _has_variants.unpack_singleton(
-                out_info, self.is_singleton,
+            all_info = _has_variants.unpack_singleton(
+                all_info, self.is_singleton,
                 unpack_singleton=unpack_singleton,
             )
-            return out_info
+            return all_info
         else:
             return
 
@@ -480,34 +484,27 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
     def _solve_variant(
         self,
         variant: Variant,
-        vid: int,
         model_flags: flags.Flags,
-        tolerance: float,
-        clip_small: bool,
-    ) -> None:
+        tolerance: dict[str, float],
+    ) -> dict[str, Any]:
         r"""
-        Calculate first-order solution for one variant of this model
+        Calculate first-order stability and solution for one variant of this
+        model
         """
-        variant_header = f"[Variant {vid}]"
         system = self._systemize(
             variant,
             self._invariant.dynamic_descriptor,
             model_flags,
         )
-        try:
-            variant.solution = _solutions.Solution.from_system(
+        variant.stability, variant.solution, \
+            = _solutions.calculate_stability_and_solution(
                 self._invariant.dynamic_descriptor,
                 system,
-                clip_small=clip_small,
                 tolerance=tolerance,
             )
-        except _solutions.UnitRootException:
-            raise _wrongdoings.Critical(
-                f"{variant_header} Inconsistency in classification of unit roots; "
-                "modify (increase) the tolerance level",
-            )
-        info = {}
-        #
+        info = {
+            "success": variant.stability.is_success,
+        }
         return info
 
     def _choose_plain_equator(
