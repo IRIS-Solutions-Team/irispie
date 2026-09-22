@@ -445,10 +445,9 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
 
     def solve_first_order(
         self,
-        clip_small: bool = False,
         return_info: bool = False,
         unpack_singleton: bool = True,
-        tolerance: float | None = None,
+        when_fails: Literal["critical", "error", "warning", "silent"] = "error",
         **kwargs,
     ) -> dict[str, Any]:
         r"""
@@ -456,24 +455,27 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
         """
         model_flags = self.resolve_flags(**kwargs, )
         tolerance_by_key = dict(self.get_tolerance(), )
-        if tolerance is not None:
-            tolerance_by_key["eigenvalue"] = float(tolerance, )
-        out_info = [
-            self._solve_variant(
-                self_v,
-                vid,
+        when_fails_stream = _wrongdoings.create_stream(
+            when_fails,
+            "First-order solution failed for these model variants:",
+        )
+        all_info = []
+        for vid, variant, in enumerate(self._variants, ):
+            info = self._solve_variant(
+                variant,
                 model_flags,
                 tolerance=tolerance_by_key,
-                clip_small=clip_small,
             )
-            for vid, self_v in enumerate(self._variants, )
-        ]
+            all_info.append(info, )
+            if not variant.stability.is_success:
+                when_fails_stream.add(f"[Variant {vid}] {variant.stability.message}")
+        when_fails_stream._raise()
         if return_info:
-            out_info = _has_variants.unpack_singleton(
-                out_info, self.is_singleton,
+            all_info = _has_variants.unpack_singleton(
+                all_info, self.is_singleton,
                 unpack_singleton=unpack_singleton,
             )
-            return out_info
+            return all_info
         else:
             return
 
@@ -482,40 +484,27 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
     def _solve_variant(
         self,
         variant: Variant,
-        vid: int,
         model_flags: flags.Flags,
         tolerance: dict[str, float],
-        clip_small: bool,
-    ) -> None:
+    ) -> dict[str, Any]:
         r"""
-        Calculate first-order solution for one variant of this model
+        Calculate first-order stability and solution for one variant of this
+        model
         """
-        variant_header = f"[Variant {vid}]"
         system = self._systemize(
             variant,
             self._invariant.dynamic_descriptor,
             model_flags,
         )
-        try:
-            variant.solution = _solutions.Solution.from_system(
+        variant.stability, variant.solution, \
+            = _solutions.calculate_stability_and_solution(
                 self._invariant.dynamic_descriptor,
                 system,
-                clip_small=clip_small,
                 tolerance=tolerance,
             )
-        except _solutions.UnitRootException:
-            raise _wrongdoings.Critical(
-                f"{variant_header} Number of unit roots exceeds the number of "
-                "backward-looking variables; check the model, or lower the "
-                "eigenvalue tolerance level",
-            )
-        except _solutions.QzReorderingException:
-            raise _wrongdoings.Critical(
-                f"{variant_header} Failed to reorder the QZ decomposition "
-                "because some eigenvalues are too close to swap",
-            )
-        info = {}
-        #
+        info = {
+            "success": variant.stability.is_success,
+        }
         return info
 
     def _choose_plain_equator(

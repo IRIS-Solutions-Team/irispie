@@ -312,10 +312,9 @@ class Inlay(
 
     def get_solution(
         self,
-        #
         unpack_singleton: bool = True,
     ) -> Solution | list[Solution]:
-        """
+        r"""
         """
         solution_matrices = [ i for i in self.iter_solution() ]
         return self.unpack_singleton(solution_matrices, unpack_singleton=unpack_singleton, )
@@ -339,8 +338,17 @@ class Inlay(
             solution = solution.create_deviation_solution()
         return solution
 
-    def iter_std_name_to_value(self, ) -> Iterable[dict[str, Real]]:
+    def get_stability(
+        self,
+        unpack_singleton: bool = True,
+    ) -> Stability | list[Stability]:
+        r"""
         """
+        stability = [ i.stability for i in self._variants ]
+        return self.unpack_singleton(stability, unpack_singleton=unpack_singleton, )
+
+    def iter_std_name_to_value(self, ) -> Iterable[dict[str, Real]]:
+        r"""
         """
         qid_to_name = self.create_qid_to_name()
         std_qids = _quantities.generate_qids_by_kind(self._invariant.quantities, _quantities.QuantityKind.ANY_STD, )

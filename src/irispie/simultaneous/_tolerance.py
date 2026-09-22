@@ -28,6 +28,11 @@ DEFAULT_TOLERANCE = {
     # clipped to zero
     "clip": _EPS**(2/3),
 
+    # Reciprocal condition number below which a matrix is considered
+    # numerically singular; used for the Blanchard-Kahn rank condition, and
+    # corresponding to a loss of more than about ten significant digits
+    "rank": _EPS**(2/3),
+
     "equality": 1e-12,
 }
 

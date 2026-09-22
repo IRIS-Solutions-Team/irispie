@@ -42,6 +42,7 @@ import enum as _en
 import numpy as _np
 import scipy as _sp
 import copy as _co
+from dataclasses import dataclass
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -58,13 +59,6 @@ __all__ = (
 )
 
 
-class UnitRootException(Exception):
-    r"""
-    Number of unit roots exceeds the number of backward-looking variables
-    """
-    pass
-
-
 class QzReorderingException(Exception):
     r"""
     Reordering of the QZ decomposition failed because some eigenvalues are too
@@ -77,23 +71,201 @@ class ElementStability(_en.Flag, ):
     STABLE = _en.auto()
     UNIT_ROOT = _en.auto()
     UNSTABLE = _en.auto()
-    #
     ALL = STABLE | UNIT_ROOT | UNSTABLE
 
 
-class SystemStability(_en.Flag, ):
+class SystemStabilityVerdict(_en.Enum, ):
+    r"""
+    Outcome of solving the first-order system, as five mutually exclusive
+    verdicts
+
+    UNIQUE_STABLE: both Blanchard-Kahn conditions hold
+    MULTIPLE_STABLE: fewer unstable roots than forward-looking variables
+    NO_STABLE: more unstable roots than forward-looking variables
+    RANK_DEFICIENT: the root counts are right but the stable subspace fails to
+    project onto the predetermined variables
+    DECOMPOSITION_FAILED: the decomposition broke down before any eigenvalue
+    could be calculated, so no Blanchard-Kahn condition could be evaluated
+    """
+    #[
+
     UNIQUE_STABLE = _en.auto()
     MULTIPLE_STABLE = _en.auto()
     NO_STABLE = _en.auto()
+    RANK_DEFICIENT = _en.auto()
+    DECOMPOSITION_FAILED = _en.auto()
+
+    @property
+    def message_template(self, ) -> str:
+        return _SYSTEM_STABILITY_VERDICT_MESSAGE_TEMPLATE[self]
+
+    #]
+
+
+_SYSTEM_STABILITY_VERDICT_MESSAGE_TEMPLATE = {
+    SystemStabilityVerdict.UNIQUE_STABLE:
+        "Unique stable solution",
+    SystemStabilityVerdict.MULTIPLE_STABLE:
+        "Multiple stable solutions: unstable roots {num_unstable}, "
+        "forward-looking variables {num_forwards}",
+    SystemStabilityVerdict.NO_STABLE:
+        "No stable solution: unstable roots {num_unstable}, "
+        "forward-looking variables {num_forwards}",
+    SystemStabilityVerdict.RANK_DEFICIENT:
+        "No unique stable solution: the stable subspace does not span the "
+        "{num_backwards} predetermined variables, with condition number {rcond:.3g} < {rank_tolerance:.3g}",
+    SystemStabilityVerdict.DECOMPOSITION_FAILED:
+        "No solution calculated: the QZ decomposition could not be reordered "
+        "because some eigenvalues are too close to separate, which usually "
+        "indicates badly scaled or nearly singular system matrices",
+}
 
 
 @dataclass(frozen=True, slots=True, )
 class Stability:
+    r"""
+    Diagnosis of the first-order system, as read off the QZ decomposition
+
+    Instances come from `from_decomposition`, which evaluates the
+    Blanchard-Kahn conditions and fills in every field consistently. The plain
+    constructor performs no validation and is not meant to be called directly
+    """
     #[
 
-    eigenvalues: tuple[ElementStability, ...],
-    eigenvalue_stability: tuple[ElementStability, ...],
-    system_stability: SystemStability,
+    eigenvalues: tuple[complex, ...] | None
+    eigenvalue_stability: tuple[ElementStability, ...] | None
+    num_forwards: int | None
+    num_backwards: int | None
+    rcond: float | None
+    rank_tolerance: float | None
+    system_stability: SystemStabilityVerdict
+
+    @classmethod
+    def from_decomposition(
+        klass,
+        *,
+        eigenvalues: tuple[complex, ...],
+        eigenvalue_stability: tuple[ElementStability, ...],
+        num_forwards: int,
+        num_backwards: int,
+        qz_matrixes: tuple[_np.ndarray, ...],
+        rank_tolerance: float,
+    ) -> Self:
+        r"""
+        Evaluate the Blanchard-Kahn conditions and return a complete Stability
+
+        The order condition requires the number of unstable roots to equal the
+        number of forward-looking variables; too few means multiple stable
+        solutions, too many means none.
+
+        The rank condition requires the stable deflating subspace to project
+        onto the predetermined variables without a loss of rank. It is
+        evaluated, and its reciprocal condition number computed, only once the
+        order condition holds, because only then do the leading num_backwards
+        columns of Z span that subspace and Z21 mean what it is supposed to
+        mean; otherwise rcond is left as None
+        """
+        rcond = None
+        num_unstable = eigenvalue_stability.count(ElementStability.UNSTABLE, )
+        #
+        # Order test
+        if num_unstable < num_forwards:
+            system_stability = SystemStabilityVerdict.MULTIPLE_STABLE
+        elif num_unstable > num_forwards:
+            system_stability = SystemStabilityVerdict.NO_STABLE
+        else:
+            #
+            # Rank test
+            #
+            # The predetermined variables decompose as xib = Z21 @ w1 + Z22 @
+            # w2, and ruling out explosive paths pins down w2; the stable
+            # coordinates w1 are therefore recoverable from xib for every
+            # initial condition only if Z21 is invertible. Near singularity is
+            # what matters rather than exact rank deficiency, because roundoff
+            # in the decomposition keeps Z21 off the singular manifold even
+            # when the model is structurally degenerate
+            *_, Z = qz_matrixes
+            rcond = _estimate_rcond(Z[num_forwards:, :num_backwards], )
+            system_stability = (
+                SystemStabilityVerdict.RANK_DEFICIENT if rcond < rank_tolerance
+                else SystemStabilityVerdict.UNIQUE_STABLE
+            )
+        #
+        return klass(
+            eigenvalues=eigenvalues,
+            eigenvalue_stability=eigenvalue_stability,
+            num_forwards=num_forwards,
+            num_backwards=num_backwards,
+            rcond=rcond,
+            rank_tolerance=rank_tolerance,
+            system_stability=system_stability,
+        )
+
+    @classmethod
+    def from_failed_decomposition(
+        klass,
+        *,
+        num_forwards: int,
+        num_backwards: int,
+        rank_tolerance: float,
+    ) -> Self:
+        r"""
+        Record that the decomposition broke down before any eigenvalue could be
+        calculated
+
+        Neither Blanchard-Kahn condition could be evaluated, so the eigenvalue
+        tuples are empty and the derived counts all come out zero; the verdict
+        is the only field carrying information
+        """
+        return klass(
+            eigenvalues=None,
+            eigenvalue_stability=None,
+            num_forwards=num_forwards,
+            num_backwards=num_backwards,
+            rcond=None,
+            rank_tolerance=rank_tolerance,
+            system_stability=SystemStabilityVerdict.DECOMPOSITION_FAILED,
+        )
+
+    @property
+    def num_stable(self, ) -> int:
+        return (
+            self.eigenvalue_stability.count(ElementStability.STABLE, )
+            if self.eigenvalue_stability is not None else None
+        )
+
+    @property
+    def num_unit_roots(self, ) -> int:
+        return (
+            self.eigenvalue_stability.count(ElementStability.UNIT_ROOT, )
+            if self.eigenvalue_stability is not None else None
+        )
+
+    @property
+    def num_unstable(self, ) -> int:
+        return (
+            self.eigenvalue_stability.count(ElementStability.UNSTABLE, )
+            if self.eigenvalue_stability is not None else None
+        )
+
+    @property
+    def message(self, ) -> str:
+        return self.system_stability.message_template.format(
+            num_forwards=self.num_forwards,
+            num_backwards=self.num_backwards,
+            num_unstable=self.num_unstable,
+            rcond=self.rcond,
+            rank_tolerance=self.rank_tolerance,
+        )
+
+    @property
+    def is_success(self, ) -> bool:
+        return self.system_stability == SystemStabilityVerdict.UNIQUE_STABLE
+
+    def copy(self, ) -> Self:
+        r"""
+        """
+        return self
 
     #]
 
@@ -158,7 +330,6 @@ class Solution:
         for k, v in kwargs.items():
             if k in self.__slots__:
                 setattr(self, k, v, )
-
 
     def create_deviation_solution(self, ) -> Self:
         r"""
@@ -266,9 +437,12 @@ class Solution:
         return self.Ta, self.Pa, self.Ka, self.Za, self.H, self.D, self.Ua,
 
     def copy(self, ) -> Self:
-        r"""
-        """
-        return _co.deepcopy(self, )
+        new = type(self)()
+        for n in self.__slots__:
+            setattr(new, n, getattr(self, n, None, ), )
+        new.square_expansion = list(self.square_expansion or [], )
+        new.triangular_expansion = list(self.triangular_expansion or [], )
+        return new
 
     def expand_square_solution(self, forward: int, ) -> list[_np.ndarray]:
         r"""
@@ -289,18 +463,6 @@ class Solution:
             self.Pa, self.Xa, self.J, self.Ru,
             forward,
         )
-
-    def _classify_system_stability(
-        self,
-        num_forwards: int,
-    ) -> None:
-        num_unstable = self.eigenvalues_stability.count(ElementStability.UNSTABLE)
-        if num_unstable == num_forwards:
-            self.system_stability = SystemStability.UNIQUE_STABLE
-        elif num_unstable > num_forwards:
-            self.system_stability = SystemStability.NO_STABLE
-        else:
-            self.system_stability = SystemStability.MULTIPLE_STABLE
 
     def _classify_transition_vector_stability(
         self,
@@ -327,7 +489,6 @@ class Solution:
 
 
 def calculate_stability_and_solution(
-    klass,
     descriptor: _descriptors.Descriptor,
     system: _systems.System,
     tolerance: dict[str, float],
@@ -342,16 +503,40 @@ def calculate_stability_and_solution(
     #[
     eigenvalue_tolerance = tolerance["eigenvalue"]
     stationarity_tolerance = tolerance["stationarity"]
+    rank_tolerance = tolerance["rank"]
+    num_forwards = descriptor.get_num_forwards()
+    num_backwards = descriptor.get_num_backwards()
     #
     # Detach unstable from (stable + unit) roots, and unit from stable
     # roots, ordering the eigenvalues as unit, stable, unstable
-    qz_matrixes, eigenvalues, eigenvalue_stability, num_unit_roots = _solve_ordqz(system, eigenvalue_tolerance, )
+    try:
+        (
+            qz_matrixes,
+            eigenvalues,
+            eigenvalue_stability,
+            num_unit_roots,
+        ) = _solve_ordqz(system, eigenvalue_tolerance, )
+    except QzReorderingException:
+        # The decomposition itself broke down, so there is nothing to diagnose;
+        # report it as a verdict so that it reaches the user by the same route
+        # as a Blanchard-Kahn failure
+        return Stability.from_failed_decomposition(
+            num_forwards=num_forwards,
+            num_backwards=num_backwards,
+            rank_tolerance=rank_tolerance,
+        ), None,
     #
+    # Diagnose the system, evaluating the Blanchard-Kahn conditions
+    stability = Stability.from_decomposition(
+        eigenvalues=eigenvalues,
+        eigenvalue_stability=eigenvalue_stability,
+        num_forwards=num_forwards,
+        num_backwards=num_backwards,
+        qz_matrixes=qz_matrixes,
+        rank_tolerance=rank_tolerance,
+    )
     #
-    # TEST BK HERE
-    raise NotImplementedError("BK test not implemented yet")
-    # solution._classify_system_stability(descriptor.get_num_forwards(), )
-    if stability.system_stability != SystemStability.UNIQUE_STABLE:
+    if not stability.is_success:
         return stability, None,
     #
     solution = Solution()
@@ -362,17 +547,13 @@ def calculate_stability_and_solution(
     # QZ decomposition was reordered that way
     triangular_solution = _solve_transition_equations(descriptor, system, qz_matrixes, )
     #
-    # Clear the dirt left by the least-squares solves below the unit-root
-    # block boundary; these entries are zero analytically
-    #!!!!!!!!!!!!!!!!!! Tg[num_unit_roots:, :num_unit_roots] = 0
-    #
     solution.Ua, solution.Ta, solution.Pa, solution.Ka, solution.Xa, solution.J, solution.Ru, = triangular_solution
     #
     # From the final triangular solution, calculate the square solution
     solution.T, solution.P, solution.K, solution.X, = _square_from_triangular(triangular_solution, )
     #
     # Solve measurement equations
-    solution.Z, solution.H, solution.D, solution.Za = _solve_measurement_equations(
+    solution.Z, solution.H, solution.D, solution.Za, = _solve_measurement_equations(
         descriptor,
         system,
         solution.Ua,
@@ -400,6 +581,74 @@ def right_div(B: _np.ndarray, A: _np.ndarray, ) -> _np.ndarray:
     return _np.linalg.lstsq(A.T, B.T, rcond=None)[0].T
 
 
+def _solve_triangular(
+    A: _np.ndarray,
+    B: _np.ndarray,
+) -> _np.ndarray:
+    r"""
+    Solve A \ B for an upper triangular A
+
+    Note that the B factor of the real generalized Schur form is upper
+    triangular, while the A factor is only quasi-upper-triangular; this
+    function must never be pointed at the latter because the 2x2 blocks would
+    be silently ignored
+    """
+    #[
+    return _sp.linalg.solve_triangular(A, B, lower=False, )
+    #]
+
+
+def _factorize(
+    A: _np.ndarray,
+) -> tuple[_np.ndarray, _np.ndarray, ]:
+    r"""
+    LU factorization of a general square A, to be reused across several
+    right-hand sides in _solve_factorized
+    """
+    #[
+    return _sp.linalg.lu_factor(A, )
+    #]
+
+
+def _solve_factorized(
+    lu_piv: tuple[_np.ndarray, _np.ndarray, ],
+    B: _np.ndarray,
+    trans: int = 0,
+) -> _np.ndarray:
+    r"""
+    Solve A \ B when trans=0, or A' \ B when trans=1, from an LU factorization
+    of A obtained from _factorize
+    """
+    #[
+    return _sp.linalg.lu_solve(lu_piv, B, trans=trans, )
+    #]
+
+
+def _estimate_rcond(
+    A: _np.ndarray,
+) -> float:
+    r"""
+    Estimate the reciprocal condition number of a general square A in the
+    1-norm from its LU factorization
+
+    This is a continuous measure of near singularity rather than an
+    all-or-nothing rank verdict, and it costs an LU factorization plus O(n^2)
+    instead of a singular value decomposition. An empty matrix is reported as
+    perfectly conditioned: there is nothing for it to be singular about, and
+    LAPACK rejects a zero leading dimension
+    """
+    #[
+    if A.size == 0:
+        return 1.0
+    lu, _ = _sp.linalg.lu_factor(A, )
+    gecon, = _sp.linalg.get_lapack_funcs(("gecon", ), (A, ), )
+    rcond, info = gecon(lu, _np.linalg.norm(A, 1, ), norm="1", )
+    if info < 0:
+        raise ValueError(f"Illegal value in argument {-info} of gecon", )
+    return float(rcond, )
+    #]
+
+
 def _square_from_triangular(
     triangular_solution: tuple[_np.ndarray, ...],
 ) -> tuple[_np.ndarray, ...]:
@@ -412,7 +661,12 @@ def _square_from_triangular(
     """
     #[
     Ua, Ta, Ra, Ka, Xa, *_ = triangular_solution
-    T = Ua @ right_div(Ta, Ua) # Ua @ (Ta / Ua)
+    #
+    # T <- Ua @ (Ta / Ua), with Ta / Ua == (Ua' \ Ta')'
+    # T = Ua @ right_div(Ta, Ua) # Ua @ (Ta / Ua)
+    lu_Ua = _factorize(Ua, )
+    T = Ua @ _solve_factorized(lu_Ua, Ta.T, trans=1, ).T
+    #
     R = Ua @ Ra
     K = Ua @ Ka
     X = Ua @ Xa
@@ -424,16 +678,28 @@ def _solve_measurement_equations(
     descriptor,
     system,
     Ua,
-    *,
 ) -> tuple[_np.ndarray, ...]:
     r"""
     """
     #[
     num_forwards = descriptor.get_num_forwards()
     G = system.G[:, num_forwards:]
-    Z = left_div(-system.F, G) # -F \ G
-    H = left_div(-system.F, system.J) # -F \ J
-    D = left_div(-system.F, system.H) # -F \ H
+    #
+    # All three solves share the same matrix, so factorize F only once
+    lu_F = _factorize(system.F, )
+    #
+    # Z <- -(F \ G)
+    # Z = left_div(-system.F, G) # -F \ G
+    Z = -_solve_factorized(lu_F, G, )
+    #
+    # H <- -(F \ J)
+    # H = left_div(-system.F, system.J) # -F \ J
+    H = -_solve_factorized(lu_F, system.J, )
+    #
+    # D <- -(F \ H)
+    # D = left_div(-system.F, system.H) # -F \ H
+    D = -_solve_factorized(lu_F, system.H, )
+    #
     Za = Z @ Ua
     return Z, H, D, Za,
     #]
@@ -475,25 +741,56 @@ def _solve_transition_equations(
     #
     # Unstable block
     #
-    G = left_div(-Z21, Z22) # -Z21 \ Z22
-    Ru = left_div(-T22, Q_DD2) # -T22 \ Q_DD2
-    Ku = left_div(-(S22 + T22), Q_CC2) # -(S22+T22) \ Q_CC2
+    # S11 is solved against five right-hand sides and Z21 against one here and
+    # one more in _square_from_triangular, so factorize each of them once; T22
+    # is upper triangular and needs no factorization at all
+    lu_S11 = _factorize(S11, )
+    lu_Z21 = _factorize(Z21, )
+    #
+    # G <- -(Z21 \ Z22)
+    # G = left_div(-Z21, Z22) # -Z21 \ Z22
+    G = -_solve_factorized(lu_Z21, Z22, )
+    #
+    # Ru <- -(T22 \ Q_DD2)
+    # Ru = left_div(-T22, Q_DD2) # -T22 \ Q_DD2
+    Ru = -_solve_triangular(T22, Q_DD2, )
+    #
+    # Ku <- -((S22 + T22) \ Q_CC2)
+    # Ku = left_div(-(S22 + T22), Q_CC2) # -(S22+T22) \ Q_CC2
+    Ku = -_sp.linalg.solve(S22 + T22, Q_CC2, )
     #
     # Transform stable block==transform backward-looking variables:
     # gamma(t) = s(t) + G u(t+1)
     #
-    Xg0 = left_div(S11, T11 @ G + T12)
-    Xg1 = G + left_div(S11, S12)
+    # Xg0 <- S11 \ (T11 @ G + T12)
+    # Xg0 = left_div(S11, T11 @ G + T12)
+    Xg0 = _solve_factorized(lu_S11, T11 @ G + T12, )
     #
-    Tg = left_div(-S11, T11)
-    Rg = -Xg0 @ Ru - left_div(S11, Q_DD1)
-    Kg = -(Xg0 + Xg1) @ Ku - left_div(S11, Q_CC1)
+    # Xg1 <- G + (S11 \ S12)
+    # Xg1 = G + left_div(S11, S12)
+    Xg1 = G + _solve_factorized(lu_S11, S12, )
+    #
+    # Tg <- -(S11 \ T11)
+    # Tg = left_div(-S11, T11)
+    Tg = -_solve_factorized(lu_S11, T11, )
+    #
+    # Rg <- -Xg0 @ Ru - (S11 \ Q_DD1)
+    # Rg = -Xg0 @ Ru - left_div(S11, Q_DD1)
+    Rg = -Xg0 @ Ru - _solve_factorized(lu_S11, Q_DD1, )
+    #
+    # Kg <- -(Xg0 + Xg1) @ Ku - (S11 \ Q_CC1)
+    # Kg = -(Xg0 + Xg1) @ Ku - left_div(S11, Q_CC1)
+    Kg = -(Xg0 + Xg1) @ Ku - _solve_factorized(lu_S11, Q_CC1, )
+    #
     Ug = Z21 # xib = Ug @ gamma
     #
     # Forward expansion
     # gamma(t) = ... -Xg J**(k-1) Ru e(t+k)
     #
-    J = left_div(-T22, S22) # -T22 \ S22
+    # J <- -(T22 \ S22)
+    # J = left_div(-T22, S22) # -T22 \ S22
+    J = -_solve_triangular(T22, S22, )
+    #
     Xg = Xg1 + Xg0 @ J
     #
     return Ug, Tg, Rg, Kg, Xg, J, Ru,
@@ -549,7 +846,7 @@ def _solve_ordqz(
     # of the existing decomposition; the relative order of the remaining roots
     # is preserved, and hence the resulting order is unit, stable, unstable
     select = _np.array(
-        tuple(i == ElementStability.UNIT_ROOT for i in stability),
+        tuple(i == ElementStability.UNIT_ROOT for i in eigenvalue_stability),
         dtype=_np.int32,
     )
     select = _sync_select_over_2x2_blocks(select, S, )
@@ -572,8 +869,8 @@ def _solve_ordqz(
         + tuple(e for e, i in zip(eigenvalues, select, ) if not i)
     )
     eigenvalue_stability = (
-        tuple(s for s, i in zip(stability, select, ) if i)
-        + tuple(s for s, i, in zip(stability, select, ) if not i)
+        tuple(s for s, i in zip(eigenvalue_stability, select, ) if i)
+        + tuple(s for s, i, in zip(eigenvalue_stability, select, ) if not i)
     )
     #
     return qz_matrixes, eigenvalues, eigenvalue_stability, num_unit_roots,
@@ -723,6 +1020,7 @@ def _get_solution_expansion(
     #     -X @ _np.linalg.matrix_power(J, k_minus_1) @ Ru
     #     for k_minus_1 in range(0, forward)
     # ]
+
 
 
 STABLE = ElementStability.STABLE

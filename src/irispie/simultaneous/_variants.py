@@ -20,6 +20,7 @@ import numpy as _np
 
 # Local imports
 from .. import quantities as _quantities
+from ..fords.solutions import Stability, Solution
 
 #]
 
@@ -33,11 +34,17 @@ class Variant:
     __slots__ = (
         "levels",
         "changes",
+        "stability",
         "solution",
     )
 
+    levels: dict[int, Real | None] | None
+    changes: dict[int, Real | None] | None
+    stability: Stability | None
+    solution: Solution | None
+
     def __init__(self, **kwargs, ) -> None:
-        """
+        r"""
         """
         for n in self.__slots__:
             setattr(self, n, None, )
@@ -70,7 +77,7 @@ class Variant:
         """
         """
         new = type(self)()
-        for i in ("levels", "changes", "solution", ):
+        for i in self.__slots__:
             attr = getattr(self, i, )
             if attr is not None:
                 setattr(new, i, attr.copy(), )
