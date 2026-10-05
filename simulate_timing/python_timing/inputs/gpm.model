@@ -1,0 +1,1030 @@
+%===== Common things =====
+!parameters
+
+"Switch for zero lower bound"                        nlfloorswitch
+"Switch for non-linear Philips curve"                nlpcswitch
+"Switch for Fisher deflation trap control"           nlexpswitch
+
+%===== Commodities =====
+
+!for
+  ?var =  <comvars>
+!do
+
+!transition-variables
+"World Commodity Price (100*log)"                         L_?var_US
+"World Commodity Price"                                   ?var_US
+"World Commodity Price (% YoY)"                           D4L_?var_US
+"World Commodity Price (QoQ @ar)"                         DLA_?var_US
+"World Real Commodity Price (100*log)"                    L_Q?var_US
+"World Real Commodity Price Trend (100*log)"              L_Q?var_BAR_US
+"World Real Commodity Price Eq. Growth (QoQ @ar)"         G_Q?var_BAR_US
+"World Real Commodity Price Trend Growth (QoQ @ar)"       DLA_Q?var_BAR_US
+"World Real Commodity Price Gap (%)"                      L_Q?var_GAP_US
+"World Real Commodity Price Growth (QoQ @ar)"             DLA_Q?var_US
+
+!log-variables
+?var_US
+
+!transition-shocks
+"World Real Commodity Trend Shock (pp)"                   SHK_G_Q?var_BAR_US
+"World Real Commodity Level Shock (pp)"                   SHK_L_Q?var_BAR_US
+"World Real Commodity Gap Shock (pp)"                     SHK_L_Q?var_GAP_US
+
+!parameters
+"Auto-correlation of real commodity price trend growth"   rho_G_Q?var_BAR_US
+"Auto-correlation of real commodity price gap"            rho_L_Q?var_GAP_US
+"Steady state of real commodity price trend growth"       ss_G_Q?var_BAR_US
+"Elasticity of commodity price to world demand"           iota_?var_US
+
+!transition-equations
+L_Q?var_US        = L_?var_US - L_CPIXFE_US;
+%?var_US           = exp(L_?var_US/100);
+
+L_?var_US         = 100*log(?var_US);
+L_Q?var_BAR_US    = L_Q?var_BAR_US[-1] + G_Q?var_BAR_US/4 + SHK_L_Q?var_BAR_US;
+
+G_Q?var_BAR_US    = rho_G_Q?var_BAR_US*G_Q?var_BAR_US[-1]
+                  + (1-rho_G_Q?var_BAR_US)*ss_G_Q?var_BAR_US
+                  + SHK_G_Q?var_BAR_US;
+DLA_Q?var_BAR_US  = 4*(L_Q?var_BAR_US - L_Q?var_BAR_US[-1]);
+L_Q?var_GAP_US    = L_Q?var_US - L_Q?var_BAR_US;
+L_Q?var_GAP_US    = rho_L_Q?var_GAP_US*L_Q?var_GAP_US[-1]
+                  + iota_?var_US*DEMAND_SHK_WO
+                  + SHK_L_Q?var_GAP_US   !! L_Q?var_GAP_US = 0;
+
+D4L_?var_US       = L_?var_US  - L_?var_US[-4];
+DLA_?var_US       = 4*(L_?var_US  - L_?var_US[-1]);
+DLA_Q?var_US      = 4*(L_Q?var_US  - L_Q?var_US[-1]);
+
+
+!measurement-variables
+"Obs. World Commodity Price (100*log)"                     OBS_L_?var_US
+"Obs. World Commodity Price Gap (%)"                       OBS_L_Q?var_GAP_US
+"Obs. World Commodity Price Trend (% QoQ)"                 OBS_DLA_Q?var_BAR_US
+"Obs. World Commodity Price Trend Growth (% QoQ)"          OBS_G_Q?var_BAR_US
+"Obs. World Commodity Price Trend"                         OBS_L_Q?var_BAR_US
+
+!measurement-equations
+OBS_L_?var_US           = L_?var_US;
+OBS_L_Q?var_GAP_US      = L_Q?var_GAP_US;
+OBS_DLA_Q?var_BAR_US    = DLA_Q?var_BAR_US;
+OBS_G_Q?var_BAR_US      = G_Q?var_BAR_US;
+OBS_L_Q?var_BAR_US      = L_Q?var_BAR_US;
+!end
+
+
+%===== Terms of Trade ======
+!for
+  ?cc =  <cctot>
+!do
+
+!transition-variables
+"?cc ToT Growth (% QoQ)"              DLA_TOT_?cc
+"?cc ToT Trend Growth (% QoQ)"        DLA_TOT_BAR_?cc
+"?cc ToT Level (100*log)"             L_TOT_?cc
+"?cc ToT Trend Level (100*log)"       L_TOT_BAR_?cc
+"?cc ToT Gap (%)"                     L_TOT_GAP_?cc
+
+!parameters
+"ToT SS Growth Rate, (percent, QoQ)"  ss_G_TOT_BAR_?cc
+"TOT Effect on ?cc REER level"        iota_zbar_tot_?cc
+!for
+  ?comtot = <cctot_?cc>
+!do
+"?comtot share in ?cc ToT"            ct_?comtot_?cc
+!end
+
+!transition-equations
+L_TOT_?cc = L_TOT_?cc[-1] + DLA_TOT_?cc/4;
+DLA_TOT_BAR_?cc = 4*(L_TOT_BAR_?cc - L_TOT_BAR_?cc[-1]);
+L_TOT_GAP_?cc =
+  !for
+    ?comtot =  <cctot_?cc>
+  !do
+  + ct_?comtot_?cc*L_Q?comtot_GAP_US
+  !end
+;
+DLA_TOT_BAR_?cc =
+  !for
+    ?comtot =  <cctot_?cc>
+  !do
+  + ct_?comtot_?cc*DLA_Q?comtot_BAR_US
+  !end
+;
+DLA_TOT_?cc =
+  !for
+    ?comtot =  <cctot_?cc>
+  !do
+  + ct_?comtot_?cc*DLA_Q?comtot_US
+  !end
+;
+
+!end
+
+!for
+  ?cc =  <cctprem>
+!do
+  !transition-variables
+    "?cc 10Y Gov Bond Yield (%, p.a.)"               RSG40_?cc
+    "?cc 10Y Term Premium (pp, p.a.)"                TPREM40_?cc
+    "?cc 10Y Comp. Rate (%, p.a.)"                   RS_40_?cc
+    "?cc Autocorr. Term Premium Shock (pp, p.a.)"    SHKN_TPREM40_?cc
+  !transition-shocks
+    "?cc 10Y Term Premium Shock (pp, p.a.)"          SHK_TPREM40_?cc
+    "?cc 10Y Gov Bond Yield Shock (pp, p.a.)"        SHK_RSG40_?cc
+  !parameters
+    "Auto-corr. of ?cc Term Premium"                 rho_TPREM40_?cc 
+    "Steady-state of ?cc Term Premium"               ss_TPREM40_?cc
+    "Effect of rising term premium on RER trend"     iota_zbar_tprem_?cc
+    "Effect of rising term premium on UIP"           c2_L_S_?cc
+
+  !transition-equations
+    RSG40_?cc     = RS_40_?cc + TPREM40_?cc + SHK_RSG40_?cc;
+    RS_40_?cc     = 1/40*RS_?cc + 39/40*RS_40_?cc[+1];
+    TPREM40_?cc   = rho_TPREM40_?cc*TPREM40_?cc[-1]
+                  + (1-rho_TPREM40_?cc)*(ss_TPREM40_?cc) 
+                  + SHK_TPREM40_?cc;
+  !measurement-variables
+    "Obs. ?cc 10Y Gov Bond Yield (%, p.a.)"          OBS_RSG40_?cc 
+    "Obs. ?cc 10Y Term Premium (pp, p.a.)"           OBS_TPREM40_?cc
+  !measurement-equations
+    OBS_RSG40_?cc     = RSG40_?cc;
+    OBS_TPREM40_?cc   = TPREM40_?cc;
+!end
+
+
+%===== U.S. real interest rate =====
+!transition-variables
+"U.S. RIR Trend Growth (pp, p.a.)"                   D_RR_BAR_US
+"U.S. 10Y Gov Bond Yield (%, p.a.)"                  RSG40_US
+"U.S. 10Y Comp. Rate (%, p.a.)"                      RS_40_US
+"U.S. 10Y Term Premium (%, p.a.)"                    TPREM40_US
+
+!transition-shocks
+"U.S. Real Trend Rate Shock (pp, pa)"                SHK_RR_BAR_US
+"U.S. RIR Trend Growth Shock (pp, p.a.)"             SHK_D_RR_BAR_US
+"U.S. 10Y Yield Shock (pp, p.a.)"                    SHK_RSG40_US
+"U.S. 10Y Term Premium Shock (pp, p.a.)"             SHK_TPREM40_US
+
+!parameters
+"Auto-correlation of world real rate trend"          rho_RR_BAR_US
+"Steady state of world real rate trend"              ss_RR_BAR_US
+"Auto-correlation of world real long rate trend"     rho_D_RR_BAR_US
+"Auto-correlation of U.S. 10Y term premium"          rho_TPREM40_US
+"Steady state of of U.S. 10Y term premium"           ss_TPREM40_US
+
+!transition-equations
+RR_BAR_US   = rho_RR_BAR_US * RR_BAR_US[-1]
+            + (1-rho_RR_BAR_US) * (ss_RR_BAR_US + D_RR_BAR_US)
+            + SHK_RR_BAR_US;
+
+D_RR_BAR_US = rho_D_RR_BAR_US*D_RR_BAR_US[-1]
+            + SHK_D_RR_BAR_US;
+
+RSG40_US    = RS_40_US + TPREM40_US + SHK_RSG40_US;
+
+!if "US" not in ccclr !then
+  RS_40_US  = 1/40*RS_US + 39/40*RS_40_US[+1];
+!else
+  RS_40_US  = movavg(RS_US,+40);
+!end
+
+TPREM40_US  = rho_TPREM40_US*TPREM40_US[-1]
+            + (1-rho_TPREM40_US)*ss_TPREM40_US
+            + SHK_TPREM40_US;
+
+!measurement-variables
+"Obs. U.S. Gov Bond Yield (%, p.a.)"                 OBS_RSG40_US
+"Obs. U.S. Gov Bond Term Premium (pp, p.a.)"         OBS_TPREM40_US
+"Obs. U.S. RIR Trend Growth (pp, p.a.)"              OBS_D_RR_BAR_US
+
+!measurement-equations
+OBS_RSG40_US     = RSG40_US;
+OBS_TPREM40_US   = TPREM40_US;
+OBS_D_RR_BAR_US  = D_RR_BAR_US;
+
+%===== World Aggregation =====
+!transition-variables
+"World Demand Shock (%)"                             DEMAND_SHK_WO
+
+!for
+  ?var =  <wovars>
+!do
+  "World aggregate ?var"                              ?var_WO
+!end
+
+!transition-equations
+DEMAND_SHK_WO =
+  !for
+    ?cc = <ccall>
+  !do
+    + weight_GDP_?cc * ( - E2_?cc + FACT_SHK_?cc + SHKN_YY_?cc + SHK_L_GDP_GAP_?cc)
+  !end
+  ;
+
+ !for
+   ?var =  <wovars>
+ !do
+     ?var_WO =
+    !for
+       ?cc = <ccall>
+    !do
+       + weight_PPP_?cc * ?var_?cc
+    !end
+   ;
+ !end
+
+%===== Country models =====
+!for
+  ?cc = <ccall>
+!do
+
+  !transition-variables
+
+  "Real Output (100*log)"                            L_GDP_?cc
+  "Real Output (% QoQ @ar)"                          DLA_GDP_?cc
+  "Real Output (% YoY)"                              D4L_GDP_?cc
+  "Real Output Trend (100*log)"                      L_GDP_BAR_?cc
+  "Real Output Trend Growth (% QoQ @ar)"             DLA_GDP_BAR_?cc
+  "Real Output Trend Growth (% YoY)"                 D4L_GDP_BAR_?cc
+  "Real Underlying Trend Growth (% QoQ @ar)"         G_GDP_BAR_?cc
+  "Real Output Gap (%)"                              L_GDP_GAP_?cc
+  !if "?cc" in ccnat !then
+    "Natural Disaster GDP Shock (%)"                 L_GDP_NAT_?cc
+  !end
+  "Foreign Spillover Effect (%)"                     FACT_SHK_?cc
+  "Domestic Spillover Effect (%)"                    SHKN_YY_?cc
+  "Foreign Output Gap Spillover Effect (%)"          FACT_Y_?cc
+
+  "Unemployment Rate (%)"                            UNR_?cc
+  "Unemployment Rate Gap (pp)"                       UNR_GAP_?cc
+  "NAIRU (%)"                                        NAIRU_?cc
+  "Change in NAIRU (pp)"                             D_NAIRU_?cc
+
+  !if "?cc" in ccblt !then
+    "Bank Lending Tightening (index)"                BLT_?cc
+    "BLT Measurement Error (index)"                  ME_BLT_?cc
+    "Bank Lending Tightening Trend (index)"          BLT_BAR_?cc
+    "BLT Shock (index)"                              E_?cc
+  !end
+  "BLT Shock Effect (index)"                         E2_?cc
+
+  "Core CPI Index (100*log)"                         L_CPIXFE_?cc
+  "Core CPI Inflation (% QoQ @ar)"                   DLA_CPIXFE_?cc
+  "Core CPI Inflation (% YoY)"                       D4L_CPIXFE_?cc
+  "Headline CPI Index (100*log)"                     L_CPI_?cc
+  "Headline CPI Inflation (% QoQ @ar)"               DLA_CPI_?cc
+  "Headline CPI Inflation (% YoY)"                   D4L_CPI_?cc
+
+  !if "?cc" not in ccnocpix !then
+    "Headline/Core RP Trend Growth (% QoQ @ar)"      DLA_RP_BAR_?cc
+    "Headline/Core RP Trend Growth (% YoY @ar)"      D4L_RP_BAR_?cc
+    !if "?cc" not in ccdi !then
+      "Headline/Core RP (100*log)"                   L_RP_?cc
+      "Headline/Core RP Gap (%)"                     L_RP_GAP_?cc
+      "Headline/Core RP Trend (100*log)"             L_RP_BAR_?cc
+    !else
+      "Energy/Core RP Trend Growth (% QoQ @ar)"      DLA_RPE_BAR_?cc
+      "Food/Core RP Trend Growth (% QoQ @ar)"        DLA_RPF_BAR_?cc
+      "Energy Inflation (% QoQ @ar)"                 DLA_CPIE_?cc
+      "Food Inflation (% QoQ @ar)"                   DLA_CPIF_?cc
+      "Energy Inflation (% YoY)"                     D4L_CPIE_?cc
+      "Food Inflation (% YoY)"                       D4L_CPIF_?cc
+      "Energy CPI Index (100*log)"                   L_CPIE_?cc
+      "Food CPI Index (100*log)"                     L_CPIF_?cc
+    !end
+  !end
+
+  "Headline Inflation Target (%)"                    D4L_CPI_TAR_?cc
+  "Core Inflation Implied Target (%)"                D4L_CPIXFE_TAR_?cc
+  "Inflation Target Deviation (pp)"                  D4L_CPITAR_DEV_?cc
+  !if "?cc" in ccpgap !then
+    "Price Level Gap (%)"                            L_PGAP_?cc
+    "2Y Ahead Exp. Price Level Gap (%)"              E8_L_PGAP_?cc
+    "Measurement Error Price Level Gap (%)"          ME_L_PGAP_?cc
+  !end
+
+  "Nominal Interest Rate (% pa)"                     RS_?cc
+  "Unconstrained Nominal Interest Rate (% pa)"       RS_UNC_?cc
+  "Nominal Neutral Interest Rate (% pa)"             RS_NEUTRAL_?cc
+  "Real Interest Rate (% pa)"                        RR_?cc
+  "Real Interest Rate Trend (% pa)"                  RR_BAR_?cc
+  "Real Interest Rate Gap (pp)"                      RR_GAP_?cc
+  "Eff. Long Real Interest Rate Gap (pp)"            LRR_GAP_?cc
+  "Autocorrelated Policy Shock (pp, pa)"             SHKN_RS_?cc
+
+  "Country Risk Premium (% pa)"                      CTYPREM_?cc
+  !if "?cc" in ccfxrsmp !then
+    "Capital Restrictions Premium (% pa)"            PREM_CAPRES_?cc
+  !end
+
+  "Nominal Exchange Rate (LCY per 1 USD)"            S_?cc
+  "Nominal Exchange Rate (100*log)"                  L_S_?cc
+  "Nominal Exchange Rate (% QoQ @ar)"                DLA_S_?cc
+  "Real Exchange Rate to US (100*log)"               L_Z_?cc
+  "Real Exchange Rate (% QoQ @ar)"                   DLA_Z_?cc
+  "Real Exchange Rate Trend Level (100*log)"         L_Z_BAR_?cc
+  "Real Exchange Rate Trend Growth (% QoQ @ar)"      DLA_Z_BAR_?cc
+  "Real Exchange Rate Eq. Growth (% QoQ @ar)"        G_Z_BAR_?cc
+  "Real Exchange Rate Gap to US (%)"                 L_Z_GAP_?cc
+  "Real Effective Imp. Exchange Rate Gap (%)"        L_REER_M_GAP_?cc
+  "Real Effective Exp. Exchange Rate Gap (%)"        L_REER_X_GAP_?cc
+  "Real Effective Imp. Exch. Rate Level (100*log)"   L_REER_M_?cc
+  "Real Effective Exp. Exch. Rate Level (100*log)"   L_REER_X_?cc
+
+
+  "1Q Exp. Output Gap (%)"                           E1_L_GDP_GAP_?cc
+  !if "?cc" in ccblt !then
+    "4Q Exp. Output Gap (%)"                         E4_L_GDP_GAP_?cc
+  !end
+  "4Q Exp. Core Inflation (% YoY)"                   E4_D4L_CPIXFE_?cc
+  "3Q Exp. Headline Inflation (% YoY)"               E3_D4L_CPI_?cc
+  "3Q Exp. Core Inflation (% YoY)"                   E3_D4L_CPIXFE_?cc
+  "1Q Exp. Core CPI Inflation  (% QoQ @ar)"          E1_DLA_CPIXFE_?cc
+  "1Q Exp. Nominal FX Rate (100*log)"                E1_L_S_?cc
+  "1Q Exp. RER Trend Deprec. (% QoQ)"                E1_DLA_Z_BAR_?cc
+
+  !transition-shocks
+
+  "Real Output Gap Shock (pp)"                       SHK_L_GDP_GAP_?cc
+  "Spillover Shock (pp)"                             SHK_YY_?cc
+  !if "?cc" in ccblt !then
+    "Bank Lending Tightening Shock (index)"          SHK_BLT_?cc
+    "Bank Lending Tightening Trend Shock (index)"    SHK_BLT_BAR_?cc
+    "BLT Measurement Error Shock (index)"            SHK_ME_BLT_?cc
+  !end
+  "Core Inflation Shock (pp)"                        SHK_DLA_CPIXFE_?cc
+  "Anticipated Core Inflation Shock (pp)"            SHKA_DLA_CPIXFE_?cc
+  "Inflation Expectations Shock (pp)"                SHK_E4_D4L_CPIXFE_?cc                   
+  !if "?cc" not in ccnocpix !then
+    !if "?cc" not in ccdi !then
+      "Headline/Core RP Gap Shock (pp)"              SHK_L_RP_GAP_?cc
+    !else
+      "CPI Discrepancy Shock (pp)"                   SHK_DLA_CPI_?cc
+      "Energy Inflation Shock (pp)"                  SHK_DLA_CPIE_?cc
+      "Food Inflation Shock (pp)"                    SHK_DLA_CPIF_?cc
+    !end
+  !end
+  "Non-anticipated Policy Shock (pp)"                SHK_RS_?cc
+  "Anticipated Policy Shock (pp)"                    SHKA_RS_?cc
+  !if "?cc" != "US" !then
+    "Nominal Exchange Rate Shock (pp)"               SHK_L_S_?cc
+  !end
+  "Unemployment Rate Gap Shock (pp)"                 SHK_UNR_GAP_?cc
+  "NAIRU Trend Shock (pp)"                           SHK_NAIRU_?cc
+  "NAIRU Trend Growth Shock (pp)"                    SHK_D_NAIRU_?cc
+
+  !if "?cc" not in ccnocpix !then
+    "Headline/Core RP Trend Shock (pp)"              SHK_DLA_RP_BAR_?cc
+  !end
+  "Real Underlying Growth Shock (pp, @ar)"           SHK_G_GDP_BAR_?cc
+  "Potentional Level Shock (%)"                      SHK_L_GDP_BAR_?cc
+  !if "?cc" in ccnat !then
+    "Natural Disaster Shock (%)"                     SHK_L_GDP_NAT_?cc
+  !end
+  "Headline Inflation Target Shock (pp)"             SHK_D4L_CPI_TAR_?cc
+  !if "?cc" != "US" !then
+    "Real Exchange Rate Trend Level Shock (pp)"      SHK_L_Z_BAR_?cc
+    "Real Exchange Rate Eq. Growth Shock (pp)"       SHK_G_Z_BAR_?cc
+    "Country Risk Premium Shock (pp, pa)"            SHK_CTYPREM_?cc
+  !end
+
+  !parameters
+  %----- IS Curve -----
+  "Forward lookiness in IS curve in ?cc"             b1_?cc
+  "Backward lookiness in IS curve in ?cc"            b2_?cc
+  "Real rate gap in IS curve in ?cc"                 b3_?cc
+  "Real FX gap in IS curve in ?cc"                   b4_?cc
+  "Foreign effective output gap in IS curve in ?cc"  b5_?cc
+  !if "?cc" in cccom !then
+    "Impact of oil price on gap in ?cc"              b6_?cc
+  !end
+  !if "?cc" in cctot !then
+    "Impact of ToT gap in ?cc"              	       b6_?cc
+  !end
+  !if "?cc" in cctprem !then
+    "Effect of term premia in IS curve in ?cc"       b7_?cc
+  !end
+  
+  "Average real rate maturity in IS curve in ?cc"    h_LRR_GAP_?cc
+  "Weight of 1Q real rate in IS curve in ?cc"        lrrw01_?cc
+  "Weight of 1Y real rate in IS curve in ?cc"        lrrw04_?cc
+  "Weight of 3Y real rate in IS curve in ?cc"        lrrw12_?cc
+  "Weight of 5Y real rate in IS curve in ?cc"        lrrw20_?cc
+
+  !for
+    ?cm = <ccall>
+  !do
+    !if "?cc" != "?cm" !then
+      "Export link from ?cc to ?cm"                  xlink_?cc_?cm
+      "Import link from ?cm to ?cc"                  mlink_?cc_?cm
+    !end
+  !end
+  "Export elasticity in ?cc"                         xelast_?cc
+  "Import elasticity in ?cc"                         melast_?cc
+  "Auto-correlation of spillover shock in ?cc"       zetayy_?cc
+
+
+
+  %----- Okuns Law -----
+  "Auto-correlation in unemployment gap in ?cc"      c1_UNR_GAP_?cc
+  "Output gap in unemployment gap in ?cc"            c2_UNR_GAP_?cc
+  "Auto-correlation of change of NAIRU in ?cc"       c1_D_NAIRU_?cc
+  "Auto-correlation of NAIRU in ?cc"                 c1_NAIRU_?cc
+  "Steady state of NAIRU in ?cc"                     ss_NAIRU_?cc
+
+  %----- BLT equations ------
+  !if "?cc" in ccblt !then
+    "Gap in BLT gap in ?cc"                          k_BLT_?cc
+    "Auto-correlation of BLT trend in ?cc"           rho_BLT_BAR_?cc
+  !end
+  "BLT gap innovation front loading in ?cc"          t_BLT_?cc
+
+  %----- Phillips Curve -----
+  "Forward lookiness in Phillips curve in ?cc"        a1_?cc
+  "Change of RER gap in Phillips curve in ?cc"        a2_?cc
+  "Level of RER in Phillips curve in ?cc"             a3_?cc
+  "Oil gap in Phillips curve in ?cc"                  a4_?cc
+  "Food gap in Phillips curve in ?cc"                 a5_?cc
+  "Output gap in Phillips curve in ?cc"               a6_?cc
+
+  %----- Relative Prices or Inflation Decomposition -----
+  !if "?cc" not in ccnocpix !then
+    !if "?cc" not in ccdi !then
+      "Auto-correlation of RP gap in ?cc"            c1_L_RP_GAP_?cc
+      "Oil gap in RP gap in ?cc"                     c2_L_RP_GAP_?cc
+      "Food gap in RP gap in ?cc"                    c3_L_RP_GAP_?cc
+    !else
+      "Weight of energy in headline CPI in ?cc"      wenergy_?cc
+      "Weight of food in headline CPI in ?cc"        wfood_?cc
+      "Steady state of energy/food trend in ?cc"     ss_DLA_RPEF_BAR_?cc
+      "Auto-correlation of energy inflation in ?cc"  c1e_?cc
+      "Oil gap in energy inflation in ?cc"           c2e_?cc
+      "Auto-correlation of food inflation in ?cc"    c1f_?cc
+      "Food gap in food inflation in ?cc"            c2f_?cc
+    !end
+  !end
+
+  %----- UIP -----
+  !if "?cc" != "US" !then
+    "Forward lookiness of UIP in ?cc"                c1_L_S_?cc
+  !end
+
+  %----- IFB reaction function -----
+  "Interest rate smoothing in ?cc"                   g1_?cc
+  "Rate reaction on inflation deviation in ?cc"      g2_?cc
+  "Rate reaction on output gap in ?cc"               g3_?cc
+  "Interest rate floor in ?cc"                       rs_floor_?cc
+  "Steady state of nominal interest rate in ?cc"     ss_RS_BAR_?cc
+  "Weight of headline CPI in deviation in ?cc"       g5_?cc
+  "Weight of headline CPI in neutral in ?cc"         g6_?cc
+  "Auto-correlation of MP shock in ?cc"              zetars_?cc
+  !if "?cc" in ccpgap !then
+    "Reaction on price level gap in ?cc"             g4_?cc
+  !end
+
+  %----- Nominal exchange rate policy -----
+  !if "?cc" in ccfxrsmp !then
+    "Reaction RER gap in FS rule in ?cc"             c1_L_S_POL_?cc
+  !end
+
+  %----- Natural Disasters -----
+  !if "?cc" in ccnat !then
+    "Auto-correlation of nat. disaster shock in ?cc" rho_L_GDP_NAT_?cc
+  !end
+
+  %----- Trends -----
+  "Auto-correlation of inflation objectives in ?cc"  rho_D4L_CPI_TAR_?cc
+  "Steady state of inflation objectives in ?cc"      ss_D4L_CPI_TAR_?cc
+  "Auto-correlation of GDP trend growth in ?cc"      rho_G_GDP_BAR_?cc
+  "Steady state of GDP trend growth in ?cc"          ss_G_GDP_BAR_?cc
+  "Auto-correlation of RP trend growth in ?cc"       rho_DLA_RP_BAR_?cc
+  "Steady state of RP trend growth in ?cc"           ss_DLA_RP_BAR_?cc
+  !if "?cc" != "US" !then
+    "Auto-correlation of RER trend depr. in ?cc"     rho_G_Z_BAR_?cc
+    "Steady state of RER trend depr. in ?cc"         ss_G_Z_BAR_?cc
+    "Auto-correlation of country premium in ?cc"     rho_CTYPREM_?cc
+    "Steady state of country premium in ?cc"         ss_CTYPREM_?cc
+  !end
+  !if "?cc" in cccom !then
+    "Oil impact on potential output in ?cc"          iota_pot_oil_?cc
+    "Oil impact on RER trend in ?cc"                 iota_zbar_oil_?cc
+  !end
+
+  %------ PPP weights -----
+  "Weight of ?cc in all countries based on PPP GDP"  weight_PPP_?cc
+
+  %------ GDP weights -----
+  "Weight of ?cc in all countries"                   weight_GDP_?cc
+
+  % weight_GDP_?cc is a "!links" in gpm.mod -- a parameter whose value IRIS
+  % refreshes from mlink_/xlink_ inside every solve. It is declared as a
+  % plain parameter here and computed once in gpm_setparam.py's
+  % refresh_links(), which is where the other two !links already live. That
+  % is equivalent in this codebase: mlink_/xlink_ are built by
+  % create_tradelink_calibration() in the same setparam pass and nothing
+  % reassigns them afterwards, so there is never a stale value to refresh.
+  %
+  % It WAS a "!substitutions" entry for a while, which works for the solver
+  % -- it is only ever a multiplier, so inlining its 1/(...) definition puts
+  % no division into any residual -- but a substitution STOPS BEING A MODEL
+  % QUANTITY. That silently dropped all 11 weight_GDP_ columns from the
+  % client forecast CSVs, which carry every model parameter. Do not convert
+  % a quantity that a deliverable names.
+  %
+  % The sibling h_LRR_GAP_?cc is the opposite case and must stay a
+  % parameter for a solver reason: it appears as 1/h_LRR_GAP_?cc inside the
+  % LRR_GAP equation, and inlining it stalls the steady solve at a residual
+  % of ~4e-3 where the parameter form solves exactly in 13s.
+
+  !transition-equations
+
+  %===== IS Curve =====
+  L_GDP_GAP_?cc = b1_?cc*L_GDP_GAP_?cc[+1]
+                + b2_?cc*L_GDP_GAP_?cc[-1]
+                - b3_?cc*LRR_GAP_?cc[-1]
+                + b4_?cc*L_REER_X_GAP_?cc[-1]
+                + b5_?cc*FACT_Y_?cc
+                !if "?cc" in cccom !then
+                  + b6_?cc*(L_QOIL_GAP_US + L_Z_GAP_?cc)
+                !end
+                !if "?cc" in cctot !then
+                  + b6_?cc*L_TOT_GAP_?cc[-1]
+                !end
+		!if "?cc" in cctprem !then
+                -  b7_?cc*SHKN_TPREM40_?cc 
+                !end 
+                - E2_?cc
+                + FACT_SHK_?cc
+                + SHKN_YY_?cc
+                + SHK_L_GDP_GAP_?cc;
+
+  !if "?cc" not in ccclr !then
+    LRR_GAP_?cc = 1/h_LRR_GAP_?cc*RR_GAP_?cc
+      + (1-1/h_LRR_GAP_?cc)*LRR_GAP_?cc[+1];
+  !else
+    LRR_GAP_?cc = lrrw01_?cc *        RR_GAP_?cc
+                + lrrw04_?cc * movavg(RR_GAP_?cc, +4)
+                + lrrw12_?cc * movavg(RR_GAP_?cc,+12)
+                + lrrw20_?cc * movavg(RR_GAP_?cc,+20)
+                ;
+  !end
+
+  SHKN_YY_?cc  = zetayy_?cc * SHKN_YY_?cc[-1] + SHK_YY_?cc  !! SHKN_YY_?cc = 0;
+
+  !if "?cc" in cctprem !then
+    SHKN_TPREM40_?cc = 0.75*SHKN_TPREM40_?cc[-1] + SHK_TPREM40_?cc; 
+  !end
+
+  FACT_SHK_?cc = xelast_?cc * (
+  !for
+    ?cm = <ccall>
+  !do
+    !if "?cc" != "?cm" !then
+               + xlink_?cc_?cm * melast_?cm * SHKN_YY_?cm
+      !if "?cm" in cctprem !then
+               - xlink_?cc_?cm * melast_?cm * (b7_?cm*SHKN_TPREM40_?cm)
+      !end         
+    !end
+  !end
+                              )
+  ;
+
+  FACT_Y_?cc = xelast_?cc * (
+  !for
+    ?cm = <ccall>
+  !do
+    !if "?cc" != "?cm" !then
+               + xlink_?cc_?cm * melast_?cm * L_GDP_GAP_?cm[-1]
+    !end
+  !end
+                              )
+  ;
+
+  %===== Okuns Law =====
+  UNR_GAP_?cc   = c1_UNR_GAP_?cc*UNR_GAP_?cc[-1] - c2_UNR_GAP_?cc*L_GDP_GAP_?cc + SHK_UNR_GAP_?cc;
+  UNR_?cc       = NAIRU_?cc + UNR_GAP_?cc;
+  NAIRU_?cc     = c1_NAIRU_?cc * NAIRU_?cc[-1]
+                + D_NAIRU_?cc
+                + (1-c1_NAIRU_?cc) * ss_NAIRU_?cc
+                + SHK_NAIRU_?cc;
+  D_NAIRU_?cc   = c1_D_NAIRU_?cc*D_NAIRU_?cc[-1] + SHK_D_NAIRU_?cc;
+
+  %===== BLT Equations =====
+  !if "?cc" in ccblt !then
+    BLT_?cc     = BLT_BAR_?cc - k_BLT_?cc * E4_L_GDP_GAP_?cc - SHK_BLT_?cc - ME_BLT_?cc;
+    E4_L_GDP_GAP_?cc = L_GDP_GAP_?cc[+4];
+    ME_BLT_?cc  = SHK_ME_BLT_?cc;
+    BLT_BAR_?cc = rho_BLT_BAR_?cc * BLT_BAR_?cc[-1] + SHK_BLT_BAR_?cc;
+    E_?cc       = - SHK_BLT_?cc;
+    E2_?cc      = t_BLT_?cc * (  0.04*(E_?cc[-1] + E_?cc[-9])
+                               + 0.08*(E_?cc[-2] + E_?cc[-8])
+                               + 0.12*(E_?cc[-3] + E_?cc[-7])
+                               + 0.16*(E_?cc[-4] + E_?cc[-6])
+                               + 0.20*(E_?cc[-5] + E_?cc[-5])/2
+                              );
+  !else
+    E2_?cc = t_BLT_?cc * xelast_?cc * (
+    !for
+      ?cm = <ccblt>
+    !do
+               + xlink_?cc_?cm * melast_?cm * E2_?cm
+    !end
+                                       )
+    ;
+  !end
+  
+
+
+  %===== Phillips Curve =====
+  DLA_CPIXFE_?cc  = a1_?cc*E4_D4L_CPIXFE_?cc + (1-a1_?cc)*D4L_CPIXFE_?cc[-1]
+                  + a2_?cc*(L_REER_M_GAP_?cc - L_REER_M_GAP_?cc[-4])/4
+                  + a3_?cc*L_REER_M_GAP_?cc
+                  + a4_?cc*(L_QOIL_GAP_US + L_Z_GAP_?cc)
+                  + a5_?cc*(L_QFOOD_GAP_US + L_Z_GAP_?cc)
+                  + (1-nlpcswitch)*a6_?cc*L_GDP_GAP_?cc[-1]
+                  + (nlpcswitch)*a6_?cc*((erf(L_GDP_GAP_?cc[-1]+2)+1)/2*(L_GDP_GAP_?cc[-1]+2+0.25*L_GDP_GAP_?cc[-1]^2)-(erf(2)+1))
+                  + SHK_DLA_CPIXFE_?cc + SHKA_DLA_CPIXFE_?cc;
+
+
+                  E4_D4L_CPIXFE_?cc = D4L_CPIXFE_?cc[4]
+                                      + nlexpswitch*(erf(10*(RS_?cc-RS_UNC_?cc))+1)*(erf(2*(-1-L_GDP_GAP_?cc[-1]))+1)/4
+                  %                    + nlexpswitch*(erf(20*(RS_?cc-RS_UNC_?cc - 0.05))+1)/2   
+                                      * (D4L_CPIXFE_TAR_?cc - D4L_CPIXFE_?cc[4]) + SHK_E4_D4L_CPIXFE_?cc;
+
+
+  !if "?cc" not in ccnocpix !then
+    %===== Relative Prices =====
+    DLA_RP_BAR_?cc     = rho_DLA_RP_BAR_?cc*DLA_RP_BAR_?cc[-1]
+                       + (1-rho_DLA_RP_BAR_?cc) * ss_DLA_RP_BAR_?cc
+                       + SHK_DLA_RP_BAR_?cc;
+    D4L_CPIXFE_TAR_?cc = D4L_CPI_TAR_?cc - D4L_RP_BAR_?cc;
+
+    !if "?cc" not in ccdi !then
+      %===== Shortcut model of relative prices =====
+      L_RP_?cc         = L_CPI_?cc - L_CPIXFE_?cc;
+      L_RP_?cc         = L_RP_BAR_?cc + L_RP_GAP_?cc;
+      L_RP_GAP_?cc     = c1_L_RP_GAP_?cc*L_RP_GAP_?cc[-1]
+                       + c2_L_RP_GAP_?cc*(L_QOIL_GAP_US + L_Z_GAP_?cc)
+                       + c3_L_RP_GAP_?cc*(L_QFOOD_GAP_US + L_Z_GAP_?cc)
+                       + SHK_L_RP_GAP_?cc;
+      DLA_RP_BAR_?cc   = 4*diff(L_RP_BAR_?cc);
+    !else
+      %===== Full decomposition of headline inflation =====
+      DLA_CPI_?cc      = (1-wenergy_?cc-wfood_?cc) * DLA_CPIXFE_?cc
+                       + wenergy_?cc * DLA_CPIE_?cc
+                       + wfood_?cc * DLA_CPIF_?cc
+                       + SHK_DLA_CPI_?cc;
+      DLA_RPE_BAR_?cc  = (DLA_RP_BAR_?cc + wfood_?cc * ss_DLA_RPEF_BAR_?cc)/(wenergy_?cc + wfood_?cc);
+      DLA_RPF_BAR_?cc  = (DLA_RP_BAR_?cc - wenergy_?cc * ss_DLA_RPEF_BAR_?cc)/(wenergy_?cc + wfood_?cc);
+      DLA_CPIE_?cc     = c1e_?cc * DLA_CPIE_?cc[-1]
+                       + (1-c1e_?cc) * (DLA_CPIXFE_?cc + DLA_RPE_BAR_?cc)
+                       + c2e_?cc/wenergy_?cc *4*(L_QOIL_GAP_US+L_Z_GAP_?cc - (L_QOIL_GAP_US[-1]+L_Z_GAP_?cc[-1]))
+                       + SHK_DLA_CPIE_?cc;
+      DLA_CPIF_?cc     = c1f_?cc * DLA_CPIF_?cc[-1]
+                       + (1-c1f_?cc) * (DLA_CPIXFE_?cc + DLA_RPF_BAR_?cc)
+                       + c2f_?cc/wfood_?cc *4*(L_QFOOD_GAP_US+L_Z_GAP_?cc - (L_QFOOD_GAP_US[-1]+L_Z_GAP_?cc[-1]))
+                       + SHK_DLA_CPIF_?cc;
+    !end
+  !else
+    %===== No relative price =====
+    DLA_CPIXFE_?cc     = DLA_CPI_?cc - ss_DLA_RP_BAR_?cc;
+    D4L_CPIXFE_TAR_?cc = D4L_CPI_TAR_?cc - ss_DLA_RP_BAR_?cc;
+  !end
+
+  %===== UIP =====
+  !if "?cc" == "US" !then
+    L_S_?cc  = 0;
+  !else
+    L_S_?cc  = c1_L_S_?cc*L_S_?cc[+1]
+             + (1-c1_L_S_?cc)*(L_S_?cc[-1] + 2*(DLA_Z_BAR_?cc - D4L_CPIXFE_TAR_US + D4L_CPIXFE_TAR_?cc)/4)
+             - (RS_?cc - RS_US - CTYPREM_?cc)/4
+    !if "?cc" in cctprem !then
+             + c2_L_S_?cc *SHKN_TPREM40_?cc      
+    !end         
+    !if "?cc" not in ccfxrsmp !then
+             + SHK_L_S_?cc
+    !else
+             + PREM_CAPRES_?cc/4
+    !end
+             ;
+  !end
+
+  %===== Trend UIP =====
+  !if "?cc" != "US" !then
+    RR_BAR_?cc   = RR_BAR_US + DLA_Z_BAR_?cc[+1] + CTYPREM_?cc;
+  !end
+
+  %===== IFB reaction function =====
+  RS_UNC_?cc         = g1_?cc*RS_?cc[-1]
+                     + (1-g1_?cc)*(RS_NEUTRAL_?cc + g2_?cc*D4L_CPITAR_DEV_?cc
+                     + g3_?cc*L_GDP_GAP_?cc
+  !if "?cc" in ccpgap !then
+                                   + g4_?cc*L_PGAP_?cc[+8]
+  !end
+                                  )
+                     + SHKN_RS_?cc;
+
+  RS_?cc             = nlfloorswitch* (ss_RS_BAR_?cc + smax0_(RS_UNC_?cc-rs_floor_?cc, 0.01)
+                                      - smax0_(ss_RS_BAR_?cc-rs_floor_?cc, 0.01))
+                     + (1-nlfloorswitch) * RS_UNC_?cc;
+
+  RS_NEUTRAL_?cc     = RR_BAR_?cc
+  !if "?cc" not in ccnocpix !then
+                     + g6_?cc * (D4L_CPI_?cc[+3] - D4L_RP_BAR_?cc[+3])
+  !else
+                     + g6_?cc * (D4L_CPI_?cc[+3] - ss_DLA_RP_BAR_?cc)
+  !end
+                     + (1-g6_?cc) * D4L_CPIXFE_?cc[+3];
+
+  D4L_CPITAR_DEV_?cc = g5_?cc*(D4L_CPI_?cc[+3] - D4L_CPI_TAR_?cc) + (1-g5_?cc)*(D4L_CPIXFE_?cc[+3] - D4L_CPIXFE_TAR_?cc);
+
+  SHKN_RS_?cc        = zetars_?cc*SHKN_RS_?cc[-1] + SHK_RS_?cc + SHKA_RS_?cc  !! SHKN_RS_?cc = 0;
+
+  !if "?cc" in ccpgap !then
+    L_PGAP_?cc       = (DLA_CPI_?cc - D4L_CPI_TAR_?cc)/4 + L_PGAP_?cc[-1];
+    ME_L_PGAP_?cc    = L_PGAP_?cc;
+  !end
+
+  %===== Nominal exchange rate policy ======
+  !if "?cc" in ccfxrsmp !then
+    L_S_?cc = L_S_?cc[-1]
+            - c1_L_S_POL_?cc*L_Z_GAP_?cc
+            + (DLA_Z_BAR_?cc - D4L_CPIXFE_TAR_US + D4L_CPIXFE_TAR_?cc)/4
+            + SHK_L_S_?cc;
+  !end
+
+  %===== Fisher Eq. ======
+  RR_?cc = RS_?cc - DLA_CPIXFE_?cc[+1];
+
+
+  %===== Trends =====
+  D4L_CPI_TAR_?cc = rho_D4L_CPI_TAR_?cc*D4L_CPI_TAR_?cc[-1]
+                  + (1-rho_D4L_CPI_TAR_?cc) * ss_D4L_CPI_TAR_?cc
+                  + SHK_D4L_CPI_TAR_?cc;
+
+  G_GDP_BAR_?cc   = rho_G_GDP_BAR_?cc * G_GDP_BAR_?cc[-1]
+                  + (1-rho_G_GDP_BAR_?cc) * ss_G_GDP_BAR_?cc
+                  + SHK_G_GDP_BAR_?cc;
+
+  L_GDP_BAR_?cc   = L_GDP_BAR_?cc[-1] + G_GDP_BAR_?cc/4 + SHK_L_GDP_BAR_?cc
+  !if "?cc" in ccnat !then
+                  + L_GDP_NAT_?cc - L_GDP_NAT_?cc[-1]
+  !end
+  !if "?cc" in cccom !then
+                  + iota_pot_oil_?cc * (DLA_QOIL_BAR_US - ss_G_QOIL_BAR_US)/4
+  !end
+  ;
+
+  !if "?cc" in ccnat !then
+    L_GDP_NAT_?cc = rho_L_GDP_NAT_?cc * L_GDP_NAT_?cc[-1] + SHK_L_GDP_NAT_?cc;
+  !end
+
+  !if "?cc" == "US" !then
+    G_Z_BAR_?cc    = 0;
+    CTYPREM_?cc    = 0;
+    L_Z_BAR_?cc    = 0;
+  !else
+    G_Z_BAR_?cc    = rho_G_Z_BAR_?cc*G_Z_BAR_?cc[-1]
+                   + (1-rho_G_Z_BAR_?cc) * ss_G_Z_BAR_?cc
+                   + SHK_G_Z_BAR_?cc;
+
+    CTYPREM_?cc    = rho_CTYPREM_?cc * CTYPREM_?cc[-1]
+                   + (1-rho_CTYPREM_?cc) * ss_CTYPREM_?cc   
+                   + SHK_CTYPREM_?cc;
+
+    L_Z_BAR_?cc    = L_Z_BAR_?cc[-1] + G_Z_BAR_?cc/4 + SHK_L_Z_BAR_?cc
+    !if "?cc" in cccom !then
+                   - iota_zbar_oil_?cc * (DLA_QOIL_BAR_US - ss_G_QOIL_BAR_US)/4
+    !end
+    !if "?cc" in cctot !then
+                   - iota_zbar_tot_?cc * (DLA_TOT_BAR_?cc - ss_G_TOT_BAR_?cc)/4
+    !end
+    !if "?cc" in cctprem !then
+                    + iota_zbar_tprem_?cc * SHK_TPREM40_?cc
+    !end    
+                   ;
+  !end
+
+  %===== Connecting the countries =====
+  L_REER_M_GAP_?cc = L_Z_GAP_?cc - (
+  !for
+    ?cm = <ccall>
+  !do
+    !if "?cc" != "?cm" !then
+                     + mlink_?cc_?cm * L_Z_GAP_?cm
+    !end
+  !end
+                   ) / (
+  !for
+    ?cm = <ccall>
+  !do
+    !if "?cc" != "?cm" !then
+                     + mlink_?cc_?cm
+    !end
+  !end
+                   )
+  ;
+
+  L_REER_X_GAP_?cc = L_Z_GAP_?cc - (
+  !for
+    ?cm = <ccall>
+  !do
+    !if "?cc" != "?cm" !then
+                     + xlink_?cc_?cm * L_Z_GAP_?cm
+    !end
+  !end
+                   ) / (
+  !for
+    ?cm = <ccall>
+  !do
+    !if "?cc" != "?cm" !then
+                     + xlink_?cc_?cm
+    !end
+  !end
+                   )
+  ;
+
+  L_REER_M_?cc = L_Z_?cc - (
+  !for
+    ?cm = <ccall>
+  !do
+    !if "?cc" != "?cm" !then
+                     + mlink_?cc_?cm * L_Z_?cm
+    !end
+  !end
+                   ) / (
+  !for
+    ?cm = <ccall>
+  !do
+    !if "?cc" != "?cm" !then
+                     + mlink_?cc_?cm
+    !end
+  !end
+                   )
+  ;
+
+  L_REER_X_?cc = L_Z_?cc - (
+  !for
+    ?cm = <ccall>
+  !do
+    !if "?cc" != "?cm" !then
+                     + xlink_?cc_?cm * L_Z_?cm
+    !end
+  !end
+                   ) / (
+  !for
+    ?cm = <ccall>
+  !do
+    !if "?cc" != "?cm" !then
+                     + xlink_?cc_?cm
+    !end
+  !end
+                   )
+  ;
+
+
+  %===== Definitions =====
+  L_Z_?cc          = L_S_?cc + L_CPIXFE_US - L_CPIXFE_?cc;
+  L_Z_?cc          = L_Z_GAP_?cc + L_Z_BAR_?cc;
+  L_GDP_?cc        = L_GDP_BAR_?cc + L_GDP_GAP_?cc;
+  RR_?cc           = RR_BAR_?cc + RR_GAP_?cc;
+
+  %===== Identities =====
+  DLA_S_?cc        = 4*diff(L_S_?cc);
+  DLA_Z_?cc        = 4*diff(L_Z_?cc);
+  DLA_CPI_?cc      = 4*diff(L_CPI_?cc);
+  DLA_CPIXFE_?cc   = 4*diff(L_CPIXFE_?cc);
+  DLA_GDP_?cc      = 4*diff(L_GDP_?cc);
+  DLA_GDP_BAR_?cc  = 4*diff(L_GDP_BAR_?cc);
+  DLA_Z_BAR_?cc    = 4*diff(L_Z_BAR_?cc);
+  !if "?cc" in ccdi !then
+    DLA_CPIE_?cc   = 4*diff(L_CPIE_?cc);
+    DLA_CPIF_?cc   = 4*diff(L_CPIF_?cc);
+  !end
+
+  D4L_GDP_?cc      = diff(L_GDP_?cc,-4);
+  D4L_GDP_BAR_?cc  = diff(L_GDP_BAR_?cc,-4);
+  D4L_CPI_?cc      = diff(L_CPI_?cc,-4);
+  D4L_CPIXFE_?cc   = diff(L_CPIXFE_?cc,-4);
+  !if "?cc" not in ccnocpix !then
+    D4L_RP_BAR_?cc = movavg(DLA_RP_BAR_?cc,-4);
+  !end
+  !if "?cc" in ccdi !then
+    D4L_CPIE_?cc   = diff(L_CPIE_?cc,-4);
+    D4L_CPIF_?cc   = diff(L_CPIF_?cc,-4);
+  !end
+
+  % S_?cc            = exp(L_S_?cc/100);
+  L_S_?cc          = 100*log(S_?cc);
+  %===== Expectations =====
+  E1_L_GDP_GAP_?cc  = L_GDP_GAP_?cc[1];
+  E3_D4L_CPI_?cc    = D4L_CPI_?cc[+3];
+  E3_D4L_CPIXFE_?cc = D4L_CPIXFE_?cc[+3];
+  E1_DLA_CPIXFE_?cc = DLA_CPIXFE_?cc[+1];
+  E1_L_S_?cc        = L_S_?cc[+1];
+  E1_DLA_Z_BAR_?cc  = DLA_Z_BAR_?cc[+1];
+  !if "?cc" in ccpgap !then
+    E8_L_PGAP_?cc   = L_PGAP_?cc[+8];
+  !end
+
+  !log-variables
+
+  S_?cc
+  !if "?cc" != "US" !then
+    OBS_S_?cc
+  !end
+
+  % !links ss_RS_BAR_?cc  -- computed in gpm_setparam.py
+
+
+  !measurement-variables
+
+  "Real Output (100*log)"                   OBS_L_GDP_?cc
+  "Headline CPI Index (100*log)"            OBS_L_CPI_?cc
+  "Core CPI Index (100*log)"                OBS_L_CPIXFE_?cc
+  !if "?cc" in ccdi !then
+    "Energy CPI Index (100*log)"            OBS_L_CPIE_?cc
+    "Food CPI Index (100*log)"              OBS_L_CPIF_?cc
+  !end
+  "Nominal Interest Rate (% pa)"            OBS_RS_?cc
+  "Unemployment Rate (%)"                   OBS_UNR_?cc
+  !if "?cc" != "US" !then
+    "Nominal Exchange Rate (LCY per 1 USD)" OBS_S_?cc
+  !end
+  "Headline Inflation Target (%, YoY)"      OBS_D4L_CPI_TAR_?cc
+  !if "?cc" in ccblt !then
+    "Bank Lending Tightening (index)"       OBS_BLT_?cc
+    "Bank Lending Tightening Trend (index)" OBS_BLT_BAR_?cc
+  !end
+
+  %-- tunes --
+  "Output Gap (%)"                          OBS_L_GDP_GAP_?cc
+  !if "?cc" not in ccdi !then
+    !if "?cc" not in ccnocpix !then
+      "Relative Price Gap (%)"              OBS_L_RP_GAP_?cc
+    !end
+  !end
+  "RER Gap (%)"                             OBS_L_Z_GAP_?cc
+  "RER trend growth rate (%)"               OBS_DLA_Z_BAR_?cc
+  "Eq. RER trend growth rate (%)"           OBS_G_Z_BAR_?cc
+  "NAIRU (%)"                               OBS_NAIRU_?cc
+  "Country risk premium (% pa)"             OBS_CTYPREM_?cc
+  "Real Output Trend Growth (% QoQ @ar)"    OBS_DLA_GDP_BAR_?cc
+  "Potential Growth (% QoQ)"                OBS_G_GDP_BAR_?cc
+  "Change in NAIRU (pp)"                    OBS_D_NAIRU_?cc
+  "Real Interest Rate Trend (% pa)"         OBS_RR_BAR_?cc
+  "Headline/Core RP Trend Growth (% QoQ @ar)" OBS_DLA_RP_BAR_?cc
+  !if "?cc" in ccblt !then
+  "BLT Measurement Error (index)"           OBS_ME_BLT_?cc
+  !end
+  !if "?cc" in ccpgap !then
+  "Measurement Error Price Level Gap (%)"   OBS_ME_L_PGAP_?cc;
+  !end
+
+  !measurement-equations
+
+  OBS_L_GDP_?cc        = L_GDP_?cc;
+  OBS_L_CPI_?cc        = L_CPI_?cc;
+  OBS_L_CPIXFE_?cc     = L_CPIXFE_?cc;
+  !if "?cc" in ccdi !then
+    OBS_L_CPIE_?cc     = L_CPIE_?cc;
+    OBS_L_CPIF_?cc     = L_CPIF_?cc;
+  !end
+  OBS_RS_?cc           = RS_?cc;
+  OBS_UNR_?cc          = UNR_?cc;
+  !if "?cc" != "US" !then
+    OBS_S_?cc          = S_?cc;
+  !end
+  OBS_D4L_CPI_TAR_?cc  = D4L_CPI_TAR_?cc;
+  !if "?cc" in ccblt !then
+    OBS_BLT_?cc        = BLT_?cc;
+    OBS_BLT_BAR_?cc    = BLT_BAR_?cc;
+  !end
+
+  %-- tunes --
+  OBS_L_GDP_GAP_?cc    = L_GDP_GAP_?cc;
+  OBS_L_Z_GAP_?cc      = L_Z_GAP_?cc;
+  OBS_DLA_Z_BAR_?cc    = DLA_Z_BAR_?cc;
+  OBS_NAIRU_?cc        = NAIRU_?cc;
+  !if "?cc" not in ccdi !then
+    !if "?cc" not in ccnocpix !then
+    OBS_L_RP_GAP_?cc     = L_RP_GAP_?cc;
+    !end
+  !end
+  OBS_CTYPREM_?cc      = CTYPREM_?cc;
+  OBS_DLA_GDP_BAR_?cc  = DLA_GDP_BAR_?cc;
+  OBS_G_GDP_BAR_?cc    = G_GDP_BAR_?cc;
+  OBS_G_Z_BAR_?cc      = G_Z_BAR_?cc;
+  OBS_D_NAIRU_?cc      = D_NAIRU_?cc;
+  OBS_RR_BAR_?cc       = RR_BAR_?cc;
+  OBS_DLA_RP_BAR_?cc   = DLA_RP_BAR_?cc;
+  !if "?cc" in ccblt !then
+  OBS_ME_BLT_?cc       = ME_BLT_?cc;
+  !end
+  !if "?cc" in ccpgap !then
+  OBS_ME_L_PGAP_?cc   = ME_L_PGAP_?cc;
+  !end
+
+!end
