@@ -22,7 +22,9 @@ from .. import equations as _equations
 from .. import quantities as _quantities
 from ..quantities import QuantityKind
 from ..incidences import main as _incidence
-from ..fords.solutions import ElementStability, Solution
+from ..fords.solutions import (
+    ElementStability, SystemStabilityVerdict, Stability, Solution,
+)
 from ..fords import descriptors as _descriptors
 
 from . import _flags
@@ -70,11 +72,11 @@ class Inlay(
     def get_system_stability(
         self,
         unpack_singleton: bool = True,
-    ) -> bool:
+    ) -> SystemStabilityVerdict | list[SystemStabilityVerdict]:
         r"""
-        Get the system stability of the model
+        Get the Blanchard-Kahn verdict for each variant of the model
         """
-        system_stability = [ v.solution.system_stability for v in self._variants ]
+        system_stability = [ v.stability.system_stability for v in self._variants ]
         return self.unpack_singleton(system_stability, unpack_singleton=unpack_singleton, )
 
     @_dm.reference(category="information", )
@@ -497,20 +499,39 @@ class Inlay(
         if kind is None:
             kind = ElementStability.ALL
         return [
-            tuple(transform(e) for e, s in zip(v.solution.eigenvalues, v.solution.eigenvalues_stability, ) if s in kind)
+            tuple(
+                transform(e)
+                for e, s in zip(v.stability.eigenvalues, v.stability.eigenvalue_stability, )
+                if s in kind
+            )
             for v in self._variants
         ]
 
+    @_dm.reference(category="information", )
     @unpack_singleton_decorator
-    def get_eigenvalues_stability(
+    def get_eigenvalue_stability(
         self,
         kind: ElementStability = ElementStability.ALL,
         unpack_singleton: bool = True,
-    ):
+    ) -> tuple[ElementStability, ...] | list[tuple[ElementStability, ...]]:
+        r"""
+        ==Classify each eigenvalue as stable, unit root, or unstable==
+        """
         return [
-            tuple(i for i in v.solution.eigenvalues_stability if i in kind)
+            tuple(i for i in v.stability.eigenvalue_stability if i in kind)
             for v in self._variants
         ]
+
+    def get_eigenvalues_stability(self, *args, **kwargs, ):
+        r"""
+        Legacy alias of get_eigenvalue_stability
+
+        Written as a separate function rather than a plain name assignment: an
+        assignment would share one object with the original, and because the
+        documark decorator marks the object in place, the alias would then be
+        picked up as a documented method too
+        """
+        return self.get_eigenvalue_stability(*args, **kwargs, )
 
     def _get_variable_stability_for_variant(self, variant, ) -> dict[str, bool]:
         """

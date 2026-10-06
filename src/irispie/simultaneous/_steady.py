@@ -361,7 +361,7 @@ def _steady_linear(
     #
     #=======================================================================
     # Core algorithm: Calculate steady state for this variant
-    Xi, Y, dXi, dY = algorithm(system)
+    Xi, Y, dXi, dY = algorithm(system, )
     levels = _np.hstack(( Xi.flat, Y.flat )).flatten()
     changes = _np.hstack(( dXi.flat, dY.flat )).flatten()
     #=======================================================================

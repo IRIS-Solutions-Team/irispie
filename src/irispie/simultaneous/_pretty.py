@@ -43,6 +43,7 @@ def create_steady_table(
     kind: int = _quantities.ANY_VARIABLE | _quantities.PARAMETER,
     names: tuple[str, ...] | None = None,
     save_to_csv_file: str | None = None,
+    to_csv_file: str | None = None,
     **kwargs,
 ) -> PrettyTable:
     r"""
@@ -57,8 +58,10 @@ def create_steady_table(
     for constructor in column_constructors:
         for header, values, settings in constructor(self, row_names, **kwargs, ):
             table.add_column(header, values, **settings, )
-    if save_to_csv_file:
-        _save_pretty_table_to_csv_file(table, save_to_csv_file, )
+    if save_to_csv_file and not to_csv_file:
+        to_csv_file = save_to_csv_file
+    if to_csv_file:
+        _save_pretty_table_to_csv_file(table, to_csv_file, )
     return table
     #]
 
@@ -262,7 +265,8 @@ def _save_pretty_table_to_csv_file(
     table: PrettyTable,
     file_name: str,
 ) -> None:
+    r"""
     """
-    """
-    _file_io.save_text(table.get_csv_string(), file_name, )
+    csv_string = table.get_csv_string()
+    _file_io.save_text(csv_string, file_name, )
 

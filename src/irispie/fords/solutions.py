@@ -56,6 +56,7 @@ if TYPE_CHECKING:
 
 __all__ = (
     "STABLE", "UNIT_ROOT", "UNSTABLE",
+    "ElementStability", "SystemStabilityVerdict", "Stability",
 )
 
 
@@ -636,12 +637,24 @@ def _estimate_rcond(
     instead of a singular value decomposition. An empty matrix is reported as
     perfectly conditioned: there is nothing for it to be singular about, and
     LAPACK rejects a zero leading dimension
+
+    The factorization comes from the raw LAPACK getrf rather than from scipy's
+    lu_factor wrapper. The two produce a bit-identical result, but the wrapper
+    additionally emits a LinAlgWarning on an exactly singular matrix, and an
+    exactly singular matrix is the very thing this function exists to detect
+    and report as a zero reciprocal condition number
     """
     #[
     if A.size == 0:
         return 1.0
-    lu, _ = _sp.linalg.lu_factor(A, )
-    gecon, = _sp.linalg.get_lapack_funcs(("gecon", ), (A, ), )
+    getrf, gecon, = _sp.linalg.get_lapack_funcs(("getrf", "gecon", ), (A, ), )
+    lu, _, info = getrf(A, )
+    if info < 0:
+        raise ValueError(f"Illegal value in argument {-info} of getrf", )
+    if info > 0:
+        # An exactly zero pivot means an exactly singular matrix; gecon would
+        # return zero anyway, so say so directly
+        return 0.0
     rcond, info = gecon(lu, _np.linalg.norm(A, 1, ), norm="1", )
     if info < 0:
         raise ValueError(f"Illegal value in argument {-info} of gecon", )

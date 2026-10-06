@@ -8,7 +8,7 @@ Prior observations
 from __future__ import annotations
 
 import numpy as _np
-import math as _mt
+from math import sqrt
 from numbers import Real
 from typing import Protocol
 
@@ -97,7 +97,7 @@ class PriorObs(Protocol, ):
         """
         if (mu is not None) + (mu2 is not None) != 1:
             raise ValueError("Exactly one of mu and mu2 must be specified.")
-        self.mu = mu if mu is not None else _mt.sqrt(mu2)
+        self.mu = mu if mu is not None else sqrt(mu2)
 
     #]
 
