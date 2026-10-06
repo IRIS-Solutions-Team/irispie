@@ -22,6 +22,7 @@ text = "OGResearch Developer License 1.0"
 Homepage = "https://github.com/iris-solutions-team/irispie-ce"
 Documentation = "https://iris-solutions-team.github.io/irispie-pages"
 "Bug Tracker" = "https://github.com/iris-solutions-team/irispie-ce/issues"
+Tutorials = "https://iris-solutions-team.github.io/irispie-tutorials"
 
 [tool.hatch.build.targets.wheel]
 packages = [ "src/irispie",]
