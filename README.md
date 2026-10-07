@@ -14,6 +14,9 @@ Community edition homepage:
 Documentation:
 [`https://iris-solutions-team.github.io/irispie-pages`](https://iris-solutions-team.github.io/irispie-pages)
 
+Tutorials:
+[`https://iris-solutions-team/irispie-tutorials`](https://iris-solutions-team/irispie-tutorials)
+
 Community edition issue tracker:
 [`https://github.com/iris-solutions-team/irispie-ce/issues`](https://github.com/iris-solutions-team/irispie-ce/issues)
 
