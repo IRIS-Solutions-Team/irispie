@@ -179,7 +179,7 @@ class Needs:
 
 
 class _LogDataslate:
-    """
+    r"""
     """
     #[
 
@@ -189,27 +189,31 @@ class _LogDataslate:
         input_ds: Dataslate,
         num_variants: int,
         name_to_log_name: dict[str, str],
+        return_log: bool,
     ) -> Self | None:
         """
         """
         self = klass()
+        self._return_log = return_log
         self._dataslate = Dataslate.nan_from_template(input_ds, num_variants=num_variants, )
         self._prepare_log_names(name_to_log_name, )
         return self
 
     @classmethod
-    def from_names_dates(
+    def from_names_and_periods(
         klass,
-        measurement_names: Iterable[str],
-        dates: Iterable[Period],
+        names: Iterable[str],
+        periods: Iterable[Period],
         num_variants: int,
         name_to_log_name: dict[str, str],
+        return_log: bool,
     ) -> Self:
         """
         """
         self = klass()
+        self._return_log = return_log
         self._dataslate = Dataslate.nan_from_names_periods(
-            measurement_names, dates,
+            names, periods,
             num_variants=num_variants,
         )
         self._prepare_log_names(name_to_log_name, )
@@ -262,7 +266,7 @@ class _LogDataslate:
 
 
 class _MedLogDataslate(_LogDataslate, ):
-    """
+    r"""
     """
     #[
 
@@ -272,16 +276,18 @@ class _MedLogDataslate(_LogDataslate, ):
         """
         """
         db = self._dataslate.to_databox()
-        for name, log_name in self._name_to_log_name.items():
+        for name, log_name, in self._name_to_log_name.items():
             db[name] = db[log_name].copy()
             db[name].exp()
+        if not self._return_log:
+            db.remove(self._name_to_log_name.values(), )
         return db
 
     #]
 
 
 class _StdLogDataslate(_LogDataslate, ):
-    """
+    r"""
     """
     #[
 
@@ -308,7 +314,10 @@ class _StdLogDataslate(_LogDataslate, ):
     def to_output_arg(self: Self, ) -> Databox:
         """
         """
-        return self._dataslate.to_databox()
+        db = self._dataslate.to_databox()
+        if not self._return_log:
+            db.remove(self._name_to_log_name.values(), )
+        return db
 
     #]
 
@@ -356,7 +365,8 @@ class _OutputStore:
         num_variants: int,
         measurement_names: Iterable[str],
         needs: Needs,
-        name_to_log_name: dict[str, str] | None = None,
+        name_to_log_name: dict[str, str] | None,
+        return_log: bool,
         **kwargs,
     ) -> Self:
         """
@@ -370,6 +380,7 @@ class _OutputStore:
             input_ds=input_ds,
             num_variants=num_variants,
             name_to_log_name=name_to_log_name,
+            return_log=return_log,
         )
         #
         _std_constructor = _ft.partial(
@@ -377,6 +388,7 @@ class _OutputStore:
             input_ds=input_ds,
             num_variants=num_variants,
             name_to_log_name=name_to_log_name,
+            return_log=return_log,
         )
         #
         # Prediction step
@@ -391,11 +403,12 @@ class _OutputStore:
         #
         self.update_med = _med_constructor() if needs.return_update else None
         self.update_std = _std_constructor() if needs.return_update else None
-        self.predict_err = _MedLogDataslate.from_names_dates(
-            measurement_names,
-            input_ds.periods,
-            num_variants,
-            name_to_log_name,
+        self.predict_err = _MedLogDataslate.from_names_and_periods(
+            names=measurement_names,
+            periods=input_ds.periods,
+            num_variants=num_variants,
+            name_to_log_name=name_to_log_name,
+            return_log=return_log,
         ) if needs.return_predict_err else None
         #
         # Smoothing step
@@ -596,7 +609,7 @@ def kalman_filter(
     return_smooth: bool = True,
     return_predict_err: bool = True,
     return_predict_mse_obs: bool = True,
-    return_log: bool = False,
+    return_log: bool = True,
     rescale_variance: bool = False,
     likelihood_contributions: bool = True,
     #
@@ -651,6 +664,7 @@ def kalman_filter(
         measurement_names=y_names,
         needs=needs,
         name_to_log_name=name_to_log_name,
+        return_log=return_log,
     ) if needs.output_store else None
 
     solution_vectors = model._get_dynamic_solution_vectors()
@@ -722,6 +736,7 @@ def kalman_filter(
             transform=solution_v.Ua,
             squid=squid,
             measurement_incidence=y1_incidence_array,
+            return_log=return_log,
         ) if needs.output_store else None
 
         partial_generate_period_system = _ft.partial(

@@ -212,6 +212,8 @@ def build_steady_paths(
     prepend_initial: bool = True,
     append_terminal: bool = True,
     target_db: Databox | None = None,
+    max_lag: int | None = None,
+    max_lead: int | None = None,
     **kwargs,
 ) -> Self:
     r"""
@@ -275,10 +277,12 @@ A Databox containing steady-state time series for the `model`.
 
 ................................................................................
     """
+    max_lag = self.max_lag if max_lag is None else max_lag
+    max_lead = self.max_lead if max_lead is None else max_lead
     start, end, = _periods.extend_span(
         span,
-        self.max_lag,
-        self.max_lead,
+        max_lag,
+        max_lead,
         prepend_initial,
         append_terminal,
     )

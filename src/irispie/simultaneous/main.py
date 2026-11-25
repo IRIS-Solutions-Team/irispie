@@ -536,12 +536,13 @@ See [`Simultaneous.from_file`](simultaneousfrom_file) for return values.
     @classmethod
     def from_source(
         klass,
-        source: ModelSource,
+        source: ModelSource | Iterable[ModelSource],
         **kwargs,
     ) -> Self:
         """
         """
         self = klass()
+        source = _sources.combine_sources(source, )
         self._invariant = Invariant.from_source(source, **kwargs, )
         self._initialize_variants_from_invariant()
         return self

@@ -8,7 +8,7 @@ Model source
 from __future__ import annotations
 
 import re as _re
-from typing import Self, Any, Type, TypeAlias, Literal, Protocol, NoReturn
+from typing import Self, Any, Type, TypeAlias, Literal, Protocol, NoReturn, Callable
 from collections.abc import Iterable
 import documark as _dm
 
@@ -63,13 +63,14 @@ def from_string(
 ) -> SourceMixinProtocol:
     r"""Create a new object from model source string"""
     #[
-    source, info = ModelSource.from_string(
+    source, info, = ModelSource.from_string(
         source_string,
         context=context,
         save_preparsed=save_preparsed,
+        return_info=True,
     )
     if return_info:
-        return klass.from_source(source, context=context, **kwargs, ), info
+        return klass.from_source(source, context=context, **kwargs, ), info,
     return klass.from_source(source, context=context, **kwargs, )
     #]
 
@@ -85,7 +86,7 @@ def from_file(
     source_string = _combine_source_files_into_string(source_files, )
     new, info, = from_string(klass, source_string, return_info=True, **kwargs, )
     if return_info:
-        return new, info
+        return new, info,
     return new
     #]
 
@@ -276,13 +277,14 @@ class ModelSource:
         klass,
         source_string: str,
         *,
+        return_info: bool = False,
         context: dict | None = None,
         save_preparsed: str = "",
     ) -> tuple[Self, dict[str, Any]]:
         r"""
         """
         context = (dict(context) if context else {})
-        preparsed_string, preparser_info = _preparser.from_string(
+        preparsed_string, preparser_info, = _preparser.from_string(
             source_string,
             context=context,
             save_preparsed=save_preparsed,
@@ -306,7 +308,9 @@ class ModelSource:
             context=context,
         )
         #
-        return self, preparser_info,
+        if return_info:
+            return self, preparser_info,
+        return self
 
     @classmethod
     def from_file(
@@ -318,7 +322,57 @@ class ModelSource:
         source_string = _combine_source_files_into_string(source_files, )
         return klass.from_string(source_string, **kwargs, )
 
+    @classmethod
+    def by_merging(
+        klass,
+        sources: Iterable[Self],
+        description: str = "",
+    ) -> Self:
+        """Create a new ModelSource by merging multiple ModelSource objects"""
+        self = klass()
+        self.description = description
+        for source in sources:
+            self.quantities += source.quantities
+            self.dynamic_equations += source.dynamic_equations
+            self.steady_equations += source.steady_equations
+            self.context.update(source.context, )
+        return self
+
+    def copy(self, ) -> Self:
+        """Create a deep copy of the ModelSource object"""
+        new = type(self)()
+        new.quantities = list(self.quantities)
+        new.dynamic_equations = list(self.dynamic_equations)
+        new.steady_equations = list(self.steady_equations)
+        new.context = dict(self.context)
+        new.description = self.description
+        return new
+
+    def clone(
+        self,
+        description: str | None = None,
+        source_names: Iterable[str] | None = None,
+        target_names: Iterable[str] | None | Callable = None,
+    ) -> Self:
+        r"""Clone a ModelSource by renaming some or all of the quantities"""
+        new = self.copy()
+        source_to_target = _resolve_names(new.all_names, source_names, target_names, )
+        new.quantities = _clone_quantities(new.quantities, source_to_target, )
+        new.dynamic_equations = _clone_equations(new.dynamic_equations, source_to_target, )
+        new.steady_equations = _clone_equations(new.steady_equations, source_to_target, )
+        if description is not None:
+            new.description = description
+        return new
+
     #]
+
+def combine_sources(
+    sources: ModelSource | Iterable[ModelSource],
+) -> ModelSource:
+    r"""Combine multiple ModelSource objects into a single ModelSource"""
+    if isinstance(sources, ModelSource):
+        return sources
+    return ModelSource.by_merging(sources, )
 
 
 def _handle_white_spaces(x: str, ) -> str:
@@ -378,5 +432,87 @@ def _extract_loggable_names(quantities: Iterable[Quantity], ) -> set[str]:
     return set(
         i.human for i in quantities
         if i.kind in QuantityKind.LOGGABLE_VARIABLE
+    )
+
+
+def _resolve_names(
+    all_names: Iterable[str],
+    source_names: Iterable[str] | None = None,
+    target_names: Iterable[str] | None | Callable = None,
+) -> dict[str, str]:
+    if source_names is None:
+        source_names = all_names
+    if target_names is None:
+        target_names = source_names
+    elif callable(target_names):
+        target_names = [ target_names(i) for i in source_names ]
+    return dict(zip(list(source_names), list(target_names)))
+
+
+def _clone_quantities(
+    quantities: Iterable[Quantity],
+    source_to_target: dict[str, str],
+    entry: int | None = None,
+) -> list[Quantity]:
+    r"""
+    """
+    return [
+        _clone_quantity(i, source_to_target, entry, )
+        for i in quantities
+    ]
+
+
+def _clone_quantity(
+    quantity: Quantity,
+    source_to_target: dict[str, str],
+    entry: int | None = None,
+) -> Quantity:
+    r"""
+    """
+    new_human = source_to_target.get(quantity.human, quantity.human)
+    return Quantity(
+        id=quantity.id,
+        human=new_human,
+        kind=quantity.kind,
+        logly=quantity.logly,
+        description=quantity.description,
+        entry=quantity.entry if entry is None else entry,
+        attributes=quantity.attributes,
+    )
+
+
+def _clone_equations(
+    equations: Iterable[Equation],
+    source_to_target: dict[str, str],
+    entry: int | None = None,
+) -> list[Equation]:
+    r"""
+    """
+    return [
+        _clone_equation(i, source_to_target, entry, )
+        for i in equations
+    ]
+
+
+def _clone_equation(
+    equation: Equation,
+    source_to_target: dict[str, str],
+    entry: int | None = None,
+) -> Equation:
+    r"""
+    """
+    new_human = _re.sub(
+        r"\b(" + "|".join(_re.escape(k) for k in source_to_target.keys()) + r")\b",
+        lambda m: source_to_target[m.group(0)],
+        equation.human,
+    )
+    #
+    return Equation(
+        id=equation.id,
+        human=new_human,
+        kind=equation.kind,
+        description=equation.description,
+        entry=equation.entry if entry is None else entry,
+        attributes=equation.attributes,
     )
 

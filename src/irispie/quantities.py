@@ -148,7 +148,7 @@ class Quantity:
         return wrap_logly(self.human, self.logly, )
 
     def copy(self, ) -> Self:
-        """
+        r"""
         Shallow copy of the quantity
         """
         return type(self)(**self.__dict__, )
