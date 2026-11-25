@@ -34,7 +34,7 @@ jobs:
           path: irispie-tests
           token: ${{ secrets.IRIS_SOLUTIONS_TEAM_TOKEN_2026 }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
 
